@@ -6,12 +6,14 @@ import csv
 import io
 import json
 import sqlite3
+from dataclasses import asdict
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
+from pydantic import BaseModel
 from sqlalchemy.exc import IntegrityError
 
 from ai_content.domains.marketing.research_crawler.commands import crawl_url_command
@@ -19,6 +21,7 @@ from ai_content.domains.marketing.research_crawler.identity import crawl_fingerp
 from ai_content.domains.marketing.research_crawler.models import (
     ResearchCrawlJob,
     ResearchRecordQuery,
+    StoredResearchRecord,
 )
 from ai_content.domains.marketing.research_crawler.repositories import (
     PostgresResearchCrawlRepository,
@@ -27,6 +30,7 @@ from ai_content.domains.marketing.research_crawler.repository import (
     ResearchCrawlRepository,
 )
 from ai_content.domains.marketing.research_crawler.service import ResearchCrawlService
+from ai_content.domains.marketing.research_crawler.shortlist import shortlist_references
 from ai_content.platform.execution import CeleryCommandScheduler, CommandScheduler
 
 from .dependencies import (
@@ -351,6 +355,49 @@ async def export_research_records(
         media_type="text/csv",
         headers={"Content-Disposition": 'attachment; filename="research-records.csv"'},
     )
+
+
+class ShortlistedReferenceResponse(BaseModel):
+    reference_id: str
+    record_key: str
+    media_id: str
+    artifact_ref: str
+    platform: str
+    title: str
+    summary: str
+    score: float
+    reasons: list[str]
+
+
+@library_router.get("/shortlist", response_model=list[ShortlistedReferenceResponse])
+async def shortlist_research_references(
+    brand_id: str = Query(min_length=1),
+    product: str = Query(min_length=1, description="Product title and type used for relevance"),
+    limit: int = Query(default=5, ge=1, le=12),
+    repository: ResearchCrawlRepository = Depends(get_research_crawl_repository),
+) -> list[ShortlistedReferenceResponse]:
+    """Rank approved references for one product and keep the picks different from each other."""
+    records: list[StoredResearchRecord] = []
+    page_number = 1
+    while True:
+        page = await repository.search_records(
+            ResearchRecordQuery(
+                brand_id=brand_id,
+                review_status="approved",
+                media_type="image",
+                media_status="available",
+                page=page_number,
+                page_size=100,
+            )
+        )
+        records.extend(page.items)
+        if len(records) >= page.total or not page.items:
+            break
+        page_number += 1
+    return [
+        ShortlistedReferenceResponse(**{**asdict(item), "reasons": list(item.reasons)})
+        for item in shortlist_references(records, product_text=product, limit=limit)
+    ]
 
 
 @library_router.post("/review", response_model=ResearchRecordBulkReviewResponse)

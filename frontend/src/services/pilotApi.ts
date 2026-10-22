@@ -50,6 +50,7 @@ import type {
   ResearchRecordDeleteResult,
   ResearchRecordDetail,
   ResearchRecordPage,
+  ShortlistedResearchReference,
   ResearchRecordReviewRequest,
   SourcePerformanceCandidates,
   WorkspaceNotification,
@@ -146,6 +147,11 @@ export const pilotApi = {
     postJson<ResearchCrawlJob>("/api/v1/marketing/research-crawls", body),
   researchRecords: (query: string, signal?: AbortSignal) =>
     getJson<ResearchRecordPage>(`/api/v1/marketing/research-records?${query}`, signal),
+  shortlistResearchReferences: (brandId: string, product: string, limit: number, signal?: AbortSignal) =>
+    getJson<ShortlistedResearchReference[]>(
+      `/api/v1/marketing/research-records/shortlist?brand_id=${encodeURIComponent(brandId)}&product=${encodeURIComponent(product)}&limit=${limit}`,
+      signal,
+    ),
   researchRecord: (recordKey: string, signal?: AbortSignal) =>
     getJson<ResearchRecordDetail>(`/api/v1/marketing/research-records/${encodeURIComponent(recordKey)}`, signal),
   reviewResearchRecord: (recordKey: string, body: ResearchRecordReviewRequest) =>

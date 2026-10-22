@@ -499,10 +499,7 @@ export function CreativeAutomationLauncher() {
     ? Math.min(...humanReferenceCapacities)
     : 0;
   const referencesReady = variantReferenceTargets.length > 0
-    && variantReferenceTargets.every((target) => {
-      const selected = variantReferenceIds[target.key] ?? [];
-      return selected.length > 0 && selected.length <= maximumHumanReferences;
-    });
+    && variantReferenceTargets.every((target) => (variantReferenceIds[target.key] ?? []).length <= maximumHumanReferences);
   const canSubmit = Boolean(
     selectedBrand
     && agentModelId
@@ -590,6 +587,23 @@ export function CreativeAutomationLauncher() {
           : [...selected, referenceId],
       };
     });
+  };
+
+  const autoPickReferences = async (target: VariantReferenceTarget) => {
+    setReferenceUploadErrors((current) => ({ ...current, [target.key]: "" }));
+    try {
+      const picks = await pilotApi.shortlistResearchReferences(selectedBrand, target.detail.split(" · ")[0], Math.max(1, maximumHumanReferences));
+      setUploadedReferenceOptions((current) => ({
+        ...current,
+        [target.key]: [
+          ...(current[target.key] ?? []).filter((item) => !picks.some((pick) => pick.reference_id === item.referenceId)),
+          ...picks.map((pick) => ({ referenceId: pick.reference_id, title: pick.summary || pick.title || pick.record_key, previewUrl: `/artifacts/${pick.artifact_ref}` })),
+        ],
+      }));
+      setVariantReferenceIds((current) => ({ ...current, [target.key]: picks.map((pick) => pick.reference_id).slice(0, maximumHumanReferences) }));
+    } catch (caught) {
+      setReferenceUploadErrors((current) => ({ ...current, [target.key]: caught instanceof Error ? caught.message : t("Could not pick references.") }));
+    }
   };
 
   const uploadVariantReference = async (targetKey: string, file: File) => {
@@ -724,11 +738,11 @@ export function CreativeAutomationLauncher() {
         human_hooks: [],
         human_claims: [],
         include_logo: false,
-        use_research_references: true,
-        reference_selection_mode: "human",
+        use_research_references: selectedReferenceIds.length > 0,
+        reference_selection_mode: selectedReferenceIds.length > 0 ? "human" : "none",
         selected_reference_ids: selectedReferenceIds,
         output_reference_assignments: [],
-        variant_reference_assignments: variantReferenceAssignments,
+        variant_reference_assignments: selectedReferenceIds.length > 0 ? variantReferenceAssignments : [],
         creative_set_strategy: "single",
         high_brand_risk: false,
         automation_override: false,
@@ -886,8 +900,8 @@ export function CreativeAutomationLauncher() {
         <label className="automation-notes"><span>{t("Campaign theme (optional)")}</span><input type="text" maxLength={240} value={campaignTheme} onChange={(event) => setCampaignTheme(event.target.value)} placeholder={t("e.g. Halloween, Tết, 11.11, Black Friday")} list="campaign-theme-suggestions" /><datalist id="campaign-theme-suggestions">{campaignThemeSuggestions.map((theme) => <option key={theme} value={theme} />)}</datalist></label>
         <label className="automation-notes"><span>{t("2. Additional requirements (optional)")}</span><AutoResizeTextarea rows={3} value={otherContext} onChange={(event) => setOtherContext(event.target.value)} placeholder={t("Add any special brand direction, audience, angle, hooks, offer, claims, or constraints here.")} /></label>
         <section className="automation-reference-picker">
-          <p className="eyebrow">{t("3. Upload visual references")}</p>
-          <p className="muted-copy">{t("Upload at least one reference for each Variant. The Agent uses it as visual direction and completes the creative approach automatically.")}</p>
+          <p className="eyebrow">{t("3. Visual references (optional)")}</p>
+          <p className="muted-copy">{t("Skip this step to let the Agent work from the product and brand alone, let the system pick the best approved references from the library, or upload your own.")}</p>
           <div className="automation-variant-media-groups">{variantReferenceTargets.map((target, index) => {
                   const selectedIds = variantReferenceIds[target.key] ?? [];
                   const referenceOptions = uploadedReferenceOptions[target.key] ?? [];
@@ -897,6 +911,7 @@ export function CreativeAutomationLauncher() {
                   return <details className="automation-variant-media-group automation-reference-variant" key={target.key} open={variantReferenceTargets.length === 1 || index === 0}>
                     <summary><strong>{target.label}</strong><small>{target.detail} · {selectedIds.length} {t("selected")}</small></summary>
                       <div className="automation-reference-upload">
+                        <button type="button" className="secondary-button" onClick={() => void autoPickReferences(target)}><Sparkles size={15} />{t("Auto-pick best references")}</button>
                         <div><strong>{t("Upload your own reference")}</strong><small>{t("PNG, JPEG or WebP. The image is attached only to this Variant unless you apply the decision to all.")}</small></div>
                         <label className={`secondary-button${uploadProgress !== null && uploadProgress !== undefined ? " disabled" : ""}`}>
                           <Upload size={15} />

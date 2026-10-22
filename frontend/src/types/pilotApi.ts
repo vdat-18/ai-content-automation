@@ -1599,6 +1599,18 @@ export type StoredResearchRecord = Omit<ResearchCrawlRecord, "record_id"> & {
   review_reason: string | null;
 };
 
+export type ShortlistedResearchReference = {
+  reference_id: string;
+  record_key: string;
+  media_id: string;
+  artifact_ref: string;
+  platform: string;
+  title: string;
+  summary: string;
+  score: number;
+  reasons: string[];
+};
+
 export type ResearchRecordPage = {
   items: StoredResearchRecord[];
   total: number;
