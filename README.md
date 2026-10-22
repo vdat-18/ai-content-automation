@@ -42,8 +42,9 @@ including ads whose CTR decays over time (creative fatigue). Product packshots l
 
 ## Creative knowledge (second brain)
 
-`config/creative_knowledge/creative_v2_2026_09_29.json` holds reusable rules, practices,
-QA checks and one hard rule per demo brand. Load it with
+`config/creative_knowledge/creative_v3_2026_10_22.json` holds reusable rules, practices,
+QA checks, customer-segment and campaign-theme rules, and voice, look,
+product-depiction and claims rules for each demo brand. Load it with
 `POST /api/v1/marketing/creative-knowledge/bootstrap`, approve the items in the
 dashboard, and every later run applies the approved items that match its brand and
 asset type.

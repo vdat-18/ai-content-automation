@@ -176,7 +176,7 @@ export const pilotApi = {
   bootstrapCreativeKnowledge: (contributor: string) =>
     postJson<CreativeKnowledgeBootstrapResult>("/api/v1/marketing/creative-knowledge/bootstrap", {
       contributor,
-      manifest_id: "creative_v2_2026_09_29",
+      manifest_id: "creative_v3_2026_10_22",
     }),
   proposeCreativeKnowledge: (body: CreativeKnowledgeProposalRequest) =>
     postJson<CreativeKnowledge>("/api/v1/marketing/creative-knowledge", body),

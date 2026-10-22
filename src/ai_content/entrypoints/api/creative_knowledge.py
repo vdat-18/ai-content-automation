@@ -67,7 +67,7 @@ class KnowledgeDecisionRequest(BaseModel):
 class KnowledgeBootstrapRequest(BaseModel):
     contributor: str = Field(min_length=1)
     manifest_id: str = Field(
-        default="creative_v2_2026_09_29",
+        default="creative_v3_2026_10_22",
         pattern=r"^[a-z0-9][a-z0-9_-]{0,127}$",
     )
 

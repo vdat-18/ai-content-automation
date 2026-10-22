@@ -15,6 +15,13 @@ from fastapi.staticfiles import StaticFiles
 from loguru import logger
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from ai_content.domains.marketing.creative.adapters.mock_meta_ads import (
+    MOCK_META_PROVIDER_ID,
+    MockMetaAdsActivationProvider,
+)
+from ai_content.domains.marketing.creative.application.ads_provider_registry import (
+    AdsActivationProviderRegistry,
+)
 from ai_content.domains.marketing.creative.bootstrap import CreativeRuntime
 from ai_content.domains.marketing.creative.domain.entities import (
     ApprovalDecision,
@@ -168,6 +175,10 @@ app = FastAPI(
 )
 app.state.observability_settings = _OBSERVABILITY_SETTINGS
 app.state.observability_runtime = _OBSERVABILITY_RUNTIME
+app.state.ads_activation_provider_registry = AdsActivationProviderRegistry(
+    (MockMetaAdsActivationProvider(),),
+    default_provider_ids={"meta": MOCK_META_PROVIDER_ID},
+)
 app.add_middleware(
     HttpObservabilityMiddleware,
     service_name=_OBSERVABILITY_SETTINGS.service_name,

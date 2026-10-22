@@ -45,7 +45,7 @@ test("SecondBrain exposes a human-governed Creative knowledge lifecycle", () => 
   assert.match(app, /path="second-brain"/);
   assert.match(shell, /to: "\/second-brain"/);
   assert.match(api, /creative-knowledge\/bootstrap/);
-  assert.match(api, /manifest_id: "creative_v2_2026_09_29"/);
+  assert.match(api, /manifest_id: "creative_v3_2026_10_22"/);
   assert.match(api, /decideCreativeKnowledge/);
   assert.match(api, /markCreativeKnowledgeConflict/);
   assert.match(page, /Version history/);
