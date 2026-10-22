@@ -19,7 +19,9 @@
         "packshot_base_url": "https://raw.githubusercontent.com/vdat-18/ai-content-automation/dev/config/data_sources/demo_packshots",
         "packshots": [
           "cloudsupport-orthopedic-pillow",
-          "sleepwell-weighted-blanket"
+          "sleepwell-weighted-blanket",
+          "dusk-cooling-sheet-set",
+          "hush-silk-sleep-mask"
         ]
       }
     },
@@ -62,7 +64,9 @@
         "packshot_base_url": "https://raw.githubusercontent.com/vdat-18/ai-content-automation/dev/config/data_sources/demo_packshots",
         "packshots": [
           "haven-standing-desk",
-          "nest-lounge-chair"
+          "nest-lounge-chair",
+          "grove-open-bookshelf",
+          "terra-side-table"
         ]
       }
     },
@@ -105,7 +109,9 @@
         "packshot_base_url": "https://raw.githubusercontent.com/vdat-18/ai-content-automation/dev/config/data_sources/demo_packshots",
         "packshots": [
           "dew-drop-hyaluronic-serum",
-          "sunveil-spf-50-fluid"
+          "sunveil-spf-50-fluid",
+          "cloud-gel-cleanser",
+          "night-bloom-barrier-cream"
         ]
       }
     },
