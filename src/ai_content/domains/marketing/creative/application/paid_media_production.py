@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import asyncio
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from decimal import Decimal
 
 from ai_content.domains.marketing.creative.application.provider_registry import (
     ManagedMediaProviderRegistry,
 )
 from ai_content.domains.marketing.creative.ports.media_production import (
+    IPaidImageQualityEvaluator,
     PaidAssembledVideoRequest,
     PaidImageGenerationRequest,
     PaidMediaArtifact,
@@ -41,11 +42,17 @@ class PaidMediaProductionService:
         providers: ManagedMediaProviderRegistry,
         *,
         max_concurrency: int = 10,
+        image_evaluator: IPaidImageQualityEvaluator | None = None,
+        max_image_attempts: int = 1,
     ) -> None:
         if max_concurrency < 1:
             raise ValueError("Paid media concurrency must be positive")
+        if max_image_attempts < 1:
+            raise ValueError("Paid image attempts must be positive")
         self._providers = providers
         self._semaphore = asyncio.Semaphore(max_concurrency)
+        self._image_evaluator = image_evaluator
+        self._max_image_attempts = max_image_attempts
 
     async def produce_image(
         self,
@@ -53,12 +60,49 @@ class PaidMediaProductionService:
     ) -> PaidMediaProductionResult:
         provider = self._providers.require_image(request.provider_id)
         _validate_provider_image_capability(provider.descriptor, request)
+        if self._image_evaluator is None or provider.descriptor.fidelity_mode != "generative":
+            return _result(request.limits, await self._generate_image(provider, request))
+        attempts: list[PaidMediaAttempt] = []
+        attempt_request = request
+        for attempt_number in range(1, self._max_image_attempts + 1):
+            artifact = await self._generate_image(provider, attempt_request)
+            evaluation = await self._image_evaluator.evaluate_image(attempt_request, artifact)
+            if evaluation.outcome == "revise" and attempt_number == self._max_image_attempts:
+                evaluation = replace(
+                    evaluation,
+                    outcome="human_review",
+                    summary=f"Product fidelity still failing after {attempt_number} attempts. "
+                    f"{evaluation.summary}",
+                    issues=tuple(
+                        replace(item, repair_instruction=None) for item in evaluation.issues
+                    ),
+                )
+            attempts.append(PaidMediaAttempt(attempt_number, artifact, evaluation))
+            if evaluation.outcome != "revise":
+                break
+            repairs = " ".join(
+                item.repair_instruction for item in evaluation.issues if item.repair_instruction
+            )
+            attempt_request = replace(
+                request,
+                request_id=f"{request.request_id}:attempt-{attempt_number + 1}",
+                visual_direction=f"{request.visual_direction} Product corrections: {repairs}",
+            )
+        total_cost = sum((item.artifact.cost for item in attempts), start=Decimal("0"))
+        return PaidMediaProductionResult(
+            True,
+            tuple(attempts),
+            attempts[-1].artifact,
+            total_cost,
+            "ready_for_review",
+        )
+
+    async def _generate_image(self, provider, request: PaidImageGenerationRequest):
         async with self._semaphore:
-            artifact = await asyncio.wait_for(
+            return await asyncio.wait_for(
                 provider.generate(request),
                 timeout=request.limits.timeout_seconds,
             )
-        return _result(request.limits, artifact)
 
     async def assemble_video(
         self,

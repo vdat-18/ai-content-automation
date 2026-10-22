@@ -13,6 +13,9 @@ from ai_content.domains.marketing.creative.adapters.managed_media import (
     NineRouterVideoProvider,
     SourcePreservingImageProvider,
 )
+from ai_content.domains.marketing.creative.adapters.product_fidelity import (
+    NineRouterProductFidelityEvaluator,
+)
 from ai_content.domains.marketing.creative.application.automation_production import (
     MarketingCreativeAutomationProducer,
 )
@@ -140,6 +143,17 @@ def build_managed_media_runtime(
         max_attempts=1,
         enforce_cost_limit=False,
     )
+    image_evaluator = (
+        NineRouterProductFidelityEvaluator(
+            base_url=effective.resolved_image_base_url,
+            api_key=configured_image_key,
+            model=effective.fidelity_check_model,
+            sink=sink,
+            timeout_seconds=effective.request_timeout_seconds,
+        )
+        if effective is not None and effective.fidelity_check_model and configured_image_key
+        else None
+    )
     producer = MarketingCreativeAutomationProducer(
         state_repository,
         providers,
@@ -147,6 +161,8 @@ def build_managed_media_runtime(
         image_limits=image_limits,
         video_limits=video_limits,
         max_concurrency=effective.max_concurrency if effective is not None else 2,
+        image_evaluator=image_evaluator,
+        max_image_attempts=effective.max_image_attempts if effective is not None else 1,
     )
     return ManagedMediaRuntime(providers, producer, resolver)
 
