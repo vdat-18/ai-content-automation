@@ -29,7 +29,6 @@ class ApplicationSettings(BaseSettings):
     )
     review_config: Path | None = Field(None, validation_alias="AIC_AI_REVIEW_CONFIG")
     learning_config: Path | None = Field(None, validation_alias="AIC_AI_LEARNING_CONFIG")
-    video_config: Path | None = Field(None, validation_alias="AIC_AI_VIDEO_CONFIG")
     media_lab_orchestrator_config: Path | None = Field(
         None, validation_alias="AIC_MEDIA_LAB_ORCHESTRATOR_CONFIG"
     )
@@ -276,7 +275,6 @@ class ApplicationSettings(BaseSettings):
         "product_segmenter_config",
         "review_config",
         "learning_config",
-        "video_config",
         "media_lab_orchestrator_config",
         "media_lab_video_orchestrator_config",
         "media_lab_video_verifier_config",

@@ -80,39 +80,3 @@ urls:
     @echo "Alertmanager:     http://127.0.0.1:9093"
     @echo "RedisInsight:     http://127.0.0.1:5540"
     @echo "MinIO Console:    http://127.0.0.1:19001"
-
-# Create persistent SSH-native Runpod configuration once.
-runpod-configure:
-    bash deploy/runpod/manual/configure.sh
-
-# Install or repair the SSH-native Runpod runtime under /workspace.
-runpod-install:
-    bash deploy/runpod/manual/install.sh
-
-# Start Dashboard, API, worker and 9Router without nested Docker.
-runpod-start:
-    bash deploy/runpod/manual/start.sh
-
-# Stop all SSH-native Runpod services while preserving /workspace data.
-runpod-stop:
-    bash deploy/runpod/manual/stop.sh
-
-# Restart all SSH-native Runpod services.
-runpod-restart:
-    bash deploy/runpod/manual/restart.sh
-
-# Pull the current Git branch, rebuild dependencies and restart services.
-runpod-update:
-    bash deploy/runpod/manual/update.sh
-
-# Verify process state plus Dashboard and 9Router health.
-runpod-status:
-    bash deploy/runpod/manual/status.sh
-
-# Follow one persistent service log: api, worker, nine-router or nginx.
-runpod-logs service="":
-    bash deploy/runpod/manual/logs.sh "{{ service }}"
-
-# The previous GHCR/GitHub Actions deployment path is intentionally disabled.
-runpod-deploy:
-    @echo "Image-based Runpod deployment is disabled. SSH to the Pod and run 'just runpod-update'."

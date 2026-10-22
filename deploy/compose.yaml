@@ -252,7 +252,6 @@ services:
       AIC_AI_PRODUCT_SEGMENTER_CONFIG: ${AIC_AI_PRODUCT_SEGMENTER_CONFIG:-}
       AIC_AI_REVIEW_CONFIG: ${AIC_AI_REVIEW_CONFIG:-/app/config/reviewers/nine-router.example.json}
       AIC_AI_LEARNING_CONFIG: ${AIC_AI_LEARNING_CONFIG:-/app/config/creative_feedback/nine-router.example.json}
-      AIC_AI_VIDEO_CONFIG: ${AIC_AI_VIDEO_CONFIG:-}
       IMAGE_API_KEY: ${IMAGE_API_KEY:-}
     command:
       - celery

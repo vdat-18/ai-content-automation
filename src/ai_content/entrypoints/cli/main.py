@@ -27,7 +27,6 @@ from ai_content.domains.marketing.creative.bootstrap import (
     load_work_item,
 )
 from ai_content.domains.marketing.creative.config.images import (
-    HistoricalHumanReview,
     ImageBackendConfig,
     load_image_config,
     load_image_dataset,
@@ -37,49 +36,21 @@ from ai_content.domains.marketing.creative.config.preparation import load_prepar
 from ai_content.domains.marketing.creative.config.reviewers import (
     load_semantic_reviewer_config,
 )
-from ai_content.domains.marketing.creative.config.rubrics import load_review_rubric
 from ai_content.domains.marketing.creative.config.segmentation import (
     load_product_segmenter_config,
 )
-from ai_content.domains.marketing.creative.config.videos import load_video_config
 from ai_content.domains.marketing.creative.domain.entities import (
     ApprovalDecision,
     CreativeJob,
     CreativeJobId,
-)
-from ai_content.domains.marketing.creative.image_pilot import (
-    HumanImageReview,
-    assess_golden_dataset,
-    benchmark_images,
-    initialize_image_example,
-    load_human_criterion_reviews,
-    prepare_historical_review_pack,
-    read_evaluation_results,
-    record_historical_review,
-    record_image_review,
-    summarize_image_evaluation,
-)
-from ai_content.domains.marketing.creative.lineage_audit import (
-    build_static_lineage_crosswalk,
-    write_static_lineage_crosswalk,
-)
-from ai_content.domains.marketing.creative.marketing_video import (
-    load_video_marketing_plan,
-    review_video_marketing,
-    run_video_marketing,
 )
 from ai_content.domains.marketing.creative.ports.contracts import StaticCreativeInput
 from ai_content.domains.marketing.creative.ports.images import ImageGenerationError
 from ai_content.domains.marketing.creative.ports.preparation import PreparationError
 from ai_content.domains.marketing.creative.ports.videos import (
     VideoGenerationError,
-    VideoGenerationRequest,
 )
 from ai_content.domains.marketing.creative.preparation_runtime import build_preparation_runtime
-from ai_content.domains.marketing.creative.video_pilot import (
-    build_video_backend,
-    generate_video_clip,
-)
 from ai_content.domains.marketing.creative_feedback.bootstrap import (
     build_fixture_runtime as build_creative_feedback_runtime,
 )
@@ -201,96 +172,6 @@ def build_parser() -> argparse.ArgumentParser:
     reject_p.add_argument("--reviewer", required=True)
     reject_p.add_argument("--reason", required=True)
 
-    init_p = sub.add_parser("init-image-eval", help="Create a synthetic image smoke dataset")
-    init_p.add_argument("--output", type=Path, required=True)
-    benchmark = sub.add_parser(
-        "benchmark-images", help="Evaluate fixed image cases, one GPU job at a time"
-    )
-    benchmark.add_argument("--dataset", type=Path, required=True)
-    benchmark.add_argument("--image-config", type=Path, action="append", required=True)
-    benchmark.add_argument("--seed", type=int, action="append", required=True)
-    benchmark.add_argument("--case")
-    benchmark.add_argument("--output", type=Path, default=Path(".creative-pilot/evaluations"))
-    video = sub.add_parser(
-        "generate-video", help="Generate one short video clip through a configured provider"
-    )
-    video.add_argument(
-        "--video-config",
-        type=Path,
-        help="Defaults to AIC_AI_VIDEO_CONFIG from the process environment",
-    )
-    video.add_argument("--prompt", required=True)
-    video.add_argument("--seconds", type=int, default=8)
-    video.add_argument("--size", default="1280x720")
-    video.add_argument("--quality")
-    video.add_argument("--output", type=Path, required=True)
-    video_plan = sub.add_parser(
-        "run-marketing-video", help="Run a bounded multi-shot Marketing video pilot"
-    )
-    video_plan.add_argument("--plan", type=Path, required=True)
-    video_plan.add_argument("--video-config", type=Path)
-    video_plan.add_argument("--output", type=Path, required=True)
-    video_review = sub.add_parser(
-        "review-marketing-video", help="Record a decision on the exact final Marketing video"
-    )
-    video_review.add_argument("--run-dir", type=Path, required=True)
-    video_review.add_argument("--decision", choices=["accept", "revise", "reject"], required=True)
-    video_review.add_argument("--reason", required=True)
-    review = sub.add_parser("review-image", help="Record a human image evaluation")
-    review.add_argument("--run-dir", type=Path, required=True)
-    review.add_argument("--sample", required=True)
-    review.add_argument(
-        "--reviewer", required=True, help="Internal reviewer alias, not personal contact"
-    )
-    review.add_argument("--decision", choices=["accept", "revise", "reject"], required=True)
-    review.add_argument("--reason", required=True)
-    review.add_argument("--critical-product-error", action="store_true")
-    review.add_argument("--rubric-version")
-    review.add_argument("--rubric", type=Path)
-    review.add_argument(
-        "--criteria",
-        type=Path,
-        help="JSON list of versioned rubric criterion results",
-    )
-    report = sub.add_parser("report-images", help="Rebuild metrics from results and human reviews")
-    report.add_argument("--run-dir", type=Path, required=True)
-    report.add_argument("--rubric", type=Path)
-    validate_dataset = sub.add_parser(
-        "validate-golden-dataset",
-        help="Check local assets, permissions and human labels before calibration",
-    )
-    validate_dataset.add_argument("--dataset", type=Path, required=True)
-    validate_dataset.add_argument("--rubric", type=Path, required=True)
-    audit_lineage = sub.add_parser(
-        "audit-static-lineage",
-        help="Cross-check historical Static task rows against local calibration images",
-    )
-    audit_lineage.add_argument("--manifest", type=Path, required=True)
-    audit_lineage.add_argument("--dataset", type=Path, required=True)
-    audit_lineage.add_argument("--rubric", type=Path, required=True)
-    audit_lineage.add_argument("--output", type=Path, required=True)
-    prepare_history = sub.add_parser(
-        "prepare-golden-review",
-        help="Create a blind review pack for historical golden candidates",
-    )
-    prepare_history.add_argument("--dataset", type=Path, required=True)
-    prepare_history.add_argument("--rubric", type=Path, required=True)
-    prepare_history.add_argument("--output", type=Path, required=True)
-    record_history = sub.add_parser(
-        "review-golden-image",
-        help="Append one structured human review to a local golden dataset",
-    )
-    record_history.add_argument("--dataset", type=Path, required=True)
-    record_history.add_argument("--review-pack", type=Path, required=True)
-    record_history.add_argument("--sample", required=True)
-    record_history.add_argument(
-        "--reviewer", required=True, help="Internal reviewer alias, not personal contact"
-    )
-    record_history.add_argument("--decision", choices=["accept", "revise", "reject"], required=True)
-    record_history.add_argument("--reason", required=True)
-    record_history.add_argument("--critical-product-error", action="store_true")
-    record_history.add_argument("--rubric", type=Path, required=True)
-    record_history.add_argument("--criteria", type=Path, required=True)
     gmc = sub.add_parser(
         "run-gmc-ingestion", help="Run a synthetic, chunked and read-only GMC ingestion"
     )
@@ -893,129 +774,6 @@ async def _async_main(args: argparse.Namespace, settings: ApplicationSettings) -
             return 0 if result.success else 1
         finally:
             runtime.repository.close()
-    if args.command == "run-marketing-video":
-        config_path = args.video_config or settings.video_config
-        if config_path is None:
-            raise ValueError("--video-config or AIC_AI_VIDEO_CONFIG is required")
-        config = load_video_config(config_path)
-        result = await run_video_marketing(
-            load_video_marketing_plan(args.plan),
-            config,
-            build_video_backend(config, api_key=settings.credential(config.api_key_env)),
-            args.output,
-        )
-        for final_path in result.final_paths or (result.final_path,):
-            _write_line(f"Video awaiting human review: {final_path.resolve()}")
-        _write_line(f"Manifest: {result.manifest_path.resolve()}")
-        return 0
-    if args.command == "review-marketing-video":
-        review_path = review_video_marketing(args.run_dir, args.decision, args.reason)
-        _write_line(f"Review: {review_path.resolve()}")
-        return 0
-    if args.command == "generate-video":
-        config_path = args.video_config or settings.video_config
-        if config_path is None:
-            raise ValueError(
-                "--video-config or AIC_AI_VIDEO_CONFIG is required for video generation"
-            )
-        config = load_video_config(config_path)
-        output = await generate_video_clip(
-            config,
-            VideoGenerationRequest(
-                prompt=args.prompt,
-                seconds=args.seconds,
-                size=args.size,
-                quality=args.quality,
-            ),
-            args.output,
-            api_key=settings.credential(config.api_key_env),
-        )
-        _write_line(f"Video: {output.resolve()}")
-        _write_line(f"Metadata: {(args.output / 'metadata.json').resolve()}")
-        return 0
-    if args.command == "init-image-eval":
-        initialize_image_example(args.output)
-        _write_line(f"Synthetic dataset created: {args.output.resolve()}")
-        return 0
-    if args.command == "benchmark-images":
-        run_dir = await benchmark_images(
-            args.dataset,
-            args.image_config,
-            args.output,
-            args.seed,
-            args.case,
-            settings.credential,
-        )
-        _write_line(f"Results: {run_dir}")
-        _write_line(f"Blind review: {run_dir / 'review' / 'index.html'}")
-        results = read_evaluation_results(run_dir)
-        return (
-            0
-            if all(item.status == "completed" and item.technical_passed for item in results)
-            else 1
-        )
-    if args.command == "review-image":
-        if bool(args.criteria) != bool(args.rubric_version):
-            raise ValueError("--criteria and --rubric-version must be provided together")
-        if args.criteria and not args.rubric:
-            raise ValueError("--rubric is required with --criteria")
-        rubric = load_review_rubric(args.rubric) if args.rubric else None
-        path = record_image_review(
-            args.run_dir,
-            HumanImageReview(
-                sample_id=args.sample,
-                decision=args.decision,
-                reviewer=args.reviewer,
-                reason=args.reason,
-                critical_product_error=args.critical_product_error,
-                rubric_version=args.rubric_version,
-                criteria=(load_human_criterion_reviews(args.criteria) if args.criteria else []),
-            ),
-            rubric,
-        )
-        _write_line(f"Review recorded: {path}")
-        return 0
-    if args.command == "report-images":
-        rubric = load_review_rubric(args.rubric) if args.rubric else None
-        summarize_image_evaluation(args.run_dir, rubric)
-        _write_line(f"Summary: {args.run_dir / 'summary.json'}")
-        return 0
-    if args.command == "validate-golden-dataset":
-        report = assess_golden_dataset(args.dataset, load_review_rubric(args.rubric))
-        _write_line(report.model_dump_json(indent=2))
-        return 0 if report.status == "ready" else 1
-    if args.command == "audit-static-lineage":
-        rows = build_static_lineage_crosswalk(
-            args.manifest, args.dataset, load_review_rubric(args.rubric)
-        )
-        write_static_lineage_crosswalk(rows, args.output)
-        _write_line(f"Historical Static crosswalk: {args.output.resolve()} ({len(rows)} rows)")
-        return 0
-    if args.command == "prepare-golden-review":
-        output = prepare_historical_review_pack(
-            args.dataset, load_review_rubric(args.rubric), args.output
-        )
-        _write_line(f"Historical review pack: {output / 'review' / 'index.html'}")
-        _write_line(f"Review template: {output / 'review-template.json'}")
-        return 0
-    if args.command == "review-golden-image":
-        rubric = load_review_rubric(args.rubric)
-        path = record_historical_review(
-            args.dataset,
-            args.review_pack,
-            args.sample,
-            HistoricalHumanReview(
-                decision=args.decision,
-                reviewer_alias=args.reviewer,
-                reason=args.reason,
-                critical_product_error=args.critical_product_error,
-                rubric_version=rubric.ref,
-                criteria=load_human_criterion_reviews(args.criteria),
-            ),
-            rubric,
-        )
-        _write_line(f"Historical review recorded: {path}")
-        return 0
     image_config = None
     brief = None
     if args.command == "run":
