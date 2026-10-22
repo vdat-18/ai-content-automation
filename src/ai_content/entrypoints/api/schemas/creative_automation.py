@@ -41,9 +41,7 @@ class MarketingCreativeProductSelectionRequest(BaseModel):
     def infer_legacy_manual_selection(cls, value):
         if isinstance(value, dict) and "media_selection_mode" not in value:
             value = dict(value)
-            value["media_selection_mode"] = (
-                "manual" if value.get("selected_media_ids") else "agent"
-            )
+            value["media_selection_mode"] = "manual" if value.get("selected_media_ids") else "agent"
         return value
 
     @field_validator("selected_media_ids")
@@ -162,9 +160,9 @@ class MarketingCreativeAutomationCreateRequest(BaseModel):
         default_factory=list,
         max_length=20,
     )
-    variant_reference_assignments: list[
-        MarketingCreativeVariantReferenceAssignmentRequest
-    ] = Field(default_factory=list, max_length=160)
+    variant_reference_assignments: list[MarketingCreativeVariantReferenceAssignmentRequest] = Field(
+        default_factory=list, max_length=160
+    )
     creative_set_strategy: Literal[
         "single",
         "multi_angle",
@@ -296,14 +294,14 @@ class MarketingCreativeAutomationCreateRequest(BaseModel):
         if self.output_reference_assignments and self.variant_reference_assignments:
             raise ValueError("Use output or Variant reference assignments, not both")
         expected_selected_ids = (
-            variant_reference_ids
-            if self.variant_reference_assignments
-            else assigned_reference_ids
+            variant_reference_ids if self.variant_reference_assignments else assigned_reference_ids
         )
         if (
             self.variant_reference_assignments or self.output_reference_assignments
         ) and selected_reference_ids != expected_selected_ids:
-            raise ValueError("Selected reference IDs must match the configured reference assignments")
+            raise ValueError(
+                "Selected reference IDs must match the configured reference assignments"
+            )
         if self.reference_selection_mode == "none" and self.use_research_references:
             self.reference_selection_mode = "human"
         self.use_research_references = self.reference_selection_mode != "none"

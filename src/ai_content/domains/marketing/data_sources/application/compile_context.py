@@ -387,7 +387,6 @@ def _media(
     )
 
 
-
 def product_claim_values(family: ProductFamilyContext, kind: str) -> tuple[str, ...]:
     return _claim_values(family, kind)
 
@@ -422,6 +421,7 @@ def _claim_values(family: ProductFamilyContext, kind: str) -> tuple[str, ...]:
             if value and value not in values:
                 values.append(value)
     return tuple(values)
+
 
 def _first_price(family: ProductFamilyContext) -> Decimal | None:
     return next((item.price for item in family.variants if item.price is not None), None)

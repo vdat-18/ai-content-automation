@@ -80,19 +80,6 @@
 .mkt-detail-primary, .mkt-detail-sidebar { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .mkt-preview-panel { overflow: hidden; min-width: 0; }
 .mkt-preview-split { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 0; }
-.mkt-email-envelope { display: flex; align-items: center; gap: 12px; padding: 18px 20px; border-bottom: 1px solid var(--line); background: var(--tint-violet-soft); }
-.mkt-email-envelope > div { flex: 1; min-width: 0; }
-.mkt-email-envelope strong { font-size: var(--text-sm); }
-.mkt-email-envelope p { color: var(--muted); margin: 5px 0 0; font-size: var(--text-xs); line-height: 1.5; }
-.mkt-email-envelope > svg { flex-shrink: 0; color: var(--accent-navy); }
-.mkt-email-paper { margin: 18px; border: 1px solid #e0dfda; border-radius: 8px; overflow: hidden; background: #fff; min-width: 0; align-self: start; }
-.mkt-email-brand { text-align: center; text-transform: uppercase; font-size: var(--text-xs); letter-spacing: .15em; font-weight: 700; padding: 18px; border-bottom: 1px solid #eee; }
-.mkt-email-paper > img { display: block; width: 100%; max-height: 330px; object-fit: contain; background: #f1ede6; }
-.mkt-email-body { padding: 23px 20px; text-align: center; }
-.mkt-email-body h2 { font-size: 24px; line-height: 1.25; letter-spacing: -.04em; margin: 0 0 14px; }
-.mkt-email-body p { white-space: pre-line; line-height: 1.75; font-size: 13px; color: #5e5b56; }
-.mkt-email-cta { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: var(--brand-navy); color: #fff; padding: 12px 18px; border-radius: 4px; font-size: 13px; margin: 10px 0 16px; }
-.mkt-email-body small { display: block; font-size: 10px; color: var(--muted); line-height: 1.5; }
 .mkt-preview-facts { padding: 20px; min-width: 0; }
 .mkt-preview-facts h3, .mkt-message-preview h3 { font-size: 15px; margin: 0 0 13px; }
 .mkt-facts { margin: 10px 0; }
@@ -229,9 +216,6 @@
   .mkt-profile-avatar { width: 44px; height: 44px; }
   .mkt-profile-heading > .badge { grid-column: 1 / -1; justify-self: start; }
   .mkt-profile-heading h2 { font-size: 19px; }
-  .mkt-email-envelope { flex-wrap: wrap; padding: 16px; }
-  .mkt-email-envelope > .badge { margin-left: 30px; }
-  .mkt-email-paper { margin: 14px; }
   .mkt-preview-facts, .mkt-message-preview { padding: 18px; }
   .mkt-chat-thread { padding: 16px; }
   .mkt-chat-bubble { max-width: 95%; padding: 14px; }

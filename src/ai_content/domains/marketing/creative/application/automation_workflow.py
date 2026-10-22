@@ -138,8 +138,7 @@ def decide_final_review(
         raise ValueError("Creative review assets must be unique")
     current_assets = {asset.asset_version_id: asset for asset in review.assets}
     if any(
-        current_assets.get(asset_id) is None
-        or current_assets[asset_id].checksum_sha256 != checksum
+        current_assets.get(asset_id) is None or current_assets[asset_id].checksum_sha256 != checksum
         for asset_id, checksum in zip(asset_version_ids, asset_checksums, strict=True)
     ):
         raise ValueError("Creative assets changed before the decision was submitted")

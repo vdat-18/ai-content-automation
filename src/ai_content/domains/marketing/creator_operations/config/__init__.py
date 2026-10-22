@@ -1,1 +1,0 @@
-"""Creator Operations fixture configuration."""

@@ -21,9 +21,7 @@ def upgrade() -> None:
     op.add_column("ai_usage_events", sa.Column("run_id", sa.Text()), schema="platform")
     op.add_column("ai_usage_events", sa.Column("parent_event_id", sa.Text()), schema="platform")
     op.add_column("ai_usage_events", sa.Column("attempt_number", sa.Integer()), schema="platform")
-    op.add_column(
-        "ai_usage_events", sa.Column("provider_request_id", sa.Text()), schema="platform"
-    )
+    op.add_column("ai_usage_events", sa.Column("provider_request_id", sa.Text()), schema="platform")
     op.create_check_constraint(
         "ck_ai_usage_events_positive_attempt_number",
         "ai_usage_events",

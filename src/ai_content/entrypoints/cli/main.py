@@ -9,7 +9,6 @@ import argparse
 import asyncio
 import sys
 from dataclasses import replace
-from datetime import datetime
 from pathlib import Path
 
 from loguru import logger
@@ -118,54 +117,6 @@ from ai_content.domains.marketing.creative_loop.bootstrap import (
 from ai_content.domains.marketing.creative_loop.ports.interfaces import (
     CreativeLoopEventDriftError,
     CreativeLoopInputDriftError,
-)
-from ai_content.domains.marketing.creator_operations.bootstrap import (
-    build_fixture_runtime as build_creator_runtime,
-)
-from ai_content.domains.marketing.creator_operations.config.fixtures import load_creator_fixture
-from ai_content.domains.marketing.creator_operations.ports.interfaces import (
-    CreatorInputDriftError,
-)
-from ai_content.domains.marketing.creator_outreach.bootstrap import (
-    build_fixture_runtime as build_creator_outreach_runtime,
-)
-from ai_content.domains.marketing.creator_outreach.bootstrap import (
-    build_read_runtime as build_creator_outreach_read_runtime,
-)
-from ai_content.domains.marketing.creator_outreach.config.fixtures import (
-    load_creator_outreach_fixture,
-)
-from ai_content.domains.marketing.creator_outreach.domain.models import (
-    DealDecision,
-    OutreachDecision,
-)
-from ai_content.domains.marketing.creator_outreach.ports.interfaces import (
-    CreatorOutreachInputDriftError,
-    CreatorReplyInputDriftError,
-)
-from ai_content.domains.marketing.email_health.bootstrap import (
-    build_fixture_runtime as build_email_health_runtime,
-)
-from ai_content.domains.marketing.email_health.config.fixtures import (
-    load_email_health_fixture,
-)
-from ai_content.domains.marketing.email_health.ports.interfaces import (
-    EmailHealthInputDriftError,
-)
-from ai_content.domains.marketing.email_production.bootstrap import (
-    build_fixture_runtime as build_email_production_runtime,
-)
-from ai_content.domains.marketing.email_production.config.fixtures import (
-    load_email_production_fixture,
-)
-from ai_content.domains.marketing.email_production.ports.interfaces import (
-    EmailProductionInputDriftError,
-)
-from ai_content.domains.marketing.email_reporting.bootstrap import (
-    build_fixture_runtime as build_email_report_runtime,
-)
-from ai_content.domains.marketing.email_reporting.config.fixtures import (
-    load_email_report_fixture,
 )
 from ai_content.domains.marketing.performance_data.bootstrap import (
     build_fixture_runtime as build_gmc_runtime,
@@ -340,63 +291,10 @@ def build_parser() -> argparse.ArgumentParser:
     record_history.add_argument("--critical-product-error", action="store_true")
     record_history.add_argument("--rubric", type=Path, required=True)
     record_history.add_argument("--criteria", type=Path, required=True)
-    email_report = sub.add_parser(
-        "run-email-report", help="Run a synthetic, read-only Email report fixture"
-    )
-    email_report.add_argument("--fixture", type=Path, required=True)
-    email_health = sub.add_parser(
-        "run-email-health",
-        help="Run synthetic Email Operations QA and health guardrails",
-    )
-    email_health.add_argument("--fixture", type=Path, required=True)
-    email_production = sub.add_parser(
-        "run-email-production",
-        help="Run synthetic multi-brand Email generation through N3 preflight",
-    )
-    email_production.add_argument("--fixture", type=Path, required=True)
     gmc = sub.add_parser(
         "run-gmc-ingestion", help="Run a synthetic, chunked and read-only GMC ingestion"
     )
     gmc.add_argument("--fixture", type=Path, required=True)
-    creator = sub.add_parser(
-        "run-creator-evaluation",
-        help="Run synthetic creator evaluation and prepare a read-only Lark preview",
-    )
-    creator.add_argument("--fixture", type=Path, required=True)
-    creator_outreach = sub.add_parser(
-        "run-creator-outreach",
-        help="Run synthetic Creator outreach generation through plan approval",
-    )
-    creator_outreach.add_argument("--fixture", type=Path, required=True)
-    outreach_decision = sub.add_parser(
-        "decide-creator-outreach", help="Approve or reject an exact outreach plan version"
-    )
-    outreach_decision.add_argument("--run-id", required=True)
-    outreach_decision.add_argument("--plan-version-id", required=True)
-    outreach_decision.add_argument("--evaluation-id", required=True)
-    outreach_decision.add_argument("--decision", choices=["approve", "reject"], required=True)
-    outreach_decision.add_argument("--reviewer", required=True)
-    outreach_decision.add_argument("--reason", required=True)
-    process_followups = sub.add_parser(
-        "process-creator-followups", help="Process due synthetic Creator follow-ups"
-    )
-    process_followups.add_argument("--as-of", required=True)
-    process_followups.add_argument("--run-id")
-    record_reply = sub.add_parser(
-        "record-creator-reply", help="Inject a sanitized synthetic Creator reply event"
-    )
-    record_reply.add_argument("--fixture", type=Path, required=True)
-    record_reply.add_argument("--run-id", required=True)
-    record_reply.add_argument("--scenario", required=True)
-    deal_decision = sub.add_parser(
-        "decide-creator-deal", help="Decide an exact reply/evaluation deal preview"
-    )
-    deal_decision.add_argument("--run-id", required=True)
-    deal_decision.add_argument("--reply-event-id", required=True)
-    deal_decision.add_argument("--evaluation-id", required=True)
-    deal_decision.add_argument("--decision", choices=["approve", "reject", "defer"], required=True)
-    deal_decision.add_argument("--reviewer", required=True)
-    deal_decision.add_argument("--reason", required=True)
     performance_decision = sub.add_parser(
         "run-performance-decision",
         help="Run synthetic Performance rules and prepare Creative demand previews",
@@ -816,81 +714,6 @@ async def _async_main(args: argparse.Namespace, settings: ApplicationSettings) -
             return 0
         finally:
             runtime.close()
-    if args.command == "run-creator-outreach":
-        fixture = load_creator_outreach_fixture(args.fixture)
-        runtime = build_creator_outreach_runtime(args.db, args.artifacts)
-        try:
-            outcome = await runtime.run(fixture)
-            for run in outcome.runs:
-                _write_line(
-                    f"{run.trigger.creator_alias:28} {run.state.value:26} "
-                    f"versions={len(run.versions)}"
-                )
-            _write_line(f"Runs:          {len(outcome.runs)}")
-            _write_line(f"Duplicates:    {outcome.duplicate_count}")
-            _write_line("Email/DM/Lark write: disabled")
-            return 0
-        finally:
-            runtime.close()
-    if args.command == "decide-creator-outreach":
-        runtime = build_creator_outreach_read_runtime(args.db, args.artifacts)
-        try:
-            run = await runtime.decide_outreach(
-                args.run_id,
-                args.plan_version_id,
-                args.evaluation_id,
-                OutreachDecision(args.decision),
-                args.reviewer,
-                args.reason,
-            )
-            _write_line(f"Run:           {run.run_id}")
-            _write_line(f"State:         {run.state.value}")
-            _write_line(f"Receipts:      {len(run.receipts)} synthetic")
-            _write_line("External send: disabled")
-            return 0
-        finally:
-            runtime.close()
-    if args.command == "process-creator-followups":
-        runtime = build_creator_outreach_read_runtime(args.db, args.artifacts)
-        try:
-            updated = await runtime.process_due(datetime.fromisoformat(args.as_of), args.run_id)
-            for run in updated:
-                _write_line(f"{run.run_id:24} {run.state.value:24} receipts={len(run.receipts)}")
-            _write_line(f"Updated:       {len(updated)}")
-            _write_line("External send: disabled")
-            return 0
-        finally:
-            runtime.close()
-    if args.command == "record-creator-reply":
-        fixture = load_creator_outreach_fixture(args.fixture)
-        runtime = build_creator_outreach_read_runtime(args.db, args.artifacts)
-        try:
-            run = await runtime.record_reply(args.run_id, fixture.reply(args.scenario))
-            _write_line(f"Run:           {run.run_id}")
-            _write_line(f"State:         {run.state.value}")
-            _write_line(
-                f"Evaluation:    {run.evaluation_update.evaluation_id if run.evaluation_update else 'n/a'}"
-            )
-            return 0
-        finally:
-            runtime.close()
-    if args.command == "decide-creator-deal":
-        runtime = build_creator_outreach_read_runtime(args.db, args.artifacts)
-        try:
-            run = await runtime.decide_deal(
-                args.run_id,
-                args.reply_event_id,
-                args.evaluation_id,
-                DealDecision(args.decision),
-                args.reviewer,
-                args.reason,
-            )
-            _write_line(f"Run:           {run.run_id}")
-            _write_line(f"State:         {run.state.value}")
-            _write_line("Lark write:    disabled")
-            return 0
-        finally:
-            runtime.close()
     if args.command == "run-creative-intake":
         fixture = load_creative_intake_fixture(args.fixture)
         source_options = (args.source, args.source_run_id, args.context_snapshot_id)
@@ -979,38 +802,6 @@ async def _async_main(args: argparse.Namespace, settings: ApplicationSettings) -
             return 0
         finally:
             runtime.repository.close()
-    if args.command == "run-email-production":
-        fixture = load_email_production_fixture(args.fixture)
-        runtime = build_email_production_runtime(args.db, args.artifacts)
-        try:
-            outcome = await runtime.run(fixture)
-            for job in outcome.jobs:
-                _write_line(
-                    f"{job.context.brand_id:20} {job.state.value:24} versions={len(job.versions)}"
-                )
-            _write_line(f"Jobs:           {len(outcome.jobs)}")
-            _write_line(f"Duplicates:     {outcome.duplicate_count}")
-            _write_line("Klaviyo write:  disabled")
-            return 0
-        finally:
-            runtime.close()
-    if args.command == "run-email-health":
-        fixture = load_email_health_fixture(args.fixture)
-        runtime = build_email_health_runtime(args.db, args.artifacts)
-        try:
-            outcome = await runtime.run(fixture)
-            for run in outcome.runs:
-                subject = run.snapshot.subject
-                _write_line(
-                    f"{subject.subject_type.value:10} {subject.subject_id:24} "
-                    f"{run.evaluation.classification.value:28} {run.evaluation.state.value}"
-                )
-            _write_line(f"Runs:          {len(outcome.runs)}")
-            _write_line(f"Duplicates:    {outcome.duplicate_count}")
-            _write_line("External write: disabled")
-            return 0
-        finally:
-            runtime.repository.close()
     if args.command == "run-performance-decision":
         fixture = load_performance_decision_fixture(args.fixture)
         opportunity_config = (
@@ -1048,25 +839,6 @@ async def _async_main(args: argparse.Namespace, settings: ApplicationSettings) -
             return 0
         finally:
             runtime.repository.close()
-    if args.command == "run-creator-evaluation":
-        fixture = load_creator_fixture(args.fixture)
-        runtime = build_creator_runtime(args.db, args.artifacts)
-        try:
-            outcome = await runtime.run(fixture)
-            run = outcome.run
-            latest = run.latest_evaluation
-            _write_line(f"Run:          {run.run_id}")
-            _write_line(f"Candidate:    {run.candidate_id}")
-            _write_line(f"Evaluations:  {len(run.evaluations)}")
-            _write_line(f"Latest state: {latest.state.value}")
-            _write_line(f"Lark preview: {run.preview.state.value} (no external write)")
-            if outcome.duplicate:
-                _write_line("Duplicate trigger: existing run returned")
-            if outcome.manifest_path:
-                _write_line(f"Manifest:     {outcome.manifest_path}")
-            return 0
-        finally:
-            runtime.repository.close()
     if args.command == "run-gmc-ingestion":
         fixture = load_gmc_fixture(args.fixture)
         runtime = build_gmc_runtime(args.db, args.artifacts, fixture)
@@ -1090,25 +862,6 @@ async def _async_main(args: argparse.Namespace, settings: ApplicationSettings) -
             if run.rejected_artifact_ref:
                 _write_line(f"Rejected:     {run.rejected_artifact_ref}")
             return 0 if run.status.value != "blocked" else 1
-        finally:
-            runtime.repository.close()
-    if args.command == "run-email-report":
-        fixture = load_email_report_fixture(args.fixture)
-        runtime = build_email_report_runtime(args.db, args.artifacts, fixture)
-        try:
-            outcome = await runtime.run(fixture)
-            report = outcome.report
-            _write_line(f"Report:       {report.report_id}")
-            _write_line(f"Status:       {report.status.value}")
-            _write_line(f"Brand:        {report.specification.brand_id}")
-            _write_line(f"Subject:      {report.specification.subject_id}")
-            _write_line(f"Metrics:      {len(report.metrics)}")
-            _write_line(f"Issues:       {len(report.issues)}")
-            if outcome.duplicate:
-                _write_line("Duplicate trigger: existing report returned")
-            if outcome.manifest_path:
-                _write_line(f"Manifest:     {outcome.manifest_path}")
-            return 0 if report.status.value != "blocked" else 1
         finally:
             runtime.repository.close()
     if args.command == "prepare-brief":
@@ -1340,12 +1093,6 @@ def main(argv: list[str] | None = None) -> int:
     except InputDriftError as e:
         logger.error("Input drift: {}", e)
         return 1
-    except CreatorInputDriftError as e:
-        logger.error("Creator input drift: {}", e)
-        return 1
-    except (CreatorOutreachInputDriftError, CreatorReplyInputDriftError) as e:
-        logger.error("Creator outreach input drift: {}", e)
-        return 1
     except PerformanceInputDriftError as e:
         logger.error("Performance input drift: {}", e)
         return 1
@@ -1357,12 +1104,6 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     except (CreativeLoopInputDriftError, CreativeLoopEventDriftError) as e:
         logger.error("Creative loop input/event drift: {}", e)
-        return 1
-    except EmailHealthInputDriftError as e:
-        logger.error("Email health input drift: {}", e)
-        return 1
-    except EmailProductionInputDriftError as e:
-        logger.error("Email production input drift: {}", e)
         return 1
     except OSError as e:
         logger.error("Pilot storage error: {}", e)

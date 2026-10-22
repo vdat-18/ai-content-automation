@@ -38,8 +38,7 @@ def test_creative_orchestration_runtime_configuration_is_available_to_api_and_wo
         "${AIC_AI_PREPARATION_CONFIG:-/app/config/preparation/nine-router.example.json}"
     ) in compose
     assert (
-        "AIC_AI_PREPARATION_CONFIG=/app/config/preparation/nine-router.example.json"
-        in environment
+        "AIC_AI_PREPARATION_CONFIG=/app/config/preparation/nine-router.example.json" in environment
     )
     preparation = load_preparation_config(
         project_root / "config/preparation/nine-router.example.json"

@@ -2813,9 +2813,7 @@ async def get_video_orchestration_status(
             max_generation_image_sources=0,
             quality_review_enabled=False,
             max_regenerations=0,
-            notice=(
-                "Set AIC_MEDIA_LAB_VIDEO_ORCHESTRATOR_CONFIG to enable video orchestration."
-            ),
+            notice=("Set AIC_MEDIA_LAB_VIDEO_ORCHESTRATOR_CONFIG to enable video orchestration."),
         )
     video_service = getattr(request.app.state, "media_lab_video_service", None)
     quality_review_enabled = (

@@ -11,11 +11,6 @@ from ai_content.domains.marketing.creative.bootstrap import CreativeRuntime
 from ai_content.domains.marketing.creative_feedback.bootstrap import CreativeFeedbackRuntime
 from ai_content.domains.marketing.creative_intake.bootstrap import CreativeIntakeRuntime
 from ai_content.domains.marketing.creative_loop.bootstrap import CreativeLoopRuntime
-from ai_content.domains.marketing.creator_operations.bootstrap import CreatorRuntime
-from ai_content.domains.marketing.creator_outreach.bootstrap import CreatorOutreachRuntime
-from ai_content.domains.marketing.email_health.bootstrap import EmailHealthRuntime
-from ai_content.domains.marketing.email_production.bootstrap import EmailProductionRuntime
-from ai_content.domains.marketing.email_reporting.bootstrap import EmailReportRuntime
 from ai_content.domains.marketing.performance_data.ports.interfaces import IGmcRunRepository
 from ai_content.domains.marketing.performance_decisions.bootstrap import (
     PerformanceDecisionRuntime,
@@ -27,11 +22,6 @@ from .dependencies import (
     get_creative_feedback_runtime,
     get_creative_intake_runtime,
     get_creative_loop_runtime,
-    get_creator_outreach_runtime,
-    get_creator_runtime,
-    get_email_health_runtime,
-    get_email_production_runtime,
-    get_email_report_runtime,
     get_gmc_repository,
     get_performance_decision_runtime,
     get_runtime,
@@ -201,11 +191,6 @@ async def get_dashboard_snapshot(
     intake: CreativeIntakeRuntime = Depends(get_creative_intake_runtime),
     feedback: CreativeFeedbackRuntime = Depends(get_creative_feedback_runtime),
     performance: PerformanceDecisionRuntime = Depends(get_performance_decision_runtime),
-    email_production: EmailProductionRuntime = Depends(get_email_production_runtime),
-    email_health: EmailHealthRuntime = Depends(get_email_health_runtime),
-    email_reporting: EmailReportRuntime = Depends(get_email_report_runtime),
-    creators: CreatorRuntime = Depends(get_creator_runtime),
-    outreach: CreatorOutreachRuntime = Depends(get_creator_outreach_runtime),
     gmc: IGmcRunRepository = Depends(get_gmc_repository),
     queue: CommandStatusStore = Depends(get_command_status_store),
 ) -> DashboardSnapshotResponse:
@@ -215,11 +200,6 @@ async def get_dashboard_snapshot(
         intake_runs,
         feedback_runs,
         performance_runs,
-        email_jobs,
-        health_runs,
-        reports,
-        creator_runs,
-        outreach_runs,
         gmc_runs,
     ) = await asyncio.gather(
         creative.repository.list_jobs(),
@@ -227,11 +207,6 @@ async def get_dashboard_snapshot(
         intake.repository.list(),
         feedback.repository.list(),
         performance.repository.list(),
-        email_production.repository.list(),
-        email_health.repository.list(),
-        email_reporting.repository.list(),
-        creators.repository.list(),
-        outreach.repository.list(),
         gmc.list(),
     )
     commands = await resolve_queue_call(queue.list())
@@ -493,266 +468,6 @@ async def get_dashboard_snapshot(
                     evidence_refs=issue.evidence_refs,
                     created_at=run.created_at,
                     action_path="/exceptions",
-                )
-            )
-
-    for job in email_jobs:
-        state = job.state.value
-        workflows.append(
-            _workflow(
-                workflow_id=job.job_id,
-                workstream="email",
-                title="Email campaign production",
-                detail=f"{job.trigger.brand_id} · {job.trigger.objective}",
-                state=state,
-                brand_id=job.trigger.brand_id,
-                entity_id=job.job_id,
-                updated_at=job.created_at,
-                action_path="/workflows",
-            )
-        )
-        if state == "awaiting_approval" and job.approval_card is not None:
-            approvals.append(
-                _approval(
-                    approval_id=f"email-production:{job.job_id}",
-                    workstream="email",
-                    kind="email_production",
-                    title="Email campaign approval",
-                    detail=job.trigger.objective,
-                    brand_id=job.trigger.brand_id,
-                    entity_id=job.job_id,
-                    version_ref=job.approval_card.email_version_id,
-                    created_at=job.created_at,
-                    action_path="/workflows",
-                )
-            )
-        if state in {
-            "needs_context",
-            "blocked_conflict",
-            "preflight_blocked",
-            "exception_policy",
-            "exception_operational",
-        }:
-            detail = job.issues[0].detail if job.issues else f"Email production is {state}."
-            exceptions.append(
-                _exception(
-                    exception_id=f"email-production:{job.job_id}:{state}",
-                    workstream="email",
-                    title="Email production cannot continue",
-                    detail=detail,
-                    queue="policy" if "policy" in state else "operations",
-                    severity="blocking",
-                    brand_id=job.trigger.brand_id,
-                    entity_id=job.job_id,
-                    evidence_refs=job.trigger.evidence_refs,
-                    created_at=job.created_at,
-                    action_path="/workflows",
-                )
-            )
-
-    for run in health_runs:
-        state = run.issue_state.value
-        workflows.append(
-            _workflow(
-                workflow_id=run.run_id,
-                workstream="email",
-                title="Email operations health",
-                detail=f"{run.snapshot.subject.subject_type.value}: {run.evaluation.classification.value}",
-                state=state,
-                brand_id=run.snapshot.subject.brand_id,
-                entity_id=run.run_id,
-                updated_at=run.verifications[-1].verified_at
-                if run.verifications
-                else run.created_at,
-                action_path="/workflows",
-            )
-        )
-        if run.decision is None and run.evaluation.state.value != "healthy":
-            approvals.append(
-                _approval(
-                    approval_id=f"email-health:{run.run_id}",
-                    workstream="email",
-                    kind="email_health",
-                    title="Email health action review",
-                    detail=run.evaluation.recommendation.value,
-                    brand_id=run.snapshot.subject.brand_id,
-                    entity_id=run.run_id,
-                    version_ref=run.evaluation.evaluation_id,
-                    created_at=run.created_at,
-                    action_path="/workflows",
-                )
-            )
-        if state in {"open", "action_approved", "deferred"}:
-            exceptions.append(
-                _exception(
-                    exception_id=f"email-health:{run.issue_fingerprint}",
-                    workstream="email",
-                    title="Email account health requires attention",
-                    detail=run.evaluation.classification.value,
-                    queue="operations",
-                    severity="blocking"
-                    if run.evaluation.classification.value == "blocked"
-                    else "warning",
-                    brand_id=run.snapshot.subject.brand_id,
-                    entity_id=run.run_id,
-                    evidence_refs=run.evaluation.evidence_refs,
-                    created_at=run.created_at,
-                    action_path="/workflows",
-                )
-            )
-
-    for report in reports:
-        state = report.status.value
-        workflows.append(
-            _workflow(
-                workflow_id=report.report_id,
-                workstream="email",
-                title="Email performance report",
-                detail=f"{report.specification.brand_id} · {report.specification.report_type.value}",
-                state="completed" if state == "ready" else state,
-                brand_id=report.specification.brand_id,
-                entity_id=report.report_id,
-                updated_at=report.created_at,
-                action_path="/workflows",
-            )
-        )
-        for issue in report.issues:
-            if issue.severity.value != "blocking":
-                continue
-            exceptions.append(
-                _exception(
-                    exception_id=f"email-report:{report.report_id}:{issue.code}",
-                    workstream="email",
-                    title="Email report is blocked",
-                    detail=issue.detail,
-                    queue="operations",
-                    severity="blocking",
-                    brand_id=report.specification.brand_id,
-                    entity_id=report.report_id,
-                    evidence_refs=(issue.source_ref,) if issue.source_ref else (),
-                    created_at=report.created_at,
-                    action_path="/workflows",
-                )
-            )
-
-    for run in creator_runs:
-        state = run.latest_evaluation.state.value
-        workflows.append(
-            _workflow(
-                workflow_id=run.run_id,
-                workstream="creators",
-                title="Creator evidence evaluation",
-                detail=f"{run.campaign.brand_id} · candidate {run.candidate_id}",
-                state="completed" if run.decision else state,
-                brand_id=run.campaign.brand_id,
-                entity_id=run.run_id,
-                updated_at=run.decided_at or run.created_at,
-                action_path="/workflows",
-            )
-        )
-        if run.decision is None and state == "ready_for_review":
-            approvals.append(
-                _approval(
-                    approval_id=f"creator-evaluation:{run.run_id}",
-                    workstream="creators",
-                    kind="creator_evaluation",
-                    title="Creator candidate decision",
-                    detail=f"Candidate {run.candidate_id} is ready for review.",
-                    brand_id=run.campaign.brand_id,
-                    entity_id=run.run_id,
-                    version_ref=run.latest_evaluation.evaluation_id,
-                    created_at=run.created_at,
-                    action_path="/workflows",
-                )
-            )
-        if state == "needs_evidence" or run.preview.state.value == "blocked_conflict":
-            exceptions.append(
-                _exception(
-                    exception_id=f"creator-evaluation:{run.run_id}:{state}",
-                    workstream="creators",
-                    title="Creator evidence is incomplete",
-                    detail=f"Candidate {run.candidate_id} cannot be decided yet.",
-                    queue="operations",
-                    severity="blocking",
-                    brand_id=run.campaign.brand_id,
-                    entity_id=run.run_id,
-                    evidence_refs=sorted(
-                        {
-                            ref
-                            for criterion in run.latest_evaluation.criteria
-                            for ref in criterion.evidence_refs
-                        }
-                    ),
-                    created_at=run.created_at,
-                    action_path="/workflows",
-                )
-            )
-
-    for run in outreach_runs:
-        state = run.state.value
-        workflows.append(
-            _workflow(
-                workflow_id=run.run_id,
-                workstream="creators",
-                title="Creator outreach",
-                detail=f"{run.trigger.brand_id} · candidate {run.trigger.candidate_id}",
-                state=state,
-                brand_id=run.trigger.brand_id,
-                entity_id=run.run_id,
-                updated_at=run.created_at,
-                action_path="/workflows",
-            )
-        )
-        if state == "awaiting_approval" and run.outreach_approval is not None:
-            approvals.append(
-                _approval(
-                    approval_id=f"creator-outreach:{run.run_id}",
-                    workstream="creators",
-                    kind="creator_outreach",
-                    title="Creator outreach plan approval",
-                    detail=f"Review the exact plan for candidate {run.trigger.candidate_id}.",
-                    brand_id=run.trigger.brand_id,
-                    entity_id=run.run_id,
-                    version_ref=run.outreach_approval.plan_version_id,
-                    created_at=run.created_at,
-                    action_path="/workflows",
-                )
-            )
-        if state == "awaiting_deal_approval" and run.deal_approval is not None:
-            approvals.append(
-                _approval(
-                    approval_id=f"creator-deal:{run.run_id}",
-                    workstream="creators",
-                    kind="creator_deal",
-                    title="Creator deal approval",
-                    detail=f"Review reply evidence for candidate {run.trigger.candidate_id}.",
-                    brand_id=run.trigger.brand_id,
-                    entity_id=run.run_id,
-                    version_ref=run.deal_approval.evaluation_id,
-                    created_at=run.created_at,
-                    action_path="/workflows",
-                )
-            )
-        if state in {
-            "needs_context",
-            "needs_business_review",
-            "exception_policy",
-            "exception_operational",
-        }:
-            detail = run.issues[0].detail if run.issues else f"Creator outreach is {state}."
-            exceptions.append(
-                _exception(
-                    exception_id=f"creator-outreach:{run.run_id}:{state}",
-                    workstream="creators",
-                    title="Creator outreach requires attention",
-                    detail=detail,
-                    queue="policy" if "policy" in state else "operations",
-                    severity="blocking",
-                    brand_id=run.trigger.brand_id,
-                    entity_id=run.run_id,
-                    evidence_refs=run.trigger.evidence_refs,
-                    created_at=run.created_at,
-                    action_path="/workflows",
                 )
             )
 

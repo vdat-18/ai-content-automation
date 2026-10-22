@@ -292,7 +292,9 @@ def normalize_public_platform_records(
             if product_data:
                 metadata["product_data"] = product_data
             metadata.setdefault("price", _offer_value(product_data.get("offers"), "price"))
-            metadata.setdefault("rating", _nested_value(product_data, "aggregate_rating", "rating_value"))
+            metadata.setdefault(
+                "rating", _nested_value(product_data, "aggregate_rating", "rating_value")
+            )
             metadata.setdefault(
                 "review_count", _nested_value(product_data, "aggregate_rating", "review_count")
             )
