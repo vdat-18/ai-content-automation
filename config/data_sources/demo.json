@@ -18,7 +18,8 @@
         "mock": true,
         "packshot_base_url": "https://raw.githubusercontent.com/vdat-18/ai-content-automation/dev/config/data_sources/demo_packshots",
         "packshots": [
-          "cloudsupport-orthopedic-pillow"
+          "cloudsupport-orthopedic-pillow",
+          "sleepwell-weighted-blanket"
         ]
       }
     },
@@ -60,7 +61,8 @@
         "mock": true,
         "packshot_base_url": "https://raw.githubusercontent.com/vdat-18/ai-content-automation/dev/config/data_sources/demo_packshots",
         "packshots": [
-          "haven-standing-desk"
+          "haven-standing-desk",
+          "nest-lounge-chair"
         ]
       }
     },
@@ -102,7 +104,8 @@
         "mock": true,
         "packshot_base_url": "https://raw.githubusercontent.com/vdat-18/ai-content-automation/dev/config/data_sources/demo_packshots",
         "packshots": [
-          "dew-drop-hyaluronic-serum"
+          "dew-drop-hyaluronic-serum",
+          "sunveil-spf-50-fluid"
         ]
       }
     },

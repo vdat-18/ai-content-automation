@@ -3957,8 +3957,6 @@ def _configured_model_api_key(settings, api_key_env: str | None) -> str | None:
         return credential(api_key_env)
     if api_key_env == "ROUTER_API_KEY":
         return settings.router_api_key
-    if api_key_env == "GEMINI_API_KEY":
-        return settings.gemini_api_key
     if api_key_env is None:
         return None
     raise ValueError(f"Unsupported model credential environment variable: {api_key_env}")

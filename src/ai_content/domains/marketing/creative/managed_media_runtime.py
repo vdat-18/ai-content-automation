@@ -107,7 +107,7 @@ def build_managed_media_runtime(
     providers = ManagedMediaProviderRegistry(
         image_providers=tuple(image_providers),
         video_providers=tuple(video_providers),
-        default_image_provider_id=source_preserving_image.descriptor.provider_id,
+        default_image_provider_id=image_providers[-1].descriptor.provider_id,
         default_video_provider_id=default_video_provider_id,
     )
     active_configs: tuple[ManagedMediaConfig, ...] = (effective,) if effective is not None else ()

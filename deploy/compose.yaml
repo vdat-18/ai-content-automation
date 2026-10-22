@@ -7,7 +7,6 @@ x-python-environment: &python-environment
   AIC_AI_ORCHESTRATION_CONFIG: ${AIC_AI_ORCHESTRATION_CONFIG:-/app/config/orchestration/nine-router.example.json}
   AIC_AI_MANAGED_MEDIA_CONFIG: ${AIC_AI_MANAGED_MEDIA_CONFIG:-/app/config/managed_media/nine-router.example.json}
   ROUTER_API_KEY: ${ROUTER_API_KEY:-}
-  GEMINI_API_KEY: ${GEMINI_API_KEY:-}
   IMAGE_API_KEY: ${IMAGE_API_KEY:-}
   VIDEO_API_KEY: ${VIDEO_API_KEY:-}
   JEV_API_KEY: ${JEV_API_KEY:-}

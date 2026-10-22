@@ -29,6 +29,7 @@ class _Item:
     price: int
     options: tuple[tuple[str, tuple[str, ...]], ...]
     blurb: str
+    details: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -36,6 +37,7 @@ class _Brand:
     key: str
     store: str
     vendor: str
+    guideline: dict[str, Any]
     items: tuple[_Item, ...]
 
 
@@ -44,62 +46,47 @@ _BRANDS: dict[str, _Brand] = {
         "AuraSleep",
         "aurasleep-demo",
         "AuraSleep",
+        {
+            "content": (
+                "AuraSleep helps desk workers and side sleepers wake up without neck or back "
+                "pain. Voice: calm, warm, reassuring; never clinical or alarmist."
+            ),
+            "colors": ["cloud white", "light grey", "muted dusk blue"],
+            "photography": (
+                "Soft morning light in a tidy, minimal bedroom; natural linen textures; "
+                "real people resting comfortably, never posed as patients."
+            ),
+            "production_rules": [
+                "Show the product in use within the first seconds.",
+                "Keep the product shape and knit texture exactly as in the packshot.",
+            ],
+            "banned_claims": ["cures pain", "medical device", "doctor recommended"],
+        },
         (
             _Item(
                 "CloudSupport Orthopedic Pillow",
                 "Pillow",
                 79,
                 (("Firmness", ("Soft", "Medium", "Firm")),),
-                "Memory foam pillow that keeps the neck aligned through the night.",
-            ),
-            _Item(
-                "LumbarRelief Seat Cushion",
-                "Cushion",
-                59,
-                (("Color", ("Charcoal", "Sand")),),
-                "Ergonomic seat cushion that relieves lower-back pressure at the desk.",
-            ),
-            _Item(
-                "DeepRest Mattress Topper",
-                "Topper",
-                189,
-                (("Size", ("Twin", "Queen", "King")),),
-                "Cooling gel topper that adds pressure relief to any mattress.",
-            ),
-            _Item(
-                "PosturePro Back Brace",
-                "Brace",
-                69,
-                (("Size", ("S/M", "L/XL")),),
-                "Breathable back brace for daily posture support.",
-            ),
-            _Item(
-                "KneeEase Leg Pillow",
-                "Pillow",
-                45,
-                (("Color", ("White", "Grey")),),
-                "Contoured leg pillow for side sleepers.",
-            ),
-            _Item(
-                "TravelNeck Memory Pillow",
-                "Pillow",
-                39,
-                (("Color", ("Navy", "Grey")),),
-                "Compact neck pillow that packs into its own pouch.",
-            ),
-            _Item(
-                "WarmRelief Heating Wrap",
-                "Wrap",
-                55,
-                (("Size", ("Standard", "Large")),),
-                "Microwavable heating wrap for sore shoulders and back.",
+                "Contoured memory foam pillow that keeps the neck aligned through the night.",
+                (
+                    "Butterfly contour cradles the head for back and side sleeping",
+                    "Slow-rebound memory foam with a breathable light-grey knit cover",
+                    "Removable, machine-washable cover",
+                    "100-night trial",
+                ),
             ),
             _Item(
                 "SleepWell Weighted Blanket",
                 "Blanket",
                 129,
                 (("Weight", ("12 lb", "15 lb", "20 lb")),),
-                "Evenly weighted blanket designed to calm restless sleep.",
+                "Evenly weighted blanket with a cooling cover for calmer, deeper sleep.",
+                (
+                    "Glass micro-beads stitched in small pockets so weight never shifts",
+                    "Breathable dusk-blue cotton cover",
+                    "Sizes for one sleeper or a queen bed",
+                ),
             ),
         ),
     ),
@@ -107,62 +94,46 @@ _BRANDS: dict[str, _Brand] = {
         "OaklineHome",
         "oakline-demo",
         "Oakline Home",
+        {
+            "content": (
+                "Oakline Home makes solid-wood furniture for small, bright homes. Voice: "
+                "confident, understated, crafted; focus on materials and everyday use."
+            ),
+            "colors": ["walnut", "natural oak", "matte black", "warm white"],
+            "photography": (
+                "Daylight interiors with uncluttered Scandinavian styling, a single plant "
+                "or book as props, eye-level or three-quarter angles."
+            ),
+            "production_rules": [
+                "Show real wood grain clearly.",
+                "Keep proportions and finish exactly as in the packshot.",
+            ],
+            "banned_claims": ["lifetime guarantee", "cheapest"],
+        },
         (
             _Item(
                 "Haven Standing Desk",
                 "Desk",
                 899,
                 (("Finish", ("Walnut", "Oak")), ("Width", ("48in", "60in"))),
-                "Solid wood standing desk with a quiet dual-motor frame.",
-            ),
-            _Item(
-                "Arc Floor Lamp",
-                "Lamp",
-                249,
-                (("Color", ("Brass", "Black")),),
-                "Arched floor lamp with a dimmable warm glow.",
-            ),
-            _Item(
-                "Terra Oak Bookshelf",
-                "Shelf",
-                459,
-                (("Height", ("5ft", "6ft")),),
-                "Open oak bookshelf with adjustable shelves.",
+                "Solid wood standing desk with a whisper-quiet dual-motor frame.",
+                (
+                    "Solid walnut or oak top with hand-finished edges",
+                    "Dual motors lift from 25in to 50in in about 20 seconds",
+                    "Four height presets on a slim keypad",
+                ),
             ),
             _Item(
                 "Nest Lounge Chair",
                 "Chair",
                 649,
-                (("Fabric", ("Linen", "Boucle", "Velvet")),),
-                "Low-profile lounge chair built around a hardwood frame.",
-            ),
-            _Item(
-                "Loft Console Table",
-                "Table",
-                379,
-                (("Finish", ("Natural", "Espresso")),),
-                "Slim console table for entryways and hallways.",
-            ),
-            _Item(
-                "Pebble Side Table",
-                "Table",
-                189,
-                (("Color", ("Sand", "Slate")),),
-                "Rounded side table that tucks beside any sofa.",
-            ),
-            _Item(
-                "Halo Pendant Light",
-                "Lamp",
-                159,
-                (("Finish", ("Brass", "Matte Black")),),
-                "Ring pendant light for dining and kitchen spaces.",
-            ),
-            _Item(
-                "Plank Dining Bench",
-                "Bench",
-                329,
-                (("Length", ("48in", "60in")),),
-                "Solid wood bench that seats three comfortably.",
+                (("Fabric", ("Linen", "Boucle")),),
+                "Low-profile lounge chair built around a solid oak frame.",
+                (
+                    "Solid oak frame with rounded arms",
+                    "Deep seat with high-resilience foam",
+                    "Removable linen or boucle cover",
+                ),
             ),
         ),
     ),
@@ -170,6 +141,21 @@ _BRANDS: dict[str, _Brand] = {
         "LumiSkin",
         "lumiskin-demo",
         "LumiSkin",
+        {
+            "content": (
+                "LumiSkin makes minimal skincare for sensitive skin. Voice: fresh, honest, "
+                "gentle; describe how skin feels, never promise results."
+            ),
+            "colors": ["white", "blush pink", "pale aqua"],
+            "photography": (
+                "Bright diffused light, glass and water textures, dewy natural skin with "
+                "visible texture; no heavy retouching."
+            ),
+            "production_rules": [
+                "Keep the frosted bottle and white dropper exactly as in the packshot.",
+            ],
+            "banned_claims": ["anti-aging guaranteed", "clinically proven", "removes wrinkles"],
+        },
         (
             _Item(
                 "Dew Drop Hyaluronic Serum",
@@ -177,55 +163,23 @@ _BRANDS: dict[str, _Brand] = {
                 34,
                 (("Size", ("30ml", "50ml")),),
                 "Lightweight hydrating serum with three weights of hyaluronic acid.",
-            ),
-            _Item(
-                "Bright Day Vitamin C Cream",
-                "Moisturizer",
-                42,
-                (("Size", ("50ml",)),),
-                "Daily moisturizer that brightens uneven tone.",
-            ),
-            _Item(
-                "Gentle Cloud Cleanser",
-                "Cleanser",
-                24,
-                (("Size", ("100ml", "200ml")),),
-                "Soft foaming cleanser for sensitive skin.",
-            ),
-            _Item(
-                "Night Repair Retinol Oil",
-                "Oil",
-                48,
-                (("Strength", ("0.3%", "0.5%")),),
-                "Overnight oil that smooths fine lines.",
+                (
+                    "Three molecular weights of hyaluronic acid",
+                    "Fragrance-free, suitable for sensitive skin",
+                    "Frosted glass bottle with a white dropper",
+                ),
             ),
             _Item(
                 "SunVeil SPF 50 Fluid",
                 "Sunscreen",
                 29,
                 (("Size", ("50ml",)),),
-                "Invisible daily sunscreen with no white cast.",
-            ),
-            _Item(
-                "Calm Barrier Cream",
-                "Moisturizer",
-                38,
-                (("Size", ("50ml", "100ml")),),
-                "Ceramide cream that restores the skin barrier.",
-            ),
-            _Item(
-                "Clear Start Clay Mask",
-                "Mask",
-                27,
-                (("Size", ("75ml",)),),
-                "Weekly clay mask that clears pores without drying.",
-            ),
-            _Item(
-                "Glow Mist Toner",
-                "Toner",
-                22,
-                (("Size", ("100ml",)),),
-                "Alcohol-free toner mist for instant freshness.",
+                "Invisible daily sunscreen fluid with no white cast.",
+                (
+                    "Broad-spectrum SPF 50",
+                    "Sheer fluid texture that disappears on all skin tones",
+                    "Works under makeup",
+                ),
             ),
         ),
     ),
@@ -275,6 +229,7 @@ def _raw_product(
     rng = _rng(seed, brand.key, "product", item_index)
     product_id = str(9_000_000 + item_index)
     handle = _slug(item.title)
+    bullets = "".join(f"<li>{line}</li>" for line in item.details)
     combos: list[tuple[str, ...]] = [()]
     for _, values in item.options:
         combos = [(*combo, value) for combo in combos for value in values]
@@ -310,7 +265,7 @@ def _raw_product(
         "id": product_id,
         "handle": handle,
         "title": item.title,
-        "body_html": f"<p>{item.blurb}</p>",
+        "body_html": f"<p>{item.blurb}</p><ul>{bullets}</ul>",
         "status": "active",
         "tags": f"{brand.key}, {item.product_type.lower()}",
         "product_type": item.product_type,
@@ -505,8 +460,16 @@ class MockDataConnector:
         provider = definition.provider
         if provider is DataSourceProvider.SHOPIFY:
             brand, seed = _brand(definition), _seed(definition)
-            records = tuple(
-                _product_record(definition, brand, index, seed) for index in range(len(brand.items))
+            records = (
+                *(
+                    _product_record(definition, brand, index, seed)
+                    for index in range(len(brand.items))
+                ),
+                NormalizedRecord(
+                    "brand_guideline",
+                    f"{brand.store}-guideline",
+                    {"brand": brand.key, **brand.guideline},
+                ),
             )
         elif provider is DataSourceProvider.META_ADS:
             records = _meta_records(definition)

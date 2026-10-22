@@ -10,15 +10,7 @@ import type { ResearchCrawlCreateRequest, ResearchCrawlJob, ResearchMediaMode } 
 
 const activeStatuses = new Set(["queued", "pending", "running", "retry_wait"]);
 const marketingProjects = ["DEMOFURN", "DemoHome"];
-const analysisModelOptions = [
-  "grok-4-fast-reasoning",
-  "grok-4.7",
-  "gemini-3.8-flash",
-  "gemini-3.7-flash",
-  "gemini-3.6-flash",
-  "gemini-3.5-flash",
-  "gemini-2.5-flash",
-];
+const analysisModelOptions = ["grok-4-fast-reasoning", "grok-4.7"];
 const modelLabel = (modelId: string | null) => modelId?.split("/").at(-1) || "default";
 const researchSources = [
   { id: "pinterest", label: "Pinterest", href: (keyword: string) => `https://www.pinterest.com/search/pins/?q=${encodeURIComponent(keyword)}` },

@@ -20,8 +20,9 @@ def test_demo_config_covers_three_brands() -> None:
 def test_mock_products_are_deterministic_and_complete() -> None:
     first = _fetch("mock-oakline-products")
     assert first == _fetch("mock-oakline-products")
-    assert len(first) == 8
-    for record in first:
+    products = [record for record in first if record.kind == "product"]
+    assert len(products) == 2
+    for record in products:
         assert record.kind == "product"
         assert record.data["variants"] and record.data["media"]
         assert all(variant["sku"] for variant in record.data["variants"])
@@ -78,11 +79,21 @@ def test_mock_sources_sync_end_to_end(tmp_path: Path) -> None:
 
 
 def test_listed_packshots_use_fetchable_urls() -> None:
-    products = {record.data["title"]: record for record in _fetch("mock-oakline-products")}
+    products = {
+        record.data["title"]: record
+        for record in _fetch("mock-oakline-products")
+        if record.kind == "product"
+    }
     desk_media = products["Haven Standing Desk"].data["media"]
     assert desk_media and all(
         item["url"].startswith("https://") and item["url"].endswith("/haven-standing-desk.png")
         for item in desk_media
     )
-    lamp_media = products["Arc Floor Lamp"].data["media"]
-    assert all(item["url"].startswith("mock://") for item in lamp_media)
+    chair_media = products["Nest Lounge Chair"].data["media"]
+    assert all(item["url"].startswith("https://") for item in chair_media)
+
+
+def test_mock_catalog_ships_a_brand_guideline() -> None:
+    guidelines = [r for r in _fetch("mock-lumiskin-products") if r.kind == "brand_guideline"]
+    assert len(guidelines) == 1
+    assert guidelines[0].data["brand"] == "LumiSkin" and guidelines[0].data["banned_claims"]

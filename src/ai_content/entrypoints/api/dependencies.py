@@ -234,7 +234,6 @@ class ApiRuntimeSettings:
     preparation_config_path: Path | None = None
     orchestration_config_path: Path | None = None
     router_api_key: str | None = None
-    gemini_api_key: str | None = None
     image_api_key: str | None = None
     video_api_key: str | None = None
     managed_media_config_path: Path | None = None
@@ -323,7 +322,6 @@ def get_runtime_settings() -> ApiRuntimeSettings:
         preparation_config_path=application.preparation_config_path,
         orchestration_config_path=application.orchestration_config_path,
         router_api_key=application.credential("ROUTER_API_KEY"),
-        gemini_api_key=application.credential("GEMINI_API_KEY"),
         image_api_key=application.credential("IMAGE_API_KEY"),
         video_api_key=application.credential("VIDEO_API_KEY"),
         managed_media_config_path=application.managed_media_config,
@@ -609,7 +607,7 @@ async def lifespan(application: FastAPI):
             settings.artifacts_root,
             settings.config_dir,
             preparation_config_path=_preparation_config_path(settings),
-            preparation_api_key=settings.gemini_api_key or settings.router_api_key,
+            preparation_api_key=settings.router_api_key,
             image_config_path=settings.image_config_path,
             product_segmenter_config_path=settings.product_segmenter_config_path,
             legacy_local_models_enabled=settings.legacy_local_models_enabled,
@@ -703,7 +701,7 @@ async def lifespan(application: FastAPI):
         try:
             terra_runtime = build_terra_runtime(
                 settings.media_lab_orchestrator_config_path,
-                api_key=settings.gemini_api_key or settings.router_api_key,
+                api_key=settings.router_api_key,
                 capabilities=build_image_capabilities(legacy_media_graph_service),
                 usage_tracker=media_lab_usage_tracker(),
             )
@@ -736,7 +734,7 @@ async def lifespan(application: FastAPI):
         try:
             video_terra_runtime = build_video_terra_runtime(
                 settings.media_lab_video_orchestrator_config_path,
-                api_key=settings.gemini_api_key or settings.router_api_key,
+                api_key=settings.router_api_key,
                 capabilities=build_video_capabilities(media_lab_video_backend),
                 usage_tracker=media_lab_usage_tracker(),
             )
@@ -1234,12 +1232,12 @@ def _research_screener(
             "Research analysis unavailable because its configuration is invalid: {}", error
         )
         return None
-    if not (settings.gemini_api_key or settings.router_api_key):
+    if not settings.router_api_key:
         logger.error("Research analysis unavailable because its API key is not configured")
         return None
     return NineRouterResearchScreener(
         config,
-        api_key=settings.gemini_api_key or settings.router_api_key,
+        api_key=settings.router_api_key,
         usage_tracker=usage_tracker,
         artifact_reader=artifact_reader,
     )
@@ -1392,7 +1390,7 @@ async def get_creative_intake_write_runtime(
     runtime = build_creative_intake_write_runtime(
         settings.db_path,
         settings.artifacts_root,
-        preparation_api_key=settings.gemini_api_key or settings.router_api_key,
+        preparation_api_key=settings.router_api_key,
     )
     try:
         yield runtime
