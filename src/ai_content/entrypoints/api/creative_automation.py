@@ -164,6 +164,7 @@ from ai_content.platform.llm_routing import (
     APPROVED_AGENT_MODELS,
     DEFAULT_AGENT_MODEL,
     DEFAULT_AGENT_REASONING_LEVEL,
+    route_approved_agent_model,
 )
 from ai_content.platform.notifications import Notification, NotificationRepository
 from ai_content.platform.observability.metrics import (
@@ -1005,7 +1006,14 @@ async def _process_automation_request(
     if preparation_config.backend == "baml":
         preparation_config = preparation_config.model_copy(
             update={
-                "model": request.agent_model_id or preparation_config.model,
+                "model": (
+                    route_approved_agent_model(
+                        request.agent_model_id,
+                        configured_model=preparation_config.model,
+                    )
+                    if request.agent_model_id
+                    else preparation_config.model
+                ),
                 "reasoning_effort": (
                     None
                     if request.agent_reasoning_effort in {None, "auto"}

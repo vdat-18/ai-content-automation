@@ -105,9 +105,9 @@ const formatLatency = (durationMs: number | null) => {
   return `${minutes}m ${((durationMs % 60_000) / 1000).toFixed(1)}s`;
 };
 
-const preferredAgentModelId = "gemini-3.8-flash";
-const preferredImageModelId = "gpt-image-2.5-flare";
-const preferredVideoModelId = "grok-imagine-video-1.5";
+const preferredAgentModelId = "grok-4-fast-reasoning";
+const preferredImageModelId = "grok-imagine-image";
+const preferredVideoModelId = "grok-imagine-video";
 const launcherRequestedBy = "Marketing dashboard";
 const matchesPreferredModel = (modelId: string, preferredModelId: string) => (
   modelId === preferredModelId || modelId.endsWith(`/${preferredModelId}`)

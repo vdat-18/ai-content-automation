@@ -11,6 +11,8 @@ import type { ResearchCrawlCreateRequest, ResearchCrawlJob, ResearchMediaMode } 
 const activeStatuses = new Set(["queued", "pending", "running", "retry_wait"]);
 const marketingProjects = ["DEMOFURN", "DemoHome"];
 const analysisModelOptions = [
+  "grok-4-fast-reasoning",
+  "grok-4.7",
   "gemini-3.8-flash",
   "gemini-3.7-flash",
   "gemini-3.6-flash",
@@ -36,7 +38,7 @@ export function ResearchCrawlerPage() {
   const [brandId, setBrandId] = useState(initialBrand);
   const [projectId, setProjectId] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
-  const [analysisModelId, setAnalysisModelId] = useState("gemini-2.5-flash");
+  const [analysisModelId, setAnalysisModelId] = useState("grok-4-fast-reasoning");
   const [mediaMode, setMediaMode] = useState<ResearchMediaMode>("images_and_videos");
   const [searchSource, setSearchSource] = useState(researchSources[0].id);
   const [selectedKeyword, setSelectedKeyword] = useState("");

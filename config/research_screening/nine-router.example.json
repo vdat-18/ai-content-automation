@@ -1,6 +1,6 @@
 {
   "name": "research-media-reference-analysis-nine-router@6",
-  "model": "gemini/gemini-2.5-flash",
+  "model": "xai/grok-4-fast-reasoning",
   "base_url": "http://router.example.com:20128/v1",
   "api_key_env": "ROUTER_API_KEY",
   "prompt_version": "research-media-reference-analysis@6",

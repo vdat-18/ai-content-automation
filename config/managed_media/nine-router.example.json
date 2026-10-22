@@ -9,6 +9,20 @@
   "allow_insecure_http": true,
   "image_models": [
     {
+      "model": "xai/grok-imagine-image",
+      "display_name": "Grok Imagine Image",
+      "supported_aspect_ratios": ["1:1", "4:5", "9:16", "16:9", "4:3", "3:4", "3:2", "2:3"],
+      "supported_formats": ["png", "jpeg", "webp"],
+      "supported_resolutions": ["1k"],
+      "supported_modes": ["single_image_edit"],
+      "max_reference_images": 1,
+      "supports_text_rendering": true,
+      "supports_logo_input": false,
+      "reference_field": "images",
+      "request_mode": "json_generation",
+      "cost_per_output": "0.02"
+    },
+    {
       "model": "openai/gpt-image-2",
       "display_name": "GPT Image 2",
       "supported_aspect_ratios": ["1:1", "4:5", "9:16", "16:9", "4:3", "3:4", "3:2", "2:3"],
@@ -104,6 +118,6 @@
   "max_image_output_bytes": 40000000,
   "max_video_output_bytes": 250000000,
   "allowed_source_hosts": ["cdn.shopify.com"],
-  "allowed_output_hosts": ["api.openai.com", "vidgen.x.ai"],
+  "allowed_output_hosts": ["api.openai.com", "imgen.x.ai", "vidgen.x.ai"],
   "max_concurrency": 10
 }

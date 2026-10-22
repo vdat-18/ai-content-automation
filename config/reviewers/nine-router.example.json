@@ -2,7 +2,7 @@
   "name": "nine-router-static-review-shadow",
   "backend": "baml",
   "mode": "shadow",
-  "model": "gemini/gemini-2.5-flash",
+  "model": "xai/grok-4-fast-reasoning",
   "model_revision": "provider-managed",
   "runtime_version": "nine-router-openai-generic-vision",
   "base_url": "http://router.example.com:20128/v1",

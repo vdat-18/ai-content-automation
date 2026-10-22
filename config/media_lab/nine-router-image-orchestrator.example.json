@@ -1,7 +1,7 @@
 {
   "name": "nine-router-media-lab-image-orchestrator",
   "backend": "baml",
-  "model": "gemini/gemini-3.8-flash",
+  "model": "xai/grok-4-fast-reasoning",
   "base_url": "http://router.example.com:20128/v1",
   "api_key_env": "ROUTER_API_KEY",
   "prompt": "../prompts/media_lab/v1_image_orchestration.json",
