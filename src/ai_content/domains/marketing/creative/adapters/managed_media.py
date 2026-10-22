@@ -788,7 +788,10 @@ class NineRouterVideoProvider:
 
     async def generate(self, request: PaidVideoGenerationRequest) -> PaidMediaArtifact:
         model = self._model_for(request)
-        product_sources = tuple(item for item in request.sources if item.role == "product")
+        # A keyframe is a generated still that already contains the product; it starts the clip.
+        product_sources = tuple(
+            item for item in request.sources if item.role in {"product", "keyframe"}
+        )
         reference_sources = tuple(item for item in request.sources if item.role == "style")
         if len(request.sources) > model.max_reference_images:
             raise ValueError("Video plan selected more sources than the provider supports")
@@ -1284,6 +1287,11 @@ def _source_role_legend(sources: tuple[PaidMediaSource, ...]) -> str:
         )
     if positions["logo"]:
         labels.append(f"Approved logo input positions: {', '.join(positions['logo'])}")
+    if positions.get("keyframe"):
+        labels.append(
+            "Opening keyframe input positions (start the clip from this exact frame): "
+            + ", ".join(positions["keyframe"])
+        )
     return "; ".join(labels) + "."
 
 

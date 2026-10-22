@@ -82,21 +82,6 @@ class BamlAsyncClient:
     def parse_stream(self):
       return self.__llm_stream_parser
 
-    async def CritiqueCreativeIdeas(self, instructions: str,input_json: str,
-        baml_options: BamlCallOptions = {},
-    ) -> types.CreativeIdeaCritique:
-        # Check if on_tick is provided
-        if 'on_tick' in baml_options:
-            # Use streaming internally when on_tick is provided
-            __stream__ = self.stream.CritiqueCreativeIdeas(instructions=instructions,input_json=input_json,
-                baml_options=baml_options)
-            return await __stream__.get_final_response()
-        else:
-            # Original non-streaming code
-            __result__ = await self.__options.merge_options(baml_options).call_function_async(function_name="CritiqueCreativeIdeas", args={
-                "instructions": instructions,"input_json": input_json,
-            })
-            return typing.cast(types.CreativeIdeaCritique, __result__.cast_to(types, types, stream_types, False, __runtime__))
     async def GenerateCreativeIdeas(self, instructions: str,input_json: str,max_ideas: int,
         baml_options: BamlCallOptions = {},
     ) -> types.CreativeIdeaCandidates:
@@ -157,21 +142,6 @@ class BamlAsyncClient:
                 "instructions": instructions,"input_json": input_json,
             })
             return typing.cast(types.CreativePersonaHypothesis, __result__.cast_to(types, types, stream_types, False, __runtime__))
-    async def ReviewCreativeBrief(self, instructions: str,input_json: str,
-        baml_options: BamlCallOptions = {},
-    ) -> types.CreativeBriefReview:
-        # Check if on_tick is provided
-        if 'on_tick' in baml_options:
-            # Use streaming internally when on_tick is provided
-            __stream__ = self.stream.ReviewCreativeBrief(instructions=instructions,input_json=input_json,
-                baml_options=baml_options)
-            return await __stream__.get_final_response()
-        else:
-            # Original non-streaming code
-            __result__ = await self.__options.merge_options(baml_options).call_function_async(function_name="ReviewCreativeBrief", args={
-                "instructions": instructions,"input_json": input_json,
-            })
-            return typing.cast(types.CreativeBriefReview, __result__.cast_to(types, types, stream_types, False, __runtime__))
     async def ReviewStaticCreative(self, instructions: str,input_json: str,sources: typing.List["types.LabeledReviewImage"],
         baml_options: BamlCallOptions = {},
     ) -> types.StaticCreativeReview:
@@ -226,18 +196,6 @@ class BamlStreamClient:
     def __init__(self, options: DoNotUseDirectlyCallManager):
         self.__options = options
 
-    def CritiqueCreativeIdeas(self, instructions: str,input_json: str,
-        baml_options: BamlCallOptions = {},
-    ) -> baml_py.BamlStream[stream_types.CreativeIdeaCritique, types.CreativeIdeaCritique]:
-        __ctx__, __result__ = self.__options.merge_options(baml_options).create_async_stream(function_name="CritiqueCreativeIdeas", args={
-            "instructions": instructions,"input_json": input_json,
-        })
-        return baml_py.BamlStream[stream_types.CreativeIdeaCritique, types.CreativeIdeaCritique](
-          __result__,
-          lambda x: typing.cast(stream_types.CreativeIdeaCritique, x.cast_to(types, types, stream_types, True, __runtime__)),
-          lambda x: typing.cast(types.CreativeIdeaCritique, x.cast_to(types, types, stream_types, False, __runtime__)),
-          __ctx__,
-        )
     def GenerateCreativeIdeas(self, instructions: str,input_json: str,max_ideas: int,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.BamlStream[stream_types.CreativeIdeaCandidates, types.CreativeIdeaCandidates]:
@@ -286,18 +244,6 @@ class BamlStreamClient:
           lambda x: typing.cast(types.CreativePersonaHypothesis, x.cast_to(types, types, stream_types, False, __runtime__)),
           __ctx__,
         )
-    def ReviewCreativeBrief(self, instructions: str,input_json: str,
-        baml_options: BamlCallOptions = {},
-    ) -> baml_py.BamlStream[stream_types.CreativeBriefReview, types.CreativeBriefReview]:
-        __ctx__, __result__ = self.__options.merge_options(baml_options).create_async_stream(function_name="ReviewCreativeBrief", args={
-            "instructions": instructions,"input_json": input_json,
-        })
-        return baml_py.BamlStream[stream_types.CreativeBriefReview, types.CreativeBriefReview](
-          __result__,
-          lambda x: typing.cast(stream_types.CreativeBriefReview, x.cast_to(types, types, stream_types, True, __runtime__)),
-          lambda x: typing.cast(types.CreativeBriefReview, x.cast_to(types, types, stream_types, False, __runtime__)),
-          __ctx__,
-        )
     def ReviewStaticCreative(self, instructions: str,input_json: str,sources: typing.List["types.LabeledReviewImage"],
         baml_options: BamlCallOptions = {},
     ) -> baml_py.BamlStream[stream_types.StaticCreativeReview, types.StaticCreativeReview]:
@@ -342,13 +288,6 @@ class BamlHttpRequestClient:
     def __init__(self, options: DoNotUseDirectlyCallManager):
         self.__options = options
 
-    async def CritiqueCreativeIdeas(self, instructions: str,input_json: str,
-        baml_options: BamlCallOptions = {},
-    ) -> baml_py.baml_py.HTTPRequest:
-        __result__ = await self.__options.merge_options(baml_options).create_http_request_async(function_name="CritiqueCreativeIdeas", args={
-            "instructions": instructions,"input_json": input_json,
-        }, mode="request")
-        return __result__
     async def GenerateCreativeIdeas(self, instructions: str,input_json: str,max_ideas: int,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.baml_py.HTTPRequest:
@@ -374,13 +313,6 @@ class BamlHttpRequestClient:
         baml_options: BamlCallOptions = {},
     ) -> baml_py.baml_py.HTTPRequest:
         __result__ = await self.__options.merge_options(baml_options).create_http_request_async(function_name="ResolveCreativePersona", args={
-            "instructions": instructions,"input_json": input_json,
-        }, mode="request")
-        return __result__
-    async def ReviewCreativeBrief(self, instructions: str,input_json: str,
-        baml_options: BamlCallOptions = {},
-    ) -> baml_py.baml_py.HTTPRequest:
-        __result__ = await self.__options.merge_options(baml_options).create_http_request_async(function_name="ReviewCreativeBrief", args={
             "instructions": instructions,"input_json": input_json,
         }, mode="request")
         return __result__
@@ -413,13 +345,6 @@ class BamlHttpStreamRequestClient:
     def __init__(self, options: DoNotUseDirectlyCallManager):
         self.__options = options
 
-    async def CritiqueCreativeIdeas(self, instructions: str,input_json: str,
-        baml_options: BamlCallOptions = {},
-    ) -> baml_py.baml_py.HTTPRequest:
-        __result__ = await self.__options.merge_options(baml_options).create_http_request_async(function_name="CritiqueCreativeIdeas", args={
-            "instructions": instructions,"input_json": input_json,
-        }, mode="stream")
-        return __result__
     async def GenerateCreativeIdeas(self, instructions: str,input_json: str,max_ideas: int,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.baml_py.HTTPRequest:
@@ -445,13 +370,6 @@ class BamlHttpStreamRequestClient:
         baml_options: BamlCallOptions = {},
     ) -> baml_py.baml_py.HTTPRequest:
         __result__ = await self.__options.merge_options(baml_options).create_http_request_async(function_name="ResolveCreativePersona", args={
-            "instructions": instructions,"input_json": input_json,
-        }, mode="stream")
-        return __result__
-    async def ReviewCreativeBrief(self, instructions: str,input_json: str,
-        baml_options: BamlCallOptions = {},
-    ) -> baml_py.baml_py.HTTPRequest:
-        __result__ = await self.__options.merge_options(baml_options).create_http_request_async(function_name="ReviewCreativeBrief", args={
             "instructions": instructions,"input_json": input_json,
         }, mode="stream")
         return __result__

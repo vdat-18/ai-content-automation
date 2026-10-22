@@ -160,7 +160,7 @@ class ApplicationSettings(BaseSettings):
         15, ge=1, validation_alias="AIC_AI_CREATIVE_AUTOMATION_VIDEO_DURATION_MIN_SECONDS"
     )
     creative_automation_video_duration_max_seconds: int = Field(
-        25, ge=1, validation_alias="AIC_AI_CREATIVE_AUTOMATION_VIDEO_DURATION_MAX_SECONDS"
+        60, ge=1, validation_alias="AIC_AI_CREATIVE_AUTOMATION_VIDEO_DURATION_MAX_SECONDS"
     )
     creative_automation_video_source_duration_max_seconds: int = Field(
         15, ge=1, validation_alias="AIC_AI_CREATIVE_AUTOMATION_VIDEO_SOURCE_DURATION_MAX_SECONDS"

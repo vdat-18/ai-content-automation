@@ -195,6 +195,7 @@ class MarketingCreativeAutomationProducer:
                         aspect_ratio,
                         video_plan,
                         scene_requests,
+                        keyframe_requests,
                         (
                             package.request.video_generate_audio
                             if package.request.video_generate_audio is not None
@@ -209,6 +210,7 @@ class MarketingCreativeAutomationProducer:
                     aspect_ratio,
                     video_plan,
                     scene_requests,
+                    keyframe_requests,
                     _parent,
                 ) in video_groups
                 if scene_requests is not None
@@ -245,6 +247,7 @@ class MarketingCreativeAutomationProducer:
                 _aspect_ratio,
                 _video_plan,
                 scene_requests,
+                _keyframe_requests,
                 parent,
             ) in video_groups:
                 if scene_requests is None:
@@ -468,6 +471,7 @@ class MarketingCreativeAutomationProducer:
             parent = latest_records.get(slot)
             should_generate = _should_generate(slot, revision_request, target_slots)
             scene_requests = None
+            keyframe_requests = None
             if should_generate:
                 assert video_provider is not None
                 selected_model = next(
@@ -556,6 +560,12 @@ class MarketingCreativeAutomationProducer:
                     )
                     for scene in video_plan.scenes
                 )
+                keyframe_requests = self._keyframe_requests(
+                    package,
+                    video_plan,
+                    scene_requests,
+                    profile.aspect_ratio,
+                )
             video_groups.append(
                 (
                     slot,
@@ -564,10 +574,53 @@ class MarketingCreativeAutomationProducer:
                     profile.aspect_ratio,
                     video_plan,
                     scene_requests,
+                    keyframe_requests,
                     parent,
                 )
             )
         return tuple(image_requests), tuple(video_groups)
+
+    def _keyframe_requests(
+        self,
+        package,
+        video_plan,
+        scene_requests: tuple[PaidVideoGenerationRequest, ...],
+        aspect_ratio: str,
+    ) -> tuple[PaidImageGenerationRequest, ...]:
+        """Plan one product-faithful still per scene; each scene video starts from it."""
+        descriptor = self._providers.require_image().descriptor
+        model = next(
+            (
+                item
+                for item in descriptor.image_models
+                if item.model_id == package.request.image_model_id
+            ),
+            descriptor.image_models[0],
+        )
+        width, height = _profile_dimensions(aspect_ratio)
+        return tuple(
+            PaidImageGenerationRequest(
+                request_id=f"{scene_request.request_id}:keyframe",
+                package_id=package.package_id,
+                sku_id=package.request.sku_id,
+                variation_key=f"{video_plan.variation_key}:{scene.scene_id}:keyframe",
+                visual_direction=(
+                    f"Opening frame of this video scene: {scene.visual_direction} "
+                    f"{video_plan.continuity_plan}"
+                ).strip(),
+                width=width,
+                height=height,
+                sources=tuple(
+                    source for source in scene_request.sources if source.role == "product"
+                )[: model.max_reference_images],
+                limits=self._image_limits,
+                aspect_ratio=aspect_ratio,
+                provider_id=descriptor.provider_id,
+                model_id=model.model_id,
+                resolution=model.supported_resolutions[0],
+            )
+            for scene, scene_request in zip(video_plan.scenes, scene_requests, strict=True)
+        )
 
     async def _produce(self, kind, request) -> PaidMediaProductionResult:
         if kind == "image":
@@ -582,8 +635,32 @@ class MarketingCreativeAutomationProducer:
         aspect_ratio: str,
         video_plan,
         scene_requests: tuple[PaidVideoGenerationRequest, ...],
+        keyframe_requests: tuple[PaidImageGenerationRequest, ...],
         expects_audio: bool,
     ) -> tuple[PaidMediaProductionResult, tuple, Decimal]:
+        keyframe_outcomes = await asyncio.gather(
+            *(self._produce("image", request) for request in keyframe_requests),
+            return_exceptions=True,
+        )
+        keyframe_results = tuple(_provider_result(outcome) for outcome in keyframe_outcomes)
+        keyframe_cost = sum((result.total_cost for result in keyframe_results), start=Decimal("0"))
+        if not all(
+            result.success and result.selected_artifact is not None for result in keyframe_results
+        ):
+            return _failed_scene_result(keyframe_results), (), keyframe_cost
+        scene_requests = tuple(
+            replace(
+                request,
+                sources=(
+                    PaidMediaSource(
+                        asset_ref=keyframe.selected_artifact.artifact_ref,
+                        checksum_sha256=keyframe.selected_artifact.checksum_sha256,
+                        role="keyframe",
+                    ),
+                ),
+            )
+            for request, keyframe in zip(scene_requests, keyframe_results, strict=True)
+        )
         scene_outcomes = await asyncio.gather(
             *(self._produce("video", request) for request in scene_requests),
             return_exceptions=True,
@@ -600,12 +677,12 @@ class MarketingCreativeAutomationProducer:
             and scene_results[0].selected_artifact.duration_seconds
             == video_plan.final_duration_seconds
         ):
-            return scene_results[0], (), Decimal("0")
+            return scene_results[0], (), keyframe_cost
         if not all(
             result.success and result.selected_artifact is not None for result in scene_results
         ):
-            return _failed_scene_result(scene_results), scene_artifacts, Decimal("0")
-        scene_cost = sum(
+            return _failed_scene_result(scene_results), scene_artifacts, keyframe_cost
+        scene_cost = keyframe_cost + sum(
             (result.total_cost for result in scene_results),
             start=Decimal("0"),
         )

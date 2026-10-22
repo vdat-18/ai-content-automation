@@ -46,7 +46,6 @@ def test_creative_orchestration_runtime_configuration_is_available_to_api_and_wo
     )
     assert preparation.backend == "baml"
     assert preparation.api_key_env == "ROUTER_API_KEY"
-    assert preparation.max_brief_revisions == 1
     assert preparation.fallback_model is None
     assert "ROUTER_API_KEY=" in environment
 

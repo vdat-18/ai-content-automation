@@ -40,17 +40,8 @@ type_map = {
     "types.CreativeBriefDraft": types.CreativeBriefDraft,
     "stream_types.CreativeBriefDraft": stream_types.CreativeBriefDraft,
 
-    "types.CreativeBriefReview": types.CreativeBriefReview,
-    "stream_types.CreativeBriefReview": stream_types.CreativeBriefReview,
-
-    "types.CreativeIdeaAssessment": types.CreativeIdeaAssessment,
-    "stream_types.CreativeIdeaAssessment": stream_types.CreativeIdeaAssessment,
-
     "types.CreativeIdeaCandidates": types.CreativeIdeaCandidates,
     "stream_types.CreativeIdeaCandidates": stream_types.CreativeIdeaCandidates,
-
-    "types.CreativeIdeaCritique": types.CreativeIdeaCritique,
-    "stream_types.CreativeIdeaCritique": stream_types.CreativeIdeaCritique,
 
     "types.CreativeIdeaDraft": types.CreativeIdeaDraft,
     "stream_types.CreativeIdeaDraft": stream_types.CreativeIdeaDraft,

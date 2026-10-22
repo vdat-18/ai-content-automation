@@ -248,7 +248,7 @@ class ApiRuntimeSettings:
     creative_automation_allow_cached_shopify_fallback: bool = False
     creative_automation_default_market: str = "US"
     creative_automation_video_duration_min_seconds: int = 15
-    creative_automation_video_duration_max_seconds: int = 25
+    creative_automation_video_duration_max_seconds: int = 60
     creative_automation_video_source_duration_max_seconds: int = 15
     object_storage: ObjectStorageSettings = ObjectStorageSettings()
     data_sources_config_path: Path | None = None

@@ -193,7 +193,7 @@ class CreativeOutputSelection:
     video_count: int = 1
     video_duration_seconds: int | None = None
     video_duration_min_seconds: int = 15
-    video_duration_max_seconds: int = 25
+    video_duration_max_seconds: int = 60
     video_scene_duration_max_seconds: int = 15
     include_background_music: bool = False
     aspect_ratio: str = "9:16"

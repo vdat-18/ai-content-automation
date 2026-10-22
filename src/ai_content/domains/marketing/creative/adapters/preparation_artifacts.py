@@ -80,8 +80,6 @@ def render_preparation_summary(output: PreparedBrief) -> str:
             "",
             "## Strategy evaluation",
             "",
-            f"Critique: {output.strategy.critique.rationale}",
-            f"Brief review: {output.strategy.brief_reviews[-1].outcome}",
             f"Strategy schema: {output.strategy.schema_version}",
         ]
     lines += ["", "## Warnings", "", *(f"- {warning}" for warning in output.warnings), ""]

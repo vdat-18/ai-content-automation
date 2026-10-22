@@ -136,7 +136,7 @@ class MarketingCreativeAutomationCreateRequest(BaseModel):
     image_input_fidelity: Literal["low", "high"] | None = None
     video_model_id: str | None = Field(default=None, min_length=1)
     video_resolution: Literal["480p", "720p", "1080p"] | None = None
-    video_duration_seconds: int | None = Field(default=None, ge=1, le=30)
+    video_duration_seconds: int | None = Field(default=None, ge=1, le=60)
     video_generate_audio: bool | None = None
     aspect_ratio: str = Field(default="9:16")
     execution_mode: Literal["brief_only", "generate_once"] = "generate_once"

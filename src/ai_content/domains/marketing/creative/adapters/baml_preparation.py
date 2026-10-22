@@ -28,10 +28,7 @@ from ..config.preparation import PreparationConfig, PreparationPrompt
 from ..ports.contracts import CreativeWorkItemInput, ExperimentContext
 from ..ports.preparation import (
     BriefDraft,
-    BriefReview,
     CompositionDraft,
-    IdeaAssessment,
-    IdeaCritique,
     IdeaDraft,
     ModelCallTrace,
     ModelStepResult,
@@ -51,9 +48,7 @@ from .image_files import inspect_image, read_local_image
 _BAML_FUNCTIONS = {
     "persona": "ResolveCreativePersona",
     "ideas": "GenerateCreativeIdeas",
-    "idea_critique": "CritiqueCreativeIdeas",
     "brief": "WriteCreativeBrief",
-    "brief_review": "ReviewCreativeBrief",
     "composition": "PlanStaticComposition",
 }
 
@@ -74,13 +69,6 @@ class _BamlPreparationClient(Protocol):
         baml_options: dict[str, object],
     ) -> baml_types.CreativeIdeaCandidates: ...
 
-    async def CritiqueCreativeIdeas(
-        self,
-        instructions: str,
-        input_json: str,
-        baml_options: dict[str, object],
-    ) -> baml_types.CreativeIdeaCritique: ...
-
     async def WriteCreativeBrief(
         self,
         instructions: str,
@@ -88,13 +76,6 @@ class _BamlPreparationClient(Protocol):
         variation_count: int,
         baml_options: dict[str, object],
     ) -> baml_types.CreativeBriefDraft: ...
-
-    async def ReviewCreativeBrief(
-        self,
-        instructions: str,
-        input_json: str,
-        baml_options: dict[str, object],
-    ) -> baml_types.CreativeBriefReview: ...
 
     async def PlanStaticComposition(
         self,
@@ -239,85 +220,6 @@ class BamlPreparationModel:
         )
         return ModelStepResult(
             self._brief_draft(output),
-            trace,
-        )
-
-    async def critique_ideas(
-        self,
-        context: PreparationContext,
-        work_item: CreativeWorkItemInput,
-        candidates: tuple[IdeaDraft, ...],
-        eligible_candidate_indices: tuple[int, ...],
-    ) -> ModelStepResult[IdeaCritique]:
-        payload = self._payload(
-            context,
-            work_item,
-            candidates=candidates,
-            eligible_candidate_indices=eligible_candidate_indices,
-        )
-        output, trace = await self._call(
-            "idea_critique",
-            self._config.idea_critique_prompt,
-            payload,
-            lambda collector, instructions: self._client.CritiqueCreativeIdeas(
-                instructions=instructions,
-                input_json=payload,
-                baml_options={"collector": collector},
-            ),
-            work_item,
-        )
-        return ModelStepResult(
-            IdeaCritique(
-                selected_candidate_index=output.selected_candidate_index,
-                rationale=output.rationale,
-                evidence_refs=self._evidence_refs(output.evidence_refs),
-                assessments=tuple(
-                    IdeaAssessment(
-                        candidate_index=assessment.candidate_index,
-                        recommendation=assessment.recommendation.value.lower(),
-                        rationale=assessment.rationale,
-                        evidence_refs=self._evidence_refs(assessment.evidence_refs),
-                        concerns=tuple(assessment.concerns),
-                    )
-                    for assessment in output.assessments
-                ),
-                uncertainties=tuple(output.uncertainties),
-            ),
-            trace,
-        )
-
-    async def review_brief(
-        self,
-        context: PreparationContext,
-        work_item: CreativeWorkItemInput,
-        selected: IdeaDraft,
-        draft: BriefDraft,
-    ) -> ModelStepResult[BriefReview]:
-        payload = self._payload(context, work_item, selected=selected, brief=draft)
-        output, trace = await self._call(
-            "brief_review",
-            self._config.brief_review_prompt,
-            payload,
-            lambda collector, instructions: self._client.ReviewCreativeBrief(
-                instructions=instructions,
-                input_json=payload,
-                baml_options={"collector": collector},
-            ),
-            work_item,
-        )
-        return ModelStepResult(
-            BriefReview(
-                outcome=output.outcome.value.lower(),
-                rationale=output.rationale,
-                evidence_refs=self._evidence_refs(output.evidence_refs),
-                issues=tuple(output.issues),
-                revision_instructions=tuple(output.revision_instructions),
-                revised_brief=(
-                    self._brief_draft(output.revised_brief)
-                    if output.revised_brief is not None
-                    else None
-                ),
-            ),
             trace,
         )
 
@@ -469,7 +371,7 @@ class BamlPreparationModel:
 
     async def _call(
         self,
-        step: Literal["persona", "ideas", "idea_critique", "brief", "brief_review", "composition"],
+        step: Literal["persona", "ideas", "brief", "composition"],
         prompt: PreparationPrompt,
         payload: str,
         operation: Callable[[Collector, str], Awaitable[Any]],

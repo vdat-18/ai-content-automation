@@ -10,10 +10,7 @@ from ..config.preparation import PreparationConfig
 from ..ports.contracts import CreativeWorkItemInput
 from ..ports.preparation import (
     BriefDraft,
-    BriefReview,
     CompositionDraft,
-    IdeaAssessment,
-    IdeaCritique,
     IdeaDraft,
     ModelCallTrace,
     ModelStepResult,
@@ -31,16 +28,14 @@ class FakePreparationModel:
 
     def _trace(
         self,
-        step: Literal["ideas", "idea_critique", "brief", "brief_review", "composition"],
+        step: Literal["ideas", "brief", "composition"],
         context: PreparationContext,
         work_item: CreativeWorkItemInput,
         selected: IdeaDraft | None = None,
     ) -> ModelCallTrace:
         prompts = {
             "ideas": self._config.idea_prompt,
-            "idea_critique": self._config.idea_critique_prompt,
             "brief": self._config.brief_prompt,
-            "brief_review": self._config.brief_review_prompt,
             "composition": self._config.composition_prompt,
         }
         prompt = prompts[step]
@@ -137,58 +132,6 @@ class FakePreparationModel:
                 ),
             ),
             self._trace("brief", context, work_item, selected),
-        )
-
-    async def critique_ideas(
-        self,
-        context: PreparationContext,
-        work_item: CreativeWorkItemInput,
-        candidates: tuple[IdeaDraft, ...],
-        eligible_candidate_indices: tuple[int, ...],
-    ) -> ModelStepResult[IdeaCritique]:
-        selected = eligible_candidate_indices[0] if eligible_candidate_indices else None
-        source_ids = {source.source_id for source in context.package.evidence}
-        assessments = tuple(
-            IdeaAssessment(
-                candidate_index=index,
-                recommendation=(
-                    "select"
-                    if index == selected
-                    else "keep"
-                    if index in eligible_candidate_indices
-                    else "reject"
-                ),
-                rationale="Deterministic strategy evaluation for offline tests.",
-                evidence_refs=tuple(ref for ref in candidate.evidence_refs if ref in source_ids),
-                concerns=() if index in eligible_candidate_indices else ("ineligible_candidate",),
-            )
-            for index, candidate in enumerate(candidates, 1)
-        )
-        evidence_refs = candidates[selected - 1].evidence_refs if selected is not None else ()
-        return ModelStepResult(
-            IdeaCritique(
-                selected_candidate_index=selected,
-                rationale="Select the first eligible candidate in the synthetic strategy flow.",
-                evidence_refs=evidence_refs,
-                assessments=assessments,
-            ),
-            self._trace("idea_critique", context, work_item),
-        )
-
-    async def review_brief(
-        self,
-        context: PreparationContext,
-        work_item: CreativeWorkItemInput,
-        selected: IdeaDraft,
-        draft: BriefDraft,
-    ) -> ModelStepResult[BriefReview]:
-        return ModelStepResult(
-            BriefReview(
-                outcome="pass",
-                rationale="Synthetic brief is aligned with the selected synthetic idea.",
-                evidence_refs=draft.evidence_refs,
-            ),
-            self._trace("brief_review", context, work_item, selected),
         )
 
     async def plan_composition(

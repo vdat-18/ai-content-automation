@@ -144,34 +144,6 @@ class BriefDraft:
 
 
 @dataclass(frozen=True)
-class IdeaAssessment:
-    candidate_index: int
-    recommendation: Literal["select", "keep", "reject"]
-    rationale: str
-    evidence_refs: tuple[str, ...]
-    concerns: tuple[str, ...] = ()
-
-
-@dataclass(frozen=True)
-class IdeaCritique:
-    selected_candidate_index: int | None
-    rationale: str
-    evidence_refs: tuple[str, ...]
-    assessments: tuple[IdeaAssessment, ...]
-    uncertainties: tuple[str, ...] = ()
-
-
-@dataclass(frozen=True)
-class BriefReview:
-    outcome: Literal["pass", "revise", "blocked"]
-    rationale: str
-    evidence_refs: tuple[str, ...]
-    issues: tuple[str, ...] = ()
-    revision_instructions: tuple[str, ...] = ()
-    revised_brief: BriefDraft | None = None
-
-
-@dataclass(frozen=True)
 class RegionDraft:
     x: int
     y: int
@@ -202,7 +174,7 @@ class CompositionDraft:
 
 @dataclass(frozen=True)
 class ModelCallTrace:
-    step: Literal["persona", "ideas", "idea_critique", "brief", "brief_review", "composition"]
+    step: Literal["persona", "ideas", "brief", "composition"]
     backend: str
     model: str
     prompt_version: str
@@ -254,25 +226,9 @@ class IPreparationModel(Protocol):
         self, context: PreparationContext, work_item: CreativeWorkItemInput
     ) -> ModelStepResult[tuple[IdeaDraft, ...]]: ...
 
-    async def critique_ideas(
-        self,
-        context: PreparationContext,
-        work_item: CreativeWorkItemInput,
-        candidates: tuple[IdeaDraft, ...],
-        eligible_candidate_indices: tuple[int, ...],
-    ) -> ModelStepResult[IdeaCritique]: ...
-
     async def write_brief(
         self, context: PreparationContext, work_item: CreativeWorkItemInput, selected: IdeaDraft
     ) -> ModelStepResult[BriefDraft]: ...
-
-    async def review_brief(
-        self,
-        context: PreparationContext,
-        work_item: CreativeWorkItemInput,
-        selected: IdeaDraft,
-        draft: BriefDraft,
-    ) -> ModelStepResult[BriefReview]: ...
 
     async def plan_composition(
         self,

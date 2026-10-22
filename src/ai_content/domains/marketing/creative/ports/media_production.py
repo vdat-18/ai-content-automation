@@ -192,8 +192,8 @@ class PaidVideoGenerationRequest:
             raise ValueError("Music direction requires an enabled music mode")
         if self.music_mode != "none" and not (self.music_direction or "").strip():
             raise ValueError("Enabled music mode requires a music direction")
-        if not any(source.role == "product" for source in self.sources):
-            raise ValueError("Paid video generation requires a product source")
+        if not any(source.role in {"product", "keyframe"} for source in self.sources):
+            raise ValueError("Paid video generation requires a product or keyframe source")
 
 
 PaidOneShotVideoGenerationRequest = PaidVideoGenerationRequest

@@ -40,7 +40,6 @@ class _PreparationSettings(BaseModel):
     reasoning_effort: Literal["none", "minimal", "low", "medium", "high"] | None = "high"
     temperature: float | None = Field(default=None, ge=0, le=2)
     max_output_tokens: int = Field(default=12000, gt=0, le=65536)
-    max_brief_revisions: int = Field(default=1, ge=0, le=2)
     selection_rule_version: Literal[
         "m1-first-eligible@1-draft", "m1-strategy-selection@1-draft"
     ] = "m1-strategy-selection@1-draft"
@@ -65,9 +64,7 @@ class _PreparationSettings(BaseModel):
 class PreparationConfig(_PreparationSettings):
     persona_prompt: PreparationPrompt | None = None
     idea_prompt: PreparationPrompt
-    idea_critique_prompt: PreparationPrompt
     brief_prompt: PreparationPrompt
-    brief_review_prompt: PreparationPrompt
     composition_prompt: PreparationPrompt
 
     @property
@@ -87,9 +84,7 @@ class PreparationConfig(_PreparationSettings):
 class _PreparationConfigFile(_PreparationSettings):
     persona_prompt: Path = Path("../prompts/creative/v1_resolve_persona.json")
     idea_prompt: Path
-    idea_critique_prompt: Path
     brief_prompt: Path
-    brief_review_prompt: Path
     composition_prompt: Path
 
 
@@ -101,9 +96,7 @@ def load_preparation_config(path: Path) -> PreparationConfig:
             exclude={
                 "persona_prompt",
                 "idea_prompt",
-                "idea_critique_prompt",
                 "brief_prompt",
-                "brief_review_prompt",
                 "composition_prompt",
             }
         ),
@@ -115,14 +108,8 @@ def load_preparation_config(path: Path) -> PreparationConfig:
         idea_prompt=PreparationPrompt.model_validate_json(
             (root / settings.idea_prompt).read_text(encoding="utf-8")
         ),
-        idea_critique_prompt=PreparationPrompt.model_validate_json(
-            (root / settings.idea_critique_prompt).read_text(encoding="utf-8")
-        ),
         brief_prompt=PreparationPrompt.model_validate_json(
             (root / settings.brief_prompt).read_text(encoding="utf-8")
-        ),
-        brief_review_prompt=PreparationPrompt.model_validate_json(
-            (root / settings.brief_review_prompt).read_text(encoding="utf-8")
         ),
         composition_prompt=PreparationPrompt.model_validate_json(
             (root / settings.composition_prompt).read_text(encoding="utf-8")

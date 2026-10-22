@@ -24,9 +24,7 @@ from ..ports.contracts import (
 from ..ports.interfaces import ICreativeRepository
 from ..ports.preparation import (
     BriefDraft,
-    BriefReview,
     CompositionDraft,
-    IdeaCritique,
     IdeaDraft,
     IPreparationModel,
     ModelCallTrace,
@@ -113,8 +111,7 @@ class PrepareCreativeBrief:
         model: IPreparationModel,
         *,
         max_ideas: int,
-        max_brief_revisions: int,
-        max_critique_attempts: int = 1,
+        max_composition_attempts: int = 1,
         selection_rule_version: str,
         configuration: object,
     ) -> None:
@@ -123,8 +120,7 @@ class PrepareCreativeBrief:
         self.context = context
         self.model = model
         self.max_ideas = max_ideas
-        self.max_brief_revisions = max_brief_revisions
-        self.max_critique_attempts = max_critique_attempts
+        self.max_composition_attempts = max_composition_attempts
         self.selection_rule_version = selection_rule_version
         self.configuration = configuration
 
@@ -260,15 +256,11 @@ class PrepareCreativeBrief:
                 raise PreparationError(
                     "No candidate passes the configured checks", code="no_eligible_ideas"
                 )
-            critique, selected_index = await self._critique_with_validation_retry(
-                context,
-                work_item,
-                drafts,
-                eligible_indices,
-                traces,
+            selected_index = eligible_indices[0]
+            decisions = tuple(
+                replace(decision, selected=index == selected_index)
+                for index, decision in enumerate(decisions, 1)
             )
-            decisions = self._apply_critique(decisions, critique, selected_index)
-            self.store.write_snapshot(work_item.source_run_id, "idea_critique", critique)
             self.store.write_snapshot(work_item.source_run_id, "decisions", decisions)
             selected = ideas[selected_index - 1]
             selected_draft = drafts[selected_index - 1]
@@ -286,37 +278,6 @@ class PrepareCreativeBrief:
             self.store.write_snapshot(work_item.source_run_id, "calls", tuple(traces))
             self.store.write_snapshot(work_item.source_run_id, "brief_draft", response.output)
             draft = response.output
-            self._compile(work_item, selected, selected_draft, draft)
-            reviews: list[BriefReview] = []
-            for review_number in range(self.max_brief_revisions + 1):
-                review_response = await self.model.review_brief(
-                    context, work_item, selected_draft, draft
-                )
-                traces.append(review_response.trace)
-                self.store.write_snapshot(work_item.source_run_id, "calls", tuple(traces))
-                review = review_response.output
-                self._validate_brief_review(review, work_item)
-                reviews.append(review)
-                self.store.write_snapshot(work_item.source_run_id, "brief_reviews", tuple(reviews))
-                if review.outcome == "pass":
-                    break
-                if review.outcome == "blocked":
-                    raise PreparationError(
-                        "Brief review is blocked by unresolved evidence",
-                        code="strategy_review_blocked",
-                    )
-                if review_number >= self.max_brief_revisions:
-                    raise PreparationError(
-                        "Brief did not pass within the revision limit",
-                        code="strategy_revision_exhausted",
-                    )
-                if review.revised_brief is None:
-                    raise PreparationError(
-                        "Brief reviewer omitted the required revision",
-                        code="model_invalid_output",
-                    )
-                draft = review.revised_brief
-                self._compile(work_item, selected, selected_draft, draft)
             brief = self._compile(work_item, selected, selected_draft, draft)
             compiled_plans = list(brief.variation_plans)
             compositions: list[StaticCompositionSpec] = []
@@ -360,16 +321,7 @@ class PrepareCreativeBrief:
             strategy = StrategyPackage(
                 strategy_id=strategy_id,
                 selected_idea_id=selected.idea_id,
-                critique=critique,
-                brief_reviews=tuple(reviews),
-                evidence_refs=tuple(
-                    dict.fromkeys(
-                        (
-                            *critique.evidence_refs,
-                            *(ref for review in reviews for ref in review.evidence_refs),
-                        )
-                    )
-                ),
+                evidence_refs=draft.evidence_refs,
                 prompt_versions=tuple(dict.fromkeys(trace.prompt_version for trace in traces)),
                 composition=compositions[0] if compositions else None,
                 compositions=tuple(compositions),
@@ -429,40 +381,6 @@ class PrepareCreativeBrief:
                 job, "preparation_timeout", "Preparation deadline exceeded", traces
             )
 
-    async def _critique_with_validation_retry(
-        self,
-        context: PreparationContext,
-        work_item: CreativeWorkItemInput,
-        drafts: tuple[IdeaDraft, ...],
-        eligible_indices: tuple[int, ...],
-        traces: list[ModelCallTrace],
-    ) -> tuple[IdeaCritique, int]:
-        for attempt in range(1, self.max_critique_attempts + 1):
-            critique_response = await self.model.critique_ideas(
-                context, work_item, drafts, eligible_indices
-            )
-            traces.append(critique_response.trace)
-            self.store.write_snapshot(work_item.source_run_id, "calls", tuple(traces))
-            critique = critique_response.output
-            self.store.write_snapshot(
-                work_item.source_run_id,
-                f"idea_critique_attempt_{attempt}",
-                critique,
-            )
-            try:
-                selected_index = self._validate_critique(
-                    critique,
-                    drafts,
-                    eligible_indices,
-                    work_item,
-                )
-            except PreparationError as error:
-                if error.code != "model_invalid_output" or attempt == self.max_critique_attempts:
-                    raise
-                continue
-            return critique, selected_index
-        raise AssertionError("Critique validation retry loop exhausted unexpectedly")
-
     async def _composition_with_validation_retry(
         self,
         context: PreparationContext,
@@ -473,7 +391,7 @@ class PrepareCreativeBrief:
         variation_index: int,
         traces: list[ModelCallTrace],
     ) -> StaticCompositionSpec:
-        for attempt in range(1, self.max_critique_attempts + 1):
+        for attempt in range(1, self.max_composition_attempts + 1):
             composition_response = await self.model.plan_composition(
                 context, work_item, selected, brief
             )
@@ -494,7 +412,7 @@ class PrepareCreativeBrief:
                     variation_index,
                 )
             except PreparationError as error:
-                if error.code != "invalid_composition" or attempt == self.max_critique_attempts:
+                if error.code != "invalid_composition" or attempt == self.max_composition_attempts:
                     raise
         raise AssertionError("Composition validation retry loop exhausted unexpectedly")
 
@@ -654,114 +572,6 @@ class PrepareCreativeBrief:
                 )
             )
         return tuple(ideas), tuple(decisions)
-
-    def _validate_critique(
-        self,
-        critique: IdeaCritique,
-        drafts: tuple[IdeaDraft, ...],
-        eligible_indices: tuple[int, ...],
-        work_item: CreativeWorkItemInput,
-    ) -> int:
-        source_ids = {
-            *(source.source_id for source in self.context.package.evidence),
-            *self._experiment_evidence(work_item),
-        }
-        assessment_indices = tuple(
-            assessment.candidate_index for assessment in critique.assessments
-        )
-        expected_indices = tuple(range(1, len(drafts) + 1))
-        if sorted(assessment_indices) != list(expected_indices):
-            raise PreparationError(
-                "Idea critique must assess every candidate exactly once",
-                code="model_invalid_output",
-            )
-        referenced = (
-            *critique.evidence_refs,
-            *(ref for assessment in critique.assessments for ref in assessment.evidence_refs),
-        )
-        if not critique.evidence_refs or not set(referenced).issubset(source_ids):
-            raise PreparationError(
-                "Idea critique contains invalid evidence references",
-                code="model_invalid_output",
-            )
-        selected = critique.selected_candidate_index
-        if selected is None:
-            raise PreparationError(
-                "Strategy evaluator did not recommend an eligible idea",
-                code="strategy_evidence_insufficient",
-            )
-        recommendations = {
-            assessment.candidate_index: assessment.recommendation
-            for assessment in critique.assessments
-        }
-        if selected not in eligible_indices or recommendations.get(selected) != "select":
-            raise PreparationError(
-                "Strategy evaluator selected an ineligible or inconsistent candidate",
-                code="model_invalid_output",
-            )
-        if sum(value == "select" for value in recommendations.values()) != 1:
-            raise PreparationError(
-                "Idea critique must select exactly one candidate",
-                code="model_invalid_output",
-            )
-        return selected
-
-    @staticmethod
-    def _apply_critique(
-        decisions: tuple[CandidateDecision, ...],
-        critique: IdeaCritique,
-        selected_index: int,
-    ) -> tuple[CandidateDecision, ...]:
-        recommendations = {
-            assessment.candidate_index: assessment.recommendation
-            for assessment in critique.assessments
-        }
-        return tuple(
-            CandidateDecision(
-                idea_id=decision.idea_id,
-                eligible=decision.eligible,
-                selected=index == selected_index,
-                reasons=(
-                    decision.reasons
-                    if not decision.eligible
-                    else (f"strategy_{recommendations[index]}",)
-                ),
-            )
-            for index, decision in enumerate(decisions, 1)
-        )
-
-    def _validate_brief_review(self, review: BriefReview, work_item: CreativeWorkItemInput) -> None:
-        source_ids = {
-            *(source.source_id for source in self.context.package.evidence),
-            *self._experiment_evidence(work_item),
-        }
-        if not review.evidence_refs or not set(review.evidence_refs).issubset(source_ids):
-            raise PreparationError(
-                "Brief review contains invalid evidence references",
-                code="model_invalid_output",
-            )
-        if review.outcome == "pass" and review.revised_brief is not None:
-            raise PreparationError(
-                "Passing brief review cannot include a revision",
-                code="model_invalid_output",
-            )
-        if review.outcome == "pass" and (review.issues or review.revision_instructions):
-            raise PreparationError(
-                "Passing brief review cannot include unresolved issues",
-                code="model_invalid_output",
-            )
-        if review.outcome == "revise" and (
-            review.revised_brief is None or not review.issues or not review.revision_instructions
-        ):
-            raise PreparationError(
-                "Brief revision requires issues, instructions and a complete revised draft",
-                code="model_invalid_output",
-            )
-        if review.outcome == "blocked" and review.revised_brief is not None:
-            raise PreparationError(
-                "Blocked brief review cannot include a revision",
-                code="model_invalid_output",
-            )
 
     @staticmethod
     def _experiment_evidence(work_item: CreativeWorkItemInput) -> tuple[str, ...]:

@@ -20,7 +20,7 @@ from .globals import DO_NOT_USE_DIRECTLY_UNLESS_YOU_KNOW_WHAT_YOURE_DOING_RUNTIM
 class TypeBuilder(type_builder.TypeBuilder):
     def __init__(self):
         super().__init__(classes=set(
-          ["AutomationImagePlan","AutomationVideoAudioPlan","AutomationVideoPlan","AutomationVideoScenePlan","CompositionRegion","CompositionTextPlacement","CreativeAutomationPlanDraft","CreativeBriefDraft","CreativeBriefReview","CreativeIdeaAssessment","CreativeIdeaCandidates","CreativeIdeaCritique","CreativeIdeaDraft","CreativePersonaHypothesis","CreativeVariationDraft","LabeledReviewImage","ResearchReferenceProfileDraft","ResearchScreeningDraft","SemanticCriterionReview","SemanticReviewEvidence","SemanticReviewIssue","StaticCompositionDraft","StaticCreativeReview",]
+          ["AutomationImagePlan","AutomationVideoAudioPlan","AutomationVideoPlan","AutomationVideoScenePlan","CompositionRegion","CompositionTextPlacement","CreativeAutomationPlanDraft","CreativeBriefDraft","CreativeIdeaCandidates","CreativeIdeaDraft","CreativePersonaHypothesis","CreativeVariationDraft","LabeledReviewImage","ResearchReferenceProfileDraft","ResearchScreeningDraft","SemanticCriterionReview","SemanticReviewEvidence","SemanticReviewIssue","StaticCompositionDraft","StaticCreativeReview",]
         ), enums=set(
           ["AutomationHumanPresence","AutomationVideoGenerationStrategy","AutomationVideoMusicMode","AutomationVideoVoiceMode","BriefReviewOutcome","CreativeAutomationReadiness","IdeaRecommendation","SemanticCriterionStatus","SemanticIssueSeverity","SemanticRepairAction","TextAlignment",]
         ), runtime=DO_NOT_USE_DIRECTLY_UNLESS_YOU_KNOW_WHAT_YOURE_DOING_RUNTIME)
@@ -75,7 +75,7 @@ class TypeBuilder(type_builder.TypeBuilder):
 
 
     # #########################################################################
-    # Generated classes 23
+    # Generated classes 20
     # #########################################################################
 
     @property
@@ -111,20 +111,8 @@ class TypeBuilder(type_builder.TypeBuilder):
         return CreativeBriefDraftViewer(self)
 
     @property
-    def CreativeBriefReview(self) -> "CreativeBriefReviewViewer":
-        return CreativeBriefReviewViewer(self)
-
-    @property
-    def CreativeIdeaAssessment(self) -> "CreativeIdeaAssessmentViewer":
-        return CreativeIdeaAssessmentViewer(self)
-
-    @property
     def CreativeIdeaCandidates(self) -> "CreativeIdeaCandidatesViewer":
         return CreativeIdeaCandidatesViewer(self)
-
-    @property
-    def CreativeIdeaCritique(self) -> "CreativeIdeaCritiqueViewer":
-        return CreativeIdeaCritiqueViewer(self)
 
     @property
     def CreativeIdeaDraft(self) -> "CreativeIdeaDraftViewer":
@@ -692,7 +680,7 @@ class TextAlignmentValues:
 
 
 # #########################################################################
-# Generated classes 23
+# Generated classes 20
 # #########################################################################
 
 class AutomationImagePlanAst:
@@ -1223,120 +1211,6 @@ class CreativeBriefDraftProperties:
     
 
 
-class CreativeBriefReviewAst:
-    def __init__(self, tb: type_builder.TypeBuilder):
-        _tb = tb._tb # type: ignore (we know how to use this private attribute)
-        self._bldr = _tb.class_("CreativeBriefReview")
-        self._properties: typing.Set[str] = set([  "outcome",  "rationale",  "evidence_refs",  "issues",  "revision_instructions",  "revised_brief",  ])
-        self._props = CreativeBriefReviewProperties(self._bldr, self._properties)
-
-    def type(self) -> baml_py.FieldType:
-        return self._bldr.field()
-
-    @property
-    def props(self) -> "CreativeBriefReviewProperties":
-        return self._props
-
-
-class CreativeBriefReviewViewer(CreativeBriefReviewAst):
-    def __init__(self, tb: type_builder.TypeBuilder):
-        super().__init__(tb)
-
-    
-    def list_properties(self) -> typing.List[typing.Tuple[str, type_builder.ClassPropertyViewer]]:
-        return [(name, type_builder.ClassPropertyViewer(self._bldr.property(name))) for name in self._properties]
-    
-
-
-class CreativeBriefReviewProperties:
-    def __init__(self, bldr: baml_py.ClassBuilder, properties: typing.Set[str]):
-        self.__bldr = bldr
-        self.__properties = properties # type: ignore (we know how to use this private attribute) # noqa: F821
-
-    
-    
-    @property
-    def outcome(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("outcome"))
-    
-    @property
-    def rationale(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("rationale"))
-    
-    @property
-    def evidence_refs(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("evidence_refs"))
-    
-    @property
-    def issues(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("issues"))
-    
-    @property
-    def revision_instructions(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("revision_instructions"))
-    
-    @property
-    def revised_brief(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("revised_brief"))
-    
-    
-
-
-class CreativeIdeaAssessmentAst:
-    def __init__(self, tb: type_builder.TypeBuilder):
-        _tb = tb._tb # type: ignore (we know how to use this private attribute)
-        self._bldr = _tb.class_("CreativeIdeaAssessment")
-        self._properties: typing.Set[str] = set([  "candidate_index",  "recommendation",  "rationale",  "evidence_refs",  "concerns",  ])
-        self._props = CreativeIdeaAssessmentProperties(self._bldr, self._properties)
-
-    def type(self) -> baml_py.FieldType:
-        return self._bldr.field()
-
-    @property
-    def props(self) -> "CreativeIdeaAssessmentProperties":
-        return self._props
-
-
-class CreativeIdeaAssessmentViewer(CreativeIdeaAssessmentAst):
-    def __init__(self, tb: type_builder.TypeBuilder):
-        super().__init__(tb)
-
-    
-    def list_properties(self) -> typing.List[typing.Tuple[str, type_builder.ClassPropertyViewer]]:
-        return [(name, type_builder.ClassPropertyViewer(self._bldr.property(name))) for name in self._properties]
-    
-
-
-class CreativeIdeaAssessmentProperties:
-    def __init__(self, bldr: baml_py.ClassBuilder, properties: typing.Set[str]):
-        self.__bldr = bldr
-        self.__properties = properties # type: ignore (we know how to use this private attribute) # noqa: F821
-
-    
-    
-    @property
-    def candidate_index(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("candidate_index"))
-    
-    @property
-    def recommendation(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("recommendation"))
-    
-    @property
-    def rationale(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("rationale"))
-    
-    @property
-    def evidence_refs(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("evidence_refs"))
-    
-    @property
-    def concerns(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("concerns"))
-    
-    
-
-
 class CreativeIdeaCandidatesAst:
     def __init__(self, tb: type_builder.TypeBuilder):
         _tb = tb._tb # type: ignore (we know how to use this private attribute)
@@ -1372,61 +1246,6 @@ class CreativeIdeaCandidatesProperties:
     @property
     def ideas(self) -> type_builder.ClassPropertyViewer:
         return type_builder.ClassPropertyViewer(self.__bldr.property("ideas"))
-    
-    
-
-
-class CreativeIdeaCritiqueAst:
-    def __init__(self, tb: type_builder.TypeBuilder):
-        _tb = tb._tb # type: ignore (we know how to use this private attribute)
-        self._bldr = _tb.class_("CreativeIdeaCritique")
-        self._properties: typing.Set[str] = set([  "selected_candidate_index",  "rationale",  "evidence_refs",  "assessments",  "uncertainties",  ])
-        self._props = CreativeIdeaCritiqueProperties(self._bldr, self._properties)
-
-    def type(self) -> baml_py.FieldType:
-        return self._bldr.field()
-
-    @property
-    def props(self) -> "CreativeIdeaCritiqueProperties":
-        return self._props
-
-
-class CreativeIdeaCritiqueViewer(CreativeIdeaCritiqueAst):
-    def __init__(self, tb: type_builder.TypeBuilder):
-        super().__init__(tb)
-
-    
-    def list_properties(self) -> typing.List[typing.Tuple[str, type_builder.ClassPropertyViewer]]:
-        return [(name, type_builder.ClassPropertyViewer(self._bldr.property(name))) for name in self._properties]
-    
-
-
-class CreativeIdeaCritiqueProperties:
-    def __init__(self, bldr: baml_py.ClassBuilder, properties: typing.Set[str]):
-        self.__bldr = bldr
-        self.__properties = properties # type: ignore (we know how to use this private attribute) # noqa: F821
-
-    
-    
-    @property
-    def selected_candidate_index(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("selected_candidate_index"))
-    
-    @property
-    def rationale(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("rationale"))
-    
-    @property
-    def evidence_refs(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("evidence_refs"))
-    
-    @property
-    def assessments(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("assessments"))
-    
-    @property
-    def uncertainties(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("uncertainties"))
     
     
 

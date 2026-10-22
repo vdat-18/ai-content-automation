@@ -21,13 +21,10 @@ from ..domain.models import (
 )
 from ..ports.interfaces import CreativeIntakeInputDriftError, ICreativeIntakeRepository
 
+# Only hard inputs block intake; brand, persona and policy gaps are resolved by the agent.
 _REQUIRED_COMPONENTS = {
-    ContextComponent.BRAND,
     ContextComponent.PRODUCT,
-    ContextComponent.PERSONA,
-    ContextComponent.POLICY,
     ContextComponent.OUTPUT,
-    ContextComponent.VERSIONS,
 }
 
 
@@ -175,15 +172,6 @@ def _resolve_issues(
                 ContextComponent.PRODUCT,
             )
         )
-    if context.persona_count < 1:
-        issues.append(
-            _issue(
-                "persona-missing",
-                IntakeIssueStatus.MISSING,
-                "At least one evidence-backed Persona is required.",
-                ContextComponent.PERSONA,
-            )
-        )
     if context.output_width < 1 or context.output_height < 1:
         issues.append(
             _issue(
@@ -191,19 +179,6 @@ def _resolve_issues(
                 IntakeIssueStatus.INVALID,
                 "Positive output dimensions are required.",
                 ContextComponent.OUTPUT,
-            )
-        )
-    if (
-        len(context.version_refs) != 5
-        or len(set(context.version_refs)) != 5
-        or any(not value.strip() for value in context.version_refs)
-    ):
-        issues.append(
-            _issue(
-                "workflow-versions-missing",
-                IntakeIssueStatus.MISSING,
-                "Five distinct prompt, rubric, policy, rule and workflow versions are required.",
-                ContextComponent.VERSIONS,
             )
         )
     return tuple(issues)

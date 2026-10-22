@@ -18,8 +18,6 @@ from .contracts import (
 )
 from .orchestration import CreativeAutomationPlan
 from .preparation import (
-    BriefReview,
-    IdeaCritique,
     ModelCallTrace,
     PersonaResolution,
     PreparationContext,
@@ -38,13 +36,11 @@ class CandidateDecision:
 class StrategyPackage:
     strategy_id: str
     selected_idea_id: str
-    critique: IdeaCritique
-    brief_reviews: tuple[BriefReview, ...]
     evidence_refs: tuple[str, ...]
     prompt_versions: tuple[str, ...]
     composition: StaticCompositionSpec | None = None
     compositions: tuple[StaticCompositionSpec, ...] = ()
-    schema_version: str = "strategy-package@3"
+    schema_version: str = "strategy-package@4"
 
 
 @dataclass(frozen=True)

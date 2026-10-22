@@ -23,12 +23,6 @@ class LlmResponseParser:
     def __init__(self, options: DoNotUseDirectlyCallManager):
         self.__options = options
 
-    def CritiqueCreativeIdeas(
-        self, llm_response: str, baml_options: BamlCallOptions = {},
-    ) -> types.CreativeIdeaCritique:
-        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="CritiqueCreativeIdeas", llm_response=llm_response, mode="request")
-        return typing.cast(types.CreativeIdeaCritique, __result__)
-
     def GenerateCreativeIdeas(
         self, llm_response: str, baml_options: BamlCallOptions = {},
     ) -> types.CreativeIdeaCandidates:
@@ -52,12 +46,6 @@ class LlmResponseParser:
     ) -> types.CreativePersonaHypothesis:
         __result__ = self.__options.merge_options(baml_options).parse_response(function_name="ResolveCreativePersona", llm_response=llm_response, mode="request")
         return typing.cast(types.CreativePersonaHypothesis, __result__)
-
-    def ReviewCreativeBrief(
-        self, llm_response: str, baml_options: BamlCallOptions = {},
-    ) -> types.CreativeBriefReview:
-        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="ReviewCreativeBrief", llm_response=llm_response, mode="request")
-        return typing.cast(types.CreativeBriefReview, __result__)
 
     def ReviewStaticCreative(
         self, llm_response: str, baml_options: BamlCallOptions = {},
@@ -85,12 +73,6 @@ class LlmStreamParser:
     def __init__(self, options: DoNotUseDirectlyCallManager):
         self.__options = options
 
-    def CritiqueCreativeIdeas(
-        self, llm_response: str, baml_options: BamlCallOptions = {},
-    ) -> stream_types.CreativeIdeaCritique:
-        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="CritiqueCreativeIdeas", llm_response=llm_response, mode="stream")
-        return typing.cast(stream_types.CreativeIdeaCritique, __result__)
-
     def GenerateCreativeIdeas(
         self, llm_response: str, baml_options: BamlCallOptions = {},
     ) -> stream_types.CreativeIdeaCandidates:
@@ -114,12 +96,6 @@ class LlmStreamParser:
     ) -> stream_types.CreativePersonaHypothesis:
         __result__ = self.__options.merge_options(baml_options).parse_response(function_name="ResolveCreativePersona", llm_response=llm_response, mode="stream")
         return typing.cast(stream_types.CreativePersonaHypothesis, __result__)
-
-    def ReviewCreativeBrief(
-        self, llm_response: str, baml_options: BamlCallOptions = {},
-    ) -> stream_types.CreativeBriefReview:
-        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="ReviewCreativeBrief", llm_response=llm_response, mode="stream")
-        return typing.cast(stream_types.CreativeBriefReview, __result__)
 
     def ReviewStaticCreative(
         self, llm_response: str, baml_options: BamlCallOptions = {},

@@ -51,35 +51,10 @@ enum IdeaRecommendation {
   REJECT
 }
 
-class CreativeIdeaAssessment {
-  candidate_index int
-  recommendation IdeaRecommendation
-  rationale string
-  evidence_refs string[]
-  concerns string[]
-}
-
-class CreativeIdeaCritique {
-  selected_candidate_index int?
-  rationale string
-  evidence_refs string[]
-  assessments CreativeIdeaAssessment[]
-  uncertainties string[]
-}
-
 enum BriefReviewOutcome {
   PASS
   REVISE
   BLOCKED
-}
-
-class CreativeBriefReview {
-  outcome BriefReviewOutcome
-  rationale string
-  evidence_refs string[]
-  issues string[]
-  revision_instructions string[]
-  revised_brief CreativeBriefDraft?
 }
 
 class CompositionRegion {
@@ -236,36 +211,6 @@ function GenerateCreativeIdeas(
   "#
 }
 
-function CritiqueCreativeIdeas(
-  instructions: string,
-  input_json: string
-) -> CreativeIdeaCritique {
-  client LocalMarketingLLM
-  prompt #"
-    {{ _.role("system") }}
-    {{ instructions }}
-
-    <runtime_contract>
-    Evaluate only the supplied candidates and preserve every candidate number exactly. Every
-    evidence_refs value must be copied verbatim from allowed_evidence_refs; never use
-    data-version text, a brand profile identifier, or concatenated identifiers. The assessments
-    array must contain one record for every supplied candidate, with no duplicate or omitted
-    candidate_index values. Select exactly one eligible candidate: when
-    eligible_candidate_indices contains one value, return that value as selected_candidate_index
-    and mark its assessment SELECT. Use null only when eligible_candidate_indices is empty.
-    Treat campaign_notes as trusted Marketing direction. Do not reject or
-    rewrite a candidate merely because it follows that human direction.
-    </runtime_contract>
-
-    {{ _.role("user") }}
-    <input_json>
-    {{ input_json }}
-    </input_json>
-
-    {{ ctx.output_format }}
-  "#
-}
-
 function WriteCreativeBrief(
   instructions: string,
   input_json: string,
@@ -311,33 +256,6 @@ function WriteCreativeBrief(
     setting, and creative pattern. Preserve its identifier in reference_ids and
     evidence_refs. Research must not replace Shopify product truth, approved claims,
     human direction, or brand assets.
-    </runtime_contract>
-
-    {{ _.role("user") }}
-    <input_json>
-    {{ input_json }}
-    </input_json>
-
-    {{ ctx.output_format }}
-  "#
-}
-
-function ReviewCreativeBrief(
-  instructions: string,
-  input_json: string
-) -> CreativeBriefReview {
-  client LocalMarketingLLM
-  prompt #"
-    {{ _.role("system") }}
-    {{ instructions }}
-
-    <runtime_contract>
-    Evaluate the supplied brief at strategy and brief level only. If revision
-    is needed, return a complete corrected draft grounded in the same inputs. Every
-    evidence_refs value must be copied verbatim from allowed_evidence_refs; never use
-    data-version text, a brand profile identifier, or concatenated identifiers.
-    Treat campaign_notes as trusted Marketing direction and do not block,
-    revise, or reinterpret content solely because it was supplied there.
     </runtime_contract>
 
     {{ _.role("user") }}

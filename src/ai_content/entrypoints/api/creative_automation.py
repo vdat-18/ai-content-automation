@@ -389,7 +389,7 @@ async def get_marketing_creative_automation_capabilities(
             supports_native_music=(
                 descriptor.supports_native_music if descriptor is not None else False
             ),
-            max_final_duration_seconds=30 if kind == "video" else None,
+            max_final_duration_seconds=60 if kind == "video" else None,
             models=(
                 [
                     MarketingCreativeVideoModelCapabilityResponse(

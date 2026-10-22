@@ -23,7 +23,7 @@ class StreamState(BaseModel, typing.Generic[StreamStateValueT]):
     value: StreamStateValueT
     state: typing_extensions.Literal["Pending", "Incomplete", "Complete"]
 # #########################################################################
-# Generated classes (23)
+# Generated classes (20)
 # #########################################################################
 
 class AutomationImagePlan(BaseModel):
@@ -104,30 +104,8 @@ class CreativeBriefDraft(BaseModel):
     reference_ids: typing.List[str]
     variations: typing.List["CreativeVariationDraft"]
 
-class CreativeBriefReview(BaseModel):
-    outcome: typing.Optional[types.BriefReviewOutcome] = None
-    rationale: typing.Optional[str] = None
-    evidence_refs: typing.List[str]
-    issues: typing.List[str]
-    revision_instructions: typing.List[str]
-    revised_brief: typing.Optional["CreativeBriefDraft"] = None
-
-class CreativeIdeaAssessment(BaseModel):
-    candidate_index: typing.Optional[int] = None
-    recommendation: typing.Optional[types.IdeaRecommendation] = None
-    rationale: typing.Optional[str] = None
-    evidence_refs: typing.List[str]
-    concerns: typing.List[str]
-
 class CreativeIdeaCandidates(BaseModel):
     ideas: typing.List["CreativeIdeaDraft"]
-
-class CreativeIdeaCritique(BaseModel):
-    selected_candidate_index: typing.Optional[int] = None
-    rationale: typing.Optional[str] = None
-    evidence_refs: typing.List[str]
-    assessments: typing.List["CreativeIdeaAssessment"]
-    uncertainties: typing.List[str]
 
 class CreativeIdeaDraft(BaseModel):
     persona_id: typing.Optional[str] = None
@@ -237,7 +215,7 @@ class StaticCreativeReview(BaseModel):
 
 
 # #########################################################################
-# Model rebuilds (23)
+# Model rebuilds (20)
 # #########################################################################
 # Resolve string forward references now that every model above is defined so
 # class declaration order never breaks Pydantic construction (issue #793).
@@ -251,10 +229,7 @@ CompositionRegion.model_rebuild()
 CompositionTextPlacement.model_rebuild()
 CreativeAutomationPlanDraft.model_rebuild()
 CreativeBriefDraft.model_rebuild()
-CreativeBriefReview.model_rebuild()
-CreativeIdeaAssessment.model_rebuild()
 CreativeIdeaCandidates.model_rebuild()
-CreativeIdeaCritique.model_rebuild()
 CreativeIdeaDraft.model_rebuild()
 CreativePersonaHypothesis.model_rebuild()
 CreativeVariationDraft.model_rebuild()

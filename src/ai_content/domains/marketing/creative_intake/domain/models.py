@@ -181,7 +181,7 @@ class CreativeContextSnapshot:
     requested_video_count: int = 0
     requested_video_duration_seconds: int | None = None
     requested_video_duration_min_seconds: int = 15
-    requested_video_duration_max_seconds: int = 25
+    requested_video_duration_max_seconds: int = 60
     requested_video_scene_duration_max_seconds: int = 15
     include_background_music: bool = False
     execution_mode: str = "generate_once"
