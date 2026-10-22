@@ -402,9 +402,7 @@ async def get_marketing_creative_automation_capabilities(
                         ),
                         max_reference_images=item.max_reference_images,
                         max_product_images=item.max_product_images,
-                        reference_to_video_resolutions=list(
-                            item.reference_to_video_resolutions
-                        ),
+                        reference_to_video_resolutions=list(item.reference_to_video_resolutions),
                         supports_native_voice=item.supports_native_voice,
                         supports_native_music=item.supports_native_music,
                     )
@@ -959,9 +957,7 @@ async def _process_automation_request(
                 )
                 for stage in runtime_stages
             }
-        knowledge_by_stage = {
-            stage: knowledge_by_stage.get(stage, ()) for stage in runtime_stages
-        }
+        knowledge_by_stage = {stage: knowledge_by_stage.get(stage, ()) for stage in runtime_stages}
     approved_knowledge = tuple(
         {
             item.version_ref: item
@@ -977,8 +973,7 @@ async def _process_automation_request(
         for stage in runtime_stages
     )
     review_checklist = tuple(
-        f"{item.title}: {item.content}"
-        for item in knowledge_by_stage[KnowledgeStage.REVIEW]
+        f"{item.title}: {item.content}" for item in knowledge_by_stage[KnowledgeStage.REVIEW]
     )
     compilation = replace(
         compilation,
@@ -995,9 +990,7 @@ async def _process_automation_request(
     )
     persona_compilation = register_context_sources(
         base_compilation,
-        _memory_sources(
-            _creative_knowledge_memory(knowledge_by_stage[KnowledgeStage.PERSONA])
-        ),
+        _memory_sources(_creative_knowledge_memory(knowledge_by_stage[KnowledgeStage.PERSONA])),
     )
     preparation_config = load_preparation_config(
         settings.preparation_config_path or settings.config_dir / "preparation/synthetic.json"
@@ -1078,9 +1071,7 @@ async def _process_automation_request(
         async with measure_automation_step(jobs, request.request_id, "orchestration_planning"):
             orchestration_memory = (
                 *approved_memory,
-                *_creative_knowledge_memory(
-                    knowledge_by_stage[KnowledgeStage.ORCHESTRATION]
-                ),
+                *_creative_knowledge_memory(knowledge_by_stage[KnowledgeStage.ORCHESTRATION]),
             )
             plan = await orchestrator.plan(
                 request,
@@ -1435,11 +1426,7 @@ async def generate_marketing_creative_again(
     )
     revision_guidance = tuple(
         f"[{item.knowledge_type.value}] {item.title}: {item.content}"
-        + (
-            f" Limits: {'; '.join(item.non_conclusions)}"
-            if item.non_conclusions
-            else ""
-        )
+        + (f" Limits: {'; '.join(item.non_conclusions)}" if item.non_conclusions else "")
         for item in revision_knowledge
     )
     try:
@@ -2078,8 +2065,7 @@ def _job_item_response(
         video_duration_max_seconds=request.output.video_duration_max_seconds,
         video_scene_duration_max_seconds=request.output.video_scene_duration_max_seconds,
         audio_selected_by_agent=(
-            request.output.video_output_count > 0
-            and request.video_generate_audio is None
+            request.output.video_output_count > 0 and request.video_generate_audio is None
         ),
         execution_mode=request.execution_mode.value,
         provider_status=job.provider_status,
@@ -2508,11 +2494,7 @@ def _request(
             "multi_image_edit"
             if (
                 image_supports_multi_edit
-                and (
-                    len(selection.selected_media_ids)
-                    if not isinstance(selection, str)
-                    else 1
-                )
+                and (len(selection.selected_media_ids) if not isinstance(selection, str) else 1)
                 + max(
                     (
                         len(item.reference_ids)
@@ -2904,8 +2886,7 @@ def _item_response(
         video_duration_max_seconds=request.output.video_duration_max_seconds,
         video_scene_duration_max_seconds=request.output.video_scene_duration_max_seconds,
         audio_selected_by_agent=(
-            request.output.video_output_count > 0
-            and request.video_generate_audio is None
+            request.output.video_output_count > 0 and request.video_generate_audio is None
         ),
         execution_mode=request.execution_mode.value,
         provider_status=provider_status,
@@ -3004,10 +2985,7 @@ def _image_supports_multi_edit(
         (item for item in descriptor.image_models if item.model_id == payload.image_model_id),
         None,
     )
-    return bool(
-        selected_model is not None
-        and "multi_image_edit" in selected_model.supported_modes
-    )
+    return bool(selected_model is not None and "multi_image_edit" in selected_model.supported_modes)
 
 
 def _validate_exact_source_output_profiles(
@@ -3166,8 +3144,7 @@ def _validate_provider_profiles(
             )
         if (
             payload.image_input_fidelity is not None
-            and payload.image_input_fidelity
-            not in selected_image_model.supported_input_fidelities
+            and payload.image_input_fidelity not in selected_image_model.supported_input_fidelities
         ):
             raise HTTPException(
                 status_code=422,
@@ -3402,9 +3379,7 @@ def _validate_request_source_limits(
             mode = request.image_generation_mode or (
                 "multi_image_edit" if minimum_image_sources > 1 else "single_image_edit"
             )
-            if (
-                mode not in selected_image_model.supported_modes
-            ):
+            if mode not in selected_image_model.supported_modes:
                 raise HTTPException(
                     status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                     detail="Selected image model does not support the required edit mode",
@@ -3425,9 +3400,7 @@ def _validate_request_source_limits(
         )
         if (
             selected_video_model is not None
-            and _minimum_video_product_images(
-                selected_video_model, request.video_resolution
-            )
+            and _minimum_video_product_images(selected_video_model, request.video_resolution)
             + video_reference_count
             > selected_video_model.max_reference_images
         ):
@@ -3440,8 +3413,7 @@ def _validate_request_source_limits(
             )
         if (
             selected_video_model is not None
-            and request.video_resolution
-            not in selected_video_model.reference_to_video_resolutions
+            and request.video_resolution not in selected_video_model.reference_to_video_resolutions
             and video_reference_count
         ):
             raise HTTPException(
@@ -3520,9 +3492,7 @@ def _memory_sources(
         SourceDocument(
             source_id=item.memory_id,
             data_version=item.memory_id,
-            content=(
-                f"{item.summary} Evidence: {', '.join(item.evidence_refs)}."
-            ),
+            content=(f"{item.summary} Evidence: {', '.join(item.evidence_refs)}."),
             category="knowledge" if item.knowledge_type != "lesson" else "history",
             knowledge_type=item.knowledge_type,
             knowledge_authority=item.authority,

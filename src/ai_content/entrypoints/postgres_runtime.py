@@ -64,29 +64,9 @@ from ai_content.domains.marketing.creative_loop.bootstrap import CreativeLoopRun
 from ai_content.domains.marketing.creative_loop.config.fixtures import (
     load_creative_loop_fixture,
 )
-from ai_content.domains.marketing.creator_operations.adapters.postgres_repository import (
-    PostgresCreatorRunRepository,
-)
-from ai_content.domains.marketing.creator_operations.bootstrap import CreatorRuntime
-from ai_content.domains.marketing.creator_outreach.adapters.postgres_repository import (
-    PostgresCreatorOutreachRepository,
-)
-from ai_content.domains.marketing.creator_outreach.bootstrap import CreatorOutreachRuntime
 from ai_content.domains.marketing.data_sources.adapters.postgres_repository import (
     PostgresDataSourceRepository,
 )
-from ai_content.domains.marketing.email_health.adapters.postgres_repository import (
-    PostgresEmailHealthRepository,
-)
-from ai_content.domains.marketing.email_health.bootstrap import EmailHealthRuntime
-from ai_content.domains.marketing.email_production.adapters.postgres_repository import (
-    PostgresEmailProductionRepository,
-)
-from ai_content.domains.marketing.email_production.bootstrap import EmailProductionRuntime
-from ai_content.domains.marketing.email_reporting.adapters.postgres_repository import (
-    PostgresEmailReportRepository,
-)
-from ai_content.domains.marketing.email_reporting.bootstrap import EmailReportRuntime
 from ai_content.domains.marketing.media_lab.adapters.asset_postgres_repository import (
     PostgresMediaAssetRepository,
 )
@@ -232,11 +212,6 @@ class PostgresRuntimeContainer:
         )
         self.performance_repository = PostgresPerformanceDecisionRepository(engine)
         self.gmc_repository = PostgresGmcRunRepository(engine)
-        self.email_report_repository = PostgresEmailReportRepository(engine)
-        self.email_health_repository = PostgresEmailHealthRepository(engine)
-        self.email_production_repository = PostgresEmailProductionRepository(engine)
-        self.creator_repository = PostgresCreatorRunRepository(engine)
-        self.creator_outreach_repository = PostgresCreatorOutreachRepository(engine)
         self.data_source_repository = PostgresDataSourceRepository(engine)
         self.research_crawl_repository = PostgresResearchCrawlRepository(engine)
         self.media_lab_image_repository = PostgresMediaLabImageRepository(engine)
@@ -341,30 +316,6 @@ class PostgresRuntimeContainer:
             creative,
             feedback,
             self.artifact_service,
-        )
-
-    def email_report(self) -> EmailReportRuntime:
-        return EmailReportRuntime(self.email_report_repository, self.artifacts)
-
-    def email_health(self) -> EmailHealthRuntime:
-        return EmailHealthRuntime(self.email_health_repository, self.artifacts)
-
-    def email_production(self) -> EmailProductionRuntime:
-        return EmailProductionRuntime(
-            self.email_production_repository,
-            self.email_health_repository,
-            self.artifacts,
-        )
-
-    def creator(self) -> CreatorRuntime:
-        return CreatorRuntime(self.creator_repository, self.artifacts)
-
-    def creator_outreach(self) -> CreatorOutreachRuntime:
-        return CreatorOutreachRuntime(
-            None,
-            self.artifacts_root,
-            repository=self.creator_outreach_repository,
-            creator_repository=self.creator_repository,
         )
 
 

@@ -615,12 +615,9 @@ def _validate_product_source_budgets(
         request.image_model_id,
     )
     for plan in image_plans:
-        multiple_product_sources_fit = (
-            len(product_family.media) >= 2
-            and (
-                image_limit is None
-                or 2 + len(plan.reference_ids) + int(request.include_logo) <= image_limit
-            )
+        multiple_product_sources_fit = len(product_family.media) >= 2 and (
+            image_limit is None
+            or 2 + len(plan.reference_ids) + int(request.include_logo) <= image_limit
         )
         if (
             request.image_generation_mode == "single_image_edit"
@@ -633,10 +630,7 @@ def _validate_product_source_budgets(
             and len(plan.selected_media_ids) < 2
         ):
             raise ValueError("Orchestration model omitted available multi-image Product context")
-        if (
-            request.image_generation_mode == "multi_image_edit"
-            and len(plan.selected_media_ids) > 3
-        ):
+        if request.image_generation_mode == "multi_image_edit" and len(plan.selected_media_ids) > 3:
             raise ValueError("Orchestration model selected more than three Shopify images")
         if image_limit is not None and (
             len(plan.selected_media_ids) + len(plan.reference_ids) + int(request.include_logo)
@@ -660,8 +654,7 @@ def _validate_product_source_budgets(
     )
     max_product_images = int(selected_video_model.get("max_product_images", 1))
     reference_resolutions = {
-        str(item)
-        for item in selected_video_model.get("reference_to_video_resolutions", ())
+        str(item) for item in selected_video_model.get("reference_to_video_resolutions", ())
     }
     reference_to_video = request.video_resolution in reference_resolutions
     available_product_images = len(product_family.media)
@@ -695,11 +688,7 @@ def _selected_video_model_capability(
     if not isinstance(models, list):
         return {}
     return next(
-        (
-            item
-            for item in models
-            if isinstance(item, dict) and item.get("model_id") == model_id
-        ),
+        (item for item in models if isinstance(item, dict) and item.get("model_id") == model_id),
         {},
     )
 

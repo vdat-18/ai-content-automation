@@ -21,12 +21,8 @@ class ApplicationSettings(BaseSettings):
     data_root: Path = Field(Path(".creative-pilot"), validation_alias="AIC_AI_DATA_ROOT")
     config_dir: Path = Field(Path("config"), validation_alias="AIC_AI_CONFIG_DIR")
     preparation_config: Path | None = Field(None, validation_alias="AIC_AI_PREPARATION_CONFIG")
-    orchestration_config: Path | None = Field(
-        None, validation_alias="AIC_AI_ORCHESTRATION_CONFIG"
-    )
-    managed_media_config: Path | None = Field(
-        None, validation_alias="AIC_AI_MANAGED_MEDIA_CONFIG"
-    )
+    orchestration_config: Path | None = Field(None, validation_alias="AIC_AI_ORCHESTRATION_CONFIG")
+    managed_media_config: Path | None = Field(None, validation_alias="AIC_AI_MANAGED_MEDIA_CONFIG")
     image_config: Path | None = Field(None, validation_alias="AIC_AI_IMAGE_CONFIG")
     product_segmenter_config: Path | None = Field(
         None, validation_alias="AIC_AI_PRODUCT_SEGMENTER_CONFIG"
@@ -102,9 +98,7 @@ class ApplicationSettings(BaseSettings):
     jev_api_url: str | None = Field(None, validation_alias="AIC_AI_JEV_API_URL")
     jev_navigation_model: str = Field(
         "jev-latest",
-        validation_alias=AliasChoices(
-            "AIC_AI_JEV_MODEL", "AIC_AI_RESEARCH_CLASSIFICATION_MODEL"
-        ),
+        validation_alias=AliasChoices("AIC_AI_JEV_MODEL", "AIC_AI_RESEARCH_CLASSIFICATION_MODEL"),
     )
     data_source_sync_interval_seconds: float | None = Field(
         None, ge=60, le=86400, validation_alias="AIC_AI_DATA_SOURCE_SYNC_INTERVAL_SECONDS"
@@ -125,9 +119,7 @@ class ApplicationSettings(BaseSettings):
     execution_backend: Literal["lease_worker", "celery"] = Field(
         "lease_worker", validation_alias="AIC_AI_EXECUTION_BACKEND"
     )
-    celery_broker_url: SecretStr | None = Field(
-        None, validation_alias="AIC_AI_CELERY_BROKER_URL"
-    )
+    celery_broker_url: SecretStr | None = Field(None, validation_alias="AIC_AI_CELERY_BROKER_URL")
     celery_retry_delay_seconds: int = Field(
         5, ge=0, validation_alias="AIC_AI_CELERY_RETRY_DELAY_SECONDS"
     )
@@ -171,9 +163,7 @@ class ApplicationSettings(BaseSettings):
     outbox_poll_interval_seconds: float = Field(
         1, gt=0, le=60, validation_alias="AIC_AI_OUTBOX_POLL_INTERVAL_SECONDS"
     )
-    outbox_batch_size: int = Field(
-        20, ge=1, le=1000, validation_alias="AIC_AI_OUTBOX_BATCH_SIZE"
-    )
+    outbox_batch_size: int = Field(20, ge=1, le=1000, validation_alias="AIC_AI_OUTBOX_BATCH_SIZE")
     outbox_lease_seconds: int = Field(30, ge=5, validation_alias="AIC_AI_OUTBOX_LEASE_SECONDS")
     outbox_retry_delay_seconds: int = Field(
         5, ge=0, validation_alias="AIC_AI_OUTBOX_RETRY_DELAY_SECONDS"
@@ -192,12 +182,8 @@ class ApplicationSettings(BaseSettings):
     s3_access_key: SecretStr | None = Field(None, validation_alias="AIC_AI_S3_ACCESS_KEY")
     s3_secret_key: SecretStr | None = Field(None, validation_alias="AIC_AI_S3_SECRET_KEY")
     s3_region: str = Field("us-east-1", validation_alias="AIC_AI_S3_REGION")
-    backup_offsite_enabled: bool = Field(
-        False, validation_alias="AIC_BACKUP_OFFSITE_ENABLED"
-    )
-    backup_s3_endpoint_url: str | None = Field(
-        None, validation_alias="AIC_BACKUP_S3_ENDPOINT_URL"
-    )
+    backup_offsite_enabled: bool = Field(False, validation_alias="AIC_BACKUP_OFFSITE_ENABLED")
+    backup_s3_endpoint_url: str | None = Field(None, validation_alias="AIC_BACKUP_S3_ENDPOINT_URL")
     backup_s3_bucket: str | None = Field(None, validation_alias="AIC_BACKUP_S3_BUCKET")
     backup_s3_access_key: SecretStr | None = Field(
         None, validation_alias="AIC_BACKUP_S3_ACCESS_KEY"
@@ -211,12 +197,8 @@ class ApplicationSettings(BaseSettings):
     )
 
     tracing_enabled: bool = Field(False, validation_alias="AIC_AI_TRACING_ENABLED")
-    otlp_traces_endpoint: str | None = Field(
-        None, validation_alias="AIC_AI_OTLP_TRACES_ENDPOINT"
-    )
-    trace_sample_ratio: float = Field(
-        1.0, ge=0, le=1, validation_alias="AIC_AI_TRACE_SAMPLE_RATIO"
-    )
+    otlp_traces_endpoint: str | None = Field(None, validation_alias="AIC_AI_OTLP_TRACES_ENDPOINT")
+    trace_sample_ratio: float = Field(1.0, ge=0, le=1, validation_alias="AIC_AI_TRACE_SAMPLE_RATIO")
     metrics_enabled: bool = Field(True, validation_alias="AIC_AI_METRICS_ENABLED")
     metrics_port: int = Field(9464, ge=1, le=65535, validation_alias="AIC_AI_METRICS_PORT")
     command_metrics_interval_seconds: float = Field(
@@ -246,11 +228,15 @@ class ApplicationSettings(BaseSettings):
     shopify_demofurn_access_token: SecretStr | None = Field(
         None, validation_alias="SHOPIFY_DEMOFURN_ACCESS_TOKEN"
     )
-    shopify_demohome_client_id: str | None = Field(None, validation_alias="SHOPIFY_DEMOHOME_CLIENT_ID")
+    shopify_demohome_client_id: str | None = Field(
+        None, validation_alias="SHOPIFY_DEMOHOME_CLIENT_ID"
+    )
     shopify_demohome_client_secret: SecretStr | None = Field(
         None, validation_alias="SHOPIFY_DEMOHOME_CLIENT_SECRET"
     )
-    shopify_demofurn_client_id: str | None = Field(None, validation_alias="SHOPIFY_DEMOFURN_CLIENT_ID")
+    shopify_demofurn_client_id: str | None = Field(
+        None, validation_alias="SHOPIFY_DEMOFURN_CLIENT_ID"
+    )
     shopify_demofurn_client_secret: SecretStr | None = Field(
         None, validation_alias="SHOPIFY_DEMOFURN_CLIENT_SECRET"
     )
@@ -439,9 +425,7 @@ class ApplicationSettings(BaseSettings):
                 self.backup_s3_secret_key,
             )
         ):
-            raise ValueError(
-                "Off-site backup requires endpoint, bucket, access key and secret key"
-            )
+            raise ValueError("Off-site backup requires endpoint, bucket, access key and secret key")
         return self
 
     @property

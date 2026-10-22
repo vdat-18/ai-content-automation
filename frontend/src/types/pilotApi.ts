@@ -1,6 +1,6 @@
 export type DashboardApproval = {
   approval_id: string;
-  workstream: "creative" | "email" | "performance" | "creators";
+  workstream: "creative" | "performance";
   kind: string;
   title: string;
   detail: string;

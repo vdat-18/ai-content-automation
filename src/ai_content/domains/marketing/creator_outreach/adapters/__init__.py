@@ -1,1 +1,0 @@
-"""Adapters for Creator outreach."""

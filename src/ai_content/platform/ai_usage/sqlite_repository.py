@@ -98,7 +98,9 @@ class SqliteAIUsageRepository:
             ("provider_request_id", "TEXT"),
         ):
             if name not in existing:
-                self._connection.execute(f"ALTER TABLE ai_usage_events ADD COLUMN {name} {type_name}")
+                self._connection.execute(
+                    f"ALTER TABLE ai_usage_events ADD COLUMN {name} {type_name}"
+                )
 
     def close(self) -> None:
         self._connection.close()

@@ -2,8 +2,6 @@ import type { DashboardApproval } from "../types/pilotApi";
 
 export const dashboardStreamLabels: Record<DashboardApproval["workstream"], string> = {
   creative: "Content / Creative",
-  email: "Email Marketing",
-  creators: "KOC / UGC",
   performance: "Performance",
 };
 
@@ -14,10 +12,6 @@ export const decisionPrompt = (type: string) => ({
   creative: "Approve this exact Creative set?",
   performance_decision: "Approve this Performance recommendation?",
   creative_feedback: "Approve this learning for the next cycle?",
-  email_production: "Approve this email campaign?",
-  email_health: "Approve this email health action?",
-  creator_evaluation: "Approve this creator candidate?",
-  creator_outreach: "Approve this creator outreach plan?",
 }[type] ?? "Review this decision?");
 
 export const businessStage = (stage: string) => ({

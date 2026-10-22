@@ -233,7 +233,5 @@ async def resolve_knowledge(
     stage: KnowledgeStage | None = Query(default=None),
     service: CreativeKnowledgeService = Depends(get_creative_knowledge_service),
 ) -> KnowledgeListResponse:
-    responses = [
-        _response(item) for item in await service.resolve(scope.to_domain(), stage=stage)
-    ]
+    responses = [_response(item) for item in await service.resolve(scope.to_domain(), stage=stage)]
     return KnowledgeListResponse(items=responses, total=len(responses))

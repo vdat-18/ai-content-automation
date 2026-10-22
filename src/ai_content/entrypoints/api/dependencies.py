@@ -70,16 +70,6 @@ from ai_content.domains.marketing.creative_loop.bootstrap import (
 from ai_content.domains.marketing.creative_loop.bootstrap import (
     build_runtime as build_creative_loop_runtime,
 )
-from ai_content.domains.marketing.creator_operations.bootstrap import (
-    CreatorRuntime,
-)
-from ai_content.domains.marketing.creator_operations.bootstrap import (
-    build_read_runtime as build_creator_read_runtime,
-)
-from ai_content.domains.marketing.creator_outreach.bootstrap import CreatorOutreachRuntime
-from ai_content.domains.marketing.creator_outreach.bootstrap import (
-    build_read_runtime as build_creator_outreach_read_runtime,
-)
 from ai_content.domains.marketing.data_sources.adapters.sqlite_repository import (
     SqliteDataSourceRepository,
 )
@@ -92,20 +82,6 @@ from ai_content.domains.marketing.data_sources.bootstrap import (
 )
 from ai_content.domains.marketing.data_sources.config import load_data_sources_config
 from ai_content.domains.marketing.data_sources.ports.interfaces import IDataSourceRepository
-from ai_content.domains.marketing.email_health.bootstrap import EmailHealthRuntime
-from ai_content.domains.marketing.email_health.bootstrap import (
-    build_read_runtime as build_email_health_read_runtime,
-)
-from ai_content.domains.marketing.email_production.bootstrap import (
-    EmailProductionRuntime,
-)
-from ai_content.domains.marketing.email_production.bootstrap import (
-    build_read_runtime as build_email_production_read_runtime,
-)
-from ai_content.domains.marketing.email_reporting.bootstrap import (
-    EmailReportRuntime,
-    build_read_runtime,
-)
 from ai_content.domains.marketing.media_lab.adapters.asset_artifacts import (
     ObjectStorageMediaAssetArtifacts,
 )
@@ -1262,48 +1238,6 @@ async def get_ai_usage_repository(request: Request) -> AsyncIterator[AIUsageRepo
 get_execution_queue = get_command_scheduler
 
 
-async def get_email_report_runtime(request: Request) -> AsyncIterator[EmailReportRuntime]:
-    """Yield the local read-only Email report repository."""
-    settings = get_runtime_settings()
-    postgres = _postgres_runtime(request)
-    if postgres is not None:
-        yield postgres.email_report()
-        return
-    runtime = build_read_runtime(settings.db_path, settings.artifacts_root)
-    try:
-        yield runtime
-    finally:
-        runtime.repository.close()
-
-
-async def get_email_health_runtime(request: Request) -> AsyncIterator[EmailHealthRuntime]:
-    """Yield the local Email Operations health runtime without external actions."""
-    settings = get_runtime_settings()
-    postgres = _postgres_runtime(request)
-    if postgres is not None:
-        yield postgres.email_health()
-        return
-    runtime = build_email_health_read_runtime(settings.db_path, settings.artifacts_root)
-    try:
-        yield runtime
-    finally:
-        runtime.repository.close()
-
-
-async def get_email_production_runtime(request: Request) -> AsyncIterator[EmailProductionRuntime]:
-    """Yield the local Email production runtime with external writes disabled."""
-    settings = get_runtime_settings()
-    postgres = _postgres_runtime(request)
-    if postgres is not None:
-        yield postgres.email_production()
-        return
-    runtime = build_email_production_read_runtime(settings.db_path, settings.artifacts_root)
-    try:
-        yield runtime
-    finally:
-        runtime.close()
-
-
 async def get_gmc_repository(request: Request) -> AsyncIterator[IGmcRunRepository]:
     """Yield the local read-only GMC run repository."""
     settings = get_runtime_settings()
@@ -1398,34 +1332,6 @@ async def get_creative_intake_write_runtime(
         yield runtime
     finally:
         runtime.repository.close()
-
-
-async def get_creator_runtime(request: Request) -> AsyncIterator[CreatorRuntime]:
-    """Yield the local Creator Operations runtime without external connectors."""
-    settings = get_runtime_settings()
-    postgres = _postgres_runtime(request)
-    if postgres is not None:
-        yield postgres.creator()
-        return
-    runtime = build_creator_read_runtime(settings.db_path, settings.artifacts_root)
-    try:
-        yield runtime
-    finally:
-        runtime.repository.close()
-
-
-async def get_creator_outreach_runtime(request: Request) -> AsyncIterator[CreatorOutreachRuntime]:
-    """Yield the local Creator outreach runtime with external actions disabled."""
-    settings = get_runtime_settings()
-    postgres = _postgres_runtime(request)
-    if postgres is not None:
-        yield postgres.creator_outreach()
-        return
-    runtime = build_creator_outreach_read_runtime(settings.db_path, settings.artifacts_root)
-    try:
-        yield runtime
-    finally:
-        runtime.close()
 
 
 async def get_data_source_runtime(request: Request) -> AsyncIterator[DataSourceRuntime]:

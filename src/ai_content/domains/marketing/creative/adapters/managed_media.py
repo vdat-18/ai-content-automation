@@ -117,9 +117,7 @@ class ManagedMediaArtifactSink:
         if not artifact_ref.startswith("artifact:"):
             path = self._store.path(*artifact_ref.split("/"))
             if path.is_file():
-                await asyncio.to_thread(
-                    _verify_file_checksum, path, checksum_sha256, max_bytes
-                )
+                await asyncio.to_thread(_verify_file_checksum, path, checksum_sha256, max_bytes)
                 self._paths[artifact_ref] = path
                 self._checksums[artifact_ref] = checksum_sha256
                 return path
@@ -1278,10 +1276,7 @@ def _source_role_legend(sources: tuple[PaidMediaSource, ...]) -> str:
     if positions["product"]:
         labels.append(f"Product input positions: {', '.join(positions['product'])}")
     if positions["style"]:
-        labels.append(
-            "Research/style reference input positions: "
-            + ", ".join(positions["style"])
-        )
+        labels.append("Research/style reference input positions: " + ", ".join(positions["style"]))
     if positions["logo"]:
         labels.append(f"Approved logo input positions: {', '.join(positions['logo'])}")
     return "; ".join(labels) + "."

@@ -15,10 +15,7 @@ class AIUsageTracker:
         event_id = str(uuid4())
         if usage.run_id is None:
             correlation_id = (
-                usage.workflow_run_id
-                or usage.job_id
-                or usage.source_run_id
-                or usage.version_id
+                usage.workflow_run_id or usage.job_id or usage.source_run_id or usage.version_id
             )
             if correlation_id is not None:
                 usage = replace(usage, run_id=correlation_id)

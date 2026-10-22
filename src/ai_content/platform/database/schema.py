@@ -423,25 +423,6 @@ gmc_ingestion_runs = _run_table(
     Column("source_checksum", Text, nullable=False),
     Column("status", Text, nullable=False),
 )
-email_health_runs = _run_table(
-    "email_health_runs",
-    Column("source_checksum", Text, nullable=False),
-    Column("issue_fingerprint", Text, nullable=False),
-    Column("account_id", Text, nullable=False),
-    Column("subject_type", Text, nullable=False),
-    Column("subject_id", Text, nullable=False),
-)
-Index("ix_email_health_runs_issue_fingerprint", email_health_runs.c.issue_fingerprint)
-creator_evaluation_runs = _run_table(
-    "creator_evaluation_runs",
-    Column("candidate_id", Text, nullable=False, unique=True),
-    Column("source_checksum", Text, nullable=False),
-)
-creator_outreach_runs = _run_table(
-    "creator_outreach_runs",
-    Column("candidate_id", Text, nullable=False),
-    Column("state", Text, nullable=False),
-)
 
 media_lab_image_runs = Table(
     "media_lab_image_runs",
@@ -567,28 +548,6 @@ media_lab_assets = Table(
 )
 Index("ix_media_lab_assets_checksum", media_lab_assets.c.checksum_sha256)
 Index("ix_media_lab_assets_source_run", media_lab_assets.c.source_run_id)
-
-email_reports = Table(
-    "email_reports",
-    metadata,
-    Column("report_id", Text, primary_key=True),
-    Column("source_run_id", Text, nullable=False, unique=True),
-    Column("status", Text, nullable=False),
-    Column("payload", JSONB, nullable=False),
-    *_timestamps(),
-    schema="marketing",
-)
-
-email_production_jobs = Table(
-    "email_production_jobs",
-    metadata,
-    Column("job_id", Text, primary_key=True),
-    Column("source_run_id", Text, nullable=False, unique=True),
-    Column("state", Text, nullable=False),
-    Column("payload", JSONB, nullable=False),
-    *_timestamps(),
-    schema="marketing",
-)
 
 execution_commands = Table(
     "execution_commands",
@@ -846,11 +805,6 @@ __all__ = [
     "data_source_snapshots",
     "data_source_product_catalog",
     "data_source_sync_runs",
-    "creator_evaluation_runs",
-    "creator_outreach_runs",
-    "email_health_runs",
-    "email_production_jobs",
-    "email_reports",
     "execution_commands",
     "gmc_ingestion_runs",
     "media_lab_assets",
