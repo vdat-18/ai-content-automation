@@ -1,0 +1,12 @@
+{
+  "name": "nine-router-media-lab-image-orchestrator",
+  "backend": "baml",
+  "model": "gemini/gemini-3.8-flash",
+  "base_url": "http://router.example.com:20128/v1",
+  "api_key_env": "ROUTER_API_KEY",
+  "prompt": "../prompts/media_lab/v1_image_orchestration.json",
+  "request_timeout_seconds": 60,
+  "max_images": 10,
+  "max_total_image_bytes": 16000000,
+  "max_context_bytes": 32768
+}

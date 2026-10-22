@@ -1,0 +1,14 @@
+{
+  "name": "nine-router-image",
+  "backend": "openai_compatible",
+  "model": "openai/gpt-image-2.5-flare",
+  "model_revision": "provider-managed",
+  "runtime_version": "nine-router-openai-images-api",
+  "base_url": "http://router.example.com:20128/v1",
+  "api_key_env": "ROUTER_API_KEY",
+  "prompt_template": "<goal>\nCreate one product-conditioned advertising visual.\n</goal>\n<visual_direction>\n$visual_direction\n</visual_direction>\n<constraints>\nPreserve the supplied product image and product identity unchanged. Reserve clean negative space for later deterministic copy and logo placement. Generate a clean visual only. Do not render words, letters, typography, prices, watermarks, logos, labels, signage, symbols, or promotional claims. Do not imitate or invent brand marks.\n</constraints>",
+  "request_timeout_seconds": 30,
+  "generation_timeout_seconds": 600,
+  "poll_interval_seconds": 1,
+  "max_image_bytes": 30000000
+}

@@ -1,0 +1,9 @@
+{
+  "model": "gemini-2.5-flash",
+  "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
+  "api_key_env": "GEMINI_API_KEY",
+  "prompt": "../prompts/performance/v1_analyze_opportunity.json",
+  "rubric_version": "performance-opportunity-rubric@1-draft",
+  "timeout_seconds": 60
+}
+

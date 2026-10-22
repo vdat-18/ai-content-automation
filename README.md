@@ -1,0 +1,45 @@
+# AI Content Automation (demo)
+
+A demo of AI automation for marketing content production. Given a product, agents
+research reference ads, group them, write a brief, and produce images and short
+videos, with a human review step and a before/after comparison.
+
+```text
+Performance data -> opportunity -> references -> brief -> image/video -> review -> lesson
+```
+
+All data in this repository is synthetic. No real brand, store, or ad account is
+connected, and nothing is published anywhere.
+
+## Stack
+
+- Python 3.11+, FastAPI, SQLAlchemy/Alembic, PostgreSQL, Celery + RabbitMQ, S3-compatible storage
+- LLM prompts written in BAML (`baml_src/`)
+- React + Vite dashboard (`frontend/`)
+- Docker Compose for the local stack, optional Grafana/Prometheus/Tempo and Langfuse
+
+## Run
+
+```bash
+cp deploy/.env.example deploy/.env   # fill in passwords
+just up
+just smoke
+```
+
+Dashboard: <http://localhost:8080/dashboard/>
+
+## Develop
+
+```bash
+uv sync --extra dev
+uv run pytest
+uv run ruff check .
+pnpm --dir frontend install && pnpm --dir frontend build
+```
+
+## Status
+
+Work in progress on the `dev` branch. The package is `ai_content` under `src/`.
+Remaining legacy modules (email, creator outreach, local-model media lab) are
+scheduled for removal; the demo flow lives in `domains/marketing/creative`,
+`research_crawler`, `creative_loop` and `creative_knowledge`.

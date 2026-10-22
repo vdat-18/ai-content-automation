@@ -1,0 +1,12 @@
+{
+  "source_run_id": "gmc-ingestion-synthetic-001",
+  "brand_id": "Roy-Timber",
+  "store_id": "roy-timber-store",
+  "source_file": "gmc_products_synthetic.csv",
+  "catalog_file": "shopify_catalog_synthetic.json",
+  "schema_version": "gmc-feed@1-draft",
+  "mapping_version": "shopify-map@1-draft",
+  "required_columns": ["product_id", "title"],
+  "allowed_availability": ["in_stock", "out_of_stock", "preorder", "backorder"],
+  "chunk_size": 2
+}

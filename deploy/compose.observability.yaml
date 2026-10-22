@@ -1,0 +1,222 @@
+services:
+  api:
+    environment:
+      AIC_AI_ENVIRONMENT: synthetic
+      AIC_AI_TRACING_ENABLED: "true"
+      AIC_AI_OTLP_TRACES_ENDPOINT: http://otel-collector:4318/v1/traces
+      AIC_AI_TRACE_SAMPLE_RATIO: ${AIC_AI_TRACE_SAMPLE_RATIO:-1}
+      AIC_AI_METRICS_ENABLED: "true"
+      AIC_AI_LOG_FORMAT: json
+      AIC_AI_AI_TELEMETRY_ENABLED: ${AIC_AI_AI_TELEMETRY_ENABLED:-true}
+      AIC_AI_LANGFUSE_OTLP_ENDPOINT: ${AIC_AI_LANGFUSE_OTLP_ENDPOINT:-}
+      AIC_AI_LANGFUSE_PUBLIC_KEY: ${AIC_AI_LANGFUSE_PUBLIC_KEY:-}
+      AIC_AI_LANGFUSE_SECRET_KEY: ${AIC_AI_LANGFUSE_SECRET_KEY:-}
+    depends_on:
+      otel-collector:
+        condition: service_healthy
+
+  worker:
+    environment:
+      AIC_AI_ENVIRONMENT: synthetic
+      AIC_AI_TRACING_ENABLED: "true"
+      AIC_AI_OTLP_TRACES_ENDPOINT: http://otel-collector:4318/v1/traces
+      AIC_AI_TRACE_SAMPLE_RATIO: ${AIC_AI_TRACE_SAMPLE_RATIO:-1}
+      AIC_AI_METRICS_ENABLED: "true"
+      AIC_AI_METRICS_PORT: "9464"
+      AIC_AI_LOG_FORMAT: json
+      AIC_AI_AI_TELEMETRY_ENABLED: ${AIC_AI_AI_TELEMETRY_ENABLED:-true}
+      AIC_AI_LANGFUSE_OTLP_ENDPOINT: ${AIC_AI_LANGFUSE_OTLP_ENDPOINT:-}
+      AIC_AI_LANGFUSE_PUBLIC_KEY: ${AIC_AI_LANGFUSE_PUBLIC_KEY:-}
+      AIC_AI_LANGFUSE_SECRET_KEY: ${AIC_AI_LANGFUSE_SECRET_KEY:-}
+    expose:
+      - "9464"
+    depends_on:
+      otel-collector:
+        condition: service_healthy
+
+  tempo:
+    image: grafana/tempo:2.9.0@sha256:65a5789759435f1ef696f1953258b9bbdb18eb571d5ce711ff812d2e128288a4
+    command: ["-config.file=/etc/tempo/tempo.yaml"]
+    volumes:
+      - ./observability/tempo.yaml:/etc/tempo/tempo.yaml:ro
+      - tempo_data:/var/tempo
+    networks:
+      - internal
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - --quiet
+        - --output-document=-
+        - http://127.0.0.1:3200/ready
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+    profiles: [observability]
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.160.0
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    volumes:
+      - ./observability/otel-collector.yaml:/etc/otelcol-contrib/config.yaml:ro
+    networks:
+      - internal
+    depends_on:
+      tempo:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test:
+        - CMD
+        - /otelcol-contrib
+        - validate
+        - --config=/etc/otelcol-contrib/config.yaml
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    restart: unless-stopped
+    profiles: [observability]
+
+  alertmanager:
+    image: prom/alertmanager:v0.34.0
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yaml
+      - --storage.path=/alertmanager
+    volumes:
+      - ./observability/alertmanager.yaml:/etc/alertmanager/alertmanager.yaml:ro
+      - alertmanager_data:/alertmanager
+    networks:
+      - internal
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test:
+        - CMD
+        - /bin/alertmanager
+        - --config.file=/etc/alertmanager/alertmanager.yaml
+        - --version
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    profiles: [observability]
+
+  prometheus:
+    image: prom/prometheus:v3.14.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yaml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d
+      - --storage.tsdb.retention.size=10GB
+      - --web.enable-lifecycle
+    volumes:
+      - ./observability/prometheus.yaml:/etc/prometheus/prometheus.yaml:ro
+      - ./observability/alert-rules.yaml:/etc/prometheus/rules/aicontent.yaml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - internal
+    depends_on:
+      api:
+        condition: service_healthy
+      worker:
+        condition: service_started
+      alertmanager:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - --quiet
+        - --output-document=-
+        - http://127.0.0.1:9090/-/ready
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+    profiles: [observability]
+
+  grafana:
+    image: grafana/grafana:13.2.1
+    environment:
+      GF_SECURITY_ADMIN_USER: ${AIC_GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${AIC_GRAFANA_ADMIN_PASSWORD:?set AIC_GRAFANA_ADMIN_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_ANALYTICS_CHECK_FOR_PLUGIN_UPDATES: "false"
+      GF_PLUGINS_PREINSTALL_DISABLED: "true"
+      GF_PLUGINS_PREINSTALL_AUTO_UPDATE: "false"
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/etc/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    networks:
+      - internal
+    ports:
+      - "${AIC_GRAFANA_BIND_ADDRESS:-127.0.0.1}:${AIC_GRAFANA_PORT:-3000}:3000"
+    depends_on:
+      prometheus:
+        condition: service_healthy
+      tempo:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - --quiet
+        - --output-document=-
+        - http://127.0.0.1:3000/api/health
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+    restart: unless-stopped
+    profiles: [observability]
+
+  observability-smoke:
+    image: ai-content-automation-python:local
+    command:
+      - python
+      - /app/deploy/scripts/observability_smoke.py
+    environment:
+      AIC_GRAFANA_ADMIN_USER: ${AIC_GRAFANA_ADMIN_USER:-admin}
+      AIC_GRAFANA_ADMIN_PASSWORD: ${AIC_GRAFANA_ADMIN_PASSWORD:?set AIC_GRAFANA_ADMIN_PASSWORD}
+    networks:
+      - internal
+    depends_on:
+      grafana:
+        condition: service_healthy
+      otel-collector:
+        condition: service_healthy
+    profiles: [tools]
+
+  observability-drill:
+    image: ai-content-automation-python:local
+    command:
+      - python
+      - /app/deploy/scripts/observability_drill.py
+      - alert-delivery
+    networks:
+      - internal
+    depends_on:
+      alertmanager:
+        condition: service_healthy
+    profiles: [tools]
+
+volumes:
+  alertmanager_data:
+  grafana_data:
+  prometheus_data:
+  tempo_data:

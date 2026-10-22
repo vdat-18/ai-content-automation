@@ -1,0 +1,131 @@
+{
+  "source_run_id": "synthetic-static-creative-set-001",
+  "marketing_scope": {
+    "brand": "BrandX",
+    "market": "US"
+  },
+  "objective": "test",
+  "channel": "meta",
+  "time_window": "last_3",
+  "variation_count": 3,
+  "rubric_version": {
+    "id": "rubric-static-creative-qa",
+    "version": "1.0-draft"
+  },
+  "rule_version": {
+    "id": "rule-static-creative",
+    "version": "1.0-draft"
+  },
+  "prompt_version": {
+    "id": "prompt-static-creative-generation",
+    "version": "1.0-draft"
+  },
+  "policy_version": {
+    "id": "policy-static-creative",
+    "version": "1.0-draft"
+  },
+  "workflow_version": {
+    "id": "workflow-static-creative-generation",
+    "version": "1.0-draft"
+  },
+  "campaign_notes": "Synthetic three-variation Creative Set; contains no real data",
+  "created_by": "synthetic-fixture",
+  "target_sku_set": [
+    {
+      "sku_id": "SKU-SYN-SET-001",
+      "sku_name": "Synthetic Framed Wall Art",
+      "product_metadata": {
+        "image_refs": [
+          "synthetic://products/sku-syn-set-001/hero.png",
+          "synthetic://products/sku-syn-set-001/detail.png"
+        ],
+        "price": "49.00",
+        "currency": "USD",
+        "offer": "Bundle two, save 10%",
+        "differentiators": [
+          "Handcrafted frame",
+          "Museum-grade glass"
+        ]
+      },
+      "creative_constraints": {
+        "format_constraints": {
+          "width": 1080,
+          "height": 1080,
+          "file_format": "png"
+        },
+        "brand_guideline_ref": "synthetic://guidelines/brandx-static-v1",
+        "banned_claims": [
+          "cures",
+          "guaranteed results"
+        ]
+      },
+      "customer_context": {
+        "pain_points": [
+          "Bare rental walls",
+          "Furniture-matching stress"
+        ],
+        "promises": [
+          "Warm finished room",
+          "One-piece upgrade"
+        ],
+        "target_stage": "consideration"
+      },
+      "historical_creative_context": {
+        "tested_angles": [
+          "price-first",
+          "room-makeover"
+        ],
+        "performance_notes": "Synthetic history; angle performance is fabricated"
+      },
+      "lead_feedback_context": {
+        "common_issues": [
+          "logo too small"
+        ],
+        "recent_rejections": [
+          "stock-photo background mismatch"
+        ]
+      }
+    }
+  ],
+  "variation_plans": [
+    {
+      "evidence_refs": [
+        "synthetic-static-creative-set-001:SKU-SYN-SET-001"
+      ],
+      "subtext": "Handcrafted frame · Museum-grade glass",
+      "heading": "Give your room a focal point",
+      "angle": "room transformation",
+      "offer": "Bundle two, save 10%",
+      "awareness_stage": "consideration",
+      "production_level": "polished lifestyle",
+      "visual_direction": "Place the unchanged framed wall art as the hero in a warm finished living room with generous negative space for approved copy.",
+      "variation_key": "warm-room-hero"
+    },
+    {
+      "evidence_refs": [
+        "synthetic-static-creative-set-001:SKU-SYN-SET-001"
+      ],
+      "subtext": "Handcrafted frame · Museum-grade glass",
+      "heading": "Crafted for a considered room",
+      "angle": "craftsmanship proof",
+      "offer": "Bundle two, save 10%",
+      "awareness_stage": "consideration",
+      "production_level": "premium product detail",
+      "visual_direction": "Show the unchanged framed wall art in a refined close composition that emphasizes the frame construction and glass while preserving exact product geometry.",
+      "variation_key": "material-detail"
+    },
+    {
+      "evidence_refs": [
+        "synthetic-static-creative-set-001:SKU-SYN-SET-001"
+      ],
+      "subtext": "Bundle two, save 10%",
+      "heading": "Finish the wall, not the budget",
+      "angle": "bundle value",
+      "offer": "Bundle two, save 10%",
+      "awareness_stage": "decision",
+      "production_level": "conversion-led lifestyle",
+      "visual_direction": "Show two unchanged copies of the framed wall art styled as a coordinated pair in a clean rental-friendly room without changing frame color or proportions.",
+      "variation_key": "paired-styling"
+    }
+  ]
+}

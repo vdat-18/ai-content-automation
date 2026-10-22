@@ -1,0 +1,141 @@
+{
+  "contexts": [
+    {
+      "snapshot_id": "ctx-ready",
+      "version": "synthetic-context-v1",
+      "work_item_fixture": "static_creative_synthetic.json",
+      "context_fixture": "context/static_creative_synthetic.json",
+      "captured_at": "2026-09-13T08:00:00+07:00",
+      "resolved_context_refs": ["context-historical-v1"],
+      "components": [
+        {"component": "brand", "status": "known", "evidence_refs": ["synthetic-brand-guide"], "observed_at": "2026-09-13T08:00:00+07:00"},
+        {"component": "product", "status": "known", "evidence_refs": ["work-item:SKU-SYN-001"], "observed_at": "2026-09-13T08:00:00+07:00"},
+        {"component": "persona", "status": "known", "evidence_refs": ["synthetic-persona-library"], "observed_at": "2026-09-13T08:00:00+07:00"},
+        {"component": "policy", "status": "known", "evidence_refs": ["synthetic-brand-guide"], "observed_at": "2026-09-13T08:00:00+07:00"},
+        {"component": "output", "status": "known", "evidence_refs": ["work-item:SKU-SYN-001"], "observed_at": "2026-09-13T08:00:00+07:00"},
+        {"component": "versions", "status": "known", "evidence_refs": ["synthetic-brand-guide"], "observed_at": "2026-09-13T08:00:00+07:00"},
+        {"component": "history", "status": "known", "evidence_refs": ["work-item:SKU-SYN-001"], "observed_at": "2026-09-13T08:00:00+07:00"},
+        {"component": "feedback", "status": "known", "evidence_refs": ["work-item:SKU-SYN-001"], "observed_at": "2026-09-13T08:00:00+07:00"}
+      ]
+    },
+    {
+      "snapshot_id": "ctx-persona-unknown",
+      "version": "synthetic-context-v1",
+      "work_item_fixture": "static_creative_synthetic.json",
+      "context_fixture": "context/static_creative_synthetic.json",
+      "captured_at": "2026-09-13T08:00:00+07:00",
+      "components": [
+        {"component": "brand", "status": "known", "evidence_refs": ["synthetic-brand-guide"], "observed_at": "2026-09-13T08:00:00+07:00"},
+        {"component": "product", "status": "known", "evidence_refs": ["work-item:SKU-SYN-001"], "observed_at": "2026-09-13T08:00:00+07:00"},
+        {"component": "persona", "status": "unknown", "evidence_refs": [], "observed_at": "2026-09-13T08:00:00+07:00", "detail": "Persona source has not been approved."},
+        {"component": "policy", "status": "known", "evidence_refs": ["synthetic-brand-guide"], "observed_at": "2026-09-13T08:00:00+07:00"},
+        {"component": "output", "status": "known", "evidence_refs": ["work-item:SKU-SYN-001"], "observed_at": "2026-09-13T08:00:00+07:00"},
+        {"component": "versions", "status": "known", "evidence_refs": ["synthetic-brand-guide"], "observed_at": "2026-09-13T08:00:00+07:00"}
+      ]
+    },
+    {
+      "snapshot_id": "ctx-product-conflict",
+      "version": "synthetic-context-v1",
+      "work_item_fixture": "static_creative_synthetic.json",
+      "context_fixture": "context/static_creative_synthetic.json",
+      "captured_at": "2026-09-13T08:00:00+07:00",
+      "components": [
+        {"component": "brand", "status": "known", "evidence_refs": ["synthetic-brand-guide"], "observed_at": "2026-09-13T08:00:00+07:00"},
+        {"component": "product", "status": "conflict", "evidence_refs": ["work-item:SKU-SYN-001", "synthetic-approved-product-copy"], "observed_at": "2026-09-13T08:00:00+07:00", "detail": "Two product sources disagree on the offer."},
+        {"component": "persona", "status": "known", "evidence_refs": ["synthetic-persona-library"], "observed_at": "2026-09-13T08:00:00+07:00"},
+        {"component": "policy", "status": "known", "evidence_refs": ["synthetic-brand-guide"], "observed_at": "2026-09-13T08:00:00+07:00"},
+        {"component": "output", "status": "known", "evidence_refs": ["work-item:SKU-SYN-001"], "observed_at": "2026-09-13T08:00:00+07:00"},
+        {"component": "versions", "status": "known", "evidence_refs": ["synthetic-brand-guide"], "observed_at": "2026-09-13T08:00:00+07:00"}
+      ]
+    },
+    {
+      "snapshot_id": "ctx-policy-expired",
+      "version": "synthetic-context-v1",
+      "work_item_fixture": "static_creative_synthetic.json",
+      "context_fixture": "context/static_creative_synthetic.json",
+      "captured_at": "2026-09-13T08:00:00+07:00",
+      "components": [
+        {"component": "brand", "status": "known", "evidence_refs": ["synthetic-brand-guide"], "observed_at": "2026-09-13T08:00:00+07:00"},
+        {"component": "product", "status": "known", "evidence_refs": ["work-item:SKU-SYN-001"], "observed_at": "2026-09-13T08:00:00+07:00"},
+        {"component": "persona", "status": "known", "evidence_refs": ["synthetic-persona-library"], "observed_at": "2026-09-13T08:00:00+07:00"},
+        {"component": "policy", "status": "known", "evidence_refs": ["synthetic-brand-guide"], "observed_at": "2026-09-01T08:00:00+07:00", "valid_until": "2026-09-12T23:59:00+07:00"},
+        {"component": "output", "status": "known", "evidence_refs": ["work-item:SKU-SYN-001"], "observed_at": "2026-09-13T08:00:00+07:00"},
+        {"component": "versions", "status": "known", "evidence_refs": ["synthetic-brand-guide"], "observed_at": "2026-09-13T08:00:00+07:00"}
+      ]
+    },
+    {
+      "snapshot_id": "ctx-output-unknown",
+      "version": "synthetic-context-v1",
+      "work_item_fixture": "static_creative_synthetic.json",
+      "context_fixture": "context/static_creative_synthetic.json",
+      "captured_at": "2026-09-13T08:00:00+07:00",
+      "components": [
+        {"component": "brand", "status": "known", "evidence_refs": ["synthetic-brand-guide"], "observed_at": "2026-09-13T08:00:00+07:00"},
+        {"component": "product", "status": "known", "evidence_refs": ["work-item:SKU-SYN-001"], "observed_at": "2026-09-13T08:00:00+07:00"},
+        {"component": "persona", "status": "known", "evidence_refs": ["synthetic-persona-library"], "observed_at": "2026-09-13T08:00:00+07:00"},
+        {"component": "policy", "status": "known", "evidence_refs": ["synthetic-brand-guide"], "observed_at": "2026-09-13T08:00:00+07:00"},
+        {"component": "output", "status": "unknown", "evidence_refs": [], "observed_at": "2026-09-13T08:00:00+07:00"},
+        {"component": "versions", "status": "known", "evidence_refs": ["synthetic-brand-guide"], "observed_at": "2026-09-13T08:00:00+07:00"}
+      ]
+    },
+    {
+      "snapshot_id": "ctx-brand-missing",
+      "version": "synthetic-context-v1",
+      "work_item_fixture": "static_creative_synthetic.json",
+      "context_fixture": "context/static_creative_synthetic.json",
+      "captured_at": "2026-09-13T08:00:00+07:00",
+      "components": [
+        {"component": "product", "status": "known", "evidence_refs": ["work-item:SKU-SYN-001"], "observed_at": "2026-09-13T08:00:00+07:00"},
+        {"component": "persona", "status": "known", "evidence_refs": ["synthetic-persona-library"], "observed_at": "2026-09-13T08:00:00+07:00"},
+        {"component": "policy", "status": "known", "evidence_refs": ["synthetic-brand-guide"], "observed_at": "2026-09-13T08:00:00+07:00"},
+        {"component": "output", "status": "known", "evidence_refs": ["work-item:SKU-SYN-001"], "observed_at": "2026-09-13T08:00:00+07:00"},
+        {"component": "versions", "status": "known", "evidence_refs": ["synthetic-brand-guide"], "observed_at": "2026-09-13T08:00:00+07:00"}
+      ]
+    },
+    {
+      "snapshot_id": "ctx-product-image-missing",
+      "version": "synthetic-context-v1",
+      "work_item_fixture": "static_creative_synthetic.json",
+      "context_fixture": "context/static_creative_synthetic.json",
+      "captured_at": "2026-09-13T08:00:00+07:00",
+      "product_image_count": 0,
+      "components": [
+        {"component": "brand", "status": "known", "evidence_refs": ["synthetic-brand-guide"], "observed_at": "2026-09-13T08:00:00+07:00"},
+        {"component": "product", "status": "known", "evidence_refs": ["work-item:SKU-SYN-001"], "observed_at": "2026-09-13T08:00:00+07:00"},
+        {"component": "persona", "status": "known", "evidence_refs": ["synthetic-persona-library"], "observed_at": "2026-09-13T08:00:00+07:00"},
+        {"component": "policy", "status": "known", "evidence_refs": ["synthetic-brand-guide"], "observed_at": "2026-09-13T08:00:00+07:00"},
+        {"component": "output", "status": "known", "evidence_refs": ["work-item:SKU-SYN-001"], "observed_at": "2026-09-13T08:00:00+07:00"},
+        {"component": "versions", "status": "known", "evidence_refs": ["synthetic-brand-guide"], "observed_at": "2026-09-13T08:00:00+07:00"}
+      ]
+    },
+    {
+      "snapshot_id": "ctx-versions-incomplete",
+      "version": "synthetic-context-v1",
+      "work_item_fixture": "static_creative_synthetic.json",
+      "context_fixture": "context/static_creative_synthetic.json",
+      "captured_at": "2026-09-13T08:00:00+07:00",
+      "version_ref_count": 3,
+      "components": [
+        {"component": "brand", "status": "known", "evidence_refs": ["synthetic-brand-guide"], "observed_at": "2026-09-13T08:00:00+07:00"},
+        {"component": "product", "status": "known", "evidence_refs": ["work-item:SKU-SYN-001"], "observed_at": "2026-09-13T08:00:00+07:00"},
+        {"component": "persona", "status": "known", "evidence_refs": ["synthetic-persona-library"], "observed_at": "2026-09-13T08:00:00+07:00"},
+        {"component": "policy", "status": "known", "evidence_refs": ["synthetic-brand-guide"], "observed_at": "2026-09-13T08:00:00+07:00"},
+        {"component": "output", "status": "known", "evidence_refs": ["work-item:SKU-SYN-001"], "observed_at": "2026-09-13T08:00:00+07:00"},
+        {"component": "versions", "status": "known", "evidence_refs": ["synthetic-brand-guide"], "observed_at": "2026-09-13T08:00:00+07:00"}
+      ]
+    }
+  ],
+  "cases": [
+    {"context_snapshot_id": "ctx-ready", "trigger": {"trigger_id": "h2-trigger-ready", "source": "performance_demand", "source_preview_id": "h2-preview-ready", "source_decision_ref": "h2-eval-ready", "source_released": true, "brand_id": "BrandX", "sku_id": "SKU-SYN-001", "action": "request_new_creative", "objective": "test", "channel": "meta", "evidence_refs": ["h2-evidence-ready"], "requested_at": "2026-09-13T09:00:00+07:00"}},
+    {"context_snapshot_id": "ctx-ready", "trigger": {"trigger_id": "x1-trigger-ready", "source": "feedback_lesson", "source_preview_id": "x1-preview-ready", "source_decision_ref": "x1-lesson-ready", "source_released": true, "brand_id": "BrandX", "sku_id": "SKU-SYN-001", "action": "retest_creative", "objective": null, "channel": "meta", "evidence_refs": ["x1-evidence-ready"], "requested_at": "2026-09-13T09:05:00+07:00", "source_creative_version_id": "creative-version-historical-v1", "reusable_context_refs": ["context-historical-v1"]}},
+    {"context_snapshot_id": "ctx-ready", "trigger": {"trigger_id": "h2-trigger-unreleased", "source": "performance_demand", "source_preview_id": "h2-preview-unreleased", "source_decision_ref": "h2-eval-unreleased", "source_released": false, "brand_id": "BrandX", "sku_id": "SKU-SYN-001", "action": "request_new_creative", "objective": "test", "channel": "meta", "evidence_refs": ["h2-evidence-unreleased"], "requested_at": "2026-09-13T09:10:00+07:00"}},
+    {"context_snapshot_id": "ctx-ready", "trigger": {"trigger_id": "h2-trigger-identity-conflict", "source": "performance_demand", "source_preview_id": "h2-preview-identity-conflict", "source_decision_ref": "h2-eval-identity-conflict", "source_released": true, "brand_id": "BrandX", "sku_id": "SKU-OTHER", "action": "request_new_creative", "objective": "test", "channel": "meta", "evidence_refs": ["h2-evidence-identity-conflict"], "requested_at": "2026-09-13T09:15:00+07:00"}},
+    {"context_snapshot_id": "ctx-persona-unknown", "trigger": {"trigger_id": "h2-trigger-persona-unknown", "source": "performance_demand", "source_preview_id": "h2-preview-persona-unknown", "source_decision_ref": "h2-eval-persona-unknown", "source_released": true, "brand_id": "BrandX", "sku_id": "SKU-SYN-001", "action": "request_new_creative", "objective": "test", "channel": "meta", "evidence_refs": ["h2-evidence-persona-unknown"], "requested_at": "2026-09-13T09:20:00+07:00"}},
+    {"context_snapshot_id": "ctx-product-conflict", "trigger": {"trigger_id": "h2-trigger-product-conflict", "source": "performance_demand", "source_preview_id": "h2-preview-product-conflict", "source_decision_ref": "h2-eval-product-conflict", "source_released": true, "brand_id": "BrandX", "sku_id": "SKU-SYN-001", "action": "request_new_creative", "objective": "test", "channel": "meta", "evidence_refs": ["h2-evidence-product-conflict"], "requested_at": "2026-09-13T09:25:00+07:00"}},
+    {"context_snapshot_id": "ctx-policy-expired", "trigger": {"trigger_id": "h2-trigger-policy-expired", "source": "performance_demand", "source_preview_id": "h2-preview-policy-expired", "source_decision_ref": "h2-eval-policy-expired", "source_released": true, "brand_id": "BrandX", "sku_id": "SKU-SYN-001", "action": "request_new_creative", "objective": "test", "channel": "meta", "evidence_refs": ["h2-evidence-policy-expired"], "requested_at": "2026-09-13T09:30:00+07:00"}},
+    {"context_snapshot_id": "ctx-output-unknown", "trigger": {"trigger_id": "h2-trigger-output-unknown", "source": "performance_demand", "source_preview_id": "h2-preview-output-unknown", "source_decision_ref": "h2-eval-output-unknown", "source_released": true, "brand_id": "BrandX", "sku_id": "SKU-SYN-001", "action": "request_new_creative", "objective": "test", "channel": "meta", "evidence_refs": ["h2-evidence-output-unknown"], "requested_at": "2026-09-13T09:35:00+07:00"}},
+    {"context_snapshot_id": "ctx-brand-missing", "trigger": {"trigger_id": "h2-trigger-brand-missing", "source": "performance_demand", "source_preview_id": "h2-preview-brand-missing", "source_decision_ref": "h2-eval-brand-missing", "source_released": true, "brand_id": "BrandX", "sku_id": "SKU-SYN-001", "action": "request_new_creative", "objective": "test", "channel": "meta", "evidence_refs": ["h2-evidence-brand-missing"], "requested_at": "2026-09-13T09:40:00+07:00"}},
+    {"context_snapshot_id": "ctx-product-image-missing", "trigger": {"trigger_id": "h2-trigger-image-missing", "source": "performance_demand", "source_preview_id": "h2-preview-image-missing", "source_decision_ref": "h2-eval-image-missing", "source_released": true, "brand_id": "BrandX", "sku_id": "SKU-SYN-001", "action": "request_new_creative", "objective": "test", "channel": "meta", "evidence_refs": ["h2-evidence-image-missing"], "requested_at": "2026-09-13T09:45:00+07:00"}},
+    {"context_snapshot_id": "ctx-versions-incomplete", "trigger": {"trigger_id": "h2-trigger-versions-missing", "source": "performance_demand", "source_preview_id": "h2-preview-versions-missing", "source_decision_ref": "h2-eval-versions-missing", "source_released": true, "brand_id": "BrandX", "sku_id": "SKU-SYN-001", "action": "request_new_creative", "objective": "test", "channel": "meta", "evidence_refs": ["h2-evidence-versions-missing"], "requested_at": "2026-09-13T09:50:00+07:00"}}
+  ]
+}

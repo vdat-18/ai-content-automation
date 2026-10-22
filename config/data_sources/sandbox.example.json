@@ -1,0 +1,102 @@
+{
+  "sources": [
+    {
+      "source_id": "sandbox-shopify-products",
+      "provider": "shopify",
+      "name": "Sandbox Shopify Products",
+      "category": "Commerce",
+      "purpose": "Product truth and reference images for Creative input",
+      "base_url": "https://your-development-store.myshopify.com",
+      "resources": [{ "kind": "products" }],
+      "metadata": { "brand": "Sandbox Brand", "currency": "USD" }
+    },
+    {
+      "source_id": "sandbox-lark-creative",
+      "provider": "lark",
+      "name": "Sandbox Lark Creative Context",
+      "category": "Operations",
+      "purpose": "Creative briefs, strategy rows and brand review guidance",
+      "base_url": "https://open.larksuite.com",
+      "resources": [
+        { "kind": "base", "app_token": "REPLACE_APP_TOKEN", "table_id": "REPLACE_TABLE_ID" },
+        { "kind": "sheet", "spreadsheet_token": "REPLACE_SHEET_TOKEN", "range": "Strategy!A1:Z100" },
+        { "kind": "doc", "document_id": "REPLACE_DOCUMENT_ID" }
+      ],
+      "metadata": { "brand": "Sandbox Brand", "sheets_base_url": "https://sheets.googleapis.com" }
+    },
+    {
+      "source_id": "sandbox-google-references",
+      "provider": "google",
+      "name": "Sandbox Google References",
+      "category": "Knowledge",
+      "purpose": "Supporting context and allowlisted reference assets",
+      "base_url": "https://www.googleapis.com",
+      "resources": [
+        { "kind": "folder", "folder_id": "REPLACE_FOLDER_ID" },
+        { "kind": "doc", "file_id": "REPLACE_DOCUMENT_ID" },
+        { "kind": "sheet", "spreadsheet_id": "REPLACE_SPREADSHEET_ID", "range": "Context!A1:Z100" }
+      ],
+      "metadata": { "brand": "Sandbox Brand" }
+    },
+    {
+      "source_id": "sandbox-meta-ads",
+      "provider": "meta_ads",
+      "name": "Sandbox Meta Ads Performance",
+      "category": "Performance",
+      "purpose": "Ad-level Creative performance evidence",
+      "base_url": "https://graph.facebook.com",
+      "resources": [
+        { "kind": "insights", "ad_account_id": "act_REPLACE_ACCOUNT_ID", "level": "ad", "date_preset": "last_30d" }
+      ],
+      "metadata": { "brand": "Sandbox Brand", "api_version": "v23.0" }
+    },
+    {
+      "source_id": "sandbox-google-ads",
+      "provider": "google_ads",
+      "name": "Sandbox Google Ads Product Performance",
+      "category": "Performance",
+      "purpose": "SKU-level Google Shopping performance evidence",
+      "base_url": "https://googleads.googleapis.com",
+      "resources": [
+        { "kind": "product_performance", "customer_id": "REPLACE_CUSTOMER_ID", "start_date": "2026-09-01", "end_date": "2026-09-14" }
+      ],
+      "metadata": { "brand": "Sandbox Brand", "api_version": "v25" }
+    },
+    {
+      "source_id": "sandbox-pinterest-ads",
+      "provider": "pinterest_ads",
+      "name": "Sandbox Pinterest Ads Performance",
+      "category": "Performance",
+      "purpose": "Pinterest revenue and conversion evidence",
+      "base_url": "https://api.pinterest.com/v5",
+      "resources": [
+        { "kind": "account_analytics", "ad_account_id": "REPLACE_ACCOUNT_ID", "start_date": "2026-09-01", "end_date": "2026-09-14", "granularity": "TOTAL" }
+      ],
+      "metadata": { "brand": "Sandbox Brand" }
+    },
+    {
+      "source_id": "sandbox-google-merchant",
+      "provider": "google_merchant",
+      "name": "Sandbox Google Merchant Products",
+      "category": "Commerce",
+      "purpose": "Google product identity, feed label and product status",
+      "base_url": "https://merchantapi.googleapis.com",
+      "resources": [{ "kind": "products", "account_id": "REPLACE_ACCOUNT_ID" }],
+      "metadata": { "brand": "Sandbox Brand" }
+    },
+    {
+      "source_id": "sandbox-klaviyo",
+      "provider": "klaviyo",
+      "name": "Sandbox Klaviyo Email Inventory",
+      "category": "Email",
+      "purpose": "Read-only campaign, flow and metric inventory",
+      "base_url": "https://a.klaviyo.com/api",
+      "resources": [
+        { "kind": "campaigns", "filter": "equals(messages.channel,'email')" },
+        { "kind": "flows" },
+        { "kind": "metrics" }
+      ],
+      "metadata": { "brand": "Sandbox Brand", "revision": "2025-07-15" }
+    }
+  ]
+}

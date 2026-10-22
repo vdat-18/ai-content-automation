@@ -1,0 +1,23 @@
+# secrets and local config
+.env
+deploy/.env
+*.local.json
+*.local.yaml
+
+# python
+__pycache__/
+*.pyc
+*.egg-info/
+.venv/
+.pytest_cache/
+.ruff_cache/
+
+# frontend
+node_modules/
+frontend/dist/
+*.tsbuildinfo
+
+# runtime data
+.backups/
+*.sqlite
+*.db

@@ -1,0 +1,69 @@
+{
+  "brand": "BrandX",
+  "sku_id": "SKU-SYN-001",
+  "version": "synthetic-m1-v1",
+  "sources": [
+    {
+      "source_id": "synthetic-brand-guide",
+      "data_version": "synthetic-v1",
+      "category": "brand",
+      "content": "Synthetic fixture only. BrandX uses warm, restrained room styling with readable short copy. Preserve the framed wall-art product shape. Avoid medical or guaranteed-results claims."
+    },
+    {
+      "source_id": "synthetic-persona-library",
+      "data_version": "synthetic-v1",
+      "category": "persona",
+      "content": "Synthetic fixture only. Practical room stylers want an unfinished room to feel considered without replacing furniture. Their barrier is uncertainty about matching existing furniture. This is fictional persona context, not customer research."
+    },
+    {
+      "source_id": "synthetic-approved-product-copy",
+      "data_version": "synthetic-v1",
+      "category": "claim",
+      "content": "Synthetic fixture only. Approved demonstration copy for SKU-SYN-001: Handcrafted frame. The matching synthetic work item lists that differentiator. This does not approve a claim for any real product."
+    },
+    {
+      "source_id": "synthetic-reference-notes",
+      "data_version": "synthetic-v1",
+      "category": "reference",
+      "content": "Synthetic fixture only. Reference description: a neutral room with framed wall art above a console, warm daylight and negative space beside the product. No image has been inspected or downloaded."
+    }
+  ],
+  "personas": [
+    {
+      "persona_id": "practical-optimizer",
+      "name": "Practical room styler",
+      "description": "Synthetic persona seeking a more finished room while keeping existing furniture.",
+      "evidence_refs": ["synthetic-persona-library"]
+    },
+    {
+      "persona_id": "style-seeker",
+      "name": "Style-focused decorator",
+      "description": "Synthetic persona seeking a considered focal point rather than more visual clutter.",
+      "evidence_refs": ["synthetic-persona-library"]
+    }
+  ],
+  "references": [
+    {
+      "reference_id": "synthetic-room-reference",
+      "asset": {
+        "url": "../../../fixtures/local_cases/sinlkicf133tbna/assets/product-oak-1200.png",
+        "provenance": "team_provided",
+        "license_info": "Repository fixture supplied for local workflow testing only."
+      },
+      "description": "Neutral styled room with warm light and space beside framed wall art.",
+      "evidence_refs": ["synthetic-reference-notes"]
+    }
+  ],
+  "approved_claims": [
+    {
+      "claim_id": "synthetic-handcrafted-frame",
+      "proof": {
+        "proof_type": "claim",
+        "text": "Handcrafted frame",
+        "source_url": "synthetic://proofs/frame",
+        "verified": true
+      },
+      "evidence_refs": ["synthetic-approved-product-copy"]
+    }
+  ]
+}

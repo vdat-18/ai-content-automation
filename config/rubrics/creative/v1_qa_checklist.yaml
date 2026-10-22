@@ -1,0 +1,124 @@
+# Static Creative QA Rubric
+# DRAFT: structure derived from Creative discovery evidence.
+# The weights and thresholds are calibration candidates, not production rules.
+
+id: "rubric-static-creative-qa"
+version: "1.0-draft"
+status: "draft"
+created_at: "2026-09-11"
+updated_at: "2026-09-12"
+created_by: "system"
+approved_by: null
+approved_at: null
+
+scope:
+  asset_type: "static_creative"
+  unit: "one_candidate_and_its_creative_set"
+  score_scale:
+    minimum: 0
+    maximum: 4
+    anchors:
+      0: "Incorrect or does not meet the criterion"
+      1: "Very weak; requires substantial rework"
+      2: "Partially meets the criterion; requires clear revision"
+      3: "Suitable for lead review with only minor issues"
+      4: "Meets the criterion clearly and consistently"
+
+# A hard-gate failure cannot be offset by visual-quality points. The candidate
+# must be revised or rejected before entering the Approval Queue.
+hard_gates:
+  - id: "product_fidelity"
+    name: "Product fidelity"
+    check: "The SKU, shape, construction, material, color, and identifying details are not added, removed, or distorted."
+    evidence: "Original product assets and product truth in the brief."
+    failure: "critical"
+
+  - id: "fact_and_claim_accuracy"
+    name: "Fact and claim accuracy"
+    check: "The creative does not state or imply attributes, benefits, offers, or proof beyond approved sources."
+    evidence: "Product description, approved claims, offer, and proof references."
+    failure: "critical"
+
+  - id: "required_copy_accuracy"
+    name: "Required copy accuracy"
+    check: "Required headings, subtext, prices, offers, calls to action, and logos are exact and not cropped."
+    evidence: "The fixed brief for the exact variation."
+    failure: "critical"
+
+  - id: "technical_and_placement"
+    name: "Technical and placement compliance"
+    check: "The file has the required dimensions, aspect ratio, and format, and important content remains inside the placement safe zone."
+    evidence: "Output specification and placement constraints."
+    failure: "critical"
+
+  - id: "rights_and_policy"
+    name: "Rights and policy compliance"
+    check: "Assets and references are authorized for the pilot, and the output does not violate banned claims or the pinned policy."
+    evidence: "Provenance, license notes, and policy version."
+    failure: "critical"
+
+scored_criteria:
+  - id: "brief_alignment"
+    name: "Brief alignment"
+    weight: 20
+    check: "The visual communicates the variation's objective, persona, awareness stage, angle, hook, and message."
+
+  - id: "product_salience"
+    name: "Product salience"
+    weight: 15
+    check: "The product has appropriate prominence and is not obscured, lost, or visually de-emphasized."
+
+  - id: "visual_hierarchy_and_readability"
+    name: "Visual hierarchy and readability"
+    weight: 15
+    check: "The hook, product, and call to action appear in a clear order, with readable text, typography, and color."
+
+  - id: "composition_and_reference_fit"
+    name: "Composition and reference fit"
+    weight: 15
+    check: "The composition is balanced, fits the placement, and applies relevant reference traits without mechanical copying."
+
+  - id: "persona_and_brand_fit"
+    name: "Persona and brand fit"
+    weight: 15
+    check: "The setting, style, tone, and production level fit the target customer and brand identity."
+
+  - id: "visual_naturalness"
+    name: "Visual naturalness"
+    weight: 10
+    check: "Lighting, perspective, object proportions, and details are plausible, without obvious AI artifacts."
+
+  - id: "conversion_clarity"
+    name: "Conversion clarity"
+    weight: 10
+    check: "The creative communicates one primary benefit and a clear next step without exaggeration."
+
+set_gates:
+  - id: "set_complete"
+    check: "The set contains every required variation, and each variation has a QA result."
+  - id: "set_no_duplicate"
+    check: "No two variations have duplicate or near-duplicate composition and messaging."
+  - id: "set_coverage"
+    check: "The variations cover the formats, headings, visual directions, or hypotheses specified in the brief."
+  - id: "set_consistency"
+    check: "The set preserves the same product truth, persona, angle, offer, objective, and pinned brand rules."
+
+# Candidate policy for evaluation. The Creative lead must calibrate it against
+# golden cases before changing its status or using it as a production gate.
+candidate_decision_policy:
+  approval_ready:
+    minimum_weighted_score: 80
+    require_all_hard_gates: true
+    require_all_set_gates: true
+  revise:
+    weighted_score_range: [65, 79]
+    includes_repairable_hard_gate_failure: true
+  reject:
+    maximum_weighted_score: 64
+    includes_unrepairable_or_policy_failure: true
+
+review_requirements:
+  - "Every gate and scored criterion requires a short reason, not only a score."
+  - "The reviewer sees only the candidate ID; model and configuration remain hidden during blind review."
+  - "An image without human review does not count as rejected."
+  - "Every decision records the rubric version, brief version, and source asset hashes."

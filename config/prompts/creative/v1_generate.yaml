@@ -1,0 +1,21 @@
+# Creative Generation Prompt Configuration
+# Version: 1.0-draft
+# Status: DRAFT - Not approved by marketing
+# Created: 2026-09-11
+
+id: "prompt-static-creative-generation"
+version: "1.0-draft"
+status: "draft"
+created_at: "2026-09-11"
+created_by: "system"
+approved_by: null
+approved_at: null
+
+generation:
+  parameters:
+    size: "1024x1024"
+    quality: "standard"
+
+qa:
+  rubric_id: "rubric-static-creative-qa"
+  rubric_version: "1.0-draft"

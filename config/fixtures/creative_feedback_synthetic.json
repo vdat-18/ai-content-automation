@@ -1,0 +1,432 @@
+{
+  "cases": [
+    {
+      "source_run_id": "creative-feedback-win-synthetic-001",
+      "release": {
+        "release_id": "release-rt-001",
+        "creative_job_id": "job-rt-001",
+        "creative_id": "creative-rt-001",
+        "creative_version_id": "creative-rt-001-v2",
+        "current_version_id": "creative-rt-001-v2",
+        "brand_id": "Roy-Timber",
+        "sku_id": "RT-LAMP-042",
+        "idea_id": "idea-rt-001",
+        "approval_ref": "synthetic://creative/approval/rt-001-v2",
+        "approved_at": "2026-09-10T09:00:00+07:00",
+        "persona_id": "persona-rt-001",
+        "angle_id": "angle-rt-001",
+        "concept_id": "concept-rt-001",
+        "creative_set_id": "set-rt-001",
+        "variation_id": "variation-b"
+      },
+      "ad_mapping": {
+        "mapping_id": "mapping-rt-001",
+        "status": "known",
+        "platform": "meta",
+        "account_id": "meta-roy-timber",
+        "evidence_ref": "synthetic://ads/mapping/rt-001",
+        "observed_at": "2026-09-12T09:00:00+07:00",
+        "mapped_version_id": "creative-rt-001-v2",
+        "campaign_id": "campaign-rt-001",
+        "adset_id": "adset-rt-persona-001",
+        "ad_id": "ad-rt-001",
+        "raw_creative_name": "Synthetic naming example"
+      },
+      "performance": {
+        "performance_run_id": "performance-creative-win-synthetic-001",
+        "evaluation_id": "evaluation-creative-win-001",
+        "state": "ready_for_review",
+        "classification": "creative_win",
+        "recommendation": "retest_creative",
+        "subject_creative_id": "creative-rt-001",
+        "subject_version_id": "creative-rt-001-v2",
+        "brand_id": "Roy-Timber",
+        "sku_id": "RT-LAMP-042",
+        "platform": "meta",
+        "grain": "creative",
+        "window_id": "creative-window",
+        "timezone": "America/New_York",
+        "attribution": "synthetic-draft-contract",
+        "rule_set_id": "performance-rules-strict-draft",
+        "rule_version": "1-draft",
+        "rule_mode": "strict",
+        "rule_status": "draft",
+        "criteria": [
+          { "criterion_id": "creative-win-purchases", "metric": "purchases", "window_id": "creative-window", "outcome": "pass", "observed_value": "4", "operator": "gt", "threshold": "2", "detail": "Purchases exceeded the DRAFT threshold.", "source_ref": "synthetic://performance/rt-001" },
+          { "criterion_id": "creative-win-roas", "metric": "roas", "window_id": "creative-window", "outcome": "pass", "observed_value": "6.8", "operator": "gt", "threshold": "6", "detail": "ROAS exceeded the DRAFT threshold.", "source_ref": "synthetic://performance/rt-001" },
+          { "criterion_id": "creative-win-cost-atc", "metric": "cost_per_atc", "window_id": "creative-window", "outcome": "pass", "observed_value": "52", "operator": "lt", "threshold": "60", "detail": "Cost per ATC was below the DRAFT threshold.", "source_ref": "synthetic://performance/rt-001" }
+        ],
+        "evidence_refs": ["synthetic://performance/rt-001"],
+        "observed_at": "2026-09-12T09:00:00+07:00"
+      },
+      "human_feedback": {
+        "feedback_id": "feedback-rt-001",
+        "status": "known",
+        "creative_version_id": "creative-rt-001-v2",
+        "decision": "approved",
+        "issue_codes": [],
+        "summary": "Synthetic lead approval attached to the tested version.",
+        "source_ref": "synthetic://feedback/rt-001",
+        "observed_at": "2026-09-10T10:00:00+07:00"
+      }
+    },
+    {
+      "source_run_id": "creative-feedback-potential-synthetic-001",
+      "release": {
+        "release_id": "release-et-001",
+        "creative_job_id": "job-et-001",
+        "creative_id": "creative-et-001",
+        "creative_version_id": "creative-et-001-v1",
+        "current_version_id": "creative-et-001-v1",
+        "brand_id": "DemoFurniture",
+        "sku_id": "ET-DESK-018",
+        "idea_id": "idea-et-001",
+        "approval_ref": "synthetic://creative/approval/et-001-v1",
+        "approved_at": "2026-09-10T09:00:00+07:00",
+        "angle_id": "angle-et-001"
+      },
+      "ad_mapping": {
+        "mapping_id": "mapping-et-001",
+        "status": "known",
+        "platform": "meta",
+        "account_id": "meta-demofurniture",
+        "evidence_ref": "synthetic://ads/mapping/et-001",
+        "observed_at": "2026-09-12T09:00:00+07:00",
+        "mapped_version_id": "creative-et-001-v1",
+        "campaign_id": "campaign-et-001",
+        "ad_id": "ad-et-001"
+      },
+      "performance": {
+        "performance_run_id": "performance-creative-potential-synthetic-001",
+        "evaluation_id": "evaluation-creative-potential-001",
+        "state": "ready_for_review",
+        "classification": "creative_potential",
+        "recommendation": "retest_creative",
+        "subject_creative_id": "creative-et-001",
+        "brand_id": "DemoFurniture",
+        "sku_id": "ET-DESK-018",
+        "platform": "meta",
+        "grain": "creative",
+        "window_id": "creative-window",
+        "timezone": "America/New_York",
+        "attribution": "synthetic-draft-contract",
+        "rule_set_id": "performance-rules-strict-draft",
+        "rule_version": "1-draft",
+        "rule_mode": "strict",
+        "rule_status": "draft",
+        "criteria": [
+          { "criterion_id": "creative-potential-purchases", "metric": "purchases", "window_id": "creative-window", "outcome": "pass", "observed_value": "1", "operator": "gte", "threshold": "1", "detail": "A purchase was observed.", "source_ref": "synthetic://performance/et-001" },
+          { "criterion_id": "creative-potential-roas", "metric": "roas", "window_id": "creative-window", "outcome": "pass", "observed_value": "6.4", "operator": "gt", "threshold": "6", "detail": "ROAS exceeded the DRAFT threshold.", "source_ref": "synthetic://performance/et-001" },
+          { "criterion_id": "creative-potential-cost-atc", "metric": "cost_per_atc", "window_id": "creative-window", "outcome": "fail", "observed_value": "72", "operator": "lt", "threshold": "70", "detail": "Cost per ATC did not meet the DRAFT threshold.", "source_ref": "synthetic://performance/et-001" }
+        ],
+        "evidence_refs": ["synthetic://performance/et-001"],
+        "observed_at": "2026-09-12T09:00:00+07:00"
+      }
+    },
+    {
+      "source_run_id": "creative-feedback-no-action-synthetic-001",
+      "release": {
+        "release_id": "release-ae-001",
+        "creative_job_id": "job-ae-001",
+        "creative_id": "creative-ae-001",
+        "creative_version_id": "creative-ae-001-v1",
+        "current_version_id": "creative-ae-001-v1",
+        "brand_id": "AE-Bowery",
+        "sku_id": "AE-PENDANT-012",
+        "idea_id": "idea-ae-001",
+        "approval_ref": "synthetic://creative/approval/ae-001-v1",
+        "approved_at": "2026-09-10T09:00:00+07:00"
+      },
+      "ad_mapping": {
+        "mapping_id": "mapping-ae-001",
+        "status": "known",
+        "platform": "meta",
+        "account_id": "meta-ae-bowery",
+        "evidence_ref": "synthetic://ads/mapping/ae-001",
+        "observed_at": "2026-09-12T09:00:00+07:00",
+        "mapped_version_id": "creative-ae-001-v1",
+        "ad_id": "ad-ae-001"
+      },
+      "performance": {
+        "performance_run_id": "performance-creative-no-action-synthetic-001",
+        "evaluation_id": "evaluation-creative-no-action-001",
+        "state": "ready_for_review",
+        "classification": "not_qualified",
+        "recommendation": "no_action",
+        "subject_creative_id": "creative-ae-001",
+        "brand_id": "AE-Bowery",
+        "sku_id": "AE-PENDANT-012",
+        "platform": "meta",
+        "grain": "creative",
+        "window_id": "creative-window",
+        "timezone": "America/New_York",
+        "attribution": "synthetic-draft-contract",
+        "rule_set_id": "performance-rules-strict-draft",
+        "rule_version": "1-draft",
+        "rule_mode": "strict",
+        "rule_status": "draft",
+        "criteria": [
+          { "criterion_id": "creative-win-roas", "metric": "roas", "window_id": "creative-window", "outcome": "fail", "observed_value": "4.2", "operator": "gt", "threshold": "6", "detail": "The selected DRAFT threshold was not met.", "source_ref": "synthetic://performance/ae-001" }
+        ],
+        "evidence_refs": ["synthetic://performance/ae-001"],
+        "observed_at": "2026-09-12T09:00:00+07:00"
+      }
+    },
+    {
+      "source_run_id": "creative-feedback-performance-unknown-synthetic-001",
+      "release": {
+        "release_id": "release-soxy-001",
+        "creative_job_id": "job-soxy-001",
+        "creative_id": "creative-soxy-001",
+        "creative_version_id": "creative-soxy-001-v1",
+        "current_version_id": "creative-soxy-001-v1",
+        "brand_id": "Soxyape",
+        "sku_id": "SOXY-SHIRT-001",
+        "idea_id": "idea-soxy-001",
+        "approval_ref": "synthetic://creative/approval/soxy-001-v1",
+        "approved_at": "2026-09-10T09:00:00+07:00"
+      },
+      "ad_mapping": {
+        "mapping_id": "mapping-soxy-001",
+        "status": "known",
+        "platform": "meta",
+        "account_id": "meta-soxyape",
+        "evidence_ref": "synthetic://ads/mapping/soxy-001",
+        "observed_at": "2026-09-12T09:00:00+07:00",
+        "mapped_version_id": "creative-soxy-001-v1",
+        "ad_id": "ad-soxy-001"
+      },
+      "performance": {
+        "performance_run_id": "performance-creative-unknown-synthetic-002",
+        "evaluation_id": "evaluation-creative-unknown-002",
+        "state": "needs_evidence",
+        "classification": "insufficient_evidence",
+        "recommendation": "wait_for_more_data",
+        "subject_creative_id": "creative-soxy-001",
+        "brand_id": "Soxyape",
+        "sku_id": "SOXY-SHIRT-001",
+        "platform": "meta",
+        "grain": "creative",
+        "window_id": "creative-window",
+        "timezone": "America/New_York",
+        "attribution": "synthetic-draft-contract",
+        "rule_set_id": "performance-rules-strict-draft",
+        "rule_version": "1-draft",
+        "rule_mode": "strict",
+        "rule_status": "draft",
+        "criteria": [
+          { "criterion_id": "creative-cost-atc", "metric": "cost_per_atc", "window_id": "creative-window", "outcome": "unknown", "observed_value": null, "operator": "lt", "threshold": "70", "detail": "ATC evidence is unavailable.", "source_ref": "synthetic://performance/soxy-001" }
+        ],
+        "evidence_refs": ["synthetic://performance/soxy-001"],
+        "observed_at": "2026-09-12T09:00:00+07:00"
+      }
+    },
+    {
+      "source_run_id": "creative-feedback-mapping-unknown-synthetic-001",
+      "release": {
+        "release_id": "release-hyper-001",
+        "creative_job_id": "job-hyper-001",
+        "creative_id": "creative-hyper-001",
+        "creative_version_id": "creative-hyper-001-v1",
+        "current_version_id": "creative-hyper-001-v1",
+        "brand_id": "Hyperfavor",
+        "sku_id": "HYPER-TEE-001",
+        "idea_id": "idea-hyper-001",
+        "approval_ref": "synthetic://creative/approval/hyper-001-v1",
+        "approved_at": "2026-09-10T09:00:00+07:00"
+      },
+      "ad_mapping": {
+        "mapping_id": "mapping-hyper-001",
+        "status": "unknown",
+        "platform": "meta",
+        "account_id": "meta-hyperfavor",
+        "observed_at": "2026-09-12T09:00:00+07:00"
+      },
+      "performance": {
+        "performance_run_id": "performance-hyper-001",
+        "evaluation_id": "evaluation-hyper-001",
+        "state": "ready_for_review",
+        "classification": "creative_win",
+        "recommendation": "retest_creative",
+        "subject_creative_id": "creative-hyper-001",
+        "brand_id": "Hyperfavor",
+        "sku_id": "HYPER-TEE-001",
+        "platform": "meta",
+        "grain": "creative",
+        "window_id": "creative-window",
+        "timezone": "America/New_York",
+        "attribution": "synthetic-draft-contract",
+        "rule_set_id": "performance-rules-strict-draft",
+        "rule_version": "1-draft",
+        "rule_mode": "strict",
+        "rule_status": "draft",
+        "criteria": [
+          { "criterion_id": "creative-win-roas", "metric": "roas", "window_id": "creative-window", "outcome": "pass", "observed_value": "6.7", "operator": "gt", "threshold": "6", "detail": "The metric passed, but version mapping is unavailable.", "source_ref": "synthetic://performance/hyper-001" }
+        ],
+        "evidence_refs": ["synthetic://performance/hyper-001"],
+        "observed_at": "2026-09-12T09:00:00+07:00"
+      }
+    },
+    {
+      "source_run_id": "creative-feedback-mapping-conflict-synthetic-001",
+      "release": {
+        "release_id": "release-pns-001",
+        "creative_job_id": "job-pns-001",
+        "creative_id": "creative-pns-001",
+        "creative_version_id": "creative-pns-001-v2",
+        "current_version_id": "creative-pns-001-v2",
+        "brand_id": "Pnstime",
+        "sku_id": "PNS-CLOCK-001",
+        "idea_id": "idea-pns-001",
+        "approval_ref": "synthetic://creative/approval/pns-001-v2",
+        "approved_at": "2026-09-10T09:00:00+07:00"
+      },
+      "ad_mapping": {
+        "mapping_id": "mapping-pns-001",
+        "status": "conflict",
+        "platform": "meta",
+        "account_id": "meta-pnstime",
+        "evidence_ref": "synthetic://ads/mapping/pns-conflict",
+        "observed_at": "2026-09-12T09:00:00+07:00",
+        "candidate_version_ids": ["creative-pns-001-v1", "creative-pns-001-v2"],
+        "ad_id": "ad-pns-001"
+      },
+      "performance": {
+        "performance_run_id": "performance-pns-001",
+        "evaluation_id": "evaluation-pns-001",
+        "state": "ready_for_review",
+        "classification": "creative_potential",
+        "recommendation": "retest_creative",
+        "subject_creative_id": "creative-pns-001",
+        "brand_id": "Pnstime",
+        "sku_id": "PNS-CLOCK-001",
+        "platform": "meta",
+        "grain": "creative",
+        "window_id": "creative-window",
+        "timezone": "America/New_York",
+        "attribution": "synthetic-draft-contract",
+        "rule_set_id": "performance-rules-strict-draft",
+        "rule_version": "1-draft",
+        "rule_mode": "strict",
+        "rule_status": "draft",
+        "criteria": [
+          { "criterion_id": "creative-potential-purchases", "metric": "purchases", "window_id": "creative-window", "outcome": "pass", "observed_value": "1", "operator": "gte", "threshold": "1", "detail": "A purchase was observed, but two versions are candidates.", "source_ref": "synthetic://performance/pns-001" }
+        ],
+        "evidence_refs": ["synthetic://performance/pns-001"],
+        "observed_at": "2026-09-12T09:00:00+07:00"
+      }
+    },
+    {
+      "source_run_id": "creative-feedback-historical-version-synthetic-001",
+      "release": {
+        "release_id": "release-demohome-001",
+        "creative_job_id": "job-demohome-001",
+        "creative_id": "creative-demohome-001",
+        "creative_version_id": "creative-demohome-001-v1",
+        "current_version_id": "creative-demohome-001-v3",
+        "brand_id": "DemoHome",
+        "sku_id": "DEMOHOME-SHELF-001",
+        "idea_id": "idea-demohome-001",
+        "approval_ref": "synthetic://creative/approval/demohome-001-v1",
+        "approved_at": "2026-09-05T09:00:00+07:00",
+        "creative_set_id": "set-demohome-001",
+        "variation_id": "variation-a"
+      },
+      "ad_mapping": {
+        "mapping_id": "mapping-demohome-001",
+        "status": "known",
+        "platform": "meta",
+        "account_id": "meta-demohome",
+        "evidence_ref": "synthetic://ads/mapping/demohome-001-v1",
+        "observed_at": "2026-09-12T09:00:00+07:00",
+        "mapped_version_id": "creative-demohome-001-v1",
+        "campaign_id": "campaign-demohome-001",
+        "ad_id": "ad-demohome-001"
+      },
+      "performance": {
+        "performance_run_id": "performance-demohome-historical-001",
+        "evaluation_id": "evaluation-demohome-historical-001",
+        "state": "ready_for_review",
+        "classification": "creative_win",
+        "recommendation": "retest_creative",
+        "subject_creative_id": "creative-demohome-001",
+        "subject_version_id": "creative-demohome-001-v1",
+        "brand_id": "DemoHome",
+        "sku_id": "DEMOHOME-SHELF-001",
+        "platform": "meta",
+        "grain": "creative",
+        "window_id": "creative-window",
+        "timezone": "America/New_York",
+        "attribution": "synthetic-draft-contract",
+        "rule_set_id": "performance-rules-strict-draft",
+        "rule_version": "1-draft",
+        "rule_mode": "strict",
+        "rule_status": "draft",
+        "criteria": [
+          { "criterion_id": "creative-win-roas", "metric": "roas", "window_id": "creative-window", "outcome": "pass", "observed_value": "6.9", "operator": "gt", "threshold": "6", "detail": "Late evidence belongs to version 1, not current version 3.", "source_ref": "synthetic://performance/demohome-001-v1" }
+        ],
+        "evidence_refs": ["synthetic://performance/demohome-001-v1"],
+        "observed_at": "2026-09-12T09:00:00+07:00"
+      }
+    },
+    {
+      "source_run_id": "creative-feedback-human-version-conflict-synthetic-001",
+      "release": {
+        "release_id": "release-rt-002",
+        "creative_job_id": "job-rt-002",
+        "creative_id": "creative-rt-002",
+        "creative_version_id": "creative-rt-002-v2",
+        "current_version_id": "creative-rt-002-v2",
+        "brand_id": "Roy-Timber",
+        "sku_id": "RT-TABLE-007",
+        "idea_id": "idea-rt-002",
+        "approval_ref": "synthetic://creative/approval/rt-002-v2",
+        "approved_at": "2026-09-10T09:00:00+07:00"
+      },
+      "ad_mapping": {
+        "mapping_id": "mapping-rt-002",
+        "status": "known",
+        "platform": "meta",
+        "account_id": "meta-roy-timber",
+        "evidence_ref": "synthetic://ads/mapping/rt-002",
+        "observed_at": "2026-09-12T09:00:00+07:00",
+        "mapped_version_id": "creative-rt-002-v2",
+        "ad_id": "ad-rt-002"
+      },
+      "performance": {
+        "performance_run_id": "performance-rt-002",
+        "evaluation_id": "evaluation-rt-002",
+        "state": "ready_for_review",
+        "classification": "creative_potential",
+        "recommendation": "retest_creative",
+        "subject_creative_id": "creative-rt-002",
+        "brand_id": "Roy-Timber",
+        "sku_id": "RT-TABLE-007",
+        "platform": "meta",
+        "grain": "creative",
+        "window_id": "creative-window",
+        "timezone": "America/New_York",
+        "attribution": "synthetic-draft-contract",
+        "rule_set_id": "performance-rules-strict-draft",
+        "rule_version": "1-draft",
+        "rule_mode": "strict",
+        "rule_status": "draft",
+        "criteria": [
+          { "criterion_id": "creative-potential-purchases", "metric": "purchases", "window_id": "creative-window", "outcome": "pass", "observed_value": "1", "operator": "gte", "threshold": "1", "detail": "A test signal was observed.", "source_ref": "synthetic://performance/rt-002" }
+        ],
+        "evidence_refs": ["synthetic://performance/rt-002"],
+        "observed_at": "2026-09-12T09:00:00+07:00"
+      },
+      "human_feedback": {
+        "feedback_id": "feedback-rt-002",
+        "status": "known",
+        "creative_version_id": "creative-rt-002-v1",
+        "decision": "rejected",
+        "issue_codes": ["visual_logic"],
+        "summary": "Synthetic feedback belongs to a different version.",
+        "source_ref": "synthetic://feedback/rt-002-v1",
+        "observed_at": "2026-09-10T10:00:00+07:00"
+      }
+    }
+  ]
+}

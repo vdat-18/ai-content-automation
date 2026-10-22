@@ -1,0 +1,54 @@
+services:
+  api:
+    command:
+      - uvicorn
+      - ai_content.entrypoints.api.app:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --reload
+    environment:
+      PYTHONPATH: /app/src
+    ports:
+      - "8000:8000"
+    volumes:
+      - ../src:/app/src:ro
+      - ../config:/app/config:ro
+
+  worker:
+    environment:
+      PYTHONPATH: /app/src
+    healthcheck:
+      timeout: 30s
+    volumes:
+      - ../src:/app/src:ro
+      - ../config:/app/config:ro
+
+  frontend:
+    build:
+      target: development
+    command:
+      - pnpm
+      - dev
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8080"
+    environment:
+      VITE_PROXY_TARGET: http://api:8000
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - >-
+          fetch('http://127.0.0.1:8080/health/ready')
+          .then(response => { if (!response.ok) process.exit(1) })
+          .catch(() => process.exit(1))
+    volumes:
+      - ../frontend:/app/frontend:ro
+      - frontend_node_modules:/app/frontend/node_modules
+
+volumes:
+  frontend_node_modules:

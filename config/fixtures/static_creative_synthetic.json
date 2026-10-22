@@ -1,0 +1,73 @@
+{
+  "source_run_id": "synthetic-static-creative-001",
+  "marketing_scope": {
+    "brand": "BrandX",
+    "market": "US"
+  },
+  "objective": "test",
+  "channel": "meta",
+  "time_window": "last_3",
+  "rubric_version": {
+    "id": "rubric-static-creative-qa",
+    "version": "1.0-draft"
+  },
+  "rule_version": {
+    "id": "rule-static-creative",
+    "version": "1.0-draft"
+  },
+  "prompt_version": {
+    "id": "prompt-static-creative-generation",
+    "version": "1.0-draft"
+  },
+  "policy_version": {
+    "id": "policy-static-creative",
+    "version": "1.0-draft"
+  },
+  "workflow_version": {
+    "id": "workflow-static-creative-generation",
+    "version": "1.0-draft"
+  },
+  "persona_override": null,
+  "creative_direction_override": null,
+  "campaign_notes": "Synthetic fixture for walking skeleton; contains no real data",
+  "manual_priority_weight": null,
+  "created_by": "synthetic-fixture",
+  "target_sku_set": [
+    {
+      "sku_id": "SKU-SYN-001",
+      "sku_name": "Synthetic Framed Wall Art",
+      "product_metadata": {
+        "image_refs": [
+          "../../fixtures/local_cases/sinlkicf133tbna/assets/product-black-1200.png",
+          "../../fixtures/local_cases/sinlkicf133tbna/assets/product-oak-1200.png"
+        ],
+        "price": "49.00",
+        "currency": "USD",
+        "offer": "Bundle two, save 10%",
+        "differentiators": ["Handcrafted frame", "Museum-grade glass"]
+      },
+      "creative_constraints": {
+        "format_constraints": {
+          "width": 1080,
+          "height": 1080,
+          "file_format": "png"
+        },
+        "brand_guideline_ref": "synthetic://guidelines/brandx-static-v1",
+        "banned_claims": ["cures", "guaranteed results"]
+      },
+      "customer_context": {
+        "pain_points": ["Bare rental walls", "Furniture-matching stress"],
+        "promises": ["Warm finished room", "One-piece upgrade"],
+        "target_stage": "consideration"
+      },
+      "historical_creative_context": {
+        "tested_angles": ["price-first", "room-makeover"],
+        "performance_notes": "Synthetic history; angle performance is fabricated"
+      },
+      "lead_feedback_context": {
+        "common_issues": ["logo too small"],
+        "recent_rejections": ["stock-photo background mismatch"]
+      }
+    }
+  ]
+}

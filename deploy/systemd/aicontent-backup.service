@@ -1,0 +1,17 @@
+[Unit]
+Description=AI Content verified PostgreSQL and object-storage backup
+Documentation=file:///opt/ai-content-automation/docs/BACKUP_RESTORE.md
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=aicontent
+Group=aicontent
+WorkingDirectory=/opt/ai-content-automation
+ExecStart=/usr/bin/env sh deploy/scripts/backup.sh
+TimeoutStartSec=infinity
+
+# Copy this unit to /etc/systemd/system and adjust User, Group and
+# WorkingDirectory for the deployment host before enabling the timer.

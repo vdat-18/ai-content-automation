@@ -1,0 +1,8 @@
+{
+  "model": "gemini/gemini-2.5-flash",
+  "base_url": "http://router.example.com:20128/v1",
+  "api_key_env": "ROUTER_API_KEY",
+  "prompt": "../prompts/performance/v1_analyze_opportunity.json",
+  "rubric_version": "performance-opportunity-rubric@1-draft",
+  "timeout_seconds": 60
+}

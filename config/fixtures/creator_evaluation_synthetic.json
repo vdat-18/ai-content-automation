@@ -1,0 +1,68 @@
+{
+  "source_run_id": "creator-evaluation-synthetic-001",
+  "candidate_id": "candidate-cmp-demohome-001-creator-001",
+  "policy_version": "draft-creator-policy-v1",
+  "campaign": {
+    "campaign_id": "cmp-demohome-001",
+    "brand_id": "DemoHome",
+    "store_id": "demohome-us",
+    "sku_id": "SP-SHELF-031",
+    "market": "United States",
+    "target_creators": 8,
+    "brief": "Synthetic home-styling campaign brief for offline evaluation only.",
+    "version": "brief-v1"
+  },
+  "creator": {
+    "creator_id": "creator-synthetic-001",
+    "source_platform": "synthetic-profile-source",
+    "source_creator_id": "profile-001",
+    "display_alias": "Demo Creator A"
+  },
+  "location_reference_store_id": "demohome-us",
+  "location_reference_version": "customer-location-snapshot-v1",
+  "evidence_packages": [
+    {
+      "package_id": "creator-package-public-v1",
+      "stage": "public_profile",
+      "facts": [
+        {"field_name":"creator_location","status":"known","value":"California, US","source_ref":"synthetic://profile/location","observed_at":"2026-09-12T09:00:00+07:00","supports_criterion":true},
+        {"field_name":"persona","status":"known","value":"Home styling creator","source_ref":"synthetic://profile/bio","observed_at":"2026-09-12T09:00:00+07:00","supports_criterion":true},
+        {"field_name":"audience","status":"unknown","value":null,"source_ref":null,"observed_at":"2026-09-12T09:00:00+07:00"},
+        {"field_name":"content_home_space","status":"known","value":"Source-backed home-space examples","source_ref":"synthetic://profile/content","observed_at":"2026-09-12T09:00:00+07:00","supports_criterion":true},
+        {"field_name":"product_fit","status":"known","value":"Shelf styling is shown in the fixture","source_ref":"synthetic://profile/content/3","observed_at":"2026-09-12T09:00:00+07:00","supports_criterion":true},
+        {"field_name":"rate","status":"unknown","value":null,"source_ref":null,"observed_at":"2026-09-12T09:00:00+07:00"},
+        {"field_name":"availability","status":"unknown","value":null,"source_ref":null,"observed_at":"2026-09-12T09:00:00+07:00"},
+        {"field_name":"usage_rights","status":"unknown","value":null,"source_ref":null,"observed_at":"2026-09-12T09:00:00+07:00"}
+      ]
+    },
+    {
+      "package_id": "creator-package-reply-v2",
+      "stage": "reply_evidence",
+      "facts": [
+        {"field_name":"creator_location","status":"known","value":"California, US","source_ref":"synthetic://profile/location","observed_at":"2026-09-12T10:00:00+07:00","supports_criterion":true},
+        {"field_name":"persona","status":"known","value":"Home styling creator","source_ref":"synthetic://profile/bio","observed_at":"2026-09-12T10:00:00+07:00","supports_criterion":true},
+        {"field_name":"audience","status":"known","value":"US-majority synthetic analytics","source_ref":"synthetic://reply/audience","observed_at":"2026-09-12T10:00:00+07:00","supports_criterion":true},
+        {"field_name":"content_home_space","status":"known","value":"Source-backed home-space examples","source_ref":"synthetic://profile/content","observed_at":"2026-09-12T10:00:00+07:00","supports_criterion":true},
+        {"field_name":"product_fit","status":"known","value":"Shelf styling is shown in the fixture","source_ref":"synthetic://profile/content/3","observed_at":"2026-09-12T10:00:00+07:00","supports_criterion":true},
+        {"field_name":"rate","status":"known","value":"250 USD","source_ref":"synthetic://reply/quote","observed_at":"2026-09-12T10:00:00+07:00","supports_criterion":true},
+        {"field_name":"availability","status":"known","value":"Within campaign window","source_ref":"synthetic://reply/availability","observed_at":"2026-09-12T10:00:00+07:00","supports_criterion":true},
+        {"field_name":"usage_rights","status":"known","value":"90-day paid usage proposed","source_ref":"synthetic://reply/rights","observed_at":"2026-09-12T10:00:00+07:00","supports_criterion":true}
+      ]
+    }
+  ],
+  "mapping_version": "draft-lark-mapping-v1",
+  "target_base_ref": "lark://unverified-creator-base",
+  "field_mapping": {
+    "creator_location": "creator_location",
+    "persona": "persona",
+    "audience": "audience_summary",
+    "rate": "quoted_rate",
+    "availability": "availability",
+    "usage_rights": "usage_rights"
+  },
+  "existing_record": {
+    "campaign_id": "cmp-demohome-001",
+    "creator_id": "creator-synthetic-001",
+    "persona": "Home styling creator"
+  }
+}

@@ -1,0 +1,267 @@
+{
+  "rule_sets": [
+    {
+      "rule_set_id": "performance-rules-strict-draft",
+      "version": "1-draft",
+      "status": "draft",
+      "mode": "strict",
+      "effective_at": "2026-09-01T00:00:00+07:00",
+      "rules": [
+        {
+          "rule_id": "product-strong-draft",
+          "subject_type": "product",
+          "classification": "product_strong_candidate",
+          "recommendation": "request_new_creative",
+          "required_passes": 2,
+          "criteria": [
+            { "criterion_id": "purchases-last-3", "metric": "purchases", "window_id": "last-3-draft", "operator": "gt", "threshold": 4 },
+            { "criterion_id": "purchases-last-6", "metric": "purchases", "window_id": "last-6-draft", "operator": "gt", "threshold": 4 }
+          ]
+        },
+        {
+          "rule_id": "product-potential-draft",
+          "subject_type": "product",
+          "classification": "product_potential_candidate",
+          "recommendation": "request_new_creative",
+          "required_passes": 3,
+          "criteria": [
+            { "criterion_id": "purchases-last-1", "metric": "purchases", "window_id": "last-1-draft", "operator": "gt", "threshold": 2 },
+            { "criterion_id": "purchases-last-3-potential", "metric": "purchases", "window_id": "last-3-draft", "operator": "gt", "threshold": 2 },
+            { "criterion_id": "aov-last-3", "metric": "aov", "window_id": "last-3-draft", "operator": "gt", "threshold": 2000 }
+          ]
+        },
+        {
+          "rule_id": "creative-win-draft",
+          "subject_type": "creative",
+          "classification": "creative_win",
+          "recommendation": "retest_creative",
+          "required_passes": 3,
+          "criteria": [
+            { "criterion_id": "creative-win-purchases", "metric": "purchases", "window_id": "creative-window", "operator": "gt", "threshold": 2 },
+            { "criterion_id": "creative-win-roas", "metric": "roas", "window_id": "creative-window", "operator": "gt", "threshold": 6 },
+            { "criterion_id": "creative-win-cost-atc", "metric": "cost_per_atc", "window_id": "creative-window", "operator": "lt", "threshold": 60 }
+          ]
+        },
+        {
+          "rule_id": "creative-potential-draft",
+          "subject_type": "creative",
+          "classification": "creative_potential",
+          "recommendation": "retest_creative",
+          "required_passes": 3,
+          "criteria": [
+            { "criterion_id": "creative-potential-purchases", "metric": "purchases", "window_id": "creative-window", "operator": "gte", "threshold": 1 },
+            { "criterion_id": "creative-potential-roas", "metric": "roas", "window_id": "creative-window", "operator": "gt", "threshold": 6 },
+            { "criterion_id": "creative-potential-cost-atc", "metric": "cost_per_atc", "window_id": "creative-window", "operator": "lt", "threshold": 70 }
+          ]
+        },
+        {
+          "rule_id": "angle-win-draft",
+          "subject_type": "angle",
+          "classification": "angle_win",
+          "recommendation": "request_new_creative",
+          "required_passes": 2,
+          "criteria": [
+            { "criterion_id": "angle-spend", "metric": "spend", "window_id": "angle-lifetime", "operator": "gte", "threshold": 2000 },
+            { "criterion_id": "angle-active-days", "metric": "active_days", "window_id": "angle-lifetime", "operator": "gte", "threshold": 7 }
+          ]
+        },
+        {
+          "rule_id": "concept-win-draft",
+          "subject_type": "concept",
+          "classification": "concept_win",
+          "recommendation": "request_new_creative",
+          "required_passes": 2,
+          "criteria": [
+            { "criterion_id": "concept-spend", "metric": "spend", "window_id": "concept-lifetime", "operator": "gte", "threshold": 6000 },
+            { "criterion_id": "concept-active-days", "metric": "active_days", "window_id": "concept-lifetime", "operator": "gte", "threshold": 30 }
+          ]
+        }
+      ]
+    },
+    {
+      "rule_set_id": "performance-rules-relaxed-draft",
+      "version": "1-draft-seasonal",
+      "status": "draft",
+      "mode": "relaxed",
+      "effective_at": "2026-09-01T00:00:00+07:00",
+      "rules": [
+        {
+          "rule_id": "creative-win-relaxed-draft",
+          "subject_type": "creative",
+          "classification": "creative_win",
+          "recommendation": "retest_creative",
+          "required_passes": 2,
+          "criteria": [
+            { "criterion_id": "creative-win-purchases", "metric": "purchases", "window_id": "creative-window", "operator": "gt", "threshold": 2 },
+            { "criterion_id": "creative-win-roas", "metric": "roas", "window_id": "creative-window", "operator": "gt", "threshold": 6 },
+            { "criterion_id": "creative-win-cost-atc", "metric": "cost_per_atc", "window_id": "creative-window", "operator": "lt", "threshold": 60 }
+          ]
+        }
+      ]
+    }
+  ],
+  "cases": [
+    {
+      "source_run_id": "performance-product-strong-synthetic-001",
+      "rule_set_ref": "performance-rules-strict-draft",
+      "snapshot": {
+        "snapshot_id": "snapshot-product-strong-001",
+        "subject": { "subject_type": "product", "subject_id": "RT-LAMP-042", "brand_id": "Roy-Timber", "store_id": "roy-timber-store", "sku_id": "RT-LAMP-042", "platform": "cross-channel" },
+        "objective": "Select a SKU for a new Creative direction",
+        "channel": "paid-social",
+        "timezone": "America/New_York",
+        "attribution": "synthetic-draft-contract",
+        "currency": "USD",
+        "source_version": "existing-performance-pipeline@synthetic-1",
+        "observed_at": "2026-09-12T09:00:00+07:00",
+        "metrics": [
+          { "name": "purchases", "window_id": "last-3-draft", "status": "known", "value": 7, "unit": "count", "source_ref": "synthetic://performance/product/strong/last3", "observed_at": "2026-09-12T09:00:00+07:00" },
+          { "name": "purchases", "window_id": "last-6-draft", "status": "known", "value": 11, "unit": "count", "source_ref": "synthetic://performance/product/strong/last6", "observed_at": "2026-09-12T09:00:00+07:00" },
+          { "name": "purchases", "window_id": "last-1-draft", "status": "known", "value": 3, "unit": "count", "source_ref": "synthetic://performance/product/strong/last1", "observed_at": "2026-09-12T09:00:00+07:00" },
+          { "name": "aov", "window_id": "last-3-draft", "status": "known", "value": 2200, "unit": "USD", "source_ref": "synthetic://performance/product/strong/aov", "observed_at": "2026-09-12T09:00:00+07:00" }
+        ]
+      }
+    },
+    {
+      "source_run_id": "performance-product-potential-synthetic-001",
+      "rule_set_ref": "performance-rules-strict-draft",
+      "snapshot": {
+        "snapshot_id": "snapshot-product-potential-001",
+        "subject": { "subject_type": "product", "subject_id": "ET-DESK-018", "brand_id": "DemoFurniture", "store_id": "demofurniture-store", "sku_id": "ET-DESK-018", "platform": "cross-channel" },
+        "objective": "Select a potential SKU for another Creative test",
+        "channel": "paid-social",
+        "timezone": "America/New_York",
+        "attribution": "synthetic-draft-contract",
+        "currency": "USD",
+        "source_version": "existing-performance-pipeline@synthetic-1",
+        "observed_at": "2026-09-12T09:00:00+07:00",
+        "metrics": [
+          { "name": "purchases", "window_id": "last-3-draft", "status": "known", "value": 3, "unit": "count", "source_ref": "synthetic://performance/product/potential/last3", "observed_at": "2026-09-12T09:00:00+07:00" },
+          { "name": "purchases", "window_id": "last-6-draft", "status": "known", "value": 3, "unit": "count", "source_ref": "synthetic://performance/product/potential/last6", "observed_at": "2026-09-12T09:00:00+07:00" },
+          { "name": "purchases", "window_id": "last-1-draft", "status": "known", "value": 3, "unit": "count", "source_ref": "synthetic://performance/product/potential/last1", "observed_at": "2026-09-12T09:00:00+07:00" },
+          { "name": "aov", "window_id": "last-3-draft", "status": "known", "value": 2400, "unit": "USD", "source_ref": "synthetic://performance/product/potential/aov", "observed_at": "2026-09-12T09:00:00+07:00" }
+        ]
+      }
+    },
+    {
+      "source_run_id": "performance-creative-win-synthetic-001",
+      "rule_set_ref": "performance-rules-strict-draft",
+      "snapshot": {
+        "snapshot_id": "snapshot-creative-win-001",
+        "subject": { "subject_type": "creative", "subject_id": "creative-rt-001", "brand_id": "Roy-Timber", "store_id": "roy-timber-store", "sku_id": "RT-LAMP-042", "platform": "meta", "creative_id": "creative-rt-001", "angle_id": "angle-rt-001", "concept_id": "concept-rt-001", "persona_id": "persona-rt-001", "raw_source_name": "Synthetic naming example" },
+        "objective": "Evaluate an exact Creative version",
+        "channel": "meta-ads",
+        "timezone": "America/New_York",
+        "attribution": "synthetic-draft-contract",
+        "currency": "USD",
+        "source_version": "existing-performance-pipeline@synthetic-1",
+        "observed_at": "2026-09-12T09:00:00+07:00",
+        "metrics": [
+          { "name": "purchases", "window_id": "creative-window", "status": "known", "value": 4, "unit": "count", "source_ref": "synthetic://performance/creative/win", "observed_at": "2026-09-12T09:00:00+07:00" },
+          { "name": "roas", "window_id": "creative-window", "status": "known", "value": 6.8, "unit": "ratio", "source_ref": "synthetic://performance/creative/win", "observed_at": "2026-09-12T09:00:00+07:00" },
+          { "name": "cost_per_atc", "window_id": "creative-window", "status": "known", "value": 52, "unit": "USD", "source_ref": "synthetic://performance/creative/win", "observed_at": "2026-09-12T09:00:00+07:00" }
+        ]
+      }
+    },
+    {
+      "source_run_id": "performance-creative-relaxed-synthetic-001",
+      "rule_set_ref": "performance-rules-relaxed-draft",
+      "snapshot": {
+        "snapshot_id": "snapshot-creative-relaxed-001",
+        "subject": { "subject_type": "creative", "subject_id": "creative-rt-002", "brand_id": "Roy-Timber", "store_id": "roy-timber-store", "sku_id": "RT-LAMP-042", "platform": "meta", "creative_id": "creative-rt-002" },
+        "objective": "Demonstrate an explicitly selected seasonal 2-of-3 mode",
+        "channel": "meta-ads",
+        "timezone": "America/New_York",
+        "attribution": "synthetic-draft-contract",
+        "currency": "USD",
+        "source_version": "existing-performance-pipeline@synthetic-1",
+        "observed_at": "2026-09-12T09:00:00+07:00",
+        "metrics": [
+          { "name": "purchases", "window_id": "creative-window", "status": "known", "value": 3, "unit": "count", "source_ref": "synthetic://performance/creative/relaxed", "observed_at": "2026-09-12T09:00:00+07:00" },
+          { "name": "roas", "window_id": "creative-window", "status": "known", "value": 6.5, "unit": "ratio", "source_ref": "synthetic://performance/creative/relaxed", "observed_at": "2026-09-12T09:00:00+07:00" },
+          { "name": "cost_per_atc", "window_id": "creative-window", "status": "known", "value": 64, "unit": "USD", "source_ref": "synthetic://performance/creative/relaxed", "observed_at": "2026-09-12T09:00:00+07:00" }
+        ]
+      }
+    },
+    {
+      "source_run_id": "performance-angle-win-synthetic-001",
+      "rule_set_ref": "performance-rules-strict-draft",
+      "snapshot": {
+        "snapshot_id": "snapshot-angle-win-001",
+        "subject": { "subject_type": "angle", "subject_id": "angle-rt-001", "brand_id": "Roy-Timber", "store_id": "roy-timber-store", "sku_id": "RT-LAMP-042", "platform": "meta", "angle_id": "angle-rt-001" },
+        "objective": "Evaluate an angle-level performance signal",
+        "channel": "meta-ads",
+        "timezone": "America/New_York",
+        "attribution": "synthetic-draft-contract",
+        "currency": "USD",
+        "source_version": "existing-performance-pipeline@synthetic-1",
+        "observed_at": "2026-09-12T09:00:00+07:00",
+        "metrics": [
+          { "name": "spend", "window_id": "angle-lifetime", "status": "known", "value": 2200, "unit": "USD", "source_ref": "synthetic://performance/angle/win", "observed_at": "2026-09-12T09:00:00+07:00" },
+          { "name": "active_days", "window_id": "angle-lifetime", "status": "known", "value": 9, "unit": "days", "source_ref": "synthetic://performance/angle/win", "observed_at": "2026-09-12T09:00:00+07:00" }
+        ]
+      }
+    },
+    {
+      "source_run_id": "performance-concept-not-qualified-synthetic-001",
+      "rule_set_ref": "performance-rules-strict-draft",
+      "snapshot": {
+        "snapshot_id": "snapshot-concept-not-qualified-001",
+        "subject": { "subject_type": "concept", "subject_id": "concept-rt-002", "brand_id": "Roy-Timber", "store_id": "roy-timber-store", "sku_id": "RT-LAMP-042", "platform": "meta", "concept_id": "concept-rt-002" },
+        "objective": "Withhold a concept-win label when active duration is too short",
+        "channel": "meta-ads",
+        "timezone": "America/New_York",
+        "attribution": "synthetic-draft-contract",
+        "currency": "USD",
+        "source_version": "existing-performance-pipeline@synthetic-1",
+        "observed_at": "2026-09-12T09:00:00+07:00",
+        "metrics": [
+          { "name": "spend", "window_id": "concept-lifetime", "status": "known", "value": 7200, "unit": "USD", "source_ref": "synthetic://performance/concept/short", "observed_at": "2026-09-12T09:00:00+07:00" },
+          { "name": "active_days", "window_id": "concept-lifetime", "status": "known", "value": 18, "unit": "days", "source_ref": "synthetic://performance/concept/short", "observed_at": "2026-09-12T09:00:00+07:00" }
+        ]
+      }
+    },
+    {
+      "source_run_id": "performance-creative-unknown-synthetic-001",
+      "rule_set_ref": "performance-rules-strict-draft",
+      "snapshot": {
+        "snapshot_id": "snapshot-creative-unknown-001",
+        "subject": { "subject_type": "creative", "subject_id": "creative-et-unknown", "brand_id": "DemoFurniture", "store_id": "demofurniture-store", "sku_id": "ET-DESK-018", "platform": "meta", "creative_id": "creative-et-unknown" },
+        "objective": "Keep cost per ATC unknown when ATC is zero",
+        "channel": "meta-ads",
+        "timezone": "America/New_York",
+        "attribution": "synthetic-draft-contract",
+        "currency": "USD",
+        "source_version": "existing-performance-pipeline@synthetic-1",
+        "observed_at": "2026-09-12T09:00:00+07:00",
+        "metrics": [
+          { "name": "purchases", "window_id": "creative-window", "status": "known", "value": 1, "unit": "count", "source_ref": "synthetic://performance/creative/unknown", "observed_at": "2026-09-12T09:00:00+07:00" },
+          { "name": "roas", "window_id": "creative-window", "status": "known", "value": 7, "unit": "ratio", "source_ref": "synthetic://performance/creative/unknown", "observed_at": "2026-09-12T09:00:00+07:00" },
+          { "name": "atc", "window_id": "creative-window", "status": "known", "value": 0, "unit": "count", "source_ref": "synthetic://performance/creative/unknown", "observed_at": "2026-09-12T09:00:00+07:00" },
+          { "name": "cost_per_atc", "window_id": "creative-window", "status": "unknown", "value": null, "unit": "USD", "source_ref": "synthetic://performance/creative/unknown", "observed_at": "2026-09-12T09:00:00+07:00" }
+        ]
+      }
+    },
+    {
+      "source_run_id": "performance-product-conflict-synthetic-001",
+      "rule_set_ref": "performance-rules-strict-draft",
+      "snapshot": {
+        "snapshot_id": "snapshot-product-conflict-001",
+        "subject": { "subject_type": "product", "subject_id": "AE-PENDANT-012", "brand_id": "AE-Bowery", "store_id": "ae-bowery-store", "sku_id": "AE-PENDANT-012", "platform": "cross-channel" },
+        "objective": "Block a decision when attributed purchase sources conflict",
+        "channel": "paid-social",
+        "timezone": "America/New_York",
+        "attribution": "unreconciled-synthetic-contract",
+        "currency": "USD",
+        "source_version": "existing-performance-pipeline@synthetic-1",
+        "observed_at": "2026-09-12T09:00:00+07:00",
+        "metrics": [
+          { "name": "purchases", "window_id": "last-3-draft", "status": "conflict", "value": null, "unit": "count", "source_ref": "synthetic://performance/product/conflict", "observed_at": "2026-09-12T09:00:00+07:00" },
+          { "name": "purchases", "window_id": "last-6-draft", "status": "known", "value": 8, "unit": "count", "source_ref": "synthetic://performance/product/conflict", "observed_at": "2026-09-12T09:00:00+07:00" },
+          { "name": "purchases", "window_id": "last-1-draft", "status": "known", "value": 3, "unit": "count", "source_ref": "synthetic://performance/product/conflict", "observed_at": "2026-09-12T09:00:00+07:00" },
+          { "name": "aov", "window_id": "last-3-draft", "status": "known", "value": 2300, "unit": "USD", "source_ref": "synthetic://performance/product/conflict", "observed_at": "2026-09-12T09:00:00+07:00" }
+        ]
+      }
+    }
+  ]
+}

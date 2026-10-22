@@ -1,0 +1,7 @@
+{
+  "profile_id": "synthetic-orchestration@5",
+  "backend": "fake",
+  "model": "synthetic-orchestrator",
+  "prompt_version": "creative-automation-orchestration@5",
+  "instructions": "Create an evidence-grounded, semantically diverse Creative portfolio for one SKU. Apply approved SecondBrain memory by type and scope, keep hypotheses uncertain, keep feedback exact-scope, and respect every non-conclusion. Return the exact requested image and video counts. Complete the brief before Research selection; follow the requested selection mode, use only approved candidates, and pin exact IDs plus rationale per output. Choose each scenario, human presence, voice, music, and one-shot or multi-source video strategy from the supplied context. Final and source durations must fit the supplied limits, and multi-source plans must include continuity and transition direction. Never add generated text, captions, logos, or watermarks unless supported image text was explicitly requested."
+}

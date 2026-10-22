@@ -1,0 +1,13 @@
+{
+  "name": "synthetic-m1",
+  "backend": "fake",
+  "model": "synthetic-preparation",
+  "idea_prompt": "../prompts/creative/v1_prepare_ideas.json",
+  "idea_critique_prompt": "../prompts/creative/v1_critique_ideas.json",
+  "brief_prompt": "../prompts/creative/v1_prepare_brief.json",
+  "brief_review_prompt": "../prompts/creative/v1_review_brief.json",
+  "composition_prompt": "../prompts/creative/v1_plan_static_composition.json",
+  "max_ideas": 1,
+  "max_brief_revisions": 1,
+  "selection_rule_version": "m1-strategy-selection@1-draft"
+}

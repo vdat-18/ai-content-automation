@@ -1,0 +1,12 @@
+{
+  "name": "local-media-lab-video-verifier",
+  "base_url": "http://video-verifier:8100",
+  "request_timeout_seconds": 900,
+  "max_video_bytes": 100000000,
+  "max_source_image_bytes": 24000000,
+  "verifier_version": "video-verifier-v1",
+  "max_total_source_image_bytes": 108000000,
+  "temporal_sampling_rate_fps": 2,
+  "temporal_max_frame_edge_pixels": 1280,
+  "temporal_jpeg_quality": 88
+}

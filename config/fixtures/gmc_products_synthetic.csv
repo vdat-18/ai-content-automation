@@ -1,0 +1,4 @@
+product_id,offer_id,title,description,link,image_link,availability,price,currency,sale_price,brand,google_product_category,custom_label_0,custom_label_1,custom_label_2,custom_label_3,custom_label_4
+gmc-lamp-001,offer-lamp-001,Alba Lamp,Desk lamp,https://example.invalid/products/alba,https://example.invalid/images/alba.jpg,in_stock,249.00,USD,,Roy Timber,Lamps,top,home,static,us,v1
+gmc-desk-002,offer-desk-002,Oak Desk,Workspace desk,https://example.invalid/products/oak,https://example.invalid/images/oak.jpg,in_stock,899.00,USD,799.00,ET Furniture,Desks,scale,workspace,static,us,v1
+gmc-unmapped-003,,Unmapped Product,No catalog match,https://example.invalid/products/unknown,https://example.invalid/images/unknown.jpg,,bad-price,USD,,Roy Timber,Lamps,,,,

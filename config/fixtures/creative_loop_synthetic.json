@@ -1,0 +1,29 @@
+{
+  "performance_fixture": "performance_decision_synthetic.json",
+  "intake_fixture": "creative_intake_synthetic.json",
+  "cases": [
+    {
+      "case_id": "creative-loop-happy-path",
+      "source_run_id": "creative-loop-synthetic-007-local-assets-smoke",
+      "initial_performance_source_run_id": "performance-product-strong-synthetic-001",
+      "context_snapshot_id": "ctx-ready",
+      "ads_outcome": {
+        "event_id": "ads-outcome-synthetic-001",
+        "platform": "meta",
+        "account_id": "meta-account-synthetic",
+        "campaign_id": "campaign-synthetic-001",
+        "adset_id": "adset-synthetic-001",
+        "ad_id": "ad-synthetic-001",
+        "window_id": "creative-window",
+        "timezone": "America/New_York",
+        "attribution": "synthetic-draft-contract",
+        "purchases": 4,
+        "roas": 6.8,
+        "cost_per_atc": 52,
+        "evidence_status": "known",
+        "mapping_status": "known",
+        "observed_at": "2026-09-13T15:00:00+07:00"
+      }
+    }
+  ]
+}

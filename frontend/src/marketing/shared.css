@@ -1,0 +1,68 @@
+.cross-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; margin: 18px 0; }
+.cross-list .panel { min-width: 0; }
+.cross-list h3 a { color: inherit; text-decoration: none; }
+.cross-list p, .cross-health p { color: var(--muted); line-height: 1.65; }
+.cross-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin: 16px 0; }
+.cross-actions button { max-width: 100%; white-space: normal; }
+.cross-summary { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+.cross-summary > a { padding: 18px; border: 1px solid var(--line); border-radius: 12px; color: inherit; text-decoration: none; background: var(--tint-violet-soft); }
+.cross-summary strong { display: block; font-size: 27px; margin: 12px 0; }
+.cross-summary small { font-size: var(--text-xs); font-weight: 400; }
+.cross-summary p { color: var(--muted); font-size: var(--text-xs); }
+.cross-health { padding: 16px 0; border-top: 1px solid var(--line); }
+.cross-policy, .cross-demo { margin-top: 24px; }
+.cross-prewrap { white-space: pre-wrap; line-height: 1.8; }
+.cross-policy input { width: 100%; }
+.cross-demo .panel-header { align-items: center; }
+.cross-list .compact-dl dd { overflow-wrap: anywhere; }
+.cross-muted { font-size: 13px; color: var(--muted); }
+.cross-stream-filter { min-width: 180px; }
+.cross-work h3 { margin: 15px 0; }
+.cross-list a { overflow-wrap: anywhere; }
+.workflow-stats { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+@media (max-width: 1100px) {
+  .cross-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 650px) {
+  .cross-list, .cross-summary { grid-template-columns: minmax(0, 1fr); }
+  .cross-demo .panel-header { align-items: stretch; flex-direction: column; }
+  .cross-policy .settings-form { grid-template-columns: minmax(0, 1fr); }
+}
+.table-creative .motion-poster { width: 43px; height: 38px; min-height: 38px; flex-shrink: 0; padding: 4px; gap: 0; }
+.table-creative .motion-poster strong, .table-creative .motion-poster span { display: none; }
+.cross-panel, .cross-list > .panel, .cross-policy > .panel, .cross-demo { padding: 20px; }
+.cross-panel { margin-bottom: 18px; }
+.cross-panel > label { display: grid; gap: 6px; min-width: 0; }
+.cross-panel > label select { width: 100%; min-width: 0; }
+@media (max-width: 650px) { .cross-panel, .cross-list > .panel, .cross-policy > .panel, .cross-demo { padding: 16px; } }
+.cross-approval-row { grid-template-columns: 38px minmax(0, 1fr) minmax(140px, auto) 20px; }
+.cross-approval-row .approval-type { color: var(--accent-navy); background: var(--tint-violet); }
+.approval-row--no-preview { grid-template-columns: 38px minmax(0, 1fr) minmax(56px, auto) minmax(108px, auto) 20px; }
+.approval-row-main { min-width: 0; overflow-wrap: anywhere; }
+.approval-row-main > div { flex-wrap: wrap; }
+.approval-row > .motion-poster { width: 76px; height: 66px; min-height: 66px; padding: 8px; gap: 0; }
+.approval-row > .motion-poster strong, .approval-row > .motion-poster span { display: none; }
+@media (max-width: 650px) {
+  .approval-row { grid-template-columns: 35px 54px minmax(0, 1fr) 18px; gap: 10px; padding: 12px; }
+  .approval-row > img, .approval-row > .motion-poster { width: 54px; height: 54px; min-height: 54px; }
+  .cross-approval-row, .approval-row--no-preview { grid-template-columns: 35px minmax(0, 1fr) 18px; }
+  .approval-row--preview { grid-template-columns: 35px 54px minmax(0, 1fr) 18px; }
+  .approval-row--preview > .approval-preview { width: 54px; height: 54px; }
+}
+
+/* Backend-only approval emphasis: the primary action is review, not inspection. */
+.approval-type--ready { color: #065f46; background: #d1fae5; }
+:root[data-theme="dark"] .approval-type--ready { color: #a7f3d0; background: rgba(16,185,129,0.16); }
+.approval-row--no-preview .approval-time strong { color: var(--accent-navy); }
+.approval-row--no-preview .approval-row-main code {
+  display: inline-flex;
+  max-width: 100%;
+  color: var(--muted);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 3px 7px;
+  margin-top: 8px;
+  font-size: var(--text-2xs);
+  overflow-wrap: anywhere;
+}

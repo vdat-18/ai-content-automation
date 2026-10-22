@@ -1,0 +1,9 @@
+# Static Creative Selection Rule
+# DRAFT - synthetic walking-skeleton configuration only.
+
+id: "rule-static-creative"
+version: "1.0-draft"
+status: "draft"
+
+selection:
+  mode: "synthetic"

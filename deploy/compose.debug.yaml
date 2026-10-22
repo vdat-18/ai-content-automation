@@ -1,0 +1,94 @@
+services:
+  rabbitmq:
+    ports:
+      - "${AIC_DEBUG_BIND_ADDRESS:-127.0.0.1}:${AIC_DEBUG_RABBITMQ_PORT:-5672}:5672"
+      - "${AIC_DEBUG_BIND_ADDRESS:-127.0.0.1}:${AIC_DEBUG_RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+
+  api:
+    ports:
+      - "${AIC_DEBUG_BIND_ADDRESS:-127.0.0.1}:${AIC_DEBUG_API_PORT:-8000}:8000"
+
+  worker:
+    ports:
+      - "${AIC_DEBUG_BIND_ADDRESS:-127.0.0.1}:${AIC_DEBUG_WORKER_METRICS_PORT:-9464}:9464"
+
+  object-storage:
+    ports:
+      - "${AIC_DEBUG_BIND_ADDRESS:-127.0.0.1}:${AIC_DEBUG_SEAWEED_S3_PORT:-8333}:8333"
+      - "${AIC_DEBUG_BIND_ADDRESS:-127.0.0.1}:${AIC_DEBUG_SEAWEED_MASTER_PORT:-9333}:9333"
+      - "${AIC_DEBUG_BIND_ADDRESS:-127.0.0.1}:${AIC_DEBUG_SEAWEED_FILER_PORT:-8888}:8888"
+
+  postgres:
+    ports:
+      - "${AIC_DEBUG_BIND_ADDRESS:-127.0.0.1}:${AIC_DEBUG_POSTGRES_PORT:-15432}:5432"
+
+  tempo:
+    ports:
+      - "${AIC_DEBUG_BIND_ADDRESS:-127.0.0.1}:${AIC_DEBUG_TEMPO_PORT:-3200}:3200"
+
+  otel-collector:
+    ports:
+      - "${AIC_DEBUG_BIND_ADDRESS:-127.0.0.1}:${AIC_DEBUG_OTEL_HEALTH_PORT:-13133}:13133"
+
+  alertmanager:
+    ports:
+      - "${AIC_DEBUG_BIND_ADDRESS:-127.0.0.1}:${AIC_DEBUG_ALERTMANAGER_PORT:-9093}:9093"
+
+  prometheus:
+    ports:
+      - "${AIC_DEBUG_BIND_ADDRESS:-127.0.0.1}:${AIC_DEBUG_PROMETHEUS_PORT:-9090}:9090"
+
+  langfuse-postgres:
+    ports:
+      - "${AIC_DEBUG_BIND_ADDRESS:-127.0.0.1}:${AIC_DEBUG_LANGFUSE_POSTGRES_PORT:-15433}:5432"
+
+  langfuse-clickhouse:
+    ports:
+      - "${AIC_DEBUG_BIND_ADDRESS:-127.0.0.1}:${AIC_DEBUG_CLICKHOUSE_HTTP_PORT:-8123}:8123"
+
+  langfuse-redis:
+    ports:
+      - "${AIC_DEBUG_BIND_ADDRESS:-127.0.0.1}:${AIC_DEBUG_REDIS_PORT:-16379}:6379"
+
+  langfuse-minio:
+    command: -c 'mkdir -p /data/langfuse && minio server --address ":9000" --console-address ":9001" /data'
+    ports:
+      - "${AIC_DEBUG_BIND_ADDRESS:-127.0.0.1}:${AIC_DEBUG_MINIO_API_PORT:-19000}:9000"
+      - "${AIC_DEBUG_BIND_ADDRESS:-127.0.0.1}:${AIC_DEBUG_MINIO_CONSOLE_PORT:-19001}:9001"
+
+  adminer:
+    image: adminer:5.4.1-standalone
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    ports:
+      - "${AIC_DEBUG_BIND_ADDRESS:-127.0.0.1}:${AIC_DEBUG_ADMINER_PORT:-8081}:8080"
+    networks:
+      - internal
+    depends_on:
+      postgres:
+        condition: service_healthy
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    profiles: [debug]
+
+  redisinsight:
+    image: redis/redisinsight:2.70.1
+    volumes:
+      - redisinsight_data:/data
+    ports:
+      - "${AIC_DEBUG_BIND_ADDRESS:-127.0.0.1}:${AIC_DEBUG_REDISINSIGHT_PORT:-5540}:5540"
+    networks:
+      - internal
+    depends_on:
+      langfuse-redis:
+        condition: service_healthy
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    restart: unless-stopped
+    profiles: [debug]
+
+volumes:
+  redisinsight_data:

@@ -1,0 +1,9 @@
+{
+  "model": "gemini/gemini-2.5-flash",
+  "base_url": "http://router.example.com:20128/v1",
+  "api_key_env": "ROUTER_API_KEY",
+  "diagnosis_prompt": "prompts/diagnose_ads_outcome.v1.json",
+  "synthesis_prompt": "prompts/synthesize_creative_lesson.v1.json",
+  "rubric_version": "performance-learning@1-draft",
+  "timeout_seconds": 60
+}

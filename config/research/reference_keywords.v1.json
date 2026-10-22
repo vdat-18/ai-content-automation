@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "brands": {
+    "DEMOFURN": [
+      "live edge furniture",
+      "wood wall art",
+      "console table",
+      "coffee table",
+      "dining table",
+      "tree bookshelf",
+      "bathroom vanity",
+      "wood bench",
+      "organic modern",
+      "mid century furniture",
+      "rustic furniture",
+      "sculptural decor",
+      "wood lighting",
+      "record player stand",
+      "vessel sink",
+      "entryway furniture"
+    ],
+    "DemoHome": [
+      "live edge table",
+      "rustic console table",
+      "tree bookshelf",
+      "floating shelf",
+      "floating vanity",
+      "coffee table",
+      "TV console",
+      "dining table",
+      "wood bench",
+      "tree coat rack",
+      "mid century furniture",
+      "organic furniture",
+      "rustic interior",
+      "handcrafted furniture",
+      "record player stand",
+      "bedroom furniture"
+    ]
+  }
+}

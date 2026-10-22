@@ -1,0 +1,10 @@
+# Static Creative Policy
+# DRAFT - not approved for production use.
+
+id: "policy-static-creative"
+version: "1.0-draft"
+status: "draft"
+
+banned_claims:
+  - "cures"
+  - "guaranteed results"

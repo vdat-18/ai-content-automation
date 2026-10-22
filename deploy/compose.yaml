@@ -1,0 +1,375 @@
+name: ai-content-automation
+
+x-python-environment: &python-environment
+  BAML_LOG: "OFF"
+  AIC_AI_CONFIG_DIR: /app/config
+  AIC_AI_PREPARATION_CONFIG: ${AIC_AI_PREPARATION_CONFIG:-/app/config/preparation/nine-router.example.json}
+  AIC_AI_ORCHESTRATION_CONFIG: ${AIC_AI_ORCHESTRATION_CONFIG:-/app/config/orchestration/nine-router.example.json}
+  AIC_AI_MANAGED_MEDIA_CONFIG: ${AIC_AI_MANAGED_MEDIA_CONFIG:-/app/config/managed_media/nine-router.example.json}
+  ROUTER_API_KEY: ${ROUTER_API_KEY:-}
+  GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+  IMAGE_API_KEY: ${IMAGE_API_KEY:-}
+  VIDEO_API_KEY: ${VIDEO_API_KEY:-}
+  JEV_API_KEY: ${JEV_API_KEY:-}
+  AIC_AI_DATA_ROOT: /var/lib/aicontent/pilot
+  AIC_AI_DATABASE_BACKEND: postgresql
+  AIC_AI_DATABASE_URL: >-
+    postgresql+psycopg://${AIC_POSTGRES_USER:?set AIC_POSTGRES_USER}:${AIC_POSTGRES_PASSWORD:?set AIC_POSTGRES_PASSWORD}@postgres:5432/${AIC_POSTGRES_DB:?set AIC_POSTGRES_DB}
+  AIC_AI_EXECUTION_BACKEND: celery
+  AIC_AI_CELERY_BROKER_URL: >-
+    amqp://${AIC_RABBITMQ_USER:?set AIC_RABBITMQ_USER}:${AIC_RABBITMQ_PASSWORD:?set AIC_RABBITMQ_PASSWORD}@rabbitmq:5672//
+  AIC_AI_CELERY_RETRY_DELAY_SECONDS: ${AIC_AI_CELERY_RETRY_DELAY_SECONDS:-5}
+  AIC_AI_CELERY_RETRY_POLL_INTERVAL_SECONDS: ${AIC_AI_CELERY_RETRY_POLL_INTERVAL_SECONDS:-60}
+  AIC_AI_CELERY_COMMAND_LEASE_SECONDS: ${AIC_AI_CELERY_COMMAND_LEASE_SECONDS:-120}
+  AIC_AI_CELERY_TASK_TIME_LIMIT_SECONDS: ${AIC_AI_CELERY_TASK_TIME_LIMIT_SECONDS:-3600}
+  AIC_AI_CREATIVE_AUTOMATION_MAX_CONCURRENCY: ${AIC_AI_CREATIVE_AUTOMATION_MAX_CONCURRENCY:-10}
+  AIC_AI_CREATIVE_AUTOMATION_ALLOW_CACHED_SHOPIFY_FALLBACK: ${AIC_AI_CREATIVE_AUTOMATION_ALLOW_CACHED_SHOPIFY_FALLBACK:-false}
+  AIC_AI_OUTBOX_POLL_INTERVAL_SECONDS: ${AIC_AI_OUTBOX_POLL_INTERVAL_SECONDS:-1}
+  AIC_AI_OUTBOX_BATCH_SIZE: ${AIC_AI_OUTBOX_BATCH_SIZE:-20}
+  AIC_AI_OUTBOX_LEASE_SECONDS: ${AIC_AI_OUTBOX_LEASE_SECONDS:-30}
+  AIC_AI_OUTBOX_RETRY_DELAY_SECONDS: ${AIC_AI_OUTBOX_RETRY_DELAY_SECONDS:-5}
+  AIC_AI_OBJECT_STORAGE_BACKEND: s3
+  AIC_AI_S3_ENDPOINT_URL: http://object-storage:8333
+  AIC_AI_S3_BUCKET: ${AIC_AI_S3_BUCKET:-aicontent-ai-artifacts}
+  AIC_AI_S3_ACCESS_KEY: ${AIC_AI_S3_ACCESS_KEY:?set AIC_AI_S3_ACCESS_KEY}
+  AIC_AI_S3_SECRET_KEY: ${AIC_AI_S3_SECRET_KEY:?set AIC_AI_S3_SECRET_KEY}
+  AIC_BACKUP_OFFSITE_ENABLED: ${AIC_BACKUP_OFFSITE_ENABLED:-false}
+  AIC_BACKUP_S3_ENDPOINT_URL: ${AIC_BACKUP_S3_ENDPOINT_URL:-}
+  AIC_BACKUP_S3_BUCKET: ${AIC_BACKUP_S3_BUCKET:-}
+  AIC_BACKUP_S3_ACCESS_KEY: ${AIC_BACKUP_S3_ACCESS_KEY:-}
+  AIC_BACKUP_S3_SECRET_KEY: ${AIC_BACKUP_S3_SECRET_KEY:-}
+  AIC_BACKUP_S3_REGION: ${AIC_BACKUP_S3_REGION:-us-east-1}
+  AIC_BACKUP_S3_PREFIX: ${AIC_BACKUP_S3_PREFIX:-aicontent-backups}
+  AIC_AI_DATA_SOURCES_CONFIG: ${AIC_AI_DATA_SOURCES_CONFIG:-}
+  AIC_AI_RESEARCH_SCREENING_CONFIG: ${AIC_AI_RESEARCH_SCREENING_CONFIG:-/app/config/research_screening/nine-router.example.json}
+  AIC_AI_DATA_SOURCE_TIMEOUT_SECONDS: ${AIC_AI_DATA_SOURCE_TIMEOUT_SECONDS:-60}
+  AIC_AI_RESEARCH_CRAWL_TIMEOUT_SECONDS: ${AIC_AI_RESEARCH_CRAWL_TIMEOUT_SECONDS:-300}
+  AIC_AI_JEV_API_URL: ${AIC_AI_JEV_API_URL:-}
+  AIC_AI_JEV_MODEL: ${AIC_AI_JEV_MODEL:-jev-latest}
+  AIC_AI_DATA_SOURCE_SYNC_INTERVAL_SECONDS: ${AIC_AI_DATA_SOURCE_SYNC_INTERVAL_SECONDS:-}
+  META_ACCESS_TOKEN_EXPIRES_AT: ${META_ACCESS_TOKEN_EXPIRES_AT:-}
+  GOOGLE_ADS_ACCESS_TOKEN_EXPIRES_AT: ${GOOGLE_ADS_ACCESS_TOKEN_EXPIRES_AT:-}
+  SHOPIFY_ACCESS_TOKEN_EXPIRES_AT: ${SHOPIFY_ACCESS_TOKEN_EXPIRES_AT:-}
+  SHOPIFY_ACCESS_TOKEN: ${SHOPIFY_ACCESS_TOKEN:-}
+  SHOPIFY_DEMOHOME_ACCESS_TOKEN: ${SHOPIFY_DEMOHOME_ACCESS_TOKEN:-}
+  SHOPIFY_DEMOFURN_ACCESS_TOKEN: ${SHOPIFY_DEMOFURN_ACCESS_TOKEN:-}
+  SHOPIFY_DEMOHOME_CLIENT_ID: ${SHOPIFY_DEMOHOME_CLIENT_ID:-}
+  SHOPIFY_DEMOHOME_CLIENT_SECRET: ${SHOPIFY_DEMOHOME_CLIENT_SECRET:-}
+  SHOPIFY_DEMOFURN_CLIENT_ID: ${SHOPIFY_DEMOFURN_CLIENT_ID:-}
+  SHOPIFY_DEMOFURN_CLIENT_SECRET: ${SHOPIFY_DEMOFURN_CLIENT_SECRET:-}
+  LARK_TENANT_ACCESS_TOKEN: ${LARK_TENANT_ACCESS_TOKEN:-}
+  LARK_APP_ID: ${LARK_APP_ID:-}
+  LARK_APP_SECRET: ${LARK_APP_SECRET:-}
+  GOOGLE_ACCESS_TOKEN: ${GOOGLE_ACCESS_TOKEN:-}
+  META_ACCESS_TOKEN: ${META_ACCESS_TOKEN:-}
+  GOOGLE_ADS_ACCESS_TOKEN: ${GOOGLE_ADS_ACCESS_TOKEN:-}
+  GOOGLE_ADS_CLIENT_ID: ${GOOGLE_ADS_CLIENT_ID:-}
+  GOOGLE_ADS_CLIENT_SECRET: ${GOOGLE_ADS_CLIENT_SECRET:-}
+  GOOGLE_ADS_REFRESH_TOKEN: ${GOOGLE_ADS_REFRESH_TOKEN:-}
+  GOOGLE_ADS_DEVELOPER_TOKEN: ${GOOGLE_ADS_DEVELOPER_TOKEN:-}
+  GOOGLE_ADS_LOGIN_CUSTOMER_ID: ${GOOGLE_ADS_LOGIN_CUSTOMER_ID:-}
+  PINTEREST_ACCESS_TOKEN: ${PINTEREST_ACCESS_TOKEN:-}
+  GOOGLE_MERCHANT_ACCESS_TOKEN: ${GOOGLE_MERCHANT_ACCESS_TOKEN:-}
+  KLAVIYO_API_KEY: ${KLAVIYO_API_KEY:-}
+
+x-python-service: &python-service
+  image: ai-content-automation-python:local
+  build:
+    context: ..
+    dockerfile: deploy/docker/api.Dockerfile
+    target: runtime
+  environment:
+    <<: *python-environment
+  networks:
+    - internal
+  init: true
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  rabbitmq:
+    image: rabbitmq:4.1.8-management@sha256:3563d3f2b5dfa3efbefd9c714f68c543856cde6f2f7cd939ccd700eb8081df99
+    environment:
+      RABBITMQ_DEFAULT_USER: ${AIC_RABBITMQ_USER:?set AIC_RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${AIC_RABBITMQ_PASSWORD:?set AIC_RABBITMQ_PASSWORD}
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 15s
+    restart: unless-stopped
+    stop_grace_period: 30s
+
+  object-storage:
+    image: chrislusf/seaweedfs:4.29@sha256:d47c7ee99fcb951351d7194915f4e3a5ea604a8e8871183d713907dec4fb9bf5
+    environment:
+      AWS_ACCESS_KEY_ID: ${AIC_AI_S3_ACCESS_KEY:?set AIC_AI_S3_ACCESS_KEY}
+      AWS_SECRET_ACCESS_KEY: ${AIC_AI_S3_SECRET_KEY:?set AIC_AI_S3_SECRET_KEY}
+      S3_BUCKET: ${AIC_AI_S3_BUCKET:-aicontent-ai-artifacts}
+    volumes:
+      - object_storage_data:/data
+    networks:
+      - internal
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - --quiet
+        - --output-document=-
+        - http://127.0.0.1:9333/cluster/status
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+    stop_grace_period: 30s
+
+  postgres:
+    image: postgres:17-bookworm
+    environment:
+      POSTGRES_DB: ${AIC_POSTGRES_DB:?set AIC_POSTGRES_DB}
+      POSTGRES_USER: ${AIC_POSTGRES_USER:?set AIC_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${AIC_POSTGRES_PASSWORD:?set AIC_POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "${AIC_POSTGRES_BIND_ADDRESS:-127.0.0.1}:5432:5432"
+    networks:
+      - internal
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+    stop_grace_period: 30s
+
+  migrate:
+    <<: *python-service
+    command:
+      - alembic
+      - upgrade
+      - head
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    <<: *python-service
+    environment:
+      <<: *python-environment
+      AIC_LEGACY_LOCAL_MODELS_ENABLED: ${AIC_LEGACY_LOCAL_MODELS_ENABLED:-false}
+      AIC_AI_MODEL_LAB_CONFIG: ${AIC_AI_MODEL_LAB_CONFIG:-}
+      MODEL_LAB_API_KEY: ${MODEL_LAB_API_KEY:-}
+      AIC_MEDIA_LAB_COMFYUI_URL: ${AIC_MEDIA_LAB_COMFYUI_URL:-}
+      AIC_MEDIA_LAB_IMAGE_COMFYUI_URL: ${AIC_MEDIA_LAB_IMAGE_COMFYUI_URL:-}
+      AIC_MEDIA_LAB_VIDEO_COMFYUI_URL: ${AIC_MEDIA_LAB_VIDEO_COMFYUI_URL:-}
+      AIC_MEDIA_LAB_IMAGE_RUNPOD_ENDPOINT_ID: ${AIC_MEDIA_LAB_IMAGE_RUNPOD_ENDPOINT_ID:-}
+      AIC_MEDIA_LAB_IMAGE_RUNPOD_API_KEY: ${AIC_MEDIA_LAB_IMAGE_RUNPOD_API_KEY:-}
+      AIC_MEDIA_LAB_VIDEO_RUNPOD_ENDPOINT_ID: ${AIC_MEDIA_LAB_VIDEO_RUNPOD_ENDPOINT_ID:-}
+      AIC_MEDIA_LAB_VIDEO_RUNPOD_API_KEY: ${AIC_MEDIA_LAB_VIDEO_RUNPOD_API_KEY:-}
+      AIC_MEDIA_LAB_VERIFIER_RUNPOD_ENDPOINT_ID: ${AIC_MEDIA_LAB_VERIFIER_RUNPOD_ENDPOINT_ID:-}
+      AIC_MEDIA_LAB_VERIFIER_RUNPOD_API_KEY: ${AIC_MEDIA_LAB_VERIFIER_RUNPOD_API_KEY:-}
+      AIC_MEDIA_LAB_ORCHESTRATOR_CONFIG: ${AIC_MEDIA_LAB_ORCHESTRATOR_CONFIG:-/app/config/media_lab/nine-router-image-orchestrator.example.json}
+      AIC_MEDIA_LAB_VIDEO_ORCHESTRATOR_CONFIG: ${AIC_MEDIA_LAB_VIDEO_ORCHESTRATOR_CONFIG:-/app/config/media_lab/nine-router-video-orchestrator.example.json}
+      AIC_MEDIA_LAB_VIDEO_VERIFIER_CONFIG: ${AIC_MEDIA_LAB_VIDEO_VERIFIER_CONFIG:-}
+    command:
+      - uvicorn
+      - ai_content.entrypoints.api.app:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+    expose:
+      - "8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      object-storage:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      outbox-publisher:
+        condition: service_healthy
+      worker:
+        condition: service_healthy
+    volumes:
+      - api_scratch:/var/lib/aicontent
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - >-
+          import urllib.request;
+          urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=3).read()
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    restart: unless-stopped
+    stop_grace_period: 30s
+
+  outbox-publisher:
+    <<: *python-service
+    command:
+      - python
+      - -m
+      - ai_content.entrypoints.outbox
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -m
+        - ai_content.entrypoints.outbox
+        - --once
+      interval: 15s
+      timeout: 45s
+      retries: 4
+      start_period: 10s
+    restart: unless-stopped
+    stop_grace_period: 30s
+
+  worker:
+    <<: *python-service
+    environment:
+      <<: *python-environment
+      PROMETHEUS_MULTIPROC_DIR: /tmp/aicontent-prometheus
+      AIC_AI_IMAGE_CONFIG: ${AIC_AI_IMAGE_CONFIG:-}
+      AIC_AI_PRODUCT_SEGMENTER_CONFIG: ${AIC_AI_PRODUCT_SEGMENTER_CONFIG:-}
+      AIC_AI_REVIEW_CONFIG: ${AIC_AI_REVIEW_CONFIG:-/app/config/reviewers/nine-router.example.json}
+      AIC_AI_LEARNING_CONFIG: ${AIC_AI_LEARNING_CONFIG:-/app/config/creative_feedback/nine-router.example.json}
+      AIC_AI_VIDEO_CONFIG: ${AIC_AI_VIDEO_CONFIG:-}
+      IMAGE_API_KEY: ${IMAGE_API_KEY:-}
+    command:
+      - celery
+      - -A
+      - ai_content.entrypoints.worker.celery_app:app
+      - worker
+      - --loglevel=INFO
+      - --queues=control
+      - --pool=threads
+      - --concurrency=${AIC_AI_CREATIVE_AUTOMATION_MAX_CONCURRENCY:-10}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+      object-storage:
+        condition: service_healthy
+    volumes:
+      - worker_scratch:/var/lib/aicontent
+      - ../fixtures:/app/fixtures:ro
+    tmpfs:
+      - /tmp/aicontent-prometheus:uid=10001,gid=10001,mode=0700
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          celery -A ai_content.entrypoints.worker.celery_app:app inspect ping --timeout=3
+          | grep -q pong
+      interval: 15s
+      timeout: 45s
+      retries: 4
+      start_period: 15s
+    restart: unless-stopped
+    stop_grace_period: 90s
+
+  frontend:
+    image: ai-content-automation-frontend:local
+    build:
+      context: ..
+      dockerfile: deploy/docker/frontend.Dockerfile
+      target: runtime
+      args:
+        VITE_ENABLE_LEGACY_LOCAL_MODELS: ${VITE_ENABLE_LEGACY_LOCAL_MODELS:-}
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${AIC_HTTP_PORT:-8080}:8080"
+    networks:
+      - internal
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test:
+        - CMD
+        - wget
+        - --quiet
+        - --output-document=-
+        - http://127.0.0.1:8080/health/ready
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    restart: unless-stopped
+    stop_grace_period: 15s
+
+  smoke:
+    <<: *python-service
+    command:
+      - python
+      - /app/deploy/scripts/smoke.py
+      - --base-url
+      - http://frontend:8080
+    depends_on:
+      frontend:
+        condition: service_healthy
+    profiles:
+      - tools
+
+  maintenance:
+    image: ai-content-automation-maintenance:local
+    build:
+      context: ..
+      dockerfile: deploy/docker/api.Dockerfile
+      target: maintenance
+    environment:
+      <<: *python-environment
+    entrypoint:
+      - python
+      - -m
+      - ai_content.entrypoints.backup
+    command:
+      - --help
+    networks:
+      - internal
+    init: true
+    security_opt:
+      - no-new-privileges:true
+    depends_on:
+      postgres:
+        condition: service_healthy
+      object-storage:
+        condition: service_healthy
+    volumes:
+      - ../.backups:/backups
+    profiles:
+      - tools
+
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  api_scratch:
+  object_storage_data:
+  postgres_data:
+  rabbitmq_data:
+  worker_scratch:

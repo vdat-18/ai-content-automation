@@ -1,0 +1,66 @@
+const { test } = require("node:test");
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+
+test("workflow monitor connects the unified Creative loop API and exact gates", () => {
+  const source = fs.readFileSync(path.resolve(__dirname, "../src/pages/Operations.tsx"), "utf8");
+  const api = fs.readFileSync(path.resolve(__dirname, "../src/services/pilotApi.ts"), "utf8");
+  assert.match(source, /Creative learning loop/);
+  assert.match(api, /\/api\/v1\/marketing\/creative-loops/);
+  assert.match(source, /demand-decision/);
+  assert.match(source, /creative-decision/);
+  assert.match(source, /awaiting_ads_outcome/);
+  assert.match(source, /waiting for a persisted Ads outcome from the Performance data pipeline/);
+  assert.doesNotMatch(source, /post\("ads-outcome"/);
+  assert.match(source, /lesson-decision/);
+  assert.match(api, /\/api\/v1\/execution\/commands/);
+  assert.match(source, /Execution history/);
+  assert.match(source, /AI is processing the next step/);
+  assert.match(source, /retryCommand/);
+  assert.match(source, /cancelCommand/);
+  assert.match(source, /initial_evaluation_id/);
+  assert.match(source, /lesson_id/);
+  assert.match(source, /Publishing and campaign mutation remain disabled/);
+  assert.match(source, /useSearchParams/);
+  assert.match(source, /params\.get\("loop"\)/);
+  assert.match(source, /payload\.items\.find\(\(item\) => item\.run_id === requestedRunId\)/);
+  assert.match(source, /loopStatePresentation/);
+  assert.match(source, /formatDate\(run.updated_at/);
+  assert.match(source, /loopWarning/);
+  assert.match(source, /Requested workflow is not available/);
+  assert.doesNotMatch(source, /const shortId =/);
+  assert.match(source, /Workflow details/);
+  assert.match(source, /workflow-progress-map/);
+  assert.match(source, /workflow-current/);
+  assert.match(source, /Execution history \(\{commands.length\}\)/);
+  assert.doesNotMatch(source, /\{step.reference && <code>/);
+  assert.match(source, /workflow-gate/);
+  assert.match(source, /Approve creative/);
+  assert.match(source, /flow\.business_stage/);
+  assert.match(source, /terminalStates/);
+  assert.match(source, /document\.visibilityState === "hidden"/);
+  assert.match(source, /activeCommandRef/);
+  assert.match(source, /role="status"/);
+  assert.doesNotMatch(source, /Queue exact Creative approval/);
+});
+
+test("Creative Production exposes auditable product image selection", () => {
+  const source = fs.readFileSync(path.resolve(__dirname, "../src/pages/Operations.tsx"), "utf8");
+  const types = fs.readFileSync(path.resolve(__dirname, "../src/types/pilotApi.ts"), "utf8");
+  const styles = fs.readFileSync(path.resolve(__dirname, "../src/styles.css"), "utf8");
+
+  assert.match(types, /media_selection_mode: "agent" \| "manual"/);
+  assert.match(source, /media_selection_mode: "manual"/);
+  assert.match(source, /brand_instructions: otherContext\.trim\(\) \|\| undefined/);
+  assert.doesNotMatch(source, /Agent chooses/);
+  assert.doesNotMatch(source, /I choose images/);
+  assert.doesNotMatch(source, /Featured image only/);
+  assert.match(source, /productMediaGroups\(selection\)/);
+  assert.match(source, /toggleProductMedia\(selection, media\.media_id\)/);
+  assert.match(source, /Select at least one image for this Variant/);
+  assert.doesNotMatch(source, /Selected images limit what the Agent may use/);
+  assert.match(source, /Shopify source used/);
+  assert.doesNotMatch(styles, /\.automation-media-mode \{/);
+  assert.match(styles, /\.automation-variant-media-group/);
+});
