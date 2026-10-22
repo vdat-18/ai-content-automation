@@ -7,242 +7,537 @@
       "knowledge_type": "hard_rule",
       "title": "Preserve the exact product identity",
       "content": "WHEN: Planning or reviewing any product image or video. DO: Use the selected Shopify Product and Variant media as product truth. Preserve the visible silhouette, structure, finish, material appearance, proportions, and identifying details. DO NOT: Add, remove, or relocate visible product parts. If a surface or structure is not shown by a source, treat it as unknown rather than verified.",
-      "applies_to": ["persona", "preparation", "orchestration", "review"],
-      "scope": {"niche_id": "Furniture", "task_type": "sku_to_output"},
+      "applies_to": [
+        "persona",
+        "preparation",
+        "orchestration",
+        "review"
+      ],
+      "scope": {
+        "task_type": "sku_to_output"
+      },
       "authority": "lead",
-      "source_refs": ["S01", "S02", "S03"],
-      "non_conclusions": ["A plausible unseen surface is not official product truth."]
+      "source_refs": [
+        "S01",
+        "S02",
+        "S03"
+      ],
+      "non_conclusions": [
+        "A plausible unseen surface is not official product truth."
+      ]
     },
     {
       "knowledge_id": "creative-v0-situational-persona",
       "knowledge_type": "practice",
       "title": "Describe the customer situation, not a stereotype",
       "content": "WHEN: A Creative Persona is needed. DO: Describe one concrete customer situation using the problem, desired change, buying trigger, objection, and useful proof. DO NOT: Invent demographics, customer research, or performance facts. EXAMPLE: Prefer 'a shopper trying to organize a crowded TV area' over 'women aged 25-35'.",
-      "applies_to": ["persona"],
-      "scope": {"task_type": "sku_to_output"},
+      "applies_to": [
+        "persona"
+      ],
+      "scope": {
+        "task_type": "sku_to_output"
+      },
       "authority": "team",
-      "source_refs": ["S01", "S02", "S10", "S11"],
-      "non_conclusions": ["A newly inferred persona is a Creative hypothesis, not verified customer research."]
+      "source_refs": [
+        "S01",
+        "S02",
+        "S10",
+        "S11"
+      ],
+      "non_conclusions": [
+        "A newly inferred persona is a Creative hypothesis, not verified customer research."
+      ]
     },
     {
       "knowledge_id": "creative-v0-feature-benefit-proof",
       "knowledge_type": "practice",
       "title": "Link verified features to supportable benefits",
       "content": "WHEN: Writing a Creative argument or choosing a visual demonstration. DO: Start with a feature verified by the selected product sources, state how the customer uses it, and describe only the resulting benefit that the evidence supports. Show only that supported benefit. DO NOT: Use generated water, impact, heat, or load scenes as proof of an unverified claim.",
-      "applies_to": ["preparation", "orchestration"],
-      "scope": {"task_type": "sku_to_output"},
+      "applies_to": [
+        "preparation",
+        "orchestration"
+      ],
+      "scope": {
+        "task_type": "sku_to_output"
+      },
       "authority": "team",
-      "source_refs": ["S01", "S02", "S10"],
-      "non_conclusions": ["Generated water, impact or heat demonstrations do not establish product claims."]
+      "source_refs": [
+        "S01",
+        "S02",
+        "S10"
+      ],
+      "non_conclusions": [
+        "Generated water, impact or heat demonstrations do not establish product claims."
+      ]
     },
     {
       "knowledge_id": "creative-v0-concept-hook-format",
       "knowledge_type": "practice",
       "title": "Keep concept, hook, and format separate",
       "content": "WHEN: Defining a Creative direction. DO: Define the concept as the customer situation and product argument; define the hook as what the viewer sees or hears first; define the format as the image or video treatment. DO NOT: Use a format label such as 'lifestyle video' as the complete concept. An offer is optional and requires current support.",
-      "applies_to": ["preparation", "orchestration", "review"],
-      "scope": {"task_type": "sku_to_output"},
+      "applies_to": [
+        "preparation",
+        "orchestration",
+        "review"
+      ],
+      "scope": {
+        "task_type": "sku_to_output"
+      },
       "authority": "team",
-      "source_refs": ["S02", "S06", "S07", "S10"],
-      "non_conclusions": ["An offer is optional and must be current and supported."]
+      "source_refs": [
+        "S02",
+        "S06",
+        "S07",
+        "S10"
+      ],
+      "non_conclusions": [
+        "An offer is optional and must be current and supported."
+      ]
     },
     {
       "knowledge_id": "creative-v0-opening-payoff",
       "knowledge_type": "practice",
       "title": "Make the opening and payoff tell one story",
       "content": "WHEN: Writing a hook, storyboard, or scene plan. DO: Make the opening establish the same situation or promise that the later product benefit resolves. DO NOT: Introduce one problem and then abandon it for unrelated beauty shots. Product-first and problem-first openings are both acceptable when the payoff stays coherent.",
-      "applies_to": ["preparation", "orchestration"],
-      "scope": {"task_type": "sku_to_output"},
+      "applies_to": [
+        "preparation",
+        "orchestration"
+      ],
+      "scope": {
+        "task_type": "sku_to_output"
+      },
       "authority": "team",
-      "source_refs": ["S01", "S04", "S07"],
-      "non_conclusions": ["Product-first and problem-first openings are both valid when coherent."]
+      "source_refs": [
+        "S01",
+        "S04",
+        "S07"
+      ],
+      "non_conclusions": [
+        "Product-first and problem-first openings are both valid when coherent."
+      ]
     },
     {
       "knowledge_id": "creative-v0-image-set-roles",
       "knowledge_type": "practice",
       "title": "Assign one clear role to each image",
       "content": "WHEN: Planning more than one image for the same Variant. DO: Keep product truth and shared direction consistent, then give every image a distinct job such as hero, room context, supported feature, detail, or use situation. DO NOT: Return near-duplicate compositions or treat example image counts as quotas.",
-      "applies_to": ["preparation"],
-      "scope": {"asset_type": "image", "task_type": "sku_to_output"},
+      "applies_to": [
+        "preparation"
+      ],
+      "scope": {
+        "asset_type": "image",
+        "task_type": "sku_to_output"
+      },
       "authority": "team",
-      "source_refs": ["S02", "S05", "S11"],
-      "non_conclusions": ["Template layout families and output counts are optional, not quotas."]
+      "source_refs": [
+        "S02",
+        "S05",
+        "S11"
+      ],
+      "non_conclusions": [
+        "Template layout families and output counts are optional, not quotas."
+      ]
     },
     {
       "knowledge_id": "creative-v0-shot-purpose",
       "knowledge_type": "practice",
       "title": "Give every video shot a purpose",
       "content": "WHEN: Planning a video. DO: Assign each shot one explicit purpose such as context, problem, function, detail, proof, transition, or final hero; then choose framing and motion that serve that purpose. DO NOT: Add motion only for visual activity or impose a fixed shot count.",
-      "applies_to": ["preparation"],
-      "scope": {"asset_type": "video", "task_type": "sku_to_output"},
+      "applies_to": [
+        "preparation"
+      ],
+      "scope": {
+        "asset_type": "video",
+        "task_type": "sku_to_output"
+      },
       "authority": "team",
-      "source_refs": ["S01", "S04", "S09"],
-      "non_conclusions": ["This does not ban dynamic motion or impose a shot count."]
+      "source_refs": [
+        "S01",
+        "S04",
+        "S09"
+      ],
+      "non_conclusions": [
+        "This does not ban dynamic motion or impose a shot count."
+      ]
     },
     {
       "knowledge_id": "creative-v0-continuity",
       "knowledge_type": "qa_check",
       "title": "Check continuity across shots and modalities",
       "content": "WHEN: Planning or reviewing a multi-shot or multimodal Creative. DO: Keep product geometry, color, scale, room layout, recurring people, text, and spoken message consistent from one shot to the next. DO NOT: Let a new camera angle invent product geometry that no approved source shows.",
-      "applies_to": ["preparation", "orchestration"],
-      "scope": {"task_type": "sku_to_output"},
+      "applies_to": [
+        "preparation",
+        "orchestration"
+      ],
+      "scope": {
+        "task_type": "sku_to_output"
+      },
       "authority": "team",
-      "source_refs": ["S01", "S02", "S04"],
-      "non_conclusions": ["A new camera angle does not prove unseen product geometry."]
+      "source_refs": [
+        "S01",
+        "S02",
+        "S04"
+      ],
+      "non_conclusions": [
+        "A new camera angle does not prove unseen product geometry."
+      ]
     },
     {
       "knowledge_id": "creative-v0-selective-product-preparation",
       "knowledge_type": "practice",
       "title": "Prepare a simpler product base only when necessary",
       "content": "WHEN: An authorized generative route cannot reliably place a complex product from the available source views. DO: Consider a simpler reviewed candidate base before adding room context or complex motion. DO NOT: Treat that generated base as product evidence or redraw a product on an exact-source route.",
-      "applies_to": ["preparation", "orchestration"],
-      "scope": {"niche_id": "Furniture", "task_type": "sku_to_output"},
+      "applies_to": [
+        "preparation",
+        "orchestration"
+      ],
+      "scope": {
+        "task_type": "sku_to_output"
+      },
       "authority": "team",
-      "source_refs": ["S01", "S03"],
-      "non_conclusions": ["A generated base is not product evidence and exact-source routes must not redraw products."]
+      "source_refs": [
+        "S01",
+        "S03"
+      ],
+      "non_conclusions": [
+        "A generated base is not product evidence and exact-source routes must not redraw products."
+      ]
     },
     {
       "knowledge_id": "creative-v0-focused-revision",
       "knowledge_type": "practice",
       "title": "Revise the smallest meaningful part",
       "content": "WHEN: Human feedback requests another version. DO: State which accepted elements must remain unchanged, identify the smallest image, shot, copy, or concept component that must change, and revise only that component when the tools allow it. DO NOT: Restart unrelated parts or assume unlimited paid retries.",
-      "applies_to": ["preparation", "orchestration", "revision"],
-      "scope": {"task_type": "sku_to_output"},
+      "applies_to": [
+        "preparation",
+        "orchestration",
+        "revision"
+      ],
+      "scope": {
+        "task_type": "sku_to_output"
+      },
       "authority": "team",
-      "source_refs": ["S01", "S03", "S04"],
-      "non_conclusions": ["This does not authorize unlimited paid retries."]
+      "source_refs": [
+        "S01",
+        "S03",
+        "S04"
+      ],
+      "non_conclusions": [
+        "This does not authorize unlimited paid retries."
+      ]
     },
     {
       "knowledge_id": "creative-v0-deliberate-variation",
       "knowledge_type": "practice",
       "title": "Make every variation test one deliberate difference",
       "content": "WHEN: Producing multiple variations. DO: State what each variation changes, why that change matters, and which unrelated elements should remain stable. DO NOT: Create variations that differ only by vague wording or copy historical output counts as universal rules.",
-      "applies_to": ["preparation"],
-      "scope": {"task_type": "sku_to_output"},
+      "applies_to": [
+        "preparation"
+      ],
+      "scope": {
+        "task_type": "sku_to_output"
+      },
       "authority": "team",
-      "source_refs": ["S01", "S02", "S03"],
-      "non_conclusions": ["Historical angle, hook, image and job counts are not global quotas."]
+      "source_refs": [
+        "S01",
+        "S02",
+        "S03"
+      ],
+      "non_conclusions": [
+        "Historical angle, hook, image and job counts are not global quotas."
+      ]
     },
     {
       "knowledge_id": "creative-v0-review-vs-performance",
       "knowledge_type": "hard_rule",
       "title": "Do not confuse Creative approval with Ads performance",
       "content": "WHEN: Interpreting a review or performance claim. DO: Treat human approval as acceptance of one exact Creative version. Require exact asset-to-ad lineage, metric window, objective, attribution basis, and known confounds before describing Ads effectiveness. DO NOT: Call an asset a winner from CTR alone, a folder-level result, or one anomalous conversion.",
-      "applies_to": ["performance", "learning"],
-      "scope": {"task_type": "sku_to_output"},
+      "applies_to": [
+        "performance",
+        "learning"
+      ],
+      "scope": {
+        "task_type": "sku_to_output"
+      },
       "authority": "lead",
-      "source_refs": ["S01", "S02", "S03", "S04"],
-      "non_conclusions": ["CTR, folder-level outcomes or one anomalous conversion do not prove a winning asset."]
+      "source_refs": [
+        "S01",
+        "S02",
+        "S03",
+        "S04"
+      ],
+      "non_conclusions": [
+        "CTR, folder-level outcomes or one anomalous conversion do not prove a winning asset."
+      ]
     },
     {
       "knowledge_id": "creative-v0-pattern-not-facts",
       "knowledge_type": "hard_rule",
       "title": "Transfer Creative patterns, never another SKU's facts",
       "content": "WHEN: Reusing a reference, lesson, or previous Creative from another SKU. DO: Transfer only an applicable situation, hook mechanism, composition, or production technique. Rebuild product facts, offers, claims, prices, and testimonials from the selected SKU's approved sources. DO NOT: Copy factual statements merely because the previous product looks similar.",
-      "applies_to": ["orchestration", "review"],
-      "scope": {"task_type": "sku_to_output"},
+      "applies_to": [
+        "orchestration",
+        "review"
+      ],
+      "scope": {
+        "task_type": "sku_to_output"
+      },
       "authority": "lead",
-      "source_refs": ["S01", "S02", "S05", "S11"],
-      "non_conclusions": ["An exact SKU match in historical Creative is not required to create a grounded new concept."]
+      "source_refs": [
+        "S01",
+        "S02",
+        "S05",
+        "S11"
+      ],
+      "non_conclusions": [
+        "An exact SKU match in historical Creative is not required to create a grounded new concept."
+      ]
     },
     {
       "knowledge_id": "creative-v0-human-settings-and-capabilities",
       "knowledge_type": "hard_rule",
       "title": "Honor human settings and current provider capabilities",
       "content": "WHEN: Preparing or executing an output plan. DO: Treat the human-selected text mode, duration, output profile, and verified active-model capabilities as binding constraints. Use historical documents only as Creative guidance. DO NOT: Override current settings with old durations, overlay lengths, logo practices, provider names, or capabilities.",
-      "applies_to": ["orchestration"],
-      "scope": {"task_type": "sku_to_output"},
+      "applies_to": [
+        "orchestration"
+      ],
+      "scope": {
+        "task_type": "sku_to_output"
+      },
       "authority": "lead",
-      "source_refs": ["S02", "S07", "S09", "S10", "S11"],
-      "non_conclusions": ["Historical overlay lengths, durations, logo use and provider names are not current capability facts."]
-    },
-    {
-      "knowledge_id": "creative-v0-demofurn-brand-treatment",
-      "knowledge_type": "hypothesis",
-      "title": "Keep DEMOFURN brand treatment separate from product truth",
-      "content": "WHEN: Branding is requested for an DEMOFURN Creative. DO: Use only confirmed DEMOFURN brand assets, clear-space guidance, and typography direction supplied for the job. Treat this as a working brand-treatment hypothesis where source labels conflict. DO NOT: Use brand presentation as proof of a SKU's material, sustainability, construction, or other product claim.",
-      "applies_to": ["orchestration"],
-      "scope": {"brand_id": "DEMOFURN", "task_type": "sku_to_output"},
-      "authority": "team",
-      "source_refs": ["S12"],
-      "non_conclusions": ["Exact palette tokens remain unresolved because the inspected source labels conflict."]
+      "source_refs": [
+        "S02",
+        "S07",
+        "S09",
+        "S10",
+        "S11"
+      ],
+      "non_conclusions": [
+        "Historical overlay lengths, durations, logo use and provider names are not current capability facts."
+      ]
     },
     {
       "knowledge_id": "creative-v0-feedback-learning",
       "knowledge_type": "practice",
       "title": "Apply local feedback locally before proposing a reusable lesson",
       "content": "WHEN: Human feedback is recorded for an output. DO: Apply the exact comment to the current revision within its pinned product and media scope. If the idea may be reusable, create a separate lesson proposal with sources, scope, limits, and counterexamples for human review. DO NOT: Turn one preference or positive review into a team rule or performance fact.",
-      "applies_to": ["revision"],
-      "scope": {"task_type": "sku_to_output"},
+      "applies_to": [
+        "revision"
+      ],
+      "scope": {
+        "task_type": "sku_to_output"
+      },
       "authority": "team",
-      "source_refs": ["S01", "S03", "S04"],
-      "non_conclusions": ["A local preference or positive review does not automatically become a team rule or performance fact."]
+      "source_refs": [
+        "S01",
+        "S03",
+        "S04"
+      ],
+      "non_conclusions": [
+        "A local preference or positive review does not automatically become a team rule or performance fact."
+      ]
     },
     {
       "knowledge_id": "creative-v0-sop-context",
       "knowledge_type": "practice",
       "title": "SOP: Assemble only relevant Creative context",
       "content": "WHEN: Preparing context for one SKU. DO: Start with the exact selected Product or Variant and the human request; then add only approved brand, category, historical, and feedback knowledge whose scope matches. Preserve every source reference and uncertainty. DO NOT: Import unrelated product facts or require a live Lark lookup to complete the run.",
-      "applies_to": ["persona", "preparation", "orchestration"],
-      "scope": {"task_type": "sku_to_output"},
+      "applies_to": [
+        "persona",
+        "preparation",
+        "orchestration"
+      ],
+      "scope": {
+        "task_type": "sku_to_output"
+      },
       "authority": "team",
-      "source_refs": ["S01", "S02", "S03", "S11"],
-      "non_conclusions": ["Lark is not a required runtime dependency and no fixed keyword fallback ladder is prescribed."]
+      "source_refs": [
+        "S01",
+        "S02",
+        "S03",
+        "S11"
+      ],
+      "non_conclusions": [
+        "Lark is not a required runtime dependency and no fixed keyword fallback ladder is prescribed."
+      ]
     },
     {
       "knowledge_id": "creative-v0-sop-image-brief",
       "knowledge_type": "practice",
       "title": "SOP: Write an executable image brief",
       "content": "WHEN: Preparing an image output. DO: Specify the image's role, composition, focal hierarchy, product position and scale, viewpoint, setting, lighting, palette, human presence, approved text and logo treatment, product locks, and negative constraints. DO NOT: Leave another strategy-writing step for production or copy facts from an old template.",
-      "applies_to": ["orchestration"],
-      "scope": {"asset_type": "image", "task_type": "sku_to_output"},
+      "applies_to": [
+        "orchestration"
+      ],
+      "scope": {
+        "asset_type": "image",
+        "task_type": "sku_to_output"
+      },
       "authority": "team",
-      "source_refs": ["S02", "S05", "S11"],
-      "non_conclusions": ["This SOP does not require a fixed image count, text layer or provider."]
+      "source_refs": [
+        "S02",
+        "S05",
+        "S11"
+      ],
+      "non_conclusions": [
+        "This SOP does not require a fixed image count, text layer or provider."
+      ]
     },
     {
       "knowledge_id": "creative-v0-sop-video-plan",
       "knowledge_type": "practice",
       "title": "SOP: Write a duration-aware video plan",
       "content": "WHEN: Preparing a video output. DO: Define one coherent promise, give every shot a purpose, preserve continuity, and make scene durations add up to the requested final duration within verified model limits. Use multiple source clips only when the final duration exceeds one supported source duration, and specify transitions and trims. DO NOT: Assume every provider supports every duration or assembly feature.",
-      "applies_to": ["orchestration"],
-      "scope": {"asset_type": "video", "task_type": "sku_to_output"},
+      "applies_to": [
+        "orchestration"
+      ],
+      "scope": {
+        "asset_type": "video",
+        "task_type": "sku_to_output"
+      },
       "authority": "team",
-      "source_refs": ["S01", "S04", "S08", "S09", "S10", "S11"],
-      "non_conclusions": ["The Dashboard's 1-30 second requirement does not prove that every provider supports every duration or assembly feature."]
+      "source_refs": [
+        "S01",
+        "S04",
+        "S08",
+        "S09",
+        "S10",
+        "S11"
+      ],
+      "non_conclusions": [
+        "The Dashboard's 1-30 second requirement does not prove that every provider supports every duration or assembly feature."
+      ]
     },
     {
       "knowledge_id": "creative-v0-sop-references",
       "knowledge_type": "practice",
       "title": "SOP: Give every reference one explicit role",
       "content": "WHEN: Selecting or applying references. DO: Label Shopify media as product truth, Research media as mood or execution inspiration, and previous outputs as review history. Use Research only for applicable layout, framing, lighting, palette, or Creative pattern. DO NOT: Copy a reference's product, logo, advertiser, text, offer, or claim into the selected SKU.",
-      "applies_to": ["orchestration"],
-      "scope": {"niche_id": "Furniture", "task_type": "sku_to_output"},
+      "applies_to": [
+        "orchestration"
+      ],
+      "scope": {
+        "task_type": "sku_to_output"
+      },
       "authority": "team",
-      "source_refs": ["S01", "S03"],
-      "non_conclusions": ["A candidate base does not establish missing product geometry."]
+      "source_refs": [
+        "S01",
+        "S03"
+      ],
+      "non_conclusions": [
+        "A candidate base does not establish missing product geometry."
+      ]
     },
     {
       "knowledge_id": "creative-v0-sop-human-review",
       "knowledge_type": "practice",
       "title": "SOP: Review fidelity, message, and requested settings",
       "content": "WHEN: A human reviews an image or video. DO: Check exact product fidelity, supported function, message clarity, and compliance with requested settings. Record what passes, what fails, and the smallest meaningful correction. DO NOT: Treat Creative acceptance as Ads activation, performance proof, or approval of a reusable team rule.",
-      "applies_to": ["review"],
-      "scope": {"task_type": "sku_to_output"},
+      "applies_to": [
+        "review"
+      ],
+      "scope": {
+        "task_type": "sku_to_output"
+      },
       "authority": "team",
-      "source_refs": ["S01", "S03", "S04"],
-      "non_conclusions": ["Creative acceptance is separate from Ads activation and team-rule promotion."]
+      "source_refs": [
+        "S01",
+        "S03",
+        "S04"
+      ],
+      "non_conclusions": [
+        "Creative acceptance is separate from Ads activation and team-rule promotion."
+      ]
     },
     {
       "knowledge_id": "creative-v0-sop-learning-proposal",
       "knowledge_type": "practice",
       "title": "SOP: Turn feedback into a reviewable lesson proposal",
       "content": "WHEN: A human chooses to generalize feedback. DO: Preserve the exact observation, separate observed facts from inferred causes, define where the lesson applies, compare it with existing knowledge, and include limits or counterexamples. Publish it only as a proposal until a human approves that exact version. DO NOT: Use metadata alone as proof that the lesson is broadly valid.",
-      "applies_to": ["learning"],
-      "scope": {"task_type": "sku_to_output"},
+      "applies_to": [
+        "learning"
+      ],
+      "scope": {
+        "task_type": "sku_to_output"
+      },
       "authority": "team",
-      "source_refs": ["S01", "S03", "S04"],
-      "non_conclusions": ["Metadata supports audit and scope; it does not replace LLM orchestration with keyword rules."]
+      "source_refs": [
+        "S01",
+        "S03",
+        "S04"
+      ],
+      "non_conclusions": [
+        "Metadata supports audit and scope; it does not replace LLM orchestration with keyword rules."
+      ]
+    },
+    {
+      "knowledge_id": "creative-v3-brand-aurasleep",
+      "knowledge_type": "hard_rule",
+      "title": "Show rest, not treatment",
+      "content": "WHEN: Planning AuraSleep images or video. DO: Show the product in use early, in a calm, softly lit bedroom, with a relaxed person who looks rested. Keep the light-grey knit pillow and dusk-blue blanket colors exact. DO NOT: Frame people as patients, show pain, or imply the product cures or treats a condition.",
+      "applies_to": [
+        "persona",
+        "preparation",
+        "orchestration",
+        "review"
+      ],
+      "scope": {
+        "brand_id": "AuraSleep",
+        "task_type": "sku_to_output"
+      },
+      "authority": "lead",
+      "source_refs": [
+        "brand-guideline:aurasleep"
+      ],
+      "non_conclusions": [
+        "Comfort claims stay experiential, not medical."
+      ]
+    },
+    {
+      "knowledge_id": "creative-v3-brand-oaklinehome",
+      "knowledge_type": "hard_rule",
+      "title": "Let the wood carry the story",
+      "content": "WHEN: Planning OaklineHome images or video. DO: Use bright daylight interiors with one or two props, keep real wood grain visible and proportions believable for a small home, and show one everyday use per shot. DO NOT: Clutter the room, change the finish, or show the furniture at an impossible scale.",
+      "applies_to": [
+        "persona",
+        "preparation",
+        "orchestration",
+        "review"
+      ],
+      "scope": {
+        "brand_id": "OaklineHome",
+        "task_type": "sku_to_output"
+      },
+      "authority": "lead",
+      "source_refs": [
+        "brand-guideline:oaklinehome"
+      ],
+      "non_conclusions": [
+        "Room styling is inspiration, not part of the product."
+      ]
+    },
+    {
+      "knowledge_id": "creative-v3-brand-lumiskin",
+      "knowledge_type": "hard_rule",
+      "title": "Describe the feel, never the result",
+      "content": "WHEN: Planning LumiSkin images or video. DO: Use bright diffused light, glass and water textures, and natural skin with visible texture; show the frosted bottle or tube exactly as packshot. DO NOT: Promise results, show before/after comparisons, or retouch skin into plastic perfection.",
+      "applies_to": [
+        "persona",
+        "preparation",
+        "orchestration",
+        "review"
+      ],
+      "scope": {
+        "brand_id": "LumiSkin",
+        "task_type": "sku_to_output"
+      },
+      "authority": "lead",
+      "source_refs": [
+        "brand-guideline:lumiskin"
+      ],
+      "non_conclusions": [
+        "Skin appearance in an ad is not evidence of product efficacy."
+      ]
     }
   ]
 }

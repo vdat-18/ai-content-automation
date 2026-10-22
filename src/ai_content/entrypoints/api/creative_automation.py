@@ -910,13 +910,13 @@ async def _process_automation_request(
     family = compilation.package.sku.product_family
     knowledge_scope = KnowledgeScope(
         niche_id=(
-            product_niche(product_type=family.product_type, title=family.title)
+            product_niche(product_type=family.product_type)
             if family is not None
             else None
         ),
         brand_id=request.brand,
         product_archetype=(
-            product_archetype(product_type=family.product_type, title=family.title)
+            product_archetype(product_type=family.product_type)
             if family is not None
             else None
         ),
@@ -3606,13 +3606,13 @@ def _knowledge_scope_for_package(
     family = package.sku.product_family
     return KnowledgeScope(
         niche_id=(
-            product_niche(product_type=family.product_type, title=family.title)
+            product_niche(product_type=family.product_type)
             if family is not None
             else None
         ),
         brand_id=package.request.brand,
         product_archetype=(
-            product_archetype(product_type=family.product_type, title=family.title)
+            product_archetype(product_type=family.product_type)
             if family is not None
             else None
         ),
