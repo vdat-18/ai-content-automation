@@ -459,7 +459,9 @@ class MarketingCreativeAutomationRequest:
             raise ValueError("requested_at must include timezone information")
         if self.video_model_id is not None and not self.video_model_id.strip():
             raise ValueError("Video model ID cannot be empty")
-        if self.agent_model_id is not None:
+        from ai_content.platform.llm_routing import RETIRED_AGENT_MODELS
+
+        if self.agent_model_id is not None and self.agent_model_id not in RETIRED_AGENT_MODELS:
             from ai_content.platform.llm_routing import (
                 require_approved_agent_model,
                 require_supported_agent_reasoning_level,

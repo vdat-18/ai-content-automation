@@ -221,6 +221,7 @@ from .schemas.creative_automation import (
     MarketingCreativeMediaCapabilityResponse,
     MarketingCreativeOutputProfileResponse,
     MarketingCreativeProductionVersionResponse,
+    MarketingCreativeProductSelectionRequest,
     MarketingCreativeReviewDecisionRequest,
     MarketingCreativeReviewDecisionResponse,
     MarketingCreativeVideoModelCapabilityResponse,
@@ -512,6 +513,9 @@ async def create_marketing_creative_automation(
     media_assets: MediaAssetService = Depends(get_media_asset_service),
 ) -> MarketingCreativeAutomationBatchResponse:
     """Create one independent durable Creative intake for every selected SKU."""
+    if payload.sku_ids:
+        payload.product_selections = await _selections_for_skus(data_sources, payload)
+        payload.sku_ids = []
     snapshots = await data_sources.repository.list_latest_snapshots()
     batch_id = _batch_id(payload.idempotency_key)
     settings = get_runtime_settings()
@@ -2916,6 +2920,55 @@ def _maximum_assigned_references(
         (len(item.reference_ids) for item in assignments if item.output_key.startswith(prefix)),
         default=0,
     )
+
+
+async def _selections_for_skus(
+    data_sources: DataSourceRuntime,
+    payload: MarketingCreativeAutomationCreateRequest,
+) -> list[MarketingCreativeProductSelectionRequest]:
+    """Resolve typed SKUs (variant SKU, handle or family key) to catalog variants."""
+    source_brands = {
+        source_id: str(definition.metadata.get("brand") or "")
+        for source_id, definition in data_sources.service.definitions.items()
+        if definition.provider.value == "shopify"
+        and str(definition.metadata.get("brand") or "") == payload.brand
+    }
+    selections = []
+    for sku in payload.sku_ids:
+        page = await data_sources.repository.list_product_catalog(
+            source_brands=source_brands, query=sku, limit=50
+        )
+        wanted = sku.casefold()
+        match = next(
+            (
+                (record, variant)
+                for record in page.records
+                for variant in record.data.get("variants", ())
+                if wanted
+                in {
+                    str(variant.get("sku") or "").casefold(),
+                    str(record.data.get("family_key") or "").casefold(),
+                    str(record.data.get("handle") or "").casefold(),
+                }
+            ),
+            None,
+        )
+        if match is None:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"SKU {sku} is not in the {payload.brand} catalog",
+            )
+        record, variant = match
+        selections.append(
+            MarketingCreativeProductSelectionRequest(
+                source_id=record.source_id,
+                product_id=str(record.data.get("product_id") or record.provider_id),
+                family_key=str(record.data.get("family_key") or record.data.get("handle")),
+                selection_scope="variant",
+                variant_id=str(variant["id"]),
+            )
+        )
+    return selections
 
 
 def _apply_provider_defaults(

@@ -47,3 +47,11 @@ def test_preparation_override_routes_dashboard_model() -> None:
         Path(__file__).parents[1] / "src/ai_content/entrypoints/api/creative_automation.py"
     ).read_text(encoding="utf-8")
     assert "configured_model=preparation_config.model" in source
+
+
+def test_jobs_saved_with_a_retired_model_still_load() -> None:
+    from ai_content.platform.llm_routing import RETIRED_AGENT_MODELS
+
+    assert "gemini-2.5-flash" in RETIRED_AGENT_MODELS
+    with pytest.raises(ValueError):
+        require_approved_agent_model("gemini-2.5-flash")

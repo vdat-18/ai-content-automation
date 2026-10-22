@@ -8,6 +8,15 @@ AGENT_MODEL_PROVIDERS: dict[str, str] = {
 
 APPROVED_AGENT_MODELS: tuple[str, ...] = tuple(AGENT_MODEL_PROVIDERS)
 
+# Models that older persisted jobs may reference; they can be read but not selected.
+RETIRED_AGENT_MODELS: tuple[str, ...] = (
+    "gemini-3.8-flash",
+    "gemini-3.7-flash",
+    "gemini-3.6-flash",
+    "gemini-3.5-flash",
+    "gemini-2.5-flash",
+)
+
 DEFAULT_AGENT_MODEL = "grok-4-fast-reasoning"
 DEFAULT_RESEARCH_MODEL = "grok-4-fast-reasoning"
 DEFAULT_AGENT_REASONING_LEVEL = "auto"
@@ -62,6 +71,7 @@ __all__ = [
     "DEFAULT_AGENT_MODEL",
     "DEFAULT_AGENT_REASONING_LEVEL",
     "DEFAULT_RESEARCH_MODEL",
+    "RETIRED_AGENT_MODELS",
     "normalize_persisted_agent_model_id",
     "require_approved_agent_model",
     "route_approved_agent_model",
