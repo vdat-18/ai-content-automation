@@ -10,6 +10,7 @@ from .http_connectors import (
     ShopifyConnector,
     SourceReadError,
 )
+from .mock_connector import MockAwareConnector, MockDataConnector
 from .postgres_repository import PostgresDataSourceRepository
 from .sqlite_repository import SqliteDataSourceRepository
 
@@ -21,6 +22,8 @@ __all__ = [
     "KlaviyoConnector",
     "LarkConnector",
     "MetaAdsConnector",
+    "MockAwareConnector",
+    "MockDataConnector",
     "PinterestAdsConnector",
     "PostgresDataSourceRepository",
     "ServiceSnapshotArtifactWriter",

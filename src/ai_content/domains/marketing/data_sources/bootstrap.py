@@ -16,6 +16,8 @@ from .adapters import (
     KlaviyoConnector,
     LarkConnector,
     MetaAdsConnector,
+    MockAwareConnector,
+    MockDataConnector,
     PinterestAdsConnector,
     ServiceSnapshotArtifactWriter,
     ShopifyConnector,
@@ -112,7 +114,8 @@ def build_runtime(
         if artifact_service is not None
         else FilesystemSnapshotArtifactWriter(ArtifactStore(artifacts_root))
     )
-    connectors = {
+    mock = MockDataConnector()
+    real_connectors = {
         "shopify": ShopifyConnector(
             shopify_token,
             timeout_seconds,
@@ -134,6 +137,11 @@ def build_runtime(
         "pinterest_ads": PinterestAdsConnector(pinterest_token, timeout_seconds),
         "google_merchant": GoogleMerchantConnector(google_merchant_token, timeout_seconds),
         "klaviyo": KlaviyoConnector(klaviyo_api_key, timeout_seconds),
+    }
+    mockable = ("shopify", "meta_ads", "google_ads")
+    connectors = {
+        provider: MockAwareConnector(connector, mock) if provider in mockable else connector
+        for provider, connector in real_connectors.items()
     }
     return DataSourceRuntime(
         DataSourceSyncService(definitions, connectors, source_repository, artifacts),

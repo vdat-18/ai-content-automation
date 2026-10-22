@@ -1,0 +1,118 @@
+{
+  "sources": [
+    {
+      "source_id": "mock-aurasleep-products",
+      "provider": "shopify",
+      "name": "AuraSleep Store (mock)",
+      "category": "Commerce",
+      "purpose": "Synthetic product catalog for the demo",
+      "base_url": "https://mock.invalid",
+      "resources": [
+        {
+          "kind": "products"
+        }
+      ],
+      "metadata": {
+        "brand": "AuraSleep",
+        "currency": "USD",
+        "mock": true
+      }
+    },
+    {
+      "source_id": "mock-aurasleep-meta-ads",
+      "provider": "meta_ads",
+      "name": "AuraSleep Meta Ads (mock)",
+      "category": "Performance",
+      "purpose": "Synthetic 90-day ad performance for the demo",
+      "base_url": "https://mock.invalid",
+      "resources": [
+        {
+          "kind": "insights",
+          "start_date": "2026-07-03",
+          "end_date": "2026-09-30"
+        }
+      ],
+      "metadata": {
+        "brand": "AuraSleep",
+        "mock": true,
+        "ad_account_id": "act_aurasleep"
+      }
+    },
+    {
+      "source_id": "mock-oakline-products",
+      "provider": "shopify",
+      "name": "OaklineHome Store (mock)",
+      "category": "Commerce",
+      "purpose": "Synthetic product catalog for the demo",
+      "base_url": "https://mock.invalid",
+      "resources": [
+        {
+          "kind": "products"
+        }
+      ],
+      "metadata": {
+        "brand": "OaklineHome",
+        "currency": "USD",
+        "mock": true
+      }
+    },
+    {
+      "source_id": "mock-oakline-meta-ads",
+      "provider": "meta_ads",
+      "name": "OaklineHome Meta Ads (mock)",
+      "category": "Performance",
+      "purpose": "Synthetic 90-day ad performance for the demo",
+      "base_url": "https://mock.invalid",
+      "resources": [
+        {
+          "kind": "insights",
+          "start_date": "2026-07-03",
+          "end_date": "2026-09-30"
+        }
+      ],
+      "metadata": {
+        "brand": "OaklineHome",
+        "mock": true,
+        "ad_account_id": "act_oakline"
+      }
+    },
+    {
+      "source_id": "mock-lumiskin-products",
+      "provider": "shopify",
+      "name": "LumiSkin Store (mock)",
+      "category": "Commerce",
+      "purpose": "Synthetic product catalog for the demo",
+      "base_url": "https://mock.invalid",
+      "resources": [
+        {
+          "kind": "products"
+        }
+      ],
+      "metadata": {
+        "brand": "LumiSkin",
+        "currency": "USD",
+        "mock": true
+      }
+    },
+    {
+      "source_id": "mock-lumiskin-meta-ads",
+      "provider": "meta_ads",
+      "name": "LumiSkin Meta Ads (mock)",
+      "category": "Performance",
+      "purpose": "Synthetic 90-day ad performance for the demo",
+      "base_url": "https://mock.invalid",
+      "resources": [
+        {
+          "kind": "insights",
+          "start_date": "2026-07-03",
+          "end_date": "2026-09-30"
+        }
+      ],
+      "metadata": {
+        "brand": "LumiSkin",
+        "mock": true,
+        "ad_account_id": "act_lumiskin"
+      }
+    }
+  ]
+}
