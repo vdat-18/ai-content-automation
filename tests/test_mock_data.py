@@ -75,3 +75,14 @@ def test_mock_sources_sync_end_to_end(tmp_path: Path) -> None:
     runs, report = asyncio.run(run())
     assert len(runs) == 6 and all(item.status.value == "succeeded" for item in runs)
     assert report.creatives
+
+
+def test_listed_packshots_use_fetchable_urls() -> None:
+    products = {record.data["title"]: record for record in _fetch("mock-oakline-products")}
+    desk_media = products["Haven Standing Desk"].data["media"]
+    assert desk_media and all(
+        item["url"].startswith("https://") and item["url"].endswith("/haven-standing-desk.png")
+        for item in desk_media
+    )
+    lamp_media = products["Arc Floor Lamp"].data["media"]
+    assert all(item["url"].startswith("mock://") for item in lamp_media)

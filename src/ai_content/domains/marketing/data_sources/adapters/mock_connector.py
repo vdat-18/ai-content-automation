@@ -260,7 +260,17 @@ def _sku(brand: _Brand, item_index: int, variant_index: int) -> str:
     return f"{brand.key[:2].upper()}-{item_index + 1:02d}{variant_index + 1:02d}"
 
 
-def _raw_product(brand: _Brand, item_index: int, seed: int) -> dict[str, Any]:
+def _packshot_url(definition: DataSourceDefinition, brand: _Brand, handle: str) -> str | None:
+    """Return a fetchable packshot URL when the source lists one for this product."""
+    base_url = str(definition.metadata.get("packshot_base_url") or "").rstrip("/")
+    if not base_url or handle not in definition.metadata.get("packshots", ()):
+        return None
+    return f"{base_url}/{brand.key}/{handle}.png"
+
+
+def _raw_product(
+    brand: _Brand, item_index: int, seed: int, packshot_url: str | None = None
+) -> dict[str, Any]:
     item = brand.items[item_index]
     rng = _rng(seed, brand.key, "product", item_index)
     product_id = str(9_000_000 + item_index)
@@ -288,7 +298,7 @@ def _raw_product(brand: _Brand, item_index: int, seed: int) -> dict[str, Any]:
         images.append(
             {
                 "id": image_id,
-                "src": f"mock://{brand.key}/{handle}/{position}.png",
+                "src": packshot_url or f"mock://{brand.key}/{handle}/{position}.png",
                 "position": position,
                 "alt": f"{item.title} {' '.join(combo)}".strip(),
                 "width": 1600,
@@ -317,9 +327,12 @@ def _raw_product(brand: _Brand, item_index: int, seed: int) -> dict[str, Any]:
     }
 
 
-def _product_record(brand: _Brand, item_index: int, seed: int) -> NormalizedRecord:
+def _product_record(
+    definition: DataSourceDefinition, brand: _Brand, item_index: int, seed: int
+) -> NormalizedRecord:
+    packshot_url = _packshot_url(definition, brand, _slug(brand.items[item_index].title))
     return _shopify_product(
-        _raw_product(brand, item_index, seed),
+        _raw_product(brand, item_index, seed, packshot_url),
         "USD",
         brand=brand.key,
         store_id=brand.store,
@@ -493,7 +506,7 @@ class MockDataConnector:
         if provider is DataSourceProvider.SHOPIFY:
             brand, seed = _brand(definition), _seed(definition)
             records = tuple(
-                _product_record(brand, index, seed) for index in range(len(brand.items))
+                _product_record(definition, brand, index, seed) for index in range(len(brand.items))
             )
         elif provider is DataSourceProvider.META_ADS:
             records = _meta_records(definition)
@@ -510,7 +523,7 @@ class MockDataConnector:
     ) -> tuple[NormalizedRecord, dict[str, Any]]:
         brand, seed = _brand(definition), _seed(definition)
         for index in range(len(brand.items)):
-            record = _product_record(brand, index, seed)
+            record = _product_record(definition, brand, index, seed)
             if record.provider_id == product_id:
                 return record, {"mock": True, "seed": seed}
         raise SourceReadError("NOT_FOUND", f"Mock product {product_id} does not exist")

@@ -15,7 +15,11 @@
       "metadata": {
         "brand": "AuraSleep",
         "currency": "USD",
-        "mock": true
+        "mock": true,
+        "packshot_base_url": "https://raw.githubusercontent.com/vdat-18/ai-content-automation/dev/config/data_sources/demo_packshots",
+        "packshots": [
+          "cloudsupport-orthopedic-pillow"
+        ]
       }
     },
     {
@@ -53,7 +57,11 @@
       "metadata": {
         "brand": "OaklineHome",
         "currency": "USD",
-        "mock": true
+        "mock": true,
+        "packshot_base_url": "https://raw.githubusercontent.com/vdat-18/ai-content-automation/dev/config/data_sources/demo_packshots",
+        "packshots": [
+          "haven-standing-desk"
+        ]
       }
     },
     {
@@ -91,7 +99,11 @@
       "metadata": {
         "brand": "LumiSkin",
         "currency": "USD",
-        "mock": true
+        "mock": true,
+        "packshot_base_url": "https://raw.githubusercontent.com/vdat-18/ai-content-automation/dev/config/data_sources/demo_packshots",
+        "packshots": [
+          "dew-drop-hyaluronic-serum"
+        ]
       }
     },
     {
