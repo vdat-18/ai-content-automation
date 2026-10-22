@@ -149,5 +149,7 @@
     "imgen.x.ai",
     "vidgen.x.ai"
   ],
-  "max_concurrency": 10
+  "max_concurrency": 10,
+  "fidelity_check_model": "xai/grok-4-fast-reasoning",
+  "max_image_attempts": 3
 }

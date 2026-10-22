@@ -29,6 +29,7 @@ from ai_content.domains.marketing.creative.ports.automation_workflow import (
     resolve_state_repository_call,
 )
 from ai_content.domains.marketing.creative.ports.media_production import (
+    IPaidImageQualityEvaluator,
     IPaidMediaSourceResolver,
     PaidAssembledVideoRequest,
     PaidImageGenerationRequest,
@@ -55,6 +56,8 @@ class MarketingCreativeAutomationProducer:
         image_limits: PaidMediaGenerationLimits,
         video_limits: PaidMediaGenerationLimits,
         max_concurrency: int = 10,
+        image_evaluator: IPaidImageQualityEvaluator | None = None,
+        max_image_attempts: int = 1,
     ) -> None:
         self._states = state_repository
         self._providers = providers
@@ -62,6 +65,8 @@ class MarketingCreativeAutomationProducer:
         self._production = PaidMediaProductionService(
             providers,
             max_concurrency=max_concurrency,
+            image_evaluator=image_evaluator,
+            max_image_attempts=max_image_attempts,
         )
         self._image_limits = image_limits
         self._video_limits = video_limits

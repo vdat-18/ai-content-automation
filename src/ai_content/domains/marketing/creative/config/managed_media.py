@@ -171,6 +171,9 @@ class ManagedMediaConfig(BaseModel):
     allowed_source_hosts: tuple[str, ...] = ()
     allowed_output_hosts: tuple[str, ...] = ()
     max_concurrency: int = Field(default=10, ge=1)
+    # Vision model that compares each generated image with the frozen product packshot.
+    fidelity_check_model: str | None = None
+    max_image_attempts: int = Field(default=1, ge=1)
 
     @model_validator(mode="after")
     def validate_profile(self) -> Self:

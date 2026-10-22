@@ -459,18 +459,14 @@ class IManagedVideoGenerationProvider(Protocol):
         ...
 
 
-class IPaidMediaQualityEvaluator(Protocol):
+class IPaidImageQualityEvaluator(Protocol):
     async def evaluate_image(
         self,
         request: PaidImageGenerationRequest,
         artifact: PaidMediaArtifact,
-    ) -> PaidMediaQualityEvaluation: ...
-
-    async def evaluate_video(
-        self,
-        request: PaidVideoGenerationRequest,
-        artifact: PaidMediaArtifact,
-    ) -> PaidMediaQualityEvaluation: ...
+    ) -> PaidMediaQualityEvaluation:
+        """Compare a generated image with the request's frozen product source."""
+        ...
 
 
 class PaidMediaProviderUnavailableError(Exception):
@@ -481,7 +477,7 @@ __all__ = [
     "IFrozenProductMediaResolver",
     "IManagedImageGenerationProvider",
     "IManagedVideoGenerationProvider",
-    "IPaidMediaQualityEvaluator",
+    "IPaidImageQualityEvaluator",
     "IPaidMediaSourceResolver",
     "MediaFidelityMode",
     "MediaKind",
