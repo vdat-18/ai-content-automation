@@ -2546,6 +2546,7 @@ def _request(
         human_hooks=tuple(payload.human_hooks),
         human_offer=payload.human_offer,
         human_claims=tuple(payload.human_claims),
+        campaign_theme=payload.campaign_theme,
     )
 
 

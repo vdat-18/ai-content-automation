@@ -151,6 +151,7 @@ class MarketingCreativeAutomationCreateRequest(BaseModel):
     human_hooks: list[str] = Field(default_factory=list, max_length=3)
     human_offer: str | None = Field(default=None, max_length=240)
     human_claims: list[str] = Field(default_factory=list, max_length=10)
+    campaign_theme: str | None = Field(default=None, max_length=240)
     include_logo: bool = False
     logo_asset_id: str | None = Field(default=None, min_length=1)
     use_research_references: bool = False
@@ -336,6 +337,7 @@ class MarketingCreativeAutomationCreateRequest(BaseModel):
             "human_persona",
             "human_angle",
             "human_offer",
+            "campaign_theme",
         ):
             value = getattr(self, field_name)
             if value is not None:

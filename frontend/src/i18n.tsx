@@ -1265,6 +1265,8 @@ const vi: Record<string, string> = {
   "Keep the approved copy exact; vary only its placement and hierarchy.": "Giữ nguyên nội dung đã duyệt; chỉ thay đổi vị trí và thứ bậc trình bày.",
   "Carousel sequence": "Chuỗi carousel",
   "Create ordered frames that work together.": "Tạo chuỗi khung hình có thứ tự và liên kết với nhau.",
+  "Campaign theme (optional)": "Chủ đề chiến dịch (không bắt buộc)",
+  "e.g. Halloween, Tết, 11.11, Black Friday": "vd. Halloween, Tết, 11.11, Black Friday",
   "2. Additional requirements (optional)": "2. Yêu cầu bổ sung (không bắt buộc)",
   "Add any special brand direction, audience, angle, hooks, offer, claims, or constraints here.": "Nhập tại đây mọi yêu cầu riêng về thương hiệu, đối tượng, angle, hook, ưu đãi, claim hoặc giới hạn.",
   "4. Research reference guidance": "4. Định hướng hình ảnh tham khảo",

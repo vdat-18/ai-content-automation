@@ -15,10 +15,12 @@ from typing import Any
 from ..domain.models import DataSourceDefinition, DataSourceProvider, NormalizedRecord
 from ..ports.interfaces import IDataSourceConnector, SourceReadError
 from .http_connectors import _shopify_product
+from .mock_store import build_store
 
 DEFAULT_SEED = 20260930
 DEFAULT_END_DATE = date(2026, 9, 30)
 DEFAULT_DAYS = 90
+DEFAULT_CUSTOMERS = 600
 _STORY_BY_INDEX = ("fatigued", "winner", "new", "weak")
 
 
@@ -88,6 +90,30 @@ _BRANDS: dict[str, _Brand] = {
                     "Sizes for one sleeper or a queen bed",
                 ),
             ),
+            _Item(
+                "Dusk Cooling Sheet Set",
+                "Sheets",
+                119,
+                (("Size", ("Queen", "King")), ("Color", ("Cloud White", "Dusk Blue"))),
+                "Breathable percale sheets that stay cool through warm nights.",
+                (
+                    "Long-staple cotton percale, 300 thread count",
+                    "Deep pockets fit mattresses up to 16 inches",
+                    "Gets softer with every wash",
+                ),
+            ),
+            _Item(
+                "Hush Silk Sleep Mask",
+                "Accessory",
+                28,
+                (("Color", ("Dusk Blue", "Light Grey")),),
+                "Lightweight mulberry silk mask that blocks light without pressure.",
+                (
+                    "Grade 6A mulberry silk, gentle on skin and lashes",
+                    "Adjustable strap with no pressure on the eyes",
+                    "Travel pouch included",
+                ),
+            ),
         ),
     ),
     "OaklineHome": _Brand(
@@ -135,6 +161,30 @@ _BRANDS: dict[str, _Brand] = {
                     "Removable linen or boucle cover",
                 ),
             ),
+            _Item(
+                "Grove Open Bookshelf",
+                "Shelving",
+                479,
+                (("Finish", ("Walnut", "Oak")),),
+                "Five-tier solid wood bookshelf with an open back for airy rooms.",
+                (
+                    "Solid wood shelves with visible grain",
+                    "Matte black steel frame",
+                    "Anti-tip wall anchor included",
+                ),
+            ),
+            _Item(
+                "Terra Side Table",
+                "Table",
+                189,
+                (("Finish", ("Walnut", "Oak")),),
+                "Compact round side table with a hand-sanded solid wood top.",
+                (
+                    "Solid wood top, hand-sanded and oiled",
+                    "Tapered legs in matching wood",
+                    "Fits beside a sofa or bed",
+                ),
+            ),
         ),
     ),
     "LumiSkin": _Brand(
@@ -179,6 +229,30 @@ _BRANDS: dict[str, _Brand] = {
                     "Broad-spectrum SPF 50",
                     "Sheer fluid texture that disappears on all skin tones",
                     "Works under makeup",
+                ),
+            ),
+            _Item(
+                "Cloud Gel Cleanser",
+                "Cleanser",
+                22,
+                (("Size", ("150ml", "250ml")),),
+                "Soft-foaming gel cleanser that rinses clean without tightness.",
+                (
+                    "Amino-acid cleansing base",
+                    "Fragrance-free, pH balanced for sensitive skin",
+                    "Pump bottle in frosted white",
+                ),
+            ),
+            _Item(
+                "Night Bloom Barrier Cream",
+                "Moisturizer",
+                38,
+                (("Size", ("50ml",)),),
+                "Rich overnight cream that cushions the skin barrier while you sleep.",
+                (
+                    "Ceramides and squalane in a velvety texture",
+                    "Fragrance-free, non-greasy finish",
+                    "Airless pump keeps the formula fresh",
                 ),
             ),
         ),
@@ -390,6 +464,24 @@ def _ads(definition: DataSourceDefinition) -> list[_AdSeries]:
     return [item for item in series if item is not None]
 
 
+def _store_records(definition: DataSourceDefinition) -> tuple[NormalizedRecord, ...]:
+    brand, seed = _brand(definition), _seed(definition)
+    products = [_raw_product(brand, index, seed) for index in range(len(brand.items))]
+    campaigns = {
+        int(product["id"]): f"{brand.key[:3].lower()}-cmp-{index + 1:02d}"
+        for index, product in enumerate(products)
+        if _STORY_BY_INDEX[index % len(_STORY_BY_INDEX)] != "new"
+    }
+    return build_store(
+        brand_key=brand.key,
+        products=products,
+        campaigns=campaigns,
+        seed=seed,
+        end=_window(definition)[0],
+        customer_count=int(definition.metadata.get("mock_customers", DEFAULT_CUSTOMERS)),
+    )
+
+
 def _meta_records(definition: DataSourceDefinition) -> tuple[NormalizedRecord, ...]:
     account = str(definition.metadata.get("ad_account_id") or f"act_{_brand(definition).key}")
     records = []
@@ -470,6 +562,7 @@ class MockDataConnector:
                     f"{brand.store}-guideline",
                     {"brand": brand.key, **brand.guideline},
                 ),
+                *_store_records(definition),
             )
         elif provider is DataSourceProvider.META_ADS:
             records = _meta_records(definition)

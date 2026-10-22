@@ -106,6 +106,7 @@ const formatLatency = (durationMs: number | null) => {
 };
 
 const videoDurationOptions = [15, 20, 30, 45, 60];
+const campaignThemeSuggestions = ["Halloween", "Christmas", "Tết (Lunar New Year)", "Black Friday", "11.11", "12.12", "Mid-Autumn", "Valentine's Day", "Back to school"];
 const preferredAgentModelId = "grok-4-fast-reasoning";
 const preferredImageModelId = "grok-imagine-image";
 const preferredVideoModelId = "grok-imagine-video";
@@ -203,6 +204,7 @@ export function CreativeAutomationLauncher() {
   const [previewProduct, setPreviewProduct] = useState<ProductFamilyCandidate | null>(null);
   const [previewMediaId, setPreviewMediaId] = useState<string | null>(null);
   const [otherContext, setOtherContext] = useState("");
+  const [campaignTheme, setCampaignTheme] = useState("");
   const [agentModelId, setAgentModelId] = useState(preferredAgentModelId);
   const [agentReasoningEffort, setAgentReasoningEffort] = useState<"auto" | "minimal" | "low" | "medium" | "high">("auto");
   const [variantReferenceIds, setVariantReferenceIds] = useState<Record<string, string[]>>({});
@@ -718,6 +720,7 @@ export function CreativeAutomationLauncher() {
         } : {}),
         notes: otherContext.trim() || undefined,
         brand_instructions: otherContext.trim() || undefined,
+        campaign_theme: campaignTheme.trim() || undefined,
         human_hooks: [],
         human_claims: [],
         include_logo: false,
@@ -880,6 +883,7 @@ export function CreativeAutomationLauncher() {
             </section>;
           })}
         </div>
+        <label className="automation-notes"><span>{t("Campaign theme (optional)")}</span><input type="text" maxLength={240} value={campaignTheme} onChange={(event) => setCampaignTheme(event.target.value)} placeholder={t("e.g. Halloween, Tết, 11.11, Black Friday")} list="campaign-theme-suggestions" /><datalist id="campaign-theme-suggestions">{campaignThemeSuggestions.map((theme) => <option key={theme} value={theme} />)}</datalist></label>
         <label className="automation-notes"><span>{t("2. Additional requirements (optional)")}</span><AutoResizeTextarea rows={3} value={otherContext} onChange={(event) => setOtherContext(event.target.value)} placeholder={t("Add any special brand direction, audience, angle, hooks, offer, claims, or constraints here.")} /></label>
         <section className="automation-reference-picker">
           <p className="eyebrow">{t("3. Upload visual references")}</p>

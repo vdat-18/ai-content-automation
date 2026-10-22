@@ -1146,6 +1146,7 @@ export type MarketingCreativeAutomationRequest = {
   subtext?: string;
   cta_text?: string;
   brand_instructions?: string;
+  campaign_theme?: string;
   human_persona?: string;
   human_angle?: string;
   human_hooks: string[];

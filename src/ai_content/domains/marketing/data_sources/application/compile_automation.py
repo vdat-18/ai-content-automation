@@ -75,6 +75,7 @@ from .compile_context import (
     CreativeSourceContextCompiler,
     record_matches_brand,
 )
+from .customer_segments import build_segment_report
 
 
 @dataclass(frozen=True)
@@ -405,6 +406,19 @@ class MarketingCreativeAutomationCompiler:
                     ),
                 ),
             )
+        segment_source = _customer_segment_source(snapshots, sku)
+        if segment_source is not None:
+            context = replace(
+                context,
+                evidence=(
+                    *context.evidence,
+                    EvidenceRef(
+                        source_id=segment_source.source_id,
+                        data_version=segment_source.data_version,
+                        retrieved_at=request.requested_at,
+                    ),
+                ),
+            )
         routing = decide_production_route(request)
         evidence_refs = tuple(item.source_id for item in context.evidence)
         selected_strategy = _select_strategy(snapshots, request, sku, evidence_refs)
@@ -438,6 +452,8 @@ class MarketingCreativeAutomationCompiler:
         )
         if human_source is not None:
             sources += (human_source,)
+        if segment_source is not None:
+            sources += (segment_source,)
         research_sources, research_references = _research_references(request)
         sources += research_sources
         pack_hash = _checksum(
@@ -616,6 +632,13 @@ def _dimensions(aspect_ratio: str) -> tuple[int, int]:
     }[aspect_ratio]
 
 
+def _campaign_notes(request: MarketingCreativeAutomationRequest) -> str | None:
+    parts = [request.notes or request.brand_instructions]
+    if request.campaign_theme:
+        parts.append(f"Campaign theme: {request.campaign_theme}")
+    return "\n".join(part for part in parts if part) or None
+
+
 def _work_item(
     request: MarketingCreativeAutomationRequest,
     sku: SkuInput,
@@ -632,7 +655,7 @@ def _work_item(
         prompt_version=PromptVersion("prompt-static-creative-generation", "1.0-draft"),
         policy_version=PolicyVersion("policy-static-creative", "1.0-draft"),
         workflow_version=WorkflowVersionRef("workflow-static-creative-generation", "1.0-draft"),
-        campaign_notes=request.notes or request.brand_instructions,
+        campaign_notes=_campaign_notes(request),
         variation_count=max(
             1,
             request.output.image_output_count,
@@ -672,6 +695,7 @@ def _human_direction_source(
         "hooks": request.human_hooks,
         "offer": request.human_offer,
         "claims": request.human_claims,
+        "campaign_theme": request.campaign_theme,
     }
     if not any(payload.values()):
         return None
@@ -1121,6 +1145,41 @@ def _source_documents(
             )
         )
     return tuple(documents)
+
+
+def _customer_segment_source(
+    snapshots: list[SourceSnapshot], sku: SkuInput
+) -> SourceDocument | None:
+    """Summarize who buys this product, computed from the Shopify order history."""
+    if sku.product_family is None:
+        return None
+    product_ref = sku.product_family.ref
+    snapshot = next(
+        (item for item in snapshots if item.source_id == product_ref.source_id),
+        None,
+    )
+    if snapshot is None:
+        return None
+    titles = {
+        str(record.data.get("product_id")): str(record.data.get("title"))
+        for record in snapshot.records
+        if record.kind == "product"
+    }
+    report = build_segment_report(
+        [record for record in snapshot.records if record.kind == "customer"],
+        [record for record in snapshot.records if record.kind == "order"],
+        product_id=product_ref.product_id,
+        product_titles=titles,
+    )
+    if report is None:
+        return None
+    content = json.dumps({"customer_segments": report}, sort_keys=True, separators=(",", ":"))
+    return SourceDocument(
+        source_id=f"customer-segments:{snapshot.source_id}:{product_ref.product_id}",
+        data_version=_checksum(content),
+        content=content,
+        category="customer",
+    )
 
 
 def _research_references(

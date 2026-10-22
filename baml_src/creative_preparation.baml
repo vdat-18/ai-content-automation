@@ -154,9 +154,13 @@ function ResolveCreativePersona(
 
     <runtime_contract>
     Infer one useful audience hypothesis for Creative development from only the supplied
-    exact Product/Variant truth, approved SecondBrain knowledge, and trusted human Additional
-    requirements. This is a Creative hypothesis, not a researched customer fact or performance
-    conclusion. Every evidence_refs value must be copied verbatim from allowed_evidence_refs.
+    exact Product/Variant truth, approved SecondBrain knowledge, the store's customer_segments
+    statistics (when present), and trusted human Additional requirements. customer_segments is
+    computed from the store's real order history: prefer the segment that contributes the most
+    product revenue or shows the clearest headroom (high store value, low penetration of this
+    product), and describe that group from its numbers (size, revenue share, repeat behavior,
+    age and region mix, what it also buys). Cite the customer_segments source in evidence_refs.
+    This is a Creative hypothesis, not a researched customer fact or performance conclusion. Every evidence_refs value must be copied verbatim from allowed_evidence_refs.
     Do not use data-version text, a brand profile identifier, or concatenated identifiers.
     Do not invent product facts,
     claims, offers, prices, guarantees, demographics, or performance evidence. Preserve human
@@ -193,6 +197,9 @@ function GenerateCreativeIdeas(
     Shopify price and compare-at price are factual product context only. Do not turn
     them into price, sale, or discount messaging unless the human direction explicitly
     requests that commercial treatment.
+    When campaign_notes contains a "Campaign theme", apply it to the setting, props, mood,
+    palette, and seasonal story of every idea. The theme never changes product facts, price,
+    claims, or approved brand rules, and the real product must stay the hero.
     Use requested_image_count and requested_video_count to keep every idea suitable for
     the actual requested media mix.
     Human-selected Research references are part of the starting context. Use their
@@ -230,6 +237,9 @@ function WriteCreativeBrief(
     preserved rather than independently revalidated.
     Shopify price and compare-at price are factual product context only. Do not put
     them into copy or imply a promotion unless the human direction explicitly asks.
+    When campaign_notes contains a "Campaign theme", carry it through each variation's
+    setting, props, mood, palette, and copy tone. Brand guidelines, approved claims, and the
+    exact product appearance always outrank the theme.
     Return exactly {{ variation_count }} explicit variations. Each variation must have
     a distinct visual direction and stable variation_key. Every evidence_refs value must be
     copied verbatim from allowed_evidence_refs; never use data-version text, a brand profile

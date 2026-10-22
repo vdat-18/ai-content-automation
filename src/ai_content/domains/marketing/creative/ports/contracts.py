@@ -436,6 +436,7 @@ class MarketingCreativeAutomationRequest:
     human_hooks: tuple[str, ...] = ()
     human_offer: str | None = None
     human_claims: tuple[str, ...] = ()
+    campaign_theme: str | None = None
 
     def __post_init__(self) -> None:
         required = {
