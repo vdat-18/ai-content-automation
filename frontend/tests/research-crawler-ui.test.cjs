@@ -14,12 +14,8 @@ test("research crawler guides Marketing from keyword discovery through review", 
   const styles = src("styles.css");
   const workspaceStyles = src("marketing", "workspace.css");
 
-  assert.match(page, /Suggested reference keyword/);
-  assert.match(page, /aria-label="Suggested reference keyword"/);
-  assert.match(page, /curated suggestions for \{brandId\}/);
-  assert.match(page, /Copy keyword/);
-  assert.match(page, /No curated reference keywords are configured/);
-  assert.doesNotMatch(page, /<details className="research-keyword-picker"/);
+  assert.doesNotMatch(page, /Suggested reference keyword/);
+  assert.doesNotMatch(page, /research-keyword-picker/);
   assert.doesNotMatch(page, /Jev navigates the page; 9Router reads the text, images, and video frames/);
   assert.match(page, /Analyzing references/);
   assert.match(page, /Filtered by analysis/);
@@ -84,9 +80,7 @@ test("research crawler guides Marketing from keyword discovery through review", 
   assert.doesNotMatch(operations, /Marketing-approved research references/);
   assert.match(approvals, /className="approval-toolbar"/);
   assert.match(styles, /\.research-record-grid \{[^}]*repeat\(auto-fill, minmax\(180px,/);
-  assert.match(styles, /\.research-keyword-picker \{/);
   assert.match(styles, /\.research-layout \{[^}]*repeat\(2, minmax\(0, 1fr\)\)/);
-  assert.match(styles, /\.research-keyword-actions/);
   assert.match(styles, /\.research-bulk-review \{/);
   assert.match(styles, /\.research-review-panel \{/);
   assert.match(styles, /\.approval-toolbar \{/);

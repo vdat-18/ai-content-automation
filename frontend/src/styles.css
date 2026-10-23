@@ -3281,33 +3281,6 @@ body.column-resizing * { cursor: col-resize !important; user-select: none !impor
 }
 .research-form select:focus { outline: none; border-color: var(--brand-blue); box-shadow: 0 0 0 3px rgba(59,130,246,.14); }
 .research-form small { color: var(--muted); font-size: var(--text-xs); font-weight: 500; line-height: 1.45; }
-.research-keyword-picker {
-  grid-column: 1 / -1;
-  border: 1px solid color-mix(in srgb, var(--brand-blue) 22%, var(--line));
-  border-radius: var(--radius-md);
-  background: color-mix(in srgb, var(--brand-blue) 4%, var(--paper));
-  overflow: hidden;
-}
-.research-keyword-heading {
-  display: grid;
-  gap: 3px;
-  padding: 13px;
-  border-bottom: 1px solid color-mix(in srgb, var(--brand-blue) 18%, var(--line));
-}
-.research-keyword-content { display: grid; gap: 10px; padding: 13px; }
-.research-keyword-content > select { min-width: 0; }
-.research-keyword-picker strong { font-size: var(--text-sm); }
-.research-keyword-picker small { color: var(--muted); }
-.research-keyword-actions { display: flex; flex-wrap: wrap; gap: 8px; }
-.research-keyword-actions .secondary-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  white-space: nowrap;
-  text-decoration: none;
-}
-.research-keyword-actions .is-disabled { opacity: .5; cursor: not-allowed; }
 .research-discovery-state {
   margin: 16px 0 0;
   border-left: 3px solid var(--brand-blue);
@@ -3397,7 +3370,6 @@ body.column-resizing * { cursor: col-resize !important; user-select: none !impor
 .research-review-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 @media (max-width: 900px) { .research-bulk-review { grid-template-columns: 1fr 1fr; } .research-bulk-review > div:first-child, .research-bulk-review .research-review-actions { grid-column: 1 / -1; } }
 @media (max-width: 650px) {
-  .research-keyword-picker { grid-column: auto; }
   .research-bulk-review, .research-review-fields, .research-delete-panel { grid-template-columns: 1fr; }
   .research-bulk-review > div:first-child, .research-bulk-review .research-review-actions { grid-column: auto; }
   .research-review-actions button { flex: 1 1 100%; }

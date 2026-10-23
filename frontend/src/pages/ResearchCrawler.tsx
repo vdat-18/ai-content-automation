@@ -1,6 +1,6 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Copy, ExternalLink, FileStack, Globe2, Image, Link2, LoaderCircle, RotateCcw, Square, Video } from "lucide-react";
+import { Copy, ExternalLink, FileStack, Globe2, Image, Link2, LoaderCircle, RotateCcw, Square, Video } from "lucide-react";
 import { Link } from "react-router-dom";
 import { ResearchRecordCatalog } from "../components/ResearchRecordCatalog";
 import { PageHeader } from "../components/ui";
@@ -12,16 +12,6 @@ const activeStatuses = new Set(["queued", "pending", "running", "retry_wait"]);
 const marketingProjects = ["DEMOFURN", "DemoHome"];
 const analysisModelOptions = ["grok-4-fast-reasoning", "grok-4.7"];
 const modelLabel = (modelId: string | null) => modelId?.split("/").at(-1) || "default";
-const researchSources = [
-  { id: "pinterest", label: "Pinterest", href: (keyword: string) => `https://www.pinterest.com/search/pins/?q=${encodeURIComponent(keyword)}` },
-  { id: "amazon", label: "Amazon", href: (keyword: string) => `https://www.amazon.com/s?k=${encodeURIComponent(keyword)}` },
-  { id: "etsy", label: "Etsy", href: (keyword: string) => `https://www.etsy.com/search?q=${encodeURIComponent(keyword)}` },
-  { id: "wayfair", label: "Wayfair", href: (keyword: string) => `https://www.wayfair.com/keyword.php?keyword=${encodeURIComponent(keyword)}` },
-  { id: "houzz", label: "Houzz", href: () => "https://www.houzz.com/products" },
-  { id: "tiktok", label: "TikTok Creative Center", href: () => "https://ads.tiktok.com/business/creativecenter/inspiration/topads/pc/en" },
-  { id: "meta", label: "Meta Ad Library", href: () => "https://www.facebook.com/ads/library/" },
-  { id: "google", label: "Google Ads Transparency", href: () => "https://adstransparency.google.com/" },
-];
 
 export function ResearchCrawlerPage() {
   const queryClient = useQueryClient();
@@ -32,19 +22,11 @@ export function ResearchCrawlerPage() {
   const [sourceUrl, setSourceUrl] = useState("");
   const [analysisModelId, setAnalysisModelId] = useState("grok-4-fast-reasoning");
   const [mediaMode, setMediaMode] = useState<ResearchMediaMode>("images_and_videos");
-  const [searchSource, setSearchSource] = useState(researchSources[0].id);
-  const [selectedKeyword, setSelectedKeyword] = useState("");
-  const [keywordCopied, setKeywordCopied] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const crawls = useQuery({
     queryKey: ["research-crawls"],
     queryFn: ({ signal }) => pilotApi.researchCrawls(signal),
     refetchInterval: (query) => query.state.data?.items.some((item) => activeStatuses.has(item.status)) ? 2000 : 15000,
-  });
-  const keywords = useQuery({
-    queryKey: ["research-keyword-suggestions", brandId],
-    queryFn: ({ signal }) => pilotApi.researchKeywordSuggestions(brandId, signal),
-    enabled: Boolean(brandId.trim()),
   });
   const create = useMutation({
     mutationFn: (payload: ResearchCrawlCreateRequest) => pilotApi.createResearchCrawl(payload),
@@ -60,18 +42,6 @@ export function ResearchCrawlerPage() {
     () => crawls.data?.items.find((item) => item.job_id === selectedId) ?? crawls.data?.items[0] ?? null,
     [crawls.data?.items, selectedId],
   );
-  const selectedSource = researchSources.find((source) => source.id === searchSource) ?? researchSources[0];
-
-  const copyKeyword = async () => {
-    if (!selectedKeyword) return;
-    try {
-      await navigator.clipboard.writeText(selectedKeyword);
-      setKeywordCopied(true);
-      window.setTimeout(() => setKeywordCopied(false), 1600);
-    } catch {
-      notify("The keyword could not be copied. Select and copy it manually.", "error");
-    }
-  };
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -101,31 +71,12 @@ export function ResearchCrawlerPage() {
             <fieldset className="research-project-picker">
               <legend>Project</legend>
               <div role="group" aria-label="Choose project">
-                {marketingProjects.map((item) => <button key={item} type="button" aria-pressed={brandId === item} className={brandId === item ? "is-selected" : ""} onClick={() => { setBrandId(item); setSelectedKeyword(""); setKeywordCopied(false); }}><strong>{item}</strong></button>)}
+                {marketingProjects.map((item) => <button key={item} type="button" aria-pressed={brandId === item} className={brandId === item ? "is-selected" : ""} onClick={() => { setBrandId(item); }}><strong>{item}</strong></button>)}
               </div>
             </fieldset>
             <label><span>Research focus (optional)</span><input maxLength={120} value={projectId} onChange={(event) => setProjectId(event.target.value)} placeholder="Example: competitor desk visuals" /></label>
-            <label><span>Search source</span><select value={searchSource} onChange={(event) => setSearchSource(event.target.value)}>{researchSources.map((source) => <option key={source.id} value={source.id}>{source.label}</option>)}</select></label>
             <label><span>Media to collect</span><select value={mediaMode} onChange={(event) => setMediaMode(event.target.value as ResearchMediaMode)}><option value="images">Images only</option><option value="videos">Videos only</option><option value="images_and_videos">Images and videos</option></select></label>
             <label><span>Analysis model</span><select value={analysisModelId} onChange={(event) => setAnalysisModelId(event.target.value)}>{analysisModelOptions.map((model) => <option key={model} value={model}>{modelLabel(model)}</option>)}</select></label>
-            <div className="research-keyword-picker">
-              <div className="research-keyword-heading">
-                <strong>Suggested reference keyword</strong>
-                {keywords.data?.items.length ? <small>{keywords.data.items.length} curated suggestions for {brandId}</small> : null}
-              </div>
-              <div className="research-keyword-content">
-                <select aria-label="Suggested reference keyword" value={selectedKeyword} disabled={keywords.isLoading || keywords.isError || !keywords.data?.items.length} onChange={(event) => { setSelectedKeyword(event.target.value); setKeywordCopied(false); }}>
-                  <option value="">{keywords.isLoading ? "Loading reference keywords…" : keywords.data?.items.length ? "Select a keyword…" : "No curated keywords available"}</option>
-                  {keywords.data?.items.map((item) => <option key={item.keyword} value={item.keyword}>{item.keyword}</option>)}
-                </select>
-                <div className="research-keyword-actions">
-                  <button className="secondary-button" type="button" disabled={!selectedKeyword} onClick={copyKeyword}>{keywordCopied ? <Check size={15} /> : <Copy size={15} />}{keywordCopied ? "Copied" : "Copy keyword"}</button>
-                  <a className={`secondary-button${selectedKeyword ? "" : " is-disabled"}`} href={selectedKeyword ? selectedSource.href(selectedKeyword) : undefined} target="_blank" rel="noreferrer" aria-disabled={!selectedKeyword} onClick={(event) => { if (!selectedKeyword) event.preventDefault(); }}>Open on {selectedSource.label}<ExternalLink size={14} /></a>
-                </div>
-                {keywords.isError && <span className="form-error">Reference keywords are unavailable. You can still search manually.</span>}
-                {!keywords.isLoading && !keywords.isError && keywords.data?.items.length === 0 && <small>No curated reference keywords are configured for {brandId}.</small>}
-              </div>
-            </div>
             <label className="research-url-field"><span>Public results URL</span><input required type="url" maxLength={4096} value={sourceUrl} onChange={(event) => setSourceUrl(event.target.value)} placeholder="Paste the final public search, category, or listing URL" /></label>
             <button className="primary-button" disabled={create.isPending || !brandId.trim() || !sourceUrl.trim()}>
               {create.isPending && <LoaderCircle className="spin" size={16} />} Start crawl

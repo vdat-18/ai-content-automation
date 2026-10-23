@@ -918,15 +918,6 @@ export type ResearchMediaMode = "images" | "videos" | "images_and_videos";
 
 export type ResearchReviewDecision = "approve" | "reject" | "review_later";
 
-export type ResearchKeywordSuggestion = {
-  keyword: string;
-};
-
-export type ResearchKeywordSuggestionList = {
-  brand_id: string;
-  items: ResearchKeywordSuggestion[];
-};
-
 export type ResearchRecordReviewRequest = {
   decision: ResearchReviewDecision;
   reviewer_alias?: string;

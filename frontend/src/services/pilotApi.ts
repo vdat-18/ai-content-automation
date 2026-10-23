@@ -22,7 +22,6 @@ import type {
   ResearchCrawlCreateRequest,
   ResearchCrawlJob,
   ResearchCrawlList,
-  ResearchKeywordSuggestionList,
   ResearchRecordBulkReviewResult,
   ResearchRecordDeleteResult,
   ResearchRecordDetail,
@@ -79,11 +78,6 @@ export const pilotApi = {
   dataSources: (signal?: AbortSignal) => getJson<ListResponse<DataSourceStatus>>("/api/v1/data-sources", signal),
   researchCrawls: (signal?: AbortSignal) =>
     getJson<ResearchCrawlList>("/api/v1/marketing/research-crawls", signal),
-  researchKeywordSuggestions: (brandId: string, signal?: AbortSignal) =>
-    getJson<ResearchKeywordSuggestionList>(
-      `/api/v1/marketing/research-crawls/keyword-suggestions?brand_id=${encodeURIComponent(brandId)}`,
-      signal,
-    ),
   createResearchCrawl: (body: ResearchCrawlCreateRequest) =>
     postJson<ResearchCrawlJob>("/api/v1/marketing/research-crawls", body),
   researchRecords: (query: string, signal?: AbortSignal) =>
