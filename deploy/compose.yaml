@@ -275,7 +275,6 @@ services:
       context: ..
       dockerfile: deploy/docker/frontend.Dockerfile
       target: runtime
-      args:
     depends_on:
       api:
         condition: service_healthy
