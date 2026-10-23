@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import Any
+
+from loguru import logger
 
 from .jev_navigation import JevBrowserNavigator, NavigationDecision
 from .models import ResearchCrawlProgress, ResearchCrawlRecord
@@ -92,8 +95,11 @@ class ScraplingCrawler:
 
         async def navigate(page: Any) -> None:
             try:
-                await page.wait_for_timeout(3_000)
+                with contextlib.suppress(Exception):
+                    await page.wait_for_load_state("networkidle", timeout=15_000)
+                await page.wait_for_timeout(2_000)
                 rounds_without_new_media = 0
+                blocked_rounds = 0
                 for step in range(1, self._max_steps + 1):
                     snapshot = await page.evaluate(_SNAPSHOT_SCRIPT)
                     before = len(media)
@@ -108,7 +114,16 @@ class ScraplingCrawler:
                         collected_media=len(media),
                         rounds_without_new_media=rounds_without_new_media,
                     )
-                    if decision.page_status in {"login_required", "blocked"}:
+                    logger.info(
+                        "Crawl step {}: page_status={} action={} media={}",
+                        step,
+                        decision.page_status,
+                        decision.action,
+                        len(media),
+                    )
+                    walled = decision.page_status in {"login_required", "blocked"}
+                    blocked_rounds = blocked_rounds + 1 if walled and len(media) == before else 0
+                    if blocked_rounds >= 2:
                         outcome["stop_reason"] = decision.page_status
                     elif decision.action == "done":
                         outcome["stop_reason"] = "done"
@@ -184,6 +199,7 @@ def _progress(
         scroll_count=step,
         navigation_step=step,
         navigation_action=decision.action,
+        page_status=decision.page_status,
         stop_reason=stop_reason,
         navigation_confidence=decision.confidence,
     )

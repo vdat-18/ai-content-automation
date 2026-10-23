@@ -8,9 +8,12 @@ from typing import Any
 import httpx
 
 _PAGE_STATUS = {
-    "content": "The page shows results or media that can be collected.",
+    "content": (
+        "The page shows results or media that can be collected, even if it also offers a "
+        "sign-in button."
+    ),
     "modal": "A popup, cookie banner or dialog covers the content.",
-    "login_required": "The page hides its content until the visitor signs in.",
+    "login_required": "The page shows no results and asks the visitor to sign in first.",
     "blocked": "The page shows a captcha, an access-denied message or an error.",
 }
 _SAFETY_POLICY = (

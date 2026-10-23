@@ -150,6 +150,7 @@ class ResearchCrawlProgress(BaseModel):
     navigation_step: int = 0
     navigation_action: str | None = None
     navigation_confidence: float | None = None
+    page_status: str | None = None
 
 
 class ResearchCrawlRecord(BaseModel):
