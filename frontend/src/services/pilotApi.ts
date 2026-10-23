@@ -1,9 +1,5 @@
 import { ApiError, deleteRequest, getJson, postJson } from "./http";
 import type {
-  AIUsageSummary,
-  AIUsageEvent,
-  AIUsageEventPage,
-  AIUsageRunPage,
   CreativeJobDetail,
   CreativeJobSummary,
   CreativeKnowledge,
@@ -16,7 +12,6 @@ import type {
   MarketingCreativeAutomationCapabilities,
   DataSourceStatus,
   DataSourceSyncAccepted,
-  GmcRun,
   MediaAsset,
   MediaAssetKind,
   MarketingCreativeAutomationBatch,
@@ -80,12 +75,7 @@ function uploadMediaAsset(
 
 export const pilotApi = {
   dashboard: (signal?: AbortSignal) => getJson<DashboardSnapshot>("/api/v1/dashboard/snapshot", signal),
-  aiUsage: (query: string, signal?: AbortSignal) => getJson<AIUsageSummary>(`/api/v1/ai-usage/summary?${query}`, signal),
-  aiUsageEvents: (query: string, signal?: AbortSignal) => getJson<AIUsageEventPage>(`/api/v1/ai-usage/events?${query}`, signal),
-  aiUsageEvent: (eventId: string, signal?: AbortSignal) => getJson<AIUsageEvent>(`/api/v1/ai-usage/events/${encodeURIComponent(eventId)}`, signal),
-  aiUsageRuns: (query: string, signal?: AbortSignal) => getJson<AIUsageRunPage>(`/api/v1/ai-usage/runs?${query}`, signal),
   uploadMediaAsset,
-  gmcRuns: (signal?: AbortSignal) => getJson<ListResponse<GmcRun>>("/api/v1/performance/gmc/runs", signal),
   dataSources: (signal?: AbortSignal) => getJson<ListResponse<DataSourceStatus>>("/api/v1/data-sources", signal),
   researchCrawls: (signal?: AbortSignal) =>
     getJson<ResearchCrawlList>("/api/v1/marketing/research-crawls", signal),

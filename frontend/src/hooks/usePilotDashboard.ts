@@ -28,42 +28,6 @@ export function useCreativeJob(jobId: string | undefined) {
   });
 }
 
-export function useGmcRuns() {
-  return useQuery({
-    queryKey: ["pilot-gmc-runs"],
-    queryFn: ({ signal }) => pilotApi.gmcRuns(signal),
-  });
-}
-
-export function useAIUsage(query: string) {
-  return useQuery({
-    queryKey: ["ai-usage", query],
-    queryFn: ({ signal }) => pilotApi.aiUsage(query, signal),
-  });
-}
-
-export function useAIUsageEvents(query: string) {
-  return useQuery({
-    queryKey: ["ai-usage-events", query],
-    queryFn: ({ signal }) => pilotApi.aiUsageEvents(query, signal),
-  });
-}
-
-export function useAIUsageEvent(eventId: string | null) {
-  return useQuery({
-    queryKey: ["ai-usage-event", eventId],
-    queryFn: ({ signal }) => pilotApi.aiUsageEvent(eventId ?? "", signal),
-    enabled: eventId !== null,
-  });
-}
-
-export function useAIUsageRuns(query: string) {
-  return useQuery({
-    queryKey: ["ai-usage-runs", query],
-    queryFn: ({ signal }) => pilotApi.aiUsageRuns(query, signal),
-  });
-}
-
 export function useNotifications() {
   return useQuery({
     queryKey: ["notifications"],

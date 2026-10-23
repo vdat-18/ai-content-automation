@@ -1,7 +1,5 @@
 import { Suspense, useEffect, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import {
-  AlertTriangle,
-  BarChart3,
   Bell,
   BrainCircuit,
   Bot,
@@ -17,7 +15,6 @@ import {
   Sun,
   Search,
   X,
-  CircleDollarSign,
 } from "lucide-react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useCreativeJobs, useNotifications, usePilotDashboard } from "../hooks/usePilotDashboard";
@@ -38,8 +35,6 @@ const readStoredSidebarWidth = () => {
 };
 
 const nav: NavItem[] = [
-  { to: "/", label: "Today", icon: CircleGauge, group: "marketing" },
-  { to: "/performance", label: "Performance", icon: BarChart3, group: "marketing" },
   { to: "/creative-production", label: "Creative Production", icon: Clapperboard, group: "creative" },
   { to: "/approvals", label: "Needs approval", icon: Bell, count: true, group: "creative" },
   { to: "/creatives", label: "Creative Library", icon: Image, group: "creative" },
@@ -47,15 +42,13 @@ const nav: NavItem[] = [
   { to: "/research-library", label: "Research Library", icon: LibraryBig, group: "research" },
   { to: "/second-brain", label: "SecondBrain", icon: BrainCircuit, group: "research" },
   { to: "/workflows", label: "AI activity", icon: GitBranch, group: "activity" },
-  { to: "/exceptions", label: "Exceptions", icon: AlertTriangle, exception: true, group: "system" },
   { to: "/data-sources", label: "Data sources", icon: Database, group: "system" },
-  { to: "/ai-usage", label: "AI usage & cost", icon: CircleDollarSign, group: "system" },
 ];
 
 export function AppShell() {
   const { language, setLanguage, t } = useI18n();
   const { theme, setTheme } = useTheme();
-  const { brand, setBrand, notify } = useWorkspace();
+  const { notify } = useWorkspace();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mobileLayout, setMobileLayout] = useState(() => window.matchMedia("(max-width: 900px)").matches);
   const [sidebarWidth, setSidebarWidth] = useState<number | null>(readStoredSidebarWidth);
@@ -105,12 +98,6 @@ export function AppShell() {
     window.localStorage.removeItem(SIDEBAR_WIDTH_KEY);
     setSidebarWidth(null);
   };
-  const backendBrands = [
-    ...(pilot.data?.approvals.map((item) => item.brand_id) ?? []),
-    ...(pilot.data?.workflows.map((item) => item.brand_id) ?? []),
-    ...(pilot.data?.exceptions.map((item) => item.brand_id) ?? []),
-  ].filter((item): item is string => Boolean(item));
-  const brands = [...new Set(backendBrands)];
   const pending = pilot.data?.summary.pending_approvals ?? 0;
   const issues = pilot.data?.summary.open_exceptions ?? 0;
   const currentNavItem = nav.find((item) => item.to === "/"
@@ -182,13 +169,6 @@ export function AppShell() {
           <span className="brand-product">{t("Marketing operations")}</span>
           <button className="icon-button sidebar-close" aria-label={t("Close menu")} onClick={closeMobile}><X size={20} /></button>
         </div>
-
-        {location.pathname === "/ai-usage" && brands.length > 0 && (
-          <label className="workspace-switcher"><span className="workspace-avatar">NX</span><div><small>{t("AI usage brand")}</small>
-            <select aria-label={t("AI usage brand")} value={brand} onChange={(event) => setBrand(event.target.value)}>
-              <option value="all">{t("All brands")}</option>{brands.map((item) => <option key={item}>{item}</option>)}
-            </select></div></label>
-        )}
 
         <nav>
           <p className="nav-label">{t("Marketing")}</p>

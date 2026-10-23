@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { AlertCircle, ArrowLeft, ArrowRight, Check, Database, GitBranch, Image, RefreshCcw, ShieldCheck, Sparkles, TriangleAlert, Upload, Video } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Database, GitBranch, Image, RefreshCcw, ShieldCheck, Sparkles, Upload, Video } from "lucide-react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { useDataSources, useDataSourceSync, useDataSourcesSyncAll } from "../hooks/useDataSources";
@@ -7,8 +7,6 @@ import { usePilotDashboard } from "../hooks/usePilotDashboard";
 import { Badge, EmptyState, PageHeader, Panel, PanelHeader, SkeletonPage, StatusBadge } from "../components/ui";
 
 import { pilotApi } from "../services/pilotApi";
-import { LivePerformanceEvidence } from "../marketing/LivePerformanceEvidence";
-import { GmcBackendPilot, PerformanceDecisions } from "../marketing/Shared";
 import { businessStage, dashboardStreamLabels } from "../marketing/labels";
 import { useI18n } from "../hooks/useI18n";
 import { AutoResizeTextarea } from "../components/AutoResizeTextarea";
@@ -16,19 +14,6 @@ import { Modal } from "../components/Modal";
 import { SplitHandle } from "../components/SplitHandle";
 import { useSplitResize } from "../hooks/useSplitResize";
 import type { MarketingCreativeAutomationBatch, MarketingCreativeAutomationCapabilities, MarketingCreativeAutomationDetail, MarketingCreativeProductSelection, ProductFamilyCandidate } from "../types/pilotApi";
-
-export function PerformancePage() {
-  const [params, setParams] = useSearchParams();
-  const view = params.get("view") === "evidence" ? "evidence" : "decisions";
-  return <>
-    <PageHeader eyebrow="Learn and decide" title="Performance" description="Start with recommended actions, then inspect the source evidence when you need more detail." variant="analytics" />
-    <div className="filterbar performance-view-switch"><div className="segmented">
-      <button className={view === "decisions" ? "active" : ""} onClick={() => setParams({ view: "decisions" })}>Opportunities & decisions</button>
-      <button className={view === "evidence" ? "active" : ""} onClick={() => setParams({ view: "evidence" })}>Source evidence</button>
-    </div></div>
-    {view === "decisions" ? <PerformanceDecisions /> : <><LivePerformanceEvidence /><GmcBackendPilot /></>}
-  </>;
-}
 
 type CreativeLoopRun = {
   run_id: string;
@@ -1443,25 +1428,6 @@ export function WorkflowsPage() {
         {activityWorkflows.map((flow) => <Panel className="workflow-card" key={flow.workflow_id}><Link className="workflow-summary" to={flow.action_path}><span className="workflow-symbol"><GitBranch size={19} /></span><div><strong>{t(flow.title === "Static Creative production" ? "Creative output" : flow.title)}</strong><p>{flow.brand_id ?? t("Shared")} · {formatDate(flow.updated_at)}</p></div><div className="workflow-progress"><span>{t(businessStage(flow.business_stage))}</span><small>{t(dashboardStreamLabels[flow.workstream])}</small></div><StatusBadge status={flow.status} /><ArrowRight size={18} /></Link></Panel>)}
       </div>
       {!activityWorkflows.length && <EmptyState icon={<GitBranch />} title="No other activity" text="New automated work will appear here when it starts." />}
-    </>
-  );
-}
-
-export function ExceptionsPage() {
-  const { t, formatDate } = useI18n();
-  const pilot = usePilotDashboard();
-  const [tab, setTab] = useState("open");
-  const [queue, setQueue] = useState("all");
-  if (pilot.isLoading) return <SkeletonPage />;
-  const items = (pilot.data?.exceptions ?? []).filter((item) => (tab === "all" || item.status === tab) && (queue === "all" || item.queue === queue));
-  return (
-    <>
-      <PageHeader eyebrow="Human exception queue" title="Exceptions" description="Persisted business and operations exceptions from backend evidence and execution state." variant="operator" actions={<Badge tone="danger">{pilot.data?.summary.open_exceptions ?? 0} open</Badge>} />
-      <div className="filterbar"><div className="segmented">{["open", "all"].map((item) => <button className={tab === item ? "active" : ""} onClick={() => setTab(item)} key={item}>{t(item)}</button>)}</div></div>
-      <label className="filterbar">{t("Queue")} <select aria-label={t("Exception queue")} value={queue} onChange={(event) => setQueue(event.target.value)}><option value="all">{t("All queues")}</option><option value="operations">{t("Operations")}</option><option value="policy">{t("Policy")}</option></select></label>
-      {pilot.error && <p className="form-error" role="alert">{pilot.error.message}</p>}
-      <div className="exception-list">{items.map((item) => <Panel className="exception-card" key={item.exception_id}><span className={`severity-icon severity-icon--${item.severity === "blocking" ? "critical" : "warning"}`}>{item.severity === "blocking" ? <AlertCircle /> : <TriangleAlert />}</span><div><div className="card-topline"><Badge tone={item.severity === "blocking" ? "danger" : "warning"}>{item.severity}</Badge><Badge>{item.queue}</Badge><StatusBadge status={item.status} /></div><h2>{item.title}</h2><p>{item.detail}</p><span className="exception-source">{dashboardStreamLabels[item.workstream]} · {formatDate(item.created_at)}</span><footer><span>{t("Suggested action")}</span><Link className="text-link" to={item.action_path}>Inspect exact evidence →</Link></footer></div></Panel>)}</div>
-      {!items.length && <EmptyState icon={<ShieldCheck />} title="No exceptions" text="No backend exceptions in the selected queue." />}
     </>
   );
 }

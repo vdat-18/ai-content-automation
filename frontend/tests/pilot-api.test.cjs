@@ -21,11 +21,6 @@ test("pilot API owns every backend HTTP request", () => {
 
   assert.match(http, /response = await fetch\(path, init\)/);
   assert.match(api, /dashboard.*\/api\/v1\/dashboard\/snapshot/);
-  assert.match(api, /aiUsage.*\/api\/v1\/ai-usage\/summary/);
-  assert.match(api, /aiUsageEvents.*\/api\/v1\/ai-usage\/events/);
-  assert.match(api, /aiUsageEvent.*\/api\/v1\/ai-usage\/events/);
-  assert.match(api, /aiUsageRuns.*\/api\/v1\/ai-usage\/runs/);
-  assert.match(api, /gmcRuns.*\/api\/v1\/performance\/gmc\/runs/);
   assert.match(api, /dataSources.*\/api\/v1\/data-sources/);
   assert.match(api, /sourcePerformanceCandidates[\s\S]*performance-candidates/);
   assert.match(api, /marketingCreativeAutomations[\s\S]*marketing\/creative-automations/);
@@ -73,19 +68,6 @@ test("Creative review exposes pinned SecondBrain criteria", () => {
   assert.match(operations, /review\.review_checklist\.map/);
 });
 
-test("AI usage page reads the durable API without mock fallback", () => {
-  const page = src("pages", "AIUsage.tsx");
-  assert.match(page, /useAIUsage/);
-  assert.match(page, /useAIUsageEvents/);
-  assert.match(page, /useAIUsageRuns/);
-  assert.match(page, /Unknown cost is never treated as zero/);
-  assert.match(page, /Runs & jobs/);
-  assert.match(page, /Provider calls/);
-  assert.match(page, /Trace coverage/);
-  assert.match(page, /Provider call detail/);
-  assert.doesNotMatch(page, /mockApi|mockData/);
-});
-
 test("Creative detail reviews every exact final version with its source brief", () => {
   const page = src("pages", "CreativeJobs.tsx");
   const api = src("services", "pilotApi.ts");
@@ -124,22 +106,16 @@ test("Creative detail reviews every exact final version with its source brief", 
 
 test("operational pages use the backend dashboard projection without a mock fallback", () => {
   const shell = src("components", "AppShell.tsx");
-  const overview = src("pages", "Overview.tsx");
   const approvals = src("pages", "Approvals.tsx");
   const operations = src("pages", "Operations.tsx");
 
-  for (const source of [overview, approvals, operations]) {
+  for (const source of [approvals, operations]) {
     assert.match(source, /usePilotDashboard/);
   }
-  assert.match(overview, /useDataSources/);
-  assert.match(overview, /Needs your decision/);
-  assert.match(overview, /Failed commands/);
-  assert.match(overview, /flow\.business_stage/);
   assert.match(approvals, /Could not load approvals/);
   assert.match(approvals, /DecisionCard/);
   assert.match(approvals, /previewByEntity/);
   assert.doesNotMatch(approvals, /data\.marketing\.approvals/);
-  assert.match(operations, /pilot\.data\?\.exceptions/);
   assert.match(operations, /pilot\.data\?\.workflows/);
   assert.doesNotMatch(operations, /pilotApi\.marketingCreativeAutomations/);
   assert.match(operations, /brand: selectedBrand/);
@@ -160,21 +136,12 @@ test("operational pages use the backend dashboard projection without a mock fall
   assert.match(shell, /Connected/);
   assert.match(shell, /role="dialog" aria-modal="true" aria-label=\{t\("Search workspace"\)\}/);
   assert.match(shell, /creatives\.data\?\.items\.map/);
-  assert.match(shell, /pilot\.data\?\.exceptions\.map/);
   assert.match(shell, /Local pilot/);
   assert.match(shell, /No sign-in/);
-  assert.match(shell, /AI usage brand/);
   assert.doesNotMatch(shell, /navigate\("\/"\).*Brand workspace/s);
   assert.doesNotMatch(shell, /Dat Nguyen|AI Engineer/);
   assert.doesNotMatch(shell, /mockApi|mockData|mock\.error/);
   assert.doesNotMatch(shell, /error \? <section className="error-panel"/);
-});
-
-test("GMC panel uses the backend read model", () => {
-  const shared = src("marketing", "Shared.tsx");
-
-  assert.match(shared, /useGmcRuns/);
-  assert.match(shared, /H1 GMC ingestion/);
 });
 
 test("Creative production uses exact per-ratio quantities and provider capabilities", () => {
@@ -292,7 +259,6 @@ test("Creative production limits reference uploads and output totals in the fron
 test("Marketing workspace uses responsive task groups and dense operator layouts", () => {
   const shell = src("components", "AppShell.tsx");
   const operations = src("pages", "Operations.tsx");
-  const shared = src("marketing", "Shared.tsx");
   const styles = src("marketing", "workspace.css");
 
   assert.match(shell, /Creative workflow/);
@@ -301,29 +267,16 @@ test("Marketing workspace uses responsive task groups and dense operator layouts
   assert.match(operations, /useSplitResize\("aic-creative-output-split"/);
   assert.match(operations, /<SplitHandle label="Resize output settings"/);
   assert.match(operations, /workflow-list--activity/);
-  assert.match(operations, /<footer><span>\{t\("Suggested action"\)\}/);
-  assert.match(shared, /performance-decision-value/);
   assert.match(styles, /\.automation-output-card \{ grid-column: 2; grid-row: 1;/);
   assert.match(styles, /\.workflow-list--activity \{[^}]*repeat\(2/);
-  assert.match(styles, /\.exception-list \{[^}]*repeat\(2/);
 });
 
 test("Data Sources uses the read-only backend connector status", () => {
   const operations = src("pages", "Operations.tsx");
-  const livePerformance = src("marketing", "LivePerformanceEvidence.tsx");
   const hook = src("hooks", "useDataSources.ts");
 
   assert.match(operations, /useDataSources/);
   assert.match(operations, /Real read-only API checks/);
-  assert.match(operations, /LivePerformanceEvidence/);
-  assert.match(operations, /PerformanceDecisions/);
-  assert.match(operations, /<LivePerformanceEvidence \/><GmcBackendPilot \/>/);
-  assert.match(src("marketing", "Shared.tsx"), /Recommended actions/);
-  assert.match(src("marketing", "Shared.tsx"), /Evidence and evaluation details/);
-  assert.match(src("marketing", "Shared.tsx"), /performanceRecommendationLabel/);
-  assert.match(livePerformance, /Live SKU performance evidence/);
-  assert.match(livePerformance, /creative_lineage_status/);
-  assert.match(livePerformance, /Evidence only\./);
   assert.match(hook, /pilotApi\.dataSources/);
   assert.match(hook, /pilotApi\.sourcePerformanceCandidates/);
   assert.match(hook, /pilotApi\.syncDataSource/);
