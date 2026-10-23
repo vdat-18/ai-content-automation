@@ -14,7 +14,7 @@ from ai_content.domains.marketing.data_sources.ports.interfaces import (
     IDataSourceRepository,
 )
 
-from .models import ResearchBrandContext
+from .models import ResearchBrandContext, ResearchProduct
 
 _SUPPORTED_KINDS = {"brand_guideline", "creative_strategy", "product"}
 _PRODUCT_LIMIT = 100
@@ -64,6 +64,11 @@ class ResearchBrandContextResolver:
             if record.kind != "product"
             for fact in _supporting_facts(record)
         )[:_SUPPORTING_FACT_LIMIT]
+        catalog = tuple(
+            product
+            for _snapshot, record in products[:_PRODUCT_LIMIT]
+            if (product := _research_product(record))
+        )
         payload = {
             "brand_id": brand_id,
             "source_versions": source_versions,
@@ -71,8 +76,13 @@ class ResearchBrandContextResolver:
             "supporting_facts": supporting_facts,
         }
         version = hashlib.sha256(
-            json.dumps(payload, ensure_ascii=False, sort_keys=True).encode()
+            json.dumps(
+                {**payload, "products": [item.model_dump(mode="json") for item in catalog]},
+                ensure_ascii=False,
+                sort_keys=True,
+            ).encode()
         ).hexdigest()
+        payload["products"] = catalog
         return ResearchBrandContext(version=version, **payload)
 
 
@@ -127,6 +137,33 @@ def _product_fact(record: NormalizedRecord) -> str:
     ]
     parts = [_plain_text(value) for value in values]
     return " | ".join(part for part in parts if part)[:2_000]
+
+
+def _research_product(record: NormalizedRecord) -> ResearchProduct | None:
+    data = record.data
+    product_id = str(data.get("product_id") or record.provider_id or "")
+    title = _plain_text(data.get("title"))
+    if not product_id or not title:
+        return None
+    facts = {
+        str(item.get("key")): _plain_text(item.get("canonical_value") or item.get("value"))
+        for item in data.get("metafields", ())
+        if isinstance(item, dict) and item.get("namespace") == "reference"
+    }
+
+    def split(key: str) -> tuple[str, ...]:
+        return tuple(part.strip() for part in facts.get(key, "").split(",") if part.strip())
+
+    return ResearchProduct(
+        product_id=product_id,
+        title=title,
+        product_type=_plain_text(data.get("product_type")),
+        category=facts.get("category", ""),
+        description=_plain_text(data.get("description_html"))[:400],
+        usage_scenes=split("usage_scenes"),
+        avoid_scenes=split("avoid_scenes"),
+        not_to_confuse_with=split("not_to_confuse_with"),
+    )
 
 
 def _supporting_facts(record: NormalizedRecord) -> tuple[str, ...]:

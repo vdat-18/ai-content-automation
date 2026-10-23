@@ -26,6 +26,21 @@ ResearchCrawlPhase = Literal[
 ]
 
 
+class ResearchProduct(BaseModel):
+    """One product of the project, as the screening step may match a reference to it."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    product_id: str
+    title: str
+    product_type: str = ""
+    category: str = ""
+    description: str = ""
+    usage_scenes: tuple[str, ...] = ()
+    avoid_scenes: tuple[str, ...] = ()
+    not_to_confuse_with: tuple[str, ...] = ()
+
+
 class ResearchBrandContext(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -34,6 +49,7 @@ class ResearchBrandContext(BaseModel):
     source_versions: tuple[str, ...]
     product_facts: tuple[str, ...]
     supporting_facts: tuple[str, ...] = ()
+    products: tuple[ResearchProduct, ...] = ()
 
 
 class ResearchMediaAsset(BaseModel):
@@ -64,6 +80,21 @@ class ResearchClassification(BaseModel):
     error_code: str | None = None
 
 
+ResearchSceneType = Literal[
+    "lifestyle_scene", "environment", "flatlay", "studio_plain", "cutout", "graphic", "other"
+]
+ResearchSwapMode = Literal["insert", "replace", "style_only", "reject"]
+ResearchMatchKind = Literal["product_visible", "scene_fit", "style_only"]
+
+
+class ResearchProductMatch(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    product_id: str
+    match_kind: ResearchMatchKind
+    confidence: float = Field(default=0, ge=0, le=1)
+
+
 class ResearchReferenceProfile(BaseModel):
     """Semantic brief that lets Marketing and Creative understand a reference."""
 
@@ -91,6 +122,15 @@ class ResearchReferenceProfile(BaseModel):
     inferences: tuple[str, ...] = ()
     media_notes: tuple[str, ...] = ()
     applicability_constraints: tuple[str, ...] = ()
+    scene_type: ResearchSceneType = "other"
+    scene_description: str = Field(default="", max_length=1_000)
+    background_usable: bool = True
+    background_reason: str = Field(default="", max_length=500)
+    placement_note: str = Field(default="", max_length=500)
+    camera_angle: str = Field(default="", max_length=200)
+    lighting: str = Field(default="", max_length=300)
+    swap_mode: ResearchSwapMode = "style_only"
+    product_matches: tuple[ResearchProductMatch, ...] = ()
 
 
 class ResearchScreening(BaseModel):
@@ -270,6 +310,7 @@ class ResearchRecordQuery(BaseModel):
     media_type: Literal["all", "image", "video", "mixed", "none"] = "all"
     media_status: Literal["all", "available", "failed", "source_only"] = "all"
     category: str | None = None
+    product_id: str | None = None
     query: str | None = None
     sort: Literal["last_seen_desc", "first_seen_desc", "title_asc"] = "last_seen_desc"
     page: int = Field(default=1, ge=1)
@@ -303,13 +344,18 @@ __all__ = [
     "ResearchCrawlResult",
     "ResearchCrawlStatus",
     "ResearchClassification",
+    "ResearchMatchKind",
     "ResearchMediaAsset",
+    "ResearchProduct",
+    "ResearchProductMatch",
     "ResearchRecordPage",
     "ResearchRecordQuery",
     "ResearchReferenceProfile",
     "ResearchReviewStatus",
+    "ResearchSceneType",
     "ResearchScreening",
     "ResearchScreeningStatus",
+    "ResearchSwapMode",
     "ResearchRecordUpsertSummary",
     "ResearchRecordVersion",
     "StoredResearchRecord",

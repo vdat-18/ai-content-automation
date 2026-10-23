@@ -98,7 +98,7 @@ class TextAlignment(str, Enum):
     RIGHT = "RIGHT"
 
 # #########################################################################
-# Generated classes (20)
+# Generated classes (21)
 # #########################################################################
 
 class AutomationImagePlan(BaseModel):
@@ -216,6 +216,11 @@ class LabeledReviewImage(BaseModel):
     label: str
     content: baml_py.Image
 
+class ResearchProductMatchDraft(BaseModel):
+    product_id: str
+    match_kind: typing.Union[typing_extensions.Literal['product_visible'], typing_extensions.Literal['scene_fit'], typing_extensions.Literal['style_only']]
+    confidence: float
+
 class ResearchReferenceProfileDraft(BaseModel):
     summary: str
     relevance_to_project: str
@@ -239,6 +244,15 @@ class ResearchReferenceProfileDraft(BaseModel):
     inferences: typing.List[str]
     media_notes: typing.List[str]
     applicability_constraints: typing.List[str]
+    scene_type: typing.Union[typing_extensions.Literal['lifestyle_scene'], typing_extensions.Literal['environment'], typing_extensions.Literal['flatlay'], typing_extensions.Literal['studio_plain'], typing_extensions.Literal['cutout'], typing_extensions.Literal['graphic'], typing_extensions.Literal['other']]
+    scene_description: str
+    background_usable: bool
+    background_reason: str
+    placement_note: str
+    camera_angle: str
+    lighting: str
+    swap_mode: typing.Union[typing_extensions.Literal['insert'], typing_extensions.Literal['replace'], typing_extensions.Literal['style_only'], typing_extensions.Literal['reject']]
+    product_matches: typing.List["ResearchProductMatchDraft"]
 
 class ResearchScreeningDraft(BaseModel):
     usable: bool
@@ -290,7 +304,7 @@ class StaticCreativeReview(BaseModel):
 
 
 # #########################################################################
-# Model rebuilds (20)
+# Model rebuilds (21)
 # #########################################################################
 # Resolve string forward references now that every model above is defined so
 # class declaration order never breaks Pydantic construction (issue #793).
@@ -309,6 +323,7 @@ CreativeIdeaDraft.model_rebuild()
 CreativePersonaHypothesis.model_rebuild()
 CreativeVariationDraft.model_rebuild()
 LabeledReviewImage.model_rebuild()
+ResearchProductMatchDraft.model_rebuild()
 ResearchReferenceProfileDraft.model_rebuild()
 ResearchScreeningDraft.model_rebuild()
 SemanticCriterionReview.model_rebuild()

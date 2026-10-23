@@ -43,6 +43,83 @@ class _Brand:
     items: tuple[_Item, ...]
 
 
+# Reference-matching facts every product carries as `reference.*` metafields: where it is
+# used, where it never appears and which look-alike products it must not be confused with.
+_REFERENCE_FACTS: dict[str, dict[str, str]] = {
+    "CloudSupport Orthopedic Pillow": {
+        "category": "Home & Garden > Linens & Bedding > Bedding > Pillows",
+        "usage_scenes": "bedroom bed, hotel room, guest room, morning light bedside",
+        "avoid_scenes": "outdoor, kitchen, office desk, bathroom",
+        "not_to_confuse_with": "sofa cushion, neck travel pillow, decorative throw pillow",
+    },
+    "SleepWell Weighted Blanket": {
+        "category": "Home & Garden > Linens & Bedding > Bedding > Blankets",
+        "usage_scenes": "bedroom bed, sofa evening, reading nook, cosy living room",
+        "avoid_scenes": "outdoor, kitchen, office desk, bathroom",
+        "not_to_confuse_with": "throw rug, picnic blanket, duvet",
+    },
+    "Dusk Cooling Sheet Set": {
+        "category": "Home & Garden > Linens & Bedding > Bedding > Bed Sheets",
+        "usage_scenes": "made bed, bedroom, hotel room, laundry folding flatlay",
+        "avoid_scenes": "outdoor, kitchen, office desk, bathroom",
+        "not_to_confuse_with": "tablecloth, curtain, towel",
+    },
+    "Hush Silk Sleep Mask": {
+        "category": "Health & Beauty > Personal Care > Sleep Masks",
+        "usage_scenes": "bedroom nightstand, airplane seat, travel flatlay, spa, hotel bed",
+        "avoid_scenes": "outdoor, kitchen, office desk",
+        "not_to_confuse_with": "face mask skincare, surgical mask, swim goggles, sunglasses",
+    },
+    "Haven Standing Desk": {
+        "category": "Furniture > Office Furniture > Desks",
+        "usage_scenes": "home office, studio apartment workspace, bright bedroom corner desk",
+        "avoid_scenes": "bathroom, outdoor, bed close-up",
+        "not_to_confuse_with": "dining table, side table, vanity",
+    },
+    "Nest Lounge Chair": {
+        "category": "Furniture > Chairs > Arm Chairs & Accent Chairs",
+        "usage_scenes": "living room, reading corner, bedroom corner, window light",
+        "avoid_scenes": "outdoor, kitchen, office desk close-up",
+        "not_to_confuse_with": "office chair, dining chair, sofa",
+    },
+    "Grove Open Bookshelf": {
+        "category": "Furniture > Shelving > Bookcases & Standing Shelves",
+        "usage_scenes": "living room wall, home office, hallway, bedroom wall",
+        "avoid_scenes": "outdoor, bathroom, bed close-up",
+        "not_to_confuse_with": "wall shelf, cabinet, room divider",
+    },
+    "Terra Side Table": {
+        "category": "Furniture > Tables > Accent Tables > End Tables",
+        "usage_scenes": "beside sofa, bedside, living room corner, window light",
+        "avoid_scenes": "outdoor, bathroom, kitchen counter",
+        "not_to_confuse_with": "desk, dining table, coffee table, stool",
+    },
+    "Dew Drop Hyaluronic Serum": {
+        "category": "Health & Beauty > Personal Care > Cosmetics > Skin Care > Serums",
+        "usage_scenes": "bathroom shelf, vanity, bedside skincare routine, water and glass textures",
+        "avoid_scenes": "kitchen cooking, outdoor sport, furniture room shot",
+        "not_to_confuse_with": "perfume, nail polish, essential oil",
+    },
+    "SunVeil SPF 50 Fluid": {
+        "category": "Health & Beauty > Personal Care > Cosmetics > Skin Care > Sunscreen",
+        "usage_scenes": "beach bag, morning routine, bathroom shelf, travel flatlay, sunny outdoor",
+        "avoid_scenes": "bedroom night, furniture room shot",
+        "not_to_confuse_with": "lotion, tanning oil, bug spray",
+    },
+    "Cloud Gel Cleanser": {
+        "category": "Health & Beauty > Personal Care > Cosmetics > Skin Care > Facial Cleansers",
+        "usage_scenes": "bathroom sink, shower shelf, vanity, water splash textures",
+        "avoid_scenes": "kitchen cooking, outdoor sport, furniture room shot",
+        "not_to_confuse_with": "hand soap, dish soap, shampoo",
+    },
+    "Night Bloom Barrier Cream": {
+        "category": "Health & Beauty > Personal Care > Cosmetics > Skin Care > Moisturizers",
+        "usage_scenes": "bedside table night routine, vanity, bathroom shelf, soft evening light",
+        "avoid_scenes": "outdoor sport, kitchen, furniture room shot",
+        "not_to_confuse_with": "hand cream, body butter, face mask",
+    },
+}
+
 _BRANDS: dict[str, _Brand] = {
     "AuraSleep": _Brand(
         "AuraSleep",
@@ -356,6 +433,21 @@ def _raw_product(
     }
 
 
+def _reference_metafields(title: str) -> tuple[dict[str, Any], ...]:
+    return tuple(
+        {
+            "namespace": "reference",
+            "key": key,
+            "type": "single_line_text_field",
+            "value": value,
+            "canonical_value": value,
+            "updated_at": "2026-09-01T09:00:00Z",
+            "references": [],
+        }
+        for key, value in _REFERENCE_FACTS[title].items()
+    )
+
+
 def _product_record(
     definition: DataSourceDefinition, brand: _Brand, item_index: int, seed: int
 ) -> NormalizedRecord:
@@ -365,7 +457,7 @@ def _product_record(
         "USD",
         brand=brand.key,
         store_id=brand.store,
-        metafields=(),
+        metafields=_reference_metafields(brand.items[item_index].title),
     )
 
 

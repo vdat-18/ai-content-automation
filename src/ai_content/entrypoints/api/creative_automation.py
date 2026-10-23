@@ -644,6 +644,14 @@ async def create_marketing_creative_automation(
         idempotency_key=payload.idempotency_key,
         created_at=created_at,
     )
+    await research_repository.record_reference_uses(
+        tuple(
+            item.reference_id
+            for item in reference_candidates
+            if item.reference_id.startswith("research:")
+        ),
+        batch_id,
+    )
     if settings.execution_backend == "celery":
         if isinstance(jobs, PostgresCreativeAutomationJobRepository) and isinstance(
             scheduler, CeleryCommandScheduler

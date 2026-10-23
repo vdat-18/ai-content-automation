@@ -8,6 +8,7 @@ from sqlalchemy import (
     CheckConstraint,
     Column,
     DateTime,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -394,6 +395,41 @@ research_run_records = Table(
     schema="marketing",
 )
 Index("ix_research_run_records_record", research_run_records.c.record_key)
+
+research_reference_products = Table(
+    "research_reference_products",
+    metadata,
+    Column(
+        "record_key",
+        Text,
+        ForeignKey("marketing.research_records.record_key", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column("product_id", Text, primary_key=True),
+    Column("match_kind", Text, nullable=False),
+    Column("confidence", Float, nullable=False),
+    CheckConstraint(
+        "match_kind IN ('product_visible', 'scene_fit', 'style_only')",
+        name="valid_match_kind",
+    ),
+    schema="marketing",
+)
+Index("ix_research_reference_products_product", research_reference_products.c.product_id)
+
+research_reference_uses = Table(
+    "research_reference_uses",
+    metadata,
+    Column(
+        "record_key",
+        Text,
+        ForeignKey("marketing.research_records.record_key", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    Column("media_id", Text, primary_key=True),
+    Column("batch_id", Text, primary_key=True),
+    Column("used_at", DateTime(timezone=True), nullable=False),
+    schema="marketing",
+)
 
 notifications = Table(
     "notifications",

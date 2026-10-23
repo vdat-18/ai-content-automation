@@ -13,6 +13,8 @@ _QUALITY_WEIGHT = 0.25
 _FRESHNESS_WEIGHT = 0.20
 _FRESHNESS_HALF_LIFE_DAYS = 60.0
 _DIVERSITY_LAMBDA = 0.7
+_USE_DECAY = 0.5
+_MATCH_RELEVANCE = {"scene_fit": 1.0, "product_visible": 0.9, "style_only": 0.3}
 
 
 @dataclass(frozen=True)
@@ -38,6 +40,8 @@ class _Candidate:
     relevance_terms: frozenset[str]
     style_terms: frozenset[str]
     quality: float
+    matches: dict[str, tuple[str, float]]
+    uses: int
 
 
 def _terms(*values: str | tuple[str, ...]) -> frozenset[str]:
@@ -54,7 +58,9 @@ def _split(text: str) -> list[str]:
     return cleaned.split()
 
 
-def _candidates(records: list[StoredResearchRecord]) -> list[_Candidate]:
+def _candidates(
+    records: list[StoredResearchRecord], use_counts: dict[str, int]
+) -> list[_Candidate]:
     seen_hashes: set[str] = set()
     result: list[_Candidate] = []
     for record in sorted(records, key=lambda item: item.last_seen_at, reverse=True):
@@ -62,7 +68,7 @@ def _candidates(records: list[StoredResearchRecord]) -> list[_Candidate]:
         profile = screening.profile if screening is not None else None
         if record.review_status != "approved" or record.screening_status != "kept":
             continue
-        if profile is None or screening is None:
+        if profile is None or screening is None or not profile.background_usable:
             continue
         for media in record.media_assets:
             if (
@@ -95,6 +101,11 @@ def _candidates(records: list[StoredResearchRecord]) -> list[_Candidate]:
                         profile.hook,
                     ),
                     quality=screening.confidence,
+                    matches={
+                        match.product_id: (match.match_kind, match.confidence)
+                        for match in profile.product_matches
+                    },
+                    uses=use_counts.get(record.record_key, 0),
                 )
             )
     return result
@@ -109,27 +120,40 @@ def shortlist_references(
     records: list[StoredResearchRecord],
     *,
     product_text: str,
+    product_id: str | None = None,
+    use_counts: dict[str, int] | None = None,
     limit: int = 5,
     now: datetime | None = None,
 ) -> list[ShortlistedReference]:
-    """Pick up to ``limit`` relevant references that differ from each other."""
+    """Pick up to ``limit`` relevant references that differ from each other.
+
+    With a ``product_id`` only references matched to that product qualify. References already
+    used for earlier ads are down-weighted, not removed, so a small library never runs dry.
+    """
     moment = now or datetime.now(UTC)
     product_terms = _terms(product_text)
     scored: list[tuple[_Candidate, float, tuple[str, ...]]] = []
-    for candidate in _candidates(records):
-        matched = sorted(product_terms & candidate.relevance_terms)
-        relevance = len(matched) / len(product_terms) if product_terms else 0.0
+    for candidate in _candidates(records, use_counts or {}):
+        if product_id is not None:
+            match = candidate.matches.get(product_id)
+            if match is None:
+                continue
+            kind, match_confidence = match
+            relevance = _MATCH_RELEVANCE[kind] * (0.5 + 0.5 * match_confidence)
+            matched = [kind]
+        else:
+            matched = sorted(product_terms & candidate.relevance_terms)
+            relevance = len(matched) / len(product_terms) if product_terms else 0.0
         age_days = max((moment - candidate.record.last_seen_at).total_seconds() / 86400, 0.0)
         freshness = math.exp(-math.log(2) * age_days / _FRESHNESS_HALF_LIFE_DAYS)
         score = (
             _RELEVANCE_WEIGHT * relevance
             + _QUALITY_WEIGHT * candidate.quality
             + _FRESHNESS_WEIGHT * freshness
-        )
+        ) * _USE_DECAY**candidate.uses
         reasons = (
-            f"matches product terms: {', '.join(matched)}"
-            if matched
-            else "no direct product match",
+            f"matches product: {', '.join(matched)}" if matched else "no direct product match",
+            f"already used {candidate.uses} times" if candidate.uses else "not used yet",
             f"screening confidence {candidate.quality:.2f}",
             f"seen {int(age_days)} days ago",
         )

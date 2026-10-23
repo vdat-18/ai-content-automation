@@ -16,6 +16,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from pydantic import BaseModel
 from sqlalchemy.exc import IntegrityError
 
+from ai_content.domains.marketing.data_sources.ports.interfaces import IDataSourceRepository
+from ai_content.domains.marketing.research_crawler.brand_context import (
+    ResearchBrandContextResolver,
+)
 from ai_content.domains.marketing.research_crawler.commands import crawl_url_command
 from ai_content.domains.marketing.research_crawler.identity import crawl_fingerprint
 from ai_content.domains.marketing.research_crawler.models import (
@@ -35,6 +39,7 @@ from ai_content.platform.execution import CeleryCommandScheduler, CommandSchedul
 
 from .dependencies import (
     get_command_scheduler,
+    get_research_brand_source_repository,
     get_research_crawl_repository,
     get_research_crawl_service,
     get_runtime_settings,
@@ -375,14 +380,17 @@ async def shortlist_research_references(
     product: str = Query(min_length=1, description="Product title and type used for relevance"),
     limit: int = Query(default=5, ge=1, le=12),
     repository: ResearchCrawlRepository = Depends(get_research_crawl_repository),
+    brand_sources: IDataSourceRepository = Depends(get_research_brand_source_repository),
 ) -> list[ShortlistedReferenceResponse]:
     """Rank approved references for one product and keep the picks different from each other."""
+    product_id = await _project_product_id(brand_sources, brand_id, product)
     records: list[StoredResearchRecord] = []
     page_number = 1
     while True:
         page = await repository.search_records(
             ResearchRecordQuery(
                 brand_id=brand_id,
+                product_id=product_id,
                 review_status="approved",
                 media_type="image",
                 media_status="available",
@@ -394,10 +402,35 @@ async def shortlist_research_references(
         if len(records) >= page.total or not page.items:
             break
         page_number += 1
+    use_counts = await repository.reference_use_counts(tuple(item.record_key for item in records))
     return [
         ShortlistedReferenceResponse(**{**asdict(item), "reasons": list(item.reasons)})
-        for item in shortlist_references(records, product_text=product, limit=limit)
+        for item in shortlist_references(
+            records,
+            product_text=product,
+            product_id=product_id,
+            use_counts=use_counts,
+            limit=limit,
+        )
     ]
+
+
+async def _project_product_id(
+    brand_sources: IDataSourceRepository, brand_id: str, product: str
+) -> str | None:
+    """Find the project product the dashboard names, so references can be filtered by id."""
+    try:
+        context = await ResearchBrandContextResolver(brand_sources).resolve(brand_id)
+    except ValueError:
+        return None
+    wanted = product.casefold().strip()
+    for item in context.products:
+        if item.title.casefold() == wanted:
+            return item.product_id
+    for item in context.products:
+        if item.title.casefold() in wanted or wanted in item.title.casefold():
+            return item.product_id
+    return None
 
 
 @library_router.post("/review", response_model=ResearchRecordBulkReviewResponse)

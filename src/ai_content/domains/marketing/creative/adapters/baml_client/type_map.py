@@ -55,6 +55,9 @@ type_map = {
     "types.LabeledReviewImage": types.LabeledReviewImage,
     "stream_types.LabeledReviewImage": stream_types.LabeledReviewImage,
 
+    "types.ResearchProductMatchDraft": types.ResearchProductMatchDraft,
+    "stream_types.ResearchProductMatchDraft": stream_types.ResearchProductMatchDraft,
+
     "types.ResearchReferenceProfileDraft": types.ResearchReferenceProfileDraft,
     "stream_types.ResearchReferenceProfileDraft": stream_types.ResearchReferenceProfileDraft,
 

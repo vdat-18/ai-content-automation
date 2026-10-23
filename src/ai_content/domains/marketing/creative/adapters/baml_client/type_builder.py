@@ -20,7 +20,7 @@ from .globals import DO_NOT_USE_DIRECTLY_UNLESS_YOU_KNOW_WHAT_YOURE_DOING_RUNTIM
 class TypeBuilder(type_builder.TypeBuilder):
     def __init__(self):
         super().__init__(classes=set(
-          ["AutomationImagePlan","AutomationVideoAudioPlan","AutomationVideoPlan","AutomationVideoScenePlan","CompositionRegion","CompositionTextPlacement","CreativeAutomationPlanDraft","CreativeBriefDraft","CreativeIdeaCandidates","CreativeIdeaDraft","CreativePersonaHypothesis","CreativeVariationDraft","LabeledReviewImage","ResearchReferenceProfileDraft","ResearchScreeningDraft","SemanticCriterionReview","SemanticReviewEvidence","SemanticReviewIssue","StaticCompositionDraft","StaticCreativeReview",]
+          ["AutomationImagePlan","AutomationVideoAudioPlan","AutomationVideoPlan","AutomationVideoScenePlan","CompositionRegion","CompositionTextPlacement","CreativeAutomationPlanDraft","CreativeBriefDraft","CreativeIdeaCandidates","CreativeIdeaDraft","CreativePersonaHypothesis","CreativeVariationDraft","LabeledReviewImage","ResearchProductMatchDraft","ResearchReferenceProfileDraft","ResearchScreeningDraft","SemanticCriterionReview","SemanticReviewEvidence","SemanticReviewIssue","StaticCompositionDraft","StaticCreativeReview",]
         ), enums=set(
           ["AutomationHumanPresence","AutomationVideoGenerationStrategy","AutomationVideoMusicMode","AutomationVideoVoiceMode","BriefReviewOutcome","CreativeAutomationReadiness","IdeaRecommendation","SemanticCriterionStatus","SemanticIssueSeverity","SemanticRepairAction","TextAlignment",]
         ), runtime=DO_NOT_USE_DIRECTLY_UNLESS_YOU_KNOW_WHAT_YOURE_DOING_RUNTIME)
@@ -75,7 +75,7 @@ class TypeBuilder(type_builder.TypeBuilder):
 
 
     # #########################################################################
-    # Generated classes 20
+    # Generated classes 21
     # #########################################################################
 
     @property
@@ -129,6 +129,10 @@ class TypeBuilder(type_builder.TypeBuilder):
     @property
     def LabeledReviewImage(self) -> "LabeledReviewImageViewer":
         return LabeledReviewImageViewer(self)
+
+    @property
+    def ResearchProductMatchDraft(self) -> "ResearchProductMatchDraftViewer":
+        return ResearchProductMatchDraftViewer(self)
 
     @property
     def ResearchReferenceProfileDraft(self) -> "ResearchReferenceProfileDraftViewer":
@@ -680,7 +684,7 @@ class TextAlignmentValues:
 
 
 # #########################################################################
-# Generated classes 20
+# Generated classes 21
 # #########################################################################
 
 class AutomationImagePlanAst:
@@ -1494,11 +1498,58 @@ class LabeledReviewImageProperties:
     
 
 
+class ResearchProductMatchDraftAst:
+    def __init__(self, tb: type_builder.TypeBuilder):
+        _tb = tb._tb # type: ignore (we know how to use this private attribute)
+        self._bldr = _tb.class_("ResearchProductMatchDraft")
+        self._properties: typing.Set[str] = set([  "product_id",  "match_kind",  "confidence",  ])
+        self._props = ResearchProductMatchDraftProperties(self._bldr, self._properties)
+
+    def type(self) -> baml_py.FieldType:
+        return self._bldr.field()
+
+    @property
+    def props(self) -> "ResearchProductMatchDraftProperties":
+        return self._props
+
+
+class ResearchProductMatchDraftViewer(ResearchProductMatchDraftAst):
+    def __init__(self, tb: type_builder.TypeBuilder):
+        super().__init__(tb)
+
+    
+    def list_properties(self) -> typing.List[typing.Tuple[str, type_builder.ClassPropertyViewer]]:
+        return [(name, type_builder.ClassPropertyViewer(self._bldr.property(name))) for name in self._properties]
+    
+
+
+class ResearchProductMatchDraftProperties:
+    def __init__(self, bldr: baml_py.ClassBuilder, properties: typing.Set[str]):
+        self.__bldr = bldr
+        self.__properties = properties # type: ignore (we know how to use this private attribute) # noqa: F821
+
+    
+    
+    @property
+    def product_id(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("product_id"))
+    
+    @property
+    def match_kind(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("match_kind"))
+    
+    @property
+    def confidence(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("confidence"))
+    
+    
+
+
 class ResearchReferenceProfileDraftAst:
     def __init__(self, tb: type_builder.TypeBuilder):
         _tb = tb._tb # type: ignore (we know how to use this private attribute)
         self._bldr = _tb.class_("ResearchReferenceProfileDraft")
-        self._properties: typing.Set[str] = set([  "summary",  "relevance_to_project",  "primary_subject",  "content_goal",  "reference_types",  "product_categories",  "visual_style",  "composition",  "setting",  "colors",  "camera_motion",  "text_treatment",  "temporal_structure",  "audio_observations",  "hook",  "message",  "creative_takeaways",  "do_not_copy",  "observed_facts",  "inferences",  "media_notes",  "applicability_constraints",  ])
+        self._properties: typing.Set[str] = set([  "summary",  "relevance_to_project",  "primary_subject",  "content_goal",  "reference_types",  "product_categories",  "visual_style",  "composition",  "setting",  "colors",  "camera_motion",  "text_treatment",  "temporal_structure",  "audio_observations",  "hook",  "message",  "creative_takeaways",  "do_not_copy",  "observed_facts",  "inferences",  "media_notes",  "applicability_constraints",  "scene_type",  "scene_description",  "background_usable",  "background_reason",  "placement_note",  "camera_angle",  "lighting",  "swap_mode",  "product_matches",  ])
         self._props = ResearchReferenceProfileDraftProperties(self._bldr, self._properties)
 
     def type(self) -> baml_py.FieldType:
@@ -1613,6 +1664,42 @@ class ResearchReferenceProfileDraftProperties:
     @property
     def applicability_constraints(self) -> type_builder.ClassPropertyViewer:
         return type_builder.ClassPropertyViewer(self.__bldr.property("applicability_constraints"))
+    
+    @property
+    def scene_type(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("scene_type"))
+    
+    @property
+    def scene_description(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("scene_description"))
+    
+    @property
+    def background_usable(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("background_usable"))
+    
+    @property
+    def background_reason(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("background_reason"))
+    
+    @property
+    def placement_note(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("placement_note"))
+    
+    @property
+    def camera_angle(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("camera_angle"))
+    
+    @property
+    def lighting(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("lighting"))
+    
+    @property
+    def swap_mode(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("swap_mode"))
+    
+    @property
+    def product_matches(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("product_matches"))
     
     
 
@@ -1954,4 +2041,3 @@ class StaticCreativeReviewProperties:
     
     
 
-

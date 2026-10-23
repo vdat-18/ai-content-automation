@@ -23,7 +23,7 @@ class StreamState(BaseModel, typing.Generic[StreamStateValueT]):
     value: StreamStateValueT
     state: typing_extensions.Literal["Pending", "Incomplete", "Complete"]
 # #########################################################################
-# Generated classes (20)
+# Generated classes (21)
 # #########################################################################
 
 class AutomationImagePlan(BaseModel):
@@ -141,6 +141,11 @@ class LabeledReviewImage(BaseModel):
     label: typing.Optional[str] = None
     content: typing.Optional[baml_py.Image] = None
 
+class ResearchProductMatchDraft(BaseModel):
+    product_id: typing.Optional[str] = None
+    match_kind: typing.Optional[typing.Union[typing_extensions.Literal['product_visible'], typing_extensions.Literal['scene_fit'], typing_extensions.Literal['style_only']]] = None
+    confidence: typing.Optional[float] = None
+
 class ResearchReferenceProfileDraft(BaseModel):
     summary: typing.Optional[str] = None
     relevance_to_project: typing.Optional[str] = None
@@ -164,6 +169,15 @@ class ResearchReferenceProfileDraft(BaseModel):
     inferences: typing.List[str]
     media_notes: typing.List[str]
     applicability_constraints: typing.List[str]
+    scene_type: typing.Optional[typing.Union[typing_extensions.Literal['lifestyle_scene'], typing_extensions.Literal['environment'], typing_extensions.Literal['flatlay'], typing_extensions.Literal['studio_plain'], typing_extensions.Literal['cutout'], typing_extensions.Literal['graphic'], typing_extensions.Literal['other']]] = None
+    scene_description: typing.Optional[str] = None
+    background_usable: typing.Optional[bool] = None
+    background_reason: typing.Optional[str] = None
+    placement_note: typing.Optional[str] = None
+    camera_angle: typing.Optional[str] = None
+    lighting: typing.Optional[str] = None
+    swap_mode: typing.Optional[typing.Union[typing_extensions.Literal['insert'], typing_extensions.Literal['replace'], typing_extensions.Literal['style_only'], typing_extensions.Literal['reject']]] = None
+    product_matches: typing.List["ResearchProductMatchDraft"]
 
 class ResearchScreeningDraft(BaseModel):
     usable: typing.Optional[bool] = None
@@ -215,7 +229,7 @@ class StaticCreativeReview(BaseModel):
 
 
 # #########################################################################
-# Model rebuilds (20)
+# Model rebuilds (21)
 # #########################################################################
 # Resolve string forward references now that every model above is defined so
 # class declaration order never breaks Pydantic construction (issue #793).
@@ -234,6 +248,7 @@ CreativeIdeaDraft.model_rebuild()
 CreativePersonaHypothesis.model_rebuild()
 CreativeVariationDraft.model_rebuild()
 LabeledReviewImage.model_rebuild()
+ResearchProductMatchDraft.model_rebuild()
 ResearchReferenceProfileDraft.model_rebuild()
 ResearchScreeningDraft.model_rebuild()
 SemanticCriterionReview.model_rebuild()

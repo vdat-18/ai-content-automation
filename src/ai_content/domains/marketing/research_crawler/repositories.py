@@ -9,7 +9,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from pydantic import TypeAdapter
-from sqlalchemy import String, and_, exists, func, or_, select, update
+from sqlalchemy import String, and_, delete, exists, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncEngine
 
@@ -17,6 +17,8 @@ from ai_content.platform.database.schema import (
     research_crawl_jobs,
     research_record_versions,
     research_records,
+    research_reference_products,
+    research_reference_uses,
     research_run_records,
 )
 from ai_content.platform.execution import EnqueueCommand
@@ -108,6 +110,22 @@ class SqliteResearchCrawlRepository:
                 disposition TEXT NOT NULL,
                 observed_at TEXT NOT NULL,
                 PRIMARY KEY(job_id, record_key)
+            );
+            CREATE TABLE IF NOT EXISTS research_reference_products (
+                record_key TEXT NOT NULL,
+                product_id TEXT NOT NULL,
+                match_kind TEXT NOT NULL,
+                confidence REAL NOT NULL,
+                PRIMARY KEY(record_key, product_id)
+            );
+            CREATE INDEX IF NOT EXISTS idx_research_reference_products_product
+                ON research_reference_products(product_id);
+            CREATE TABLE IF NOT EXISTS research_reference_uses (
+                record_key TEXT NOT NULL,
+                media_id TEXT NOT NULL,
+                batch_id TEXT NOT NULL,
+                used_at TEXT NOT NULL,
+                PRIMARY KEY(record_key, media_id, batch_id)
             );
             """
         )
@@ -405,6 +423,12 @@ class SqliteResearchCrawlRepository:
         if query.category:
             clauses.append("r.payload LIKE ?")
             parameters.append(f'%"product_category":"{query.category}"%')
+        if query.product_id:
+            clauses.append(
+                "EXISTS (SELECT 1 FROM research_reference_products p "
+                "WHERE p.record_key = r.record_key AND p.product_id = ?)"
+            )
+            parameters.append(query.product_id)
         if query.query:
             clauses.append("(lower(r.title) LIKE ? OR lower(r.text) LIKE ?)")
             value = f"%{query.query.lower()}%"
@@ -468,7 +492,37 @@ class SqliteResearchCrawlRepository:
                     record_key,
                 ),
             )
+            if screening is not None:
+                self._connection.execute(
+                    "DELETE FROM research_reference_products WHERE record_key = ?", (record_key,)
+                )
+                self._connection.executemany(
+                    "INSERT INTO research_reference_products VALUES (?, ?, ?, ?)",
+                    [
+                        (record_key, product_id, kind, confidence)
+                        for product_id, kind, confidence in _product_links(screening)
+                    ],
+                )
         return enriched
+
+    async def record_reference_uses(self, reference_ids: tuple[str, ...], batch_id: str) -> None:
+        now = datetime.now(UTC).isoformat()
+        with self._connection:
+            self._connection.executemany(
+                "INSERT OR IGNORE INTO research_reference_uses VALUES (?, ?, ?, ?)",
+                [(*_split_reference(item), batch_id, now) for item in reference_ids],
+            )
+
+    async def reference_use_counts(self, record_keys: tuple[str, ...]) -> dict[str, int]:
+        if not record_keys:
+            return {}
+        marks = ", ".join("?" for _key in record_keys)
+        rows = self._connection.execute(
+            "SELECT record_key, count(*) AS uses FROM research_reference_uses "
+            f"WHERE record_key IN ({marks}) GROUP BY record_key",
+            record_keys,
+        ).fetchall()
+        return {row["record_key"]: int(row["uses"]) for row in rows}
 
     async def review_records(
         self,
@@ -857,6 +911,15 @@ class PostgresResearchCrawlRepository:
                     f'%"product_category": "{query.category}"%'
                 )
             )
+        if query.product_id:
+            conditions.append(
+                exists(
+                    select(research_reference_products.c.record_key).where(
+                        research_reference_products.c.record_key == research_records.c.record_key,
+                        research_reference_products.c.product_id == query.product_id,
+                    )
+                )
+            )
         if query.query:
             value = f"%{query.query}%"
             conditions.append(
@@ -937,7 +1000,50 @@ class PostgresResearchCrawlRepository:
                     payload=_RECORD_ADAPTER.dump_python(enriched, mode="json"),
                 )
             )
+            if screening is not None:
+                await connection.execute(
+                    delete(research_reference_products).where(
+                        research_reference_products.c.record_key == record_key
+                    )
+                )
+                links = [
+                    {
+                        "record_key": record_key,
+                        "product_id": product_id,
+                        "match_kind": kind,
+                        "confidence": confidence,
+                    }
+                    for product_id, kind, confidence in _product_links(screening)
+                ]
+                if links:
+                    await connection.execute(insert(research_reference_products), links)
         return enriched
+
+    async def record_reference_uses(self, reference_ids: tuple[str, ...], batch_id: str) -> None:
+        rows = [
+            {
+                "record_key": record_key,
+                "media_id": media_id,
+                "batch_id": batch_id,
+                "used_at": datetime.now(UTC),
+            }
+            for record_key, media_id in map(_split_reference, reference_ids)
+        ]
+        if not rows:
+            return
+        async with self._engine.begin() as connection:
+            await connection.execute(insert(research_reference_uses).on_conflict_do_nothing(), rows)
+
+    async def reference_use_counts(self, record_keys: tuple[str, ...]) -> dict[str, int]:
+        if not record_keys:
+            return {}
+        async with self._engine.connect() as connection:
+            rows = await connection.execute(
+                select(research_reference_uses.c.record_key, func.count())
+                .where(research_reference_uses.c.record_key.in_(record_keys))
+                .group_by(research_reference_uses.c.record_key)
+            )
+            return {key: int(count) for key, count in rows}
 
     async def review_records(
         self,
@@ -1193,6 +1299,22 @@ def _screening_fields(
             return existing.screening_status, existing.screening
         return "unavailable", None
     return _screening_status(screening), screening
+
+
+def _product_links(screening: ResearchScreening) -> list[tuple[str, str, float]]:
+    """Product matches of a kept reference; filtered references link to nothing."""
+    if screening.status != "completed" or not screening.usable or screening.profile is None:
+        return []
+    return [
+        (match.product_id, match.match_kind, match.confidence)
+        for match in screening.profile.product_matches
+    ]
+
+
+def _split_reference(reference_id: str) -> tuple[str, str]:
+    """Split `research:<record_key>:<media_id>` into its record key and media id."""
+    _prefix, record_key, media_id = reference_id.split(":", 2)
+    return record_key, media_id
 
 
 def _screening_status(screening: ResearchScreening) -> str:

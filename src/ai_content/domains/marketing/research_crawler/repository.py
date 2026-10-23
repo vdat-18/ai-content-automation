@@ -60,6 +60,12 @@ class ResearchCrawlRepository(Protocol):
         screening: ResearchScreening | None = None,
     ) -> StoredResearchRecord: ...
 
+    async def record_reference_uses(
+        self, reference_ids: tuple[str, ...], batch_id: str
+    ) -> None: ...
+
+    async def reference_use_counts(self, record_keys: tuple[str, ...]) -> dict[str, int]: ...
+
     async def review_records(
         self,
         record_keys: tuple[str, ...],

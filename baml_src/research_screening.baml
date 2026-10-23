@@ -1,3 +1,9 @@
+class ResearchProductMatchDraft {
+  product_id string
+  match_kind "product_visible" | "scene_fit" | "style_only"
+  confidence float
+}
+
 class ResearchReferenceProfileDraft {
   summary string
   relevance_to_project string
@@ -21,6 +27,15 @@ class ResearchReferenceProfileDraft {
   inferences string[]
   media_notes string[]
   applicability_constraints string[]
+  scene_type "lifestyle_scene" | "environment" | "flatlay" | "studio_plain" | "cutout" | "graphic" | "other"
+  scene_description string
+  background_usable bool
+  background_reason string
+  placement_note string
+  camera_angle string
+  lighting string
+  swap_mode "insert" | "replace" | "style_only" | "reject"
+  product_matches ResearchProductMatchDraft[]
 }
 
 class ResearchScreeningDraft {

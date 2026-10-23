@@ -11,7 +11,7 @@ import re
 import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Protocol, Self
+from typing import Any, Protocol, Self
 from urllib.parse import urlsplit
 
 import httpx
@@ -330,6 +330,7 @@ class NineRouterResearchScreener:
                 profile = normalized.get("profile")
                 if isinstance(profile, dict):
                     profile["audio"] = profile.pop("audio_observations", [])
+                    _apply_scene_rules(normalized, profile, brand_context)
                 return _ScreeningOutput.model_validate(normalized)
             except (BamlError, TimeoutError) as error:
                 last_error = error
@@ -568,6 +569,29 @@ def _sample_timestamps(duration: float, count: int) -> list[float]:
     return [duration * index / (count + 1) for index in range(1, count + 1)]
 
 
+def _apply_scene_rules(
+    output: dict[str, Any],
+    profile: dict[str, Any],
+    context: ResearchBrandContext | None,
+) -> None:
+    """Keep only matches to the project's own products and drop references without a scene."""
+    known = {product.product_id for product in context.products} if context is not None else set()
+    matches: dict[str, dict[str, Any]] = {}
+    for match in profile.get("product_matches") or ():
+        if match.get("product_id") in known:
+            matches.setdefault(match["product_id"], match)
+    profile["product_matches"] = list(matches.values())
+    if output.get("usable") and (
+        not profile.get("background_usable") or profile.get("swap_mode") == "reject"
+    ):
+        output.update(
+            usable=False,
+            reason_code="no_usable_background",
+            reason=profile.get("background_reason")
+            or "The image has no background where a product could be placed.",
+        )
+
+
 def _brand_payload(brand_id: str, context: ResearchBrandContext | None) -> dict[str, object]:
     if context is None:
         return {
@@ -575,12 +599,26 @@ def _brand_payload(brand_id: str, context: ResearchBrandContext | None) -> dict[
             "context_version": "unavailable",
             "product_facts": [],
             "supporting_facts": [],
+            "products": [],
         }
     return {
         "project_id": context.brand_id,
         "context_version": context.version,
         "product_facts": [_truncate_utf8(fact, 240) for fact in context.product_facts[:12]],
         "supporting_facts": [_truncate_utf8(fact, 240) for fact in context.supporting_facts[:12]],
+        "products": [
+            {
+                "product_id": product.product_id,
+                "title": product.title,
+                "product_type": product.product_type,
+                "category": product.category,
+                "description": _truncate_utf8(product.description, 240),
+                "usage_scenes": list(product.usage_scenes),
+                "avoid_scenes": list(product.avoid_scenes),
+                "not_to_confuse_with": list(product.not_to_confuse_with),
+            }
+            for product in context.products[:24]
+        ],
     }
 
 
