@@ -75,6 +75,9 @@ from ai_content.domains.marketing.research_crawler.commands import (
     ResearchCrawlCommandDispatcher,
     ResearchCrawlCommandName,
 )
+from ai_content.domains.marketing.research_crawler.jev_navigation import (
+    JevBrowserNavigator,
+)
 from ai_content.domains.marketing.research_crawler.media_capture import (
     ResearchMediaCapturer,
 )
@@ -460,7 +463,19 @@ async def _execute_command(
     research_dispatcher = ResearchCrawlCommandDispatcher(
         ResearchCrawlService(
             container.research_crawl_repository,
-            ScraplingCrawler(),
+            ScraplingCrawler(
+                (
+                    JevBrowserNavigator(
+                        settings.credential("JEV_API_KEY") or "",
+                        endpoint=settings.jev_api_url,
+                        model=settings.jev_navigation_model,
+                    )
+                    if settings.credential("JEV_API_KEY") and settings.jev_api_url
+                    else None
+                ),
+                timeout_seconds=settings.research_crawl_timeout_seconds,
+                cookies_file=settings.research_cookies_file,
+            ),
             research_artifacts,
             ResearchMediaCapturer(research_artifacts),
             ResearchBrandContextResolver(container.data_source_repository),

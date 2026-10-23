@@ -106,6 +106,9 @@ from ai_content.domains.marketing.research_crawler.artifacts import (
 from ai_content.domains.marketing.research_crawler.brand_context import (
     ResearchBrandContextResolver,
 )
+from ai_content.domains.marketing.research_crawler.jev_navigation import (
+    JevBrowserNavigator,
+)
 from ai_content.domains.marketing.research_crawler.media_capture import (
     ResearchMediaCapturer,
 )
@@ -178,6 +181,7 @@ class ApiRuntimeSettings:
     research_crawl_timeout_seconds: float = 300
     research_screening_config_path: Path | None = None
     jev_api_url: str | None = None
+    research_cookies_file: Path | None = None
     jev_api_key: str | None = None
     vilao_api_key: str | None = None
     jev_navigation_model: str = "jev-latest"
@@ -269,6 +273,7 @@ def get_runtime_settings() -> ApiRuntimeSettings:
         research_crawl_timeout_seconds=application.research_crawl_timeout_seconds,
         research_screening_config_path=application.research_screening_config,
         jev_api_url=application.jev_api_url,
+        research_cookies_file=application.research_cookies_file,
         jev_api_key=application.credential("JEV_API_KEY"),
         vilao_api_key=application.credential("VILAO_API_KEY"),
         jev_navigation_model=application.jev_navigation_model,
@@ -860,7 +865,19 @@ async def get_research_crawl_service(
     )
     return ResearchCrawlService(
         repository,
-        ScraplingCrawler(),
+        ScraplingCrawler(
+            (
+                JevBrowserNavigator(
+                    settings.jev_api_key,
+                    endpoint=settings.jev_api_url,
+                    model=settings.jev_navigation_model,
+                )
+                if settings.jev_api_key and settings.jev_api_url
+                else None
+            ),
+            timeout_seconds=settings.research_crawl_timeout_seconds,
+            cookies_file=settings.research_cookies_file,
+        ),
         artifact_writer,
         ResearchMediaCapturer(artifact_writer),
         ResearchBrandContextResolver(brand_sources),

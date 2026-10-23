@@ -54,6 +54,9 @@ class ApplicationSettings(BaseSettings):
         300, gt=0, le=300, validation_alias="AIC_AI_RESEARCH_CRAWL_TIMEOUT_SECONDS"
     )
     jev_api_url: str | None = Field(None, validation_alias="AIC_AI_JEV_API_URL")
+    research_cookies_file: Path | None = Field(
+        None, validation_alias="AIC_AI_RESEARCH_COOKIES_FILE"
+    )
     jev_navigation_model: str = Field(
         "jev-latest",
         validation_alias=AliasChoices("AIC_AI_JEV_MODEL", "AIC_AI_RESEARCH_CLASSIFICATION_MODEL"),
@@ -231,6 +234,7 @@ class ApplicationSettings(BaseSettings):
         "learning_config",
         "data_sources_config",
         "research_screening_config",
+        "research_cookies_file",
         mode="before",
     )
     @classmethod
