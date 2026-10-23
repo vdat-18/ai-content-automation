@@ -46,7 +46,7 @@ x-python-environment: &python-environment
   AIC_AI_RESEARCH_CRAWL_TIMEOUT_SECONDS: ${AIC_AI_RESEARCH_CRAWL_TIMEOUT_SECONDS:-300}
   AIC_AI_JEV_API_URL: ${AIC_AI_JEV_API_URL:-}
   AIC_AI_JEV_MODEL: ${AIC_AI_JEV_MODEL:-jev-latest}
-  AIC_AI_RESEARCH_COOKIES_FILE: ${AIC_AI_RESEARCH_COOKIES_FILE:-}
+  AIC_AI_RESEARCH_COOKIES_FILE: ${AIC_AI_RESEARCH_COOKIES_FILE:-/run/aicontent-secrets/research-cookies.json}
   AIC_AI_DATA_SOURCE_SYNC_INTERVAL_SECONDS: ${AIC_AI_DATA_SOURCE_SYNC_INTERVAL_SECONDS:-}
   META_ACCESS_TOKEN_EXPIRES_AT: ${META_ACCESS_TOKEN_EXPIRES_AT:-}
   GOOGLE_ADS_ACCESS_TOKEN_EXPIRES_AT: ${GOOGLE_ADS_ACCESS_TOKEN_EXPIRES_AT:-}
@@ -190,6 +190,7 @@ services:
         condition: service_healthy
     volumes:
       - api_scratch:/var/lib/aicontent
+      - ../.secrets:/run/aicontent-secrets:ro
     healthcheck:
       test:
         - CMD
@@ -255,6 +256,7 @@ services:
         condition: service_healthy
     volumes:
       - worker_scratch:/var/lib/aicontent
+      - ../.secrets:/run/aicontent-secrets:ro
       - ../fixtures:/app/fixtures:ro
     tmpfs:
       - /tmp/aicontent-prometheus:uid=10001,gid=10001,mode=0700

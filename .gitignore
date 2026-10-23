@@ -21,3 +21,6 @@ frontend/dist/
 .backups/
 *.sqlite
 *.db
+
+# Browser sessions for logged-in research crawls
+/.secrets/
