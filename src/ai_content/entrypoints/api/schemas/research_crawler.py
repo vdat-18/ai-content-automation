@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from datetime import datetime
 from typing import Any, Literal
-from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -30,20 +29,6 @@ class ResearchCrawlCreateRequest(BaseModel):
         normalized = value.strip()
         if not normalized:
             raise ValueError("scope values must not be blank")
-        return normalized
-
-    @field_validator("source_url")
-    @classmethod
-    def public_http_shape(cls, value: str) -> str:
-        normalized = value.strip()
-        parsed = urlsplit(normalized)
-        if (
-            parsed.scheme not in {"http", "https"}
-            or not parsed.hostname
-            or parsed.username
-            or parsed.password
-        ):
-            raise ValueError("source_url must be a credential-free HTTP or HTTPS URL")
         return normalized
 
     @field_validator("analysis_model_id")

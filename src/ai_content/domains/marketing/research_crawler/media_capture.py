@@ -11,7 +11,6 @@ import httpx
 from .artifacts import ResearchCrawlArtifactWriter
 from .identity import media_source_fingerprint
 from .models import ResearchMediaAsset
-from .scrapling_adapter import validate_public_url
 
 
 class ResearchMediaCapturer:
@@ -20,15 +19,11 @@ class ResearchMediaCapturer:
         artifacts: ResearchCrawlArtifactWriter,
         *,
         timeout_seconds: float = 30,
-        max_image_bytes: int = 25_000_000,
-        max_video_bytes: int = 250_000_000,
         concurrency: int = 4,
         client: httpx.AsyncClient | None = None,
     ) -> None:
         self._artifacts = artifacts
         self._timeout = timeout_seconds
-        self._max_image_bytes = max_image_bytes
-        self._max_video_bytes = max_video_bytes
         self._concurrency = concurrency
         self._semaphore = asyncio.Semaphore(concurrency)
         self._client = client
@@ -82,7 +77,7 @@ class ResearchMediaCapturer:
             return cached
         try:
             async with self._semaphore:
-                content, content_type = await self._download(url, kind)
+                content, content_type = await self._download(url)
             extension = _extension(content_type)
             artifact_ref, checksum = await self._artifacts.write_media(
                 record_key=record_key,
@@ -111,39 +106,14 @@ class ResearchMediaCapturer:
                 error_code="MEDIA_CAPTURE_FAILED",
             )
 
-    async def _download(self, url: str, kind: str) -> tuple[bytes, str]:
-        await validate_public_url(url)
+    async def _download(self, url: str) -> tuple[bytes, str]:
         owns_client = self._client is None
-        client = self._client or httpx.AsyncClient(
-            timeout=self._timeout,
-            follow_redirects=False,
-            headers={"User-Agent": "Mozilla/5.0 research-media-capture/1.0"},
-        )
-        limit = self._max_image_bytes if kind == "image" else self._max_video_bytes
-        allowed = (
-            {"image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"}
-            if kind == "image"
-            else {"video/mp4", "video/webm", "video/quicktime"}
-        )
+        client = self._client or httpx.AsyncClient(timeout=self._timeout, follow_redirects=True)
         try:
-            async with client.stream("GET", url) as response:
-                response.raise_for_status()
-                if response.is_redirect:
-                    raise ValueError("Research media redirects are not allowed")
-                content_type = response.headers.get("content-type", "").split(";", 1)[0].lower()
-                if content_type not in allowed:
-                    raise ValueError("Research media content type is unsupported")
-                declared = response.headers.get("content-length")
-                if declared and int(declared) > limit:
-                    raise ValueError("Research media exceeds the configured size limit")
-                chunks: list[bytes] = []
-                size = 0
-                async for chunk in response.aiter_bytes():
-                    size += len(chunk)
-                    if size > limit:
-                        raise ValueError("Research media exceeds the configured size limit")
-                    chunks.append(chunk)
-                return b"".join(chunks), content_type
+            response = await client.get(url)
+            response.raise_for_status()
+            content_type = response.headers.get("content-type", "").split(";", 1)[0].lower()
+            return response.content, content_type
         finally:
             if owns_client:
                 await client.aclose()
@@ -155,16 +125,7 @@ def _redact_url(url: str) -> str:
 
 
 def _extension(content_type: str) -> str:
-    return {
-        "image/jpeg": "jpg",
-        "image/png": "png",
-        "image/webp": "webp",
-        "image/gif": "gif",
-        "image/avif": "avif",
-        "video/mp4": "mp4",
-        "video/webm": "webm",
-        "video/quicktime": "mov",
-    }[content_type]
+    return content_type.rsplit("/", 1)[-1]
 
 
 __all__ = ["ResearchMediaCapturer"]

@@ -42,7 +42,6 @@ from .models import (
     ResearchScreening,
     StoredResearchRecord,
 )
-from .scrapling_adapter import validate_public_url
 
 
 class ResearchScreeningConfig(BaseModel):
@@ -434,25 +433,12 @@ class NineRouterResearchScreener:
         return previews, failed
 
     async def _download_image(self, url: str) -> _PreviewMedia:
-        content, content_type = await self._download_media(
-            url,
-            max_bytes=self._config.max_preview_image_bytes,
-            allowed_types={"image/jpeg", "image/png", "image/webp", "image/gif", "image/avif"},
-        )
+        content, content_type = await self._download_media(url)
         preview = _compact_preview(content, content_type)
         return _PreviewMedia(label="image", content_type=preview[0], content=preview[1])
 
     async def _sample_video(self, url: str, video_index: int) -> list[_PreviewMedia]:
-        content, content_type = await self._download_media(
-            url,
-            max_bytes=self._config.max_preview_video_bytes,
-            allowed_types={
-                "video/mp4",
-                "video/webm",
-                "video/quicktime",
-                "application/octet-stream",
-            },
-        )
+        content, content_type = await self._download_media(url)
         return await self._sample_video_content(content, content_type, video_index)
 
     async def _sample_video_content(
@@ -480,39 +466,16 @@ class NineRouterResearchScreener:
                 )
             return frames
 
-    async def _download_media(
-        self,
-        url: str,
-        *,
-        max_bytes: int,
-        allowed_types: set[str],
-    ) -> tuple[bytes, str]:
-        await validate_public_url(url)
+    async def _download_media(self, url: str) -> tuple[bytes, str]:
         owns_client = self._client is None
         client = self._client or httpx.AsyncClient(
-            timeout=self._config.request_timeout_seconds,
-            follow_redirects=False,
-            headers={"User-Agent": "Mozilla/5.0 research-analysis/2.0"},
+            timeout=self._config.request_timeout_seconds, follow_redirects=True
         )
         try:
-            async with client.stream("GET", url) as response:
-                response.raise_for_status()
-                if response.is_redirect:
-                    raise ValueError("Research preview redirects are not allowed")
-                content_type = response.headers.get("content-type", "").split(";", 1)[0].lower()
-                if content_type not in allowed_types:
-                    raise ValueError("Research preview content type is unsupported")
-                declared = response.headers.get("content-length")
-                if declared and int(declared) > max_bytes:
-                    raise ValueError("Research preview exceeds the configured size limit")
-                chunks: list[bytes] = []
-                size = 0
-                async for chunk in response.aiter_bytes():
-                    size += len(chunk)
-                    if size > max_bytes:
-                        raise ValueError("Research preview exceeds the configured size limit")
-                    chunks.append(chunk)
-            return b"".join(chunks), content_type
+            response = await client.get(url)
+            response.raise_for_status()
+            content_type = response.headers.get("content-type", "").split(";", 1)[0].lower()
+            return response.content, content_type
         finally:
             if owns_client:
                 await client.aclose()

@@ -465,16 +465,6 @@ def _media_reference_records(
         if not stable_url:
             return
         if identity in seen:
-            index = seen[identity]
-            current = candidates[index]
-            current_url = (current.image_urls or current.video_urls)[0]
-            if _media_url_quality(url) > _media_url_quality(current_url):
-                candidates[index] = current.model_copy(
-                    update={
-                        "image_urls": [url] if kind == "image" else [],
-                        "video_urls": [url] if kind == "video" else [],
-                    }
-                )
             return
         seen[identity] = len(candidates)
         candidates.append(
@@ -521,17 +511,6 @@ def _media_candidate_occurrences(extracted: dict[str, Any], media_mode: str) -> 
             f"video:{url}" for url in extracted.get("video_urls", []) if isinstance(url, str)
         )
     return len(urls)
-
-
-def _media_url_quality(url: str) -> int:
-    path = urlsplit(url).path.lower()
-    for score, marker in enumerate(
-        ("/60x60/", "/136x136/", "/236x/", "/474x/", "/564x/", "/736x/", "/originals/"),
-        start=1,
-    ):
-        if marker in path:
-            return score
-    return 0
 
 
 def _unique_links(groups: Any) -> list[dict[str, str]]:

@@ -106,9 +106,6 @@ from ai_content.domains.marketing.research_crawler.artifacts import (
 from ai_content.domains.marketing.research_crawler.brand_context import (
     ResearchBrandContextResolver,
 )
-from ai_content.domains.marketing.research_crawler.jev_navigation import (
-    JevBrowserNavigator,
-)
 from ai_content.domains.marketing.research_crawler.media_capture import (
     ResearchMediaCapturer,
 )
@@ -861,18 +858,7 @@ async def get_research_crawl_service(
     )
     return ResearchCrawlService(
         repository,
-        ScraplingCrawler(
-            timeout_seconds=settings.research_crawl_timeout_seconds,
-            navigator=(
-                JevBrowserNavigator(
-                    settings.jev_api_key,
-                    model=settings.jev_navigation_model,
-                    endpoint=settings.jev_api_url,
-                )
-                if settings.jev_api_key and settings.jev_api_url
-                else None
-            ),
-        ),
+        ScraplingCrawler(),
         artifact_writer,
         ResearchMediaCapturer(artifact_writer),
         ResearchBrandContextResolver(brand_sources),
