@@ -18,8 +18,6 @@ CMD ["pnpm", "dev", "--host", "0.0.0.0", "--port", "8080"]
 
 FROM frontend-dependencies AS builder
 
-ARG VITE_ENABLE_LEGACY_LOCAL_MODELS=
-ENV VITE_ENABLE_LEGACY_LOCAL_MODELS=${VITE_ENABLE_LEGACY_LOCAL_MODELS}
 
 COPY frontend/ ./
 RUN pnpm build

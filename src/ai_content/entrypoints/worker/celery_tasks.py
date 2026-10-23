@@ -7,7 +7,6 @@ import math
 from collections.abc import Awaitable, Callable
 from dataclasses import replace
 from datetime import UTC, datetime
-from pathlib import Path
 
 from celery import Task
 from loguru import logger
@@ -26,17 +25,10 @@ from ai_content.domains.marketing.creative.adapters.fake_orchestration import (
 from ai_content.domains.marketing.creative.application.automation_workflow import (
     record_production_outcome,
 )
-from ai_content.domains.marketing.creative.config.images import (
-    ImageBackendConfig,
-    load_image_config,
-)
 from ai_content.domains.marketing.creative.config.orchestration import (
     load_orchestration_config,
 )
 from ai_content.domains.marketing.creative.config.preparation import load_preparation_config
-from ai_content.domains.marketing.creative.config.reviewers import (
-    load_semantic_reviewer_config,
-)
 from ai_content.domains.marketing.creative.managed_media_runtime import (
     build_managed_media_runtime,
 )
@@ -166,13 +158,6 @@ async def _execute_command(
     instrument_sqlalchemy(database.engine, observability)
     storage_settings = settings.object_storage()
     preparation_settings = load_preparation_config(settings.preparation_config_path)
-    image_settings = load_image_config(settings.image_config) if settings.image_config else None
-    review_config_path = _legacy_semantic_review_config_path(settings.review_config, image_settings)
-    review_settings = (
-        load_semantic_reviewer_config(review_config_path)
-        if review_config_path is not None
-        else None
-    )
     learning_settings = (
         load_performance_learning_config(settings.learning_config)
         if settings.learning_config
@@ -184,32 +169,6 @@ async def _execute_command(
         settings.config_dir,
         preparation_config_path=settings.preparation_config_path,
         preparation_api_key=settings.credential(preparation_settings.api_key_env),
-        image_config_path=settings.image_config,
-        image_api_key=(
-            settings.credential(image_settings.api_key_env or image_settings.token_env)
-            if image_settings is not None
-            else None
-        ),
-        product_segmenter_config_path=(
-            settings.product_segmenter_config if settings.legacy_local_models_enabled else None
-        ),
-        legacy_local_models_enabled=settings.legacy_local_models_enabled,
-        product_segmenter_runpod_endpoint_id=(
-            settings.media_lab_verifier_runpod_endpoint_id
-            if settings.legacy_local_models_enabled
-            else None
-        ),
-        product_segmenter_runpod_api_key=(
-            settings.media_lab_verifier_runpod_api_key.get_secret_value()
-            if settings.legacy_local_models_enabled and settings.media_lab_verifier_runpod_api_key
-            else None
-        ),
-        review_config_path=review_config_path,
-        review_api_key=(
-            settings.credential(review_settings.api_key_env)
-            if review_settings is not None
-            else None
-        ),
         learning_config_path=settings.learning_config,
         learning_api_key=(
             settings.credential(learning_settings.api_key_env)
@@ -612,19 +571,6 @@ async def _execute_command(
     finally:
         container.close()
         await database.close()
-
-
-def _legacy_semantic_review_config_path(
-    review_config_path: Path | None,
-    image_config: ImageBackendConfig | None,
-) -> Path | None:
-    """Enable semantic review only when its legacy image workflow is configured."""
-    if review_config_path is not None and image_config is None:
-        logger.warning(
-            "Ignoring semantic review configuration because no legacy image configuration is active"
-        )
-        return None
-    return review_config_path
 
 
 def _build_research_screener(

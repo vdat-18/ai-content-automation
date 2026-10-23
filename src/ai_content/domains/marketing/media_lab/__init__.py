@@ -1,1 +1,1 @@
-"""Media Lab Create Image bounded context."""
+"""Media asset storage."""

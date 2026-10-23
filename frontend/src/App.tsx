@@ -15,12 +15,9 @@ const WorkflowsPage = lazy(() => import("./pages/Operations").then((module) => (
 const CreativeProductionPage = lazy(() => import("./pages/Operations").then((module) => ({ default: module.CreativeProductionPage })));
 const CreativeAutomationDetailPage = lazy(() => import("./pages/Operations").then((module) => ({ default: module.CreativeAutomationDetailPage })));
 const AIUsagePage = lazy(() => import("./pages/AIUsage").then((module) => ({ default: module.AIUsagePage })));
-const ModelLabPage = lazy(() => import("./pages/ModelLab").then((module) => ({ default: module.ModelLabPage })));
-const MediaLabPage = lazy(() => import("./pages/MediaLab").then((module) => ({ default: module.MediaLabPage })));
 const ResearchCrawlerPage = lazy(() => import("./pages/ResearchCrawler").then((module) => ({ default: module.ResearchCrawlerPage })));
 const ResearchLibraryPage = lazy(() => import("./pages/ResearchLibrary").then((module) => ({ default: module.ResearchLibraryPage })));
 const CreativeKnowledgePage = lazy(() => import("./pages/CreativeKnowledge").then((module) => ({ default: module.CreativeKnowledgePage })));
-const legacyLocalModelsEnabled = import.meta.env.VITE_ENABLE_LEGACY_LOCAL_MODELS === "true";
 
 export default function App() {
   return (
@@ -38,8 +35,6 @@ export default function App() {
         <Route path="exceptions" element={<ExceptionsPage />} />
         <Route path="data-sources" element={<DataSourcesPage />} />
         <Route path="ai-usage" element={<AIUsagePage />} />
-        {legacyLocalModelsEnabled && <Route path="model-lab" element={<ModelLabPage />} />}
-        {legacyLocalModelsEnabled && <Route path="media-lab" element={<MediaLabPage />} />}
         <Route path="media-library" element={<Navigate replace to="/creatives?view=media" />} />
         <Route path="research-crawler" element={<ResearchCrawlerPage />} />
         <Route path="research-library" element={<ResearchLibraryPage />} />

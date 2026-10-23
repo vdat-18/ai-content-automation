@@ -17,11 +17,7 @@ from loguru import logger
 from ai_content.domains.marketing.creative.adapters.model_readiness import (
     probe_preparation_model,
 )
-from ai_content.domains.marketing.creative.config.images import load_image_config
 from ai_content.domains.marketing.creative.config.preparation import load_preparation_config
-from ai_content.domains.marketing.creative.config.reviewers import (
-    load_semantic_reviewer_config,
-)
 from ai_content.domains.marketing.creative_feedback.config.learning import (
     load_performance_learning_config,
 )
@@ -167,12 +163,6 @@ async def _async_main(args: argparse.Namespace, settings: ApplicationSettings) -
         instrument_sqlalchemy(database.engine, observability_settings)
         execution_backend = settings.execution_backend
         storage_settings = settings.object_storage()
-        image_settings = load_image_config(settings.image_config) if settings.image_config else None
-        review_settings = (
-            load_semantic_reviewer_config(settings.review_config)
-            if settings.review_config
-            else None
-        )
         learning_settings = (
             load_performance_learning_config(settings.learning_config)
             if settings.learning_config
@@ -184,33 +174,6 @@ async def _async_main(args: argparse.Namespace, settings: ApplicationSettings) -
             args.config,
             preparation_config_path=settings.preparation_config_path,
             preparation_api_key=preparation_api_key,
-            image_config_path=settings.image_config,
-            product_segmenter_config_path=(
-                settings.product_segmenter_config if settings.legacy_local_models_enabled else None
-            ),
-            legacy_local_models_enabled=settings.legacy_local_models_enabled,
-            product_segmenter_runpod_endpoint_id=(
-                settings.media_lab_verifier_runpod_endpoint_id
-                if settings.legacy_local_models_enabled
-                else None
-            ),
-            product_segmenter_runpod_api_key=(
-                settings.media_lab_verifier_runpod_api_key.get_secret_value()
-                if settings.legacy_local_models_enabled
-                and settings.media_lab_verifier_runpod_api_key
-                else None
-            ),
-            image_api_key=(
-                settings.credential(image_settings.api_key_env or image_settings.token_env)
-                if image_settings is not None
-                else None
-            ),
-            review_config_path=settings.review_config,
-            review_api_key=(
-                settings.credential(review_settings.api_key_env)
-                if review_settings is not None
-                else None
-            ),
             learning_config_path=settings.learning_config,
             learning_api_key=(
                 settings.credential(learning_settings.api_key_env)

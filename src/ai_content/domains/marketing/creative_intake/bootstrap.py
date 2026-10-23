@@ -9,13 +9,10 @@ from pathlib import Path
 from ai_content.domains.marketing.creative.bootstrap import (
     build_runtime as build_creative_runtime,
 )
-from ai_content.domains.marketing.creative.config.images import ImageBackendConfig
 from ai_content.domains.marketing.creative.config.preparation import (
     PreparationConfig,
     load_preparation_config,
 )
-from ai_content.domains.marketing.creative.config.reviewers import SemanticReviewerConfig
-from ai_content.domains.marketing.creative.config.segmentation import ProductSegmenterConfig
 from ai_content.domains.marketing.creative.domain.entities import CreativeJobStatus
 from ai_content.domains.marketing.creative.ports.interfaces import ICreativeRepository
 from ai_content.domains.marketing.creative.ports.preparation_store import PreparedBrief
@@ -52,13 +49,6 @@ class CreativeIntakeRuntime:
         artifacts_root: Path,
         creative_repository: ICreativeRepository | None = None,
         preparation_api_key: str | None = None,
-        image_config: ImageBackendConfig | None = None,
-        image_api_key: str | None = None,
-        product_segmenter_config: ProductSegmenterConfig | None = None,
-        product_segmenter_runpod_endpoint_id: str | None = None,
-        product_segmenter_runpod_api_key: str | None = None,
-        review_config: SemanticReviewerConfig | None = None,
-        review_api_key: str | None = None,
         usage_tracker: AIUsageTracker | None = None,
     ) -> None:
         self.repository = repository
@@ -68,13 +58,6 @@ class CreativeIntakeRuntime:
         self._artifacts_root = artifacts_root
         self._creative_repository = creative_repository
         self._preparation_api_key = preparation_api_key
-        self._image_config = image_config
-        self._image_api_key = image_api_key
-        self._product_segmenter_config = product_segmenter_config
-        self._product_segmenter_runpod_endpoint_id = product_segmenter_runpod_endpoint_id
-        self._product_segmenter_runpod_api_key = product_segmenter_runpod_api_key
-        self._review_config = review_config
-        self._review_api_key = review_api_key
         self._usage_tracker = usage_tracker
 
     async def run(
@@ -149,20 +132,8 @@ class CreativeIntakeRuntime:
                                     self._db_path,
                                     self._artifacts_root,
                                     config_dir=config_dir,
-                                    image_config=self._image_config,
-                                    image_api_key=self._image_api_key,
-                                    product_segmenter_config=self._product_segmenter_config,
-                                    product_segmenter_runpod_endpoint_id=(
-                                        self._product_segmenter_runpod_endpoint_id
-                                    ),
-                                    product_segmenter_runpod_api_key=(
-                                        self._product_segmenter_runpod_api_key
-                                    ),
-                                    reviewer_config=self._review_config,
-                                    reviewer_api_key=self._review_api_key,
                                     preparation=preparation,
                                     repository=self._creative_repository,
-                                    usage_tracker=self._usage_tracker,
                                 )
                                 try:
                                     creative_result = await creative.run(compiled.work_item)
@@ -220,13 +191,6 @@ def build_fixture_runtime(
     artifacts_root: Path,
     *,
     preparation_api_key: str | None = None,
-    image_config: ImageBackendConfig | None = None,
-    image_api_key: str | None = None,
-    product_segmenter_config: ProductSegmenterConfig | None = None,
-    product_segmenter_runpod_endpoint_id: str | None = None,
-    product_segmenter_runpod_api_key: str | None = None,
-    review_config: SemanticReviewerConfig | None = None,
-    review_api_key: str | None = None,
 ) -> CreativeIntakeRuntime:
     repository = SqliteCreativeIntakeRepository(db_path)
     return CreativeIntakeRuntime(
@@ -236,13 +200,6 @@ def build_fixture_runtime(
         db_path,
         artifacts_root,
         preparation_api_key=preparation_api_key,
-        image_config=image_config,
-        image_api_key=image_api_key,
-        product_segmenter_config=product_segmenter_config,
-        product_segmenter_runpod_endpoint_id=product_segmenter_runpod_endpoint_id,
-        product_segmenter_runpod_api_key=product_segmenter_runpod_api_key,
-        review_config=review_config,
-        review_api_key=review_api_key,
     )
 
 

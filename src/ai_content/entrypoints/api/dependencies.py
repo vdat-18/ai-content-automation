@@ -85,57 +85,11 @@ from ai_content.domains.marketing.data_sources.ports.interfaces import IDataSour
 from ai_content.domains.marketing.media_lab.adapters.asset_artifacts import (
     ObjectStorageMediaAssetArtifacts,
 )
-from ai_content.domains.marketing.media_lab.adapters.http_video_verifier import (
-    HttpVideoEvidenceVerifier,
-)
 from ai_content.domains.marketing.media_lab.application.assets import MediaAssetService
-from ai_content.domains.marketing.media_lab.application.image_runs import (
-    MediaLabImageService,
-    build_image_capabilities,
-)
-from ai_content.domains.marketing.media_lab.application.orchestration import (
-    MediaLabImageOrchestrationService,
-)
-from ai_content.domains.marketing.media_lab.application.planning_jobs import (
-    MediaLabPlanningJobService,
-)
-from ai_content.domains.marketing.media_lab.application.video_ads import MediaLabVideoAdService
-from ai_content.domains.marketing.media_lab.application.video_orchestration import (
-    MediaLabVideoOrchestrationService,
-)
-from ai_content.domains.marketing.media_lab.application.video_projects import (
-    MediaLabVideoProjectService,
-)
-from ai_content.domains.marketing.media_lab.application.video_runs import (
-    MediaLabVideoService,
-    build_video_capabilities,
-)
 from ai_content.domains.marketing.media_lab.bootstrap import (
     build_media_asset_runtime,
-    build_planning_job_runtime,
-    build_terra_runtime,
-    build_video_ad_runtime,
-    build_video_frame_sampler,
-    build_video_project_runtime,
-    build_video_terra_runtime,
-)
-from ai_content.domains.marketing.media_lab.bootstrap import (
-    build_runtime as build_media_lab_image_runtime,
-)
-from ai_content.domains.marketing.media_lab.bootstrap import (
-    build_video_runtime as build_media_lab_video_runtime,
-)
-from ai_content.domains.marketing.media_lab.config.orchestration import (
-    load_media_lab_video_verifier_config,
 )
 from ai_content.domains.marketing.media_lab.domain.assets import MediaAssetLimits
-from ai_content.domains.marketing.media_lab.ports.interfaces import (
-    MediaLabImageOrchestrationError,
-)
-from ai_content.domains.marketing.media_lab.ports.video_interfaces import (
-    IVideoGenerationBackend,
-    MediaLabVideoOrchestrationError,
-)
 from ai_content.domains.marketing.performance_data.adapters.sqlite_repository import (
     SqliteGmcRunRepository,
 )
@@ -196,8 +150,6 @@ from ai_content.platform.observability import (
 )
 from ai_content.settings import ApplicationSettings
 
-from .media_lab import LegacyMediaGraphService, build_legacy_media_graph_service
-
 
 @dataclass(frozen=True)
 class ApiRuntimeSettings:
@@ -206,15 +158,12 @@ class ApiRuntimeSettings:
     db_path: Path
     artifacts_root: Path
     config_dir: Path
-    legacy_local_models_enabled: bool = False
     preparation_config_path: Path | None = None
     orchestration_config_path: Path | None = None
     router_api_key: str | None = None
     image_api_key: str | None = None
     video_api_key: str | None = None
     managed_media_config_path: Path | None = None
-    image_config_path: Path | None = None
-    product_segmenter_config_path: Path | None = None
     database_backend: Literal["sqlite", "postgresql"] = "sqlite"
     database_url: str | None = None
     execution_backend: Literal["lease_worker", "celery"] = "lease_worker"
@@ -238,14 +187,6 @@ class ApiRuntimeSettings:
     meta_token_expires_at: datetime | None = None
     google_ads_token_expires_at: datetime | None = None
     shopify_token_expires_at: datetime | None = None
-    media_lab_image_comfyui_url: str | None = None
-    media_lab_video_comfyui_url: str | None = None
-    media_lab_image_runpod_endpoint_id: str | None = None
-    media_lab_image_runpod_api_key: str | None = None
-    media_lab_video_runpod_endpoint_id: str | None = None
-    media_lab_video_runpod_api_key: str | None = None
-    media_lab_verifier_runpod_endpoint_id: str | None = None
-    media_lab_verifier_runpod_api_key: str | None = None
     media_asset_max_image_bytes: int = 100_000_000
     media_asset_max_video_bytes: int = 1_000_000_000
     media_asset_max_image_pixels: int = 100_000_000
@@ -253,9 +194,6 @@ class ApiRuntimeSettings:
     media_asset_max_working_image_pixels: int = 16_777_216
     media_asset_max_preview_image_pixels: int = 2_073_600
     media_asset_processing_timeout_seconds: int = 120
-    media_lab_orchestrator_config_path: Path | None = None
-    media_lab_video_orchestrator_config_path: Path | None = None
-    media_lab_video_verifier_config_path: Path | None = None
     shopify_access_token: str | None = None
     shopify_demohome_access_token: str | None = None
     shopify_demofurn_access_token: str | None = None
@@ -294,19 +232,12 @@ def get_runtime_settings() -> ApiRuntimeSettings:
         db_path=application.data_root / "state.db",
         artifacts_root=application.data_root / "artifacts",
         config_dir=application.config_dir,
-        legacy_local_models_enabled=application.legacy_local_models_enabled,
         preparation_config_path=application.preparation_config_path,
         orchestration_config_path=application.orchestration_config_path,
         router_api_key=application.credential("ROUTER_API_KEY"),
         image_api_key=application.credential("IMAGE_API_KEY"),
         video_api_key=application.credential("VIDEO_API_KEY"),
         managed_media_config_path=application.managed_media_config,
-        image_config_path=application.image_config,
-        product_segmenter_config_path=(
-            application.product_segmenter_config
-            if application.legacy_local_models_enabled
-            else None
-        ),
         database_backend=application.database_backend,
         database_url=(
             application.database_url.get_secret_value() if application.database_url else None
@@ -346,49 +277,6 @@ def get_runtime_settings() -> ApiRuntimeSettings:
         meta_token_expires_at=application.meta_token_expires_at,
         google_ads_token_expires_at=application.google_ads_token_expires_at,
         shopify_token_expires_at=application.shopify_token_expires_at,
-        media_lab_image_comfyui_url=(
-            application.resolved_media_lab_image_comfyui_url
-            if application.legacy_local_models_enabled
-            else None
-        ),
-        media_lab_video_comfyui_url=(
-            application.resolved_media_lab_video_comfyui_url
-            if application.legacy_local_models_enabled
-            else None
-        ),
-        media_lab_image_runpod_endpoint_id=(
-            application.media_lab_image_runpod_endpoint_id
-            if application.legacy_local_models_enabled
-            else None
-        ),
-        media_lab_image_runpod_api_key=(
-            application.media_lab_image_runpod_api_key.get_secret_value()
-            if application.legacy_local_models_enabled
-            and application.media_lab_image_runpod_api_key
-            else None
-        ),
-        media_lab_video_runpod_endpoint_id=(
-            application.media_lab_video_runpod_endpoint_id
-            if application.legacy_local_models_enabled
-            else None
-        ),
-        media_lab_video_runpod_api_key=(
-            application.media_lab_video_runpod_api_key.get_secret_value()
-            if application.legacy_local_models_enabled
-            and application.media_lab_video_runpod_api_key
-            else None
-        ),
-        media_lab_verifier_runpod_endpoint_id=(
-            application.media_lab_verifier_runpod_endpoint_id
-            if application.legacy_local_models_enabled
-            else None
-        ),
-        media_lab_verifier_runpod_api_key=(
-            application.media_lab_verifier_runpod_api_key.get_secret_value()
-            if application.legacy_local_models_enabled
-            and application.media_lab_verifier_runpod_api_key
-            else None
-        ),
         media_asset_max_image_bytes=application.media_asset_max_image_bytes,
         media_asset_max_video_bytes=application.media_asset_max_video_bytes,
         media_asset_max_image_pixels=application.media_asset_max_image_pixels,
@@ -396,17 +284,6 @@ def get_runtime_settings() -> ApiRuntimeSettings:
         media_asset_max_working_image_pixels=application.media_asset_max_working_image_pixels,
         media_asset_max_preview_image_pixels=application.media_asset_max_preview_image_pixels,
         media_asset_processing_timeout_seconds=application.media_asset_processing_timeout_seconds,
-        media_lab_orchestrator_config_path=(
-            application.media_lab_orchestrator_config
-            if application.legacy_local_models_enabled
-            else None
-        ),
-        media_lab_video_orchestrator_config_path=application.media_lab_video_orchestrator_config,
-        media_lab_video_verifier_config_path=(
-            application.media_lab_video_verifier_config
-            if application.legacy_local_models_enabled
-            else None
-        ),
         shopify_access_token=(
             application.shopify_access_token.get_secret_value()
             if application.shopify_access_token
@@ -539,42 +416,7 @@ async def lifespan(application: FastAPI):
     sync_task: asyncio.Task[None] | None = None
     sync_scheduler: CommandScheduler | None = None
     owns_sync_scheduler = False
-    legacy_media_graph_service: LegacyMediaGraphService = build_legacy_media_graph_service(
-        settings.config_dir,
-        settings.artifacts_root,
-        settings.media_lab_image_comfyui_url,
-        video_comfyui_url=settings.media_lab_video_comfyui_url,
-        image_runpod_endpoint_id=settings.media_lab_image_runpod_endpoint_id,
-        image_runpod_api_key=settings.media_lab_image_runpod_api_key,
-        video_runpod_endpoint_id=settings.media_lab_video_runpod_endpoint_id,
-        video_runpod_api_key=settings.media_lab_video_runpod_api_key,
-    )
-    application.state.legacy_media_graph_service = legacy_media_graph_service
-    media_lab_video_backend: IVideoGenerationBackend = legacy_media_graph_service
-    application.state.media_lab_video_backend = media_lab_video_backend
     media_asset_service: MediaAssetService | None = None
-    media_lab_image_service: MediaLabImageService | None = None
-    media_lab_image_orchestration_service: MediaLabImageOrchestrationService | None = None
-    media_lab_video_service: MediaLabVideoService | None = None
-    media_lab_video_project_service: MediaLabVideoProjectService | None = None
-    media_lab_video_ad_service: MediaLabVideoAdService | None = None
-    media_lab_video_ad_stop = asyncio.Event()
-    media_lab_video_ad_task: asyncio.Task[None] | None = None
-    media_lab_planning_job_service: MediaLabPlanningJobService | None = None
-    media_lab_planning_job_stop = asyncio.Event()
-    media_lab_planning_job_task: asyncio.Task[None] | None = None
-    media_lab_video_orchestration_service: MediaLabVideoOrchestrationService | None = None
-    media_lab_orchestration_usage_repository: SqliteAIUsageRepository | None = None
-
-    def media_lab_usage_tracker() -> AIUsageTracker:
-        nonlocal media_lab_orchestration_usage_repository
-        if container is not None:
-            return container.ai_usage_tracker
-        if media_lab_orchestration_usage_repository is None:
-            settings.db_path.parent.mkdir(parents=True, exist_ok=True)
-            media_lab_orchestration_usage_repository = SqliteAIUsageRepository(settings.db_path)
-        return AIUsageTracker(media_lab_orchestration_usage_repository)
-
     if settings.database_backend == "postgresql":
         assert settings.database_url is not None
         database = Database(settings.database_url)
@@ -584,11 +426,6 @@ async def lifespan(application: FastAPI):
             settings.config_dir,
             preparation_config_path=_preparation_config_path(settings),
             preparation_api_key=settings.router_api_key,
-            image_config_path=settings.image_config_path,
-            product_segmenter_config_path=settings.product_segmenter_config_path,
-            legacy_local_models_enabled=settings.legacy_local_models_enabled,
-            product_segmenter_runpod_endpoint_id=(settings.media_lab_verifier_runpod_endpoint_id),
-            product_segmenter_runpod_api_key=settings.media_lab_verifier_runpod_api_key,
             execution_backend=settings.execution_backend,
             object_storage=settings.object_storage.build()
             if settings.object_storage.backend == "s3"
@@ -672,130 +509,6 @@ async def lifespan(application: FastAPI):
         )
     application.state.media_asset_service = media_asset_service
 
-    media_lab_quality_reviewer = None
-    if settings.media_lab_orchestrator_config_path is not None:
-        try:
-            terra_runtime = build_terra_runtime(
-                settings.media_lab_orchestrator_config_path,
-                api_key=settings.router_api_key,
-                capabilities=build_image_capabilities(legacy_media_graph_service),
-                usage_tracker=media_lab_usage_tracker(),
-            )
-            media_lab_image_orchestration_service = terra_runtime.orchestration
-            media_lab_quality_reviewer = terra_runtime.quality_reviewer
-        except (OSError, ValueError, ValidationError, MediaLabImageOrchestrationError) as error:
-            logger.error(
-                "Media Lab image orchestration disabled: configuration could not be loaded from {}: {}",
-                settings.media_lab_orchestrator_config_path,
-                error,
-            )
-    media_lab_image_service = build_media_lab_image_runtime(
-        settings.db_path,
-        settings.artifacts_root,
-        legacy_media_graph_service,
-        repository=(container.media_lab_image_repository if container is not None else None),
-        quality_reviewer=media_lab_quality_reviewer,
-        media_assets=media_asset_service,
-    )
-    await media_lab_image_service.interrupt_inflight()
-    application.state.media_lab_image_service = media_lab_image_service
-    if media_lab_image_orchestration_service is not None:
-        application.state.media_lab_image_orchestration_service = (
-            media_lab_image_orchestration_service
-        )
-
-    media_lab_video_quality_reviewer = None
-    media_lab_video_ad_planner = None
-    if settings.media_lab_video_orchestrator_config_path is not None:
-        try:
-            video_terra_runtime = build_video_terra_runtime(
-                settings.media_lab_video_orchestrator_config_path,
-                api_key=settings.router_api_key,
-                capabilities=build_video_capabilities(media_lab_video_backend),
-                usage_tracker=media_lab_usage_tracker(),
-            )
-            media_lab_video_orchestration_service = video_terra_runtime.orchestration
-            media_lab_video_quality_reviewer = video_terra_runtime.quality_reviewer
-            media_lab_video_ad_planner = video_terra_runtime.video_ad_planner
-        except (OSError, ValueError, ValidationError, MediaLabVideoOrchestrationError) as error:
-            logger.error(
-                "Media Lab video orchestration disabled: configuration could not be "
-                "loaded from {}: {}",
-                settings.media_lab_video_orchestrator_config_path,
-                error,
-            )
-    media_lab_video_evidence_verifier = None
-    media_lab_video_frame_sampler = None
-    if settings.media_lab_video_verifier_config_path is not None:
-        try:
-            verifier_config = load_media_lab_video_verifier_config(
-                settings.media_lab_video_verifier_config_path
-            )
-            media_lab_video_evidence_verifier = HttpVideoEvidenceVerifier(
-                verifier_config,
-                runpod_endpoint_id=settings.media_lab_verifier_runpod_endpoint_id,
-                runpod_api_key=settings.media_lab_verifier_runpod_api_key,
-            )
-            media_lab_video_frame_sampler = build_video_frame_sampler(verifier_config)
-        except (OSError, ValueError, ValidationError) as error:
-            logger.error(
-                "Media Lab video evidence verification disabled: configuration could not be "
-                "loaded from {}: {}",
-                settings.media_lab_video_verifier_config_path,
-                error,
-            )
-    media_lab_video_service = build_media_lab_video_runtime(
-        settings.db_path,
-        settings.artifacts_root,
-        media_lab_video_backend,
-        media_lab_image_service,
-        repository=(container.media_lab_video_repository if container is not None else None),
-        quality_reviewer=media_lab_video_quality_reviewer,
-        evidence_verifier=media_lab_video_evidence_verifier,
-        frame_sampler=media_lab_video_frame_sampler,
-        media_assets=media_asset_service,
-    )
-    await media_lab_video_service.interrupt_inflight()
-    application.state.media_lab_video_service = media_lab_video_service
-    if media_lab_video_orchestration_service is not None:
-        application.state.media_lab_video_orchestration_service = (
-            media_lab_video_orchestration_service
-        )
-    media_lab_video_project_service = build_video_project_runtime(
-        settings.db_path,
-        settings.artifacts_root,
-        media_lab_video_service,
-        media_asset_service,
-        repository=(
-            container.media_lab_video_project_repository if container is not None else None
-        ),
-    )
-    application.state.media_lab_video_project_service = media_lab_video_project_service
-    if media_lab_video_ad_planner is not None:
-        media_lab_video_ad_service = build_video_ad_runtime(
-            settings.db_path,
-            settings.artifacts_root,
-            media_lab_video_ad_planner,
-            media_lab_video_service,
-            media_asset_service,
-            repository=(container.media_lab_video_ad_repository if container is not None else None),
-        )
-        application.state.media_lab_video_ad_service = media_lab_video_ad_service
-        media_lab_video_ad_task = asyncio.create_task(
-            media_lab_video_ad_service.run_forever(media_lab_video_ad_stop)
-        )
-    media_lab_planning_job_service = build_planning_job_runtime(
-        settings.db_path,
-        media_asset_service,
-        media_lab_image_orchestration_service,
-        media_lab_video_orchestration_service,
-        repository=(container.media_lab_planning_job_repository if container is not None else None),
-    )
-    application.state.media_lab_planning_job_service = media_lab_planning_job_service
-    media_lab_planning_job_task = asyncio.create_task(
-        media_lab_planning_job_service.run_forever(media_lab_planning_job_stop)
-    )
-
     interval = settings.data_source_sync_interval_seconds
     if interval is not None:
         try:
@@ -833,31 +546,8 @@ async def lifespan(application: FastAPI):
     try:
         yield
     finally:
-        media_lab_planning_job_stop.set()
-        if media_lab_planning_job_task is not None:
-            with suppress(asyncio.CancelledError):
-                await media_lab_planning_job_task
-        if media_lab_planning_job_service is not None:
-            media_lab_planning_job_service.close()
-        media_lab_video_ad_stop.set()
-        if media_lab_video_ad_task is not None:
-            with suppress(asyncio.CancelledError):
-                await media_lab_video_ad_task
-        if media_lab_video_ad_service is not None:
-            media_lab_video_ad_service.close()
-        if media_lab_video_project_service is not None:
-            media_lab_video_project_service.close()
-        if media_lab_video_service is not None:
-            await media_lab_video_service.interrupt_inflight()
-            media_lab_video_service.close()
-        if media_lab_image_service is not None:
-            await media_lab_image_service.interrupt_inflight()
-            media_lab_image_service.close()
         if media_asset_service is not None:
             media_asset_service.close()
-        if media_lab_orchestration_usage_repository is not None:
-            media_lab_orchestration_usage_repository.close()
-        await legacy_media_graph_service.close()
         metrics_stop.set()
         if metrics_task is not None:
             with suppress(asyncio.CancelledError):

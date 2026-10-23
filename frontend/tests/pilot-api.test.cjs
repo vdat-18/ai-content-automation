@@ -73,13 +73,6 @@ test("Creative review exposes pinned SecondBrain criteria", () => {
   assert.match(operations, /review\.review_checklist\.map/);
 });
 
-test("Model Lab chat composer expands as the user types", () => {
-  const page = src("pages", "ModelLab.tsx");
-  assert.match(page, /scrollHeight/);
-  assert.match(page, /Math\.min\(event\.currentTarget\.scrollHeight, 240\)/);
-  assert.match(page, /rows=\{1\}/);
-});
-
 test("AI usage page reads the durable API without mock fallback", () => {
   const page = src("pages", "AIUsage.tsx");
   assert.match(page, /useAIUsage/);
@@ -91,87 +84,6 @@ test("AI usage page reads the durable API without mock fallback", () => {
   assert.match(page, /Trace coverage/);
   assert.match(page, /Provider call detail/);
   assert.doesNotMatch(page, /mockApi|mockData/);
-});
-
-test("Media Lab Create Image uses typed API contracts and human review", () => {
-  const page = src("pages", "MediaLab.tsx");
-  const videoPage = src("pages", "MediaLabVideoPanel.tsx");
-  const finalAdPage = src("pages", "MediaLabFinalVideoAdPanel.tsx");
-  const autoResizeTextarea = src("components", "AutoResizeTextarea.tsx");
-  const styles = src("styles.css");
-  const api = src("services", "pilotApi.ts");
-  const shell = src("components", "AppShell.tsx");
-
-  assert.ok(api.includes("/api/v1/media-lab/image-orchestration"));
-  assert.ok(api.includes("/api/v1/media-lab/image-plan-jobs"));
-  assert.ok(api.includes("/draft"));
-  assert.ok(page.includes("mediaLabImagePlanningJob"));
-  assert.ok(page.includes("imagePlanningJobStorageKey"));
-  assert.ok(api.includes("/api/v1/media-lab/image-runs"));
-  assert.ok(api.includes("reviewMediaLabImageRun"));
-  assert.ok(page.includes("pilotApi.mediaLabImageOrchestration"));
-  assert.ok(page.includes("pilotApi.prepareMediaLabImage"));
-  assert.ok(page.includes("pilotApi.createMediaLabImageRun"));
-  assert.ok(page.includes("pilotApi.reviewMediaLabImageRun"));
-  assert.ok(page.includes("Review request"));
-  assert.ok(page.includes("Generate draft anyway"));
-  assert.ok(page.includes("Visible text and unresolved details may be inaccurate"));
-  assert.ok(page.includes("Output quality and size"));
-  assert.ok(page.includes("View quality checks and version history"));
-  assert.ok(page.indexOf("Generated master") < page.indexOf("View quality checks and version history"));
-  assert.ok(page.includes("How your images will be used"));
-  assert.ok(page.includes("Human review required"));
-  assert.ok(page.includes("quality_review_state"));
-  assert.ok(page.includes("regenerated_run_id"));
-  assert.ok(page.includes("Quality summary"));
-  assert.ok(page.includes("max_image_sources"));
-  assert.ok(page.includes("addReferenceFiles"));
-  assert.ok(page.includes("multiple"));
-  assert.ok(page.includes("<AutoResizeTextarea"));
-  assert.ok(videoPage.includes("<AutoResizeTextarea"));
-  assert.ok(finalAdPage.includes("<AutoResizeTextarea"));
-  assert.ok(autoResizeTextarea.includes("textarea.scrollHeight"));
-  assert.match(styles, /\.media-lab-prompt textarea \{ max-height: min\(65vh, 720px\); overflow-y: auto; \}/);
-  assert.doesNotMatch(page, /capabilityId|Product source image|Style reference image/);
-  assert.doesNotMatch(page, /Run ID|Provider delay|Variation seed|Technical details/);
-  assert.doesNotMatch(page, /fetch\(/);
-  assert.match(shell, /to: "\/media-lab"/);
-});
-
-test("Media Lab Create Video uses the persistent typed flow and explicit human review", () => {
-  const page = src("pages", "MediaLabVideoPanel.tsx");
-  const mediaLab = src("pages", "MediaLab.tsx");
-  const api = src("services", "pilotApi.ts");
-
-  assert.ok(api.includes("/api/v1/media-lab/video-orchestration"));
-  assert.ok(api.includes("/api/v1/media-lab/video-capabilities"));
-  assert.ok(api.includes("/api/v1/media-lab/video-plan-jobs"));
-  assert.ok(page.includes("mediaLabVideoPlanningJob"));
-  assert.ok(page.includes("videoPlanningJobStorageKey"));
-  assert.ok(api.includes("/api/v1/media-lab/video-runs"));
-  assert.ok(api.includes("reviewMediaLabVideoRun"));
-  assert.ok(mediaLab.includes("<MediaLabVideoPanel />"));
-  assert.ok(page.includes("pilotApi.prepareMediaLabVideo"));
-  assert.ok(page.includes("pilotApi.createMediaLabVideoRun"));
-  assert.ok(page.includes("pilotApi.reviewMediaLabVideoRun"));
-  assert.ok(page.includes('kind: "media_asset"'));
-  assert.ok(page.includes("asset_id: source.asset.asset_id"));
-  assert.ok(page.includes("How your images will be used"));
-  assert.ok(page.includes("verification_plan"));
-  assert.ok(page.includes("max_generation_image_sources"));
-  assert.ok(page.includes("multiple"));
-  assert.ok(page.includes("verification_state"));
-  assert.ok(page.includes("verification_frames"));
-  assert.ok(page.includes("verification_error_code"));
-  assert.ok(page.includes("Automated quality check evidence"));
-  assert.ok(page.includes("Persisted temporal evidence"));
-  assert.ok(page.includes("approval is unavailable"));
-  assert.ok(page.includes('quality_review_error_code !== "retry_budget_exhausted"'));
-  assert.ok(page.includes("now requires human review"));
-  assert.ok(page.includes("Check the product details, full motion"));
-  assert.match(page, /<video controls src=\{run\.output_url\}/);
-  assert.ok(page.includes("max_image_sources"));
-  assert.doesNotMatch(page, /Run ID|Provider delay|Variation seed|Technical details/);
 });
 
 test("Creative detail reviews every exact final version with its source brief", () => {
@@ -371,16 +283,10 @@ test("Creative production uses exact per-ratio quantities and provider capabilit
 
 test("Creative production limits reference uploads and output totals in the frontend", () => {
   const production = src("pages", "Operations.tsx");
-  const imageLab = src("pages", "MediaLab.tsx");
-  const videoLab = src("pages", "MediaLabVideoPanel.tsx");
 
   assert.match(production, /const maximumOutputsPerMediaKind = 10/);
   assert.match(production, /const maximumForRatio = exactSource \? 1 : maximumOutputsPerMediaKind/);
   assert.match(production, /totalQuantity\(quantities\) < maximumOutputsPerMediaKind/);
-  assert.match(imageLab, /const maximumReferenceImages = 10/);
-  assert.match(videoLab, /const maximumReferenceImages = 10/);
-  assert.match(imageLab, /Math\.min\(orchestration\?\.max_image_sources \?\? 0, maximumReferenceImages\)/);
-  assert.match(videoLab, /Math\.min\(orchestration\?\.max_image_sources \?\? 0, maximumReferenceImages\)/);
 });
 
 test("Marketing workspace uses responsive task groups and dense operator layouts", () => {
@@ -425,22 +331,6 @@ test("Data Sources uses the read-only backend connector status", () => {
   assert.doesNotMatch(hook, /mockApi|mockData/);
 });
 
-test("Media Lab final Video Ad runs autonomously without review controls", () => {
-  const page = src("pages", "MediaLabFinalVideoAdPanel.tsx");
-  const api = src("services", "pilotApi.ts");
-
-  assert.ok(api.includes("/api/v1/media-lab/video-ads"));
-  assert.ok(api.includes("createMediaLabVideoAd"));
-  assert.ok(api.includes("cancelMediaLabVideoAd"));
-  assert.ok(page.includes("pilotApi.createMediaLabVideoAd"));
-  assert.match(page, /pilotApi\s*\.mediaLabVideoAd/);
-  assert.ok(page.includes("Generate source shots"));
-  assert.ok(page.includes("Select usable segments"));
-  assert.ok(page.includes("Assemble final Ad"));
-  assert.ok(page.includes("Download final MP4"));
-  assert.doesNotMatch(page, /Approve exact video|reviewMediaLabVideoRun/);
-});
-
 test("Media Library exposes persisted image and video output history", () => {
   const page = src("pages", "MediaLibrary.tsx");
   const library = src("pages", "CreativeLibrary.tsx");
@@ -455,28 +345,15 @@ test("Media Library exposes persisted image and video output history", () => {
   assert.match(library, /Generated media/);
   assert.match(library, /<MediaLibraryPage \/>/);
   assert.match(library, /<CreativesPage \/>/);
-  assert.match(page, /pilotApi\.mediaLabImageRuns/);
-  assert.match(page, /pilotApi\.mediaLabVideoRuns/);
-  assert.match(page, /pilotApi\.mediaLabVideoAds/);
-  assert.match(page, /VITE_ENABLE_LEGACY_LOCAL_MODELS/);
-  assert.match(page, /legacyLocalModelsEnabled \? pilotApi\.mediaLabImageRuns/);
-  assert.match(page, /legacyLocalModelsEnabled \? pilotApi\.mediaLabVideoRuns/);
-  assert.match(page, /legacyLocalModelsEnabled \? pilotApi\.mediaLabVideoAds/);
   assert.match(page, /pilotApi\.marketingCreativeAutomations/);
   assert.match(page, /pilotApi\.marketingCreativeAutomation/);
   assert.match(page, /detail\.production_versions/);
-  assert.match(page, /source: "creative-production"/);
-  assert.match(page, /pilotApi\.deleteMediaLabImageRun/);
-  assert.match(page, /pilotApi\.deleteMediaLabVideoRun/);
-  assert.match(page, /pilotApi\.deleteMediaLabVideoAd/);
   assert.match(page, /media-library-card-delete/);
   assert.match(page, /media-library-card-hover/);
   assert.match(page, /HIDDEN_MEDIA_OUTPUTS_KEY/);
   assert.match(page, /Restore hidden/);
   assert.match(page, /Remove from Media Library/);
   assert.match(page, /window\.confirm/);
-  assert.match(page, /planner_prompt_version/);
-  assert.match(page, /production_prompt/);
   assert.match(page, /Download output/);
   assert.doesNotMatch(page, /\.model\b|provider_job_id|seed/);
   assert.match(styles, /\.media-library-layout \{[^}]*grid-template-columns: minmax\(380px, 720px\) minmax\(520px, 1\.25fr\)/);

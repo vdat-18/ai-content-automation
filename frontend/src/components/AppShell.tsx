@@ -12,7 +12,6 @@ import {
   Image,
   LibraryBig,
   Menu,
-  MessageSquare,
   Clapperboard,
   Moon,
   Sun,
@@ -32,7 +31,6 @@ type NavGroup = "marketing" | "creative" | "research" | "activity" | "system";
 type NavItem = { to: string; label: string; icon: typeof CircleGauge; count?: boolean; exception?: boolean; group: NavGroup };
 
 const SIDEBAR_WIDTH_KEY = "aic-sidebar-width";
-const legacyLocalModelsEnabled = import.meta.env.VITE_ENABLE_LEGACY_LOCAL_MODELS === "true";
 const clampSidebarWidth = (value: number) => Math.min(420, Math.max(208, value));
 const readStoredSidebarWidth = () => {
   const stored = Number(window.localStorage.getItem(SIDEBAR_WIDTH_KEY));
@@ -48,16 +46,10 @@ const nav: NavItem[] = [
   { to: "/research-crawler", label: "Research crawler", icon: Search, group: "research" },
   { to: "/research-library", label: "Research Library", icon: LibraryBig, group: "research" },
   { to: "/second-brain", label: "SecondBrain", icon: BrainCircuit, group: "research" },
-  ...(legacyLocalModelsEnabled
-    ? [{ to: "/media-lab", label: "Create content", icon: Clapperboard, group: "creative" as const }]
-    : []),
   { to: "/workflows", label: "AI activity", icon: GitBranch, group: "activity" },
   { to: "/exceptions", label: "Exceptions", icon: AlertTriangle, exception: true, group: "system" },
   { to: "/data-sources", label: "Data sources", icon: Database, group: "system" },
   { to: "/ai-usage", label: "AI usage & cost", icon: CircleDollarSign, group: "system" },
-  ...(legacyLocalModelsEnabled
-    ? [{ to: "/model-lab", label: "Model Lab", icon: MessageSquare, group: "system" as const }]
-    : []),
 ];
 
 export function AppShell() {

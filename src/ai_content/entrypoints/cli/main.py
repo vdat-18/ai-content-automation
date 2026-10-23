@@ -1,6 +1,6 @@
 """Local CLI for the Static Creative pilot harness.
 
-Commands cover fake workflows, opt-in M1 preparation and image evaluation.
+Commands cover fake workflows and opt-in M1 preparation.
 """
 
 from __future__ import annotations
@@ -14,9 +14,6 @@ from pathlib import Path
 from loguru import logger
 from pydantic import ValidationError
 
-from ai_content.domains.marketing.creative.adapters.postgres_repository import (
-    PostgresCreativeRepository,
-)
 from ai_content.domains.marketing.creative.bootstrap import (
     CreativeRuntime,
     FixtureError,
@@ -26,26 +23,13 @@ from ai_content.domains.marketing.creative.bootstrap import (
     load_preparation_case_dir,
     load_work_item,
 )
-from ai_content.domains.marketing.creative.config.images import (
-    ImageBackendConfig,
-    load_image_config,
-    load_image_dataset,
-)
 from ai_content.domains.marketing.creative.config.loader import ConfigError
 from ai_content.domains.marketing.creative.config.preparation import load_preparation_config
-from ai_content.domains.marketing.creative.config.reviewers import (
-    load_semantic_reviewer_config,
-)
-from ai_content.domains.marketing.creative.config.segmentation import (
-    load_product_segmenter_config,
-)
 from ai_content.domains.marketing.creative.domain.entities import (
     ApprovalDecision,
     CreativeJob,
     CreativeJobId,
 )
-from ai_content.domains.marketing.creative.ports.contracts import StaticCreativeInput
-from ai_content.domains.marketing.creative.ports.images import ImageGenerationError
 from ai_content.domains.marketing.creative.ports.preparation import PreparationError
 from ai_content.domains.marketing.creative.ports.videos import (
     VideoGenerationError,
@@ -112,9 +96,6 @@ from ai_content.domains.marketing.performance_decisions.domain.models import (
 from ai_content.domains.marketing.performance_decisions.ports.interfaces import (
     PerformanceInputDriftError,
 )
-from ai_content.platform.ai_usage import AIUsageTracker, PostgresAIUsageRepository
-from ai_content.platform.artifacts import ArtifactKind, ArtifactService, PostgresArtifactCatalog
-from ai_content.platform.database import Database
 from ai_content.settings import ApplicationSettings
 
 DEFAULT_DB = Path(".creative-pilot") / "state.db"
@@ -124,7 +105,7 @@ DEFAULT_ARTIFACTS = Path(".creative-pilot") / "artifacts"
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="aicontent-ai",
-        description="Static Creative pilot harness and image evaluation",
+        description="Static Creative pilot harness",
     )
     parser.add_argument("--db", type=Path, default=DEFAULT_DB, help="SQLite state file")
     parser.add_argument(
@@ -147,10 +128,6 @@ def build_parser() -> argparse.ArgumentParser:
 
     run_p = sub.add_parser("run", help="Run a work item fixture end-to-end")
     run_p.add_argument("--fixture", type=Path, required=True)
-    run_p.add_argument("--image-config", type=Path)
-    run_p.add_argument("--image-dataset", type=Path)
-    run_p.add_argument("--case")
-    run_p.add_argument("--seed", type=int, default=0)
 
     replay_p = sub.add_parser(
         "replay", help="Re-run a fixture; duplicate source_run_id returns existing job"
@@ -222,8 +199,6 @@ def build_parser() -> argparse.ArgumentParser:
     run_loop.add_argument("--fixture", type=Path)
     run_loop.add_argument("--local-loop", type=Path)
     run_loop.add_argument("--preparation-config", type=Path)
-    run_loop.add_argument("--image-config", type=Path)
-    run_loop.add_argument("--review-config", type=Path)
     run_loop.add_argument("--learning-config", type=Path)
     decide_loop = sub.add_parser(
         "decide-creative-loop",
@@ -232,8 +207,6 @@ def build_parser() -> argparse.ArgumentParser:
     decide_loop.add_argument("--fixture", type=Path)
     decide_loop.add_argument("--local-loop", type=Path)
     decide_loop.add_argument("--preparation-config", type=Path)
-    decide_loop.add_argument("--image-config", type=Path)
-    decide_loop.add_argument("--review-config", type=Path)
     decide_loop.add_argument("--learning-config", type=Path)
     decide_loop.add_argument("--learning-proposal-id")
     decide_loop.add_argument("--run-id", required=True)
@@ -354,94 +327,6 @@ async def _cmd_run(runtime: CreativeRuntime, args: argparse.Namespace) -> int:
     return 0
 
 
-async def _cmd_run_postgres_image(
-    args: argparse.Namespace,
-    settings: ApplicationSettings,
-    image_config: ImageBackendConfig,
-    brief: StaticCreativeInput,
-) -> int:
-    if settings.database_url is None:
-        raise FixtureError("PostgreSQL image run requires AIC_AI_DATABASE_URL")
-    storage_settings = settings.object_storage()
-    if storage_settings.backend != "s3":
-        raise FixtureError("PostgreSQL image run requires shared S3 object storage")
-
-    database = Database(settings.database_url.get_secret_value())
-    try:
-        await database.check()
-        repository = PostgresCreativeRepository(database.engine)
-        object_storage = storage_settings.build()
-        await asyncio.to_thread(object_storage.check)
-        artifact_service = ArtifactService(
-            PostgresArtifactCatalog(database.engine),
-            object_storage,
-            storage_settings.bucket,
-        )
-        runtime = build_runtime(
-            None,
-            settings.data_root / "artifacts",
-            args.config,
-            image_config=image_config,
-            image_api_key=settings.credential(image_config.api_key_env or image_config.token_env),
-            product_segmenter_config=(
-                load_product_segmenter_config(product_segmenter_config_path)
-                if (
-                    product_segmenter_config_path := getattr(
-                        settings, "product_segmenter_config", None
-                    )
-                )
-                else None
-            ),
-            image_brief=brief,
-            seed=args.seed,
-            repository=repository,
-            usage_tracker=AIUsageTracker(PostgresAIUsageRepository(database.engine)),
-        )
-        work_item = load_work_item(args.fixture)
-        outcome = await runtime.run(work_item)
-        job = outcome.result.job
-        if job is None:
-            logger.error("Run produced no job: {}", outcome.result.error)
-            return 1
-
-        root = runtime.artifact_store.root.resolve()
-        for version in job.versions:
-            if version.artifact_path is None:
-                continue
-            image_path = Path(version.artifact_path).resolve()
-            await artifact_service.publish_file(
-                image_path,
-                image_path.relative_to(root).as_posix(),
-                kind=ArtifactKind.GENERATED,
-                owner_type="creative",
-                owner_id=job.job_id.value,
-            )
-            version_dir = image_path.parent
-            for review_path in (version_dir / "review.json", *(version_dir / "inputs").glob("*")):
-                if review_path.is_file():
-                    await artifact_service.publish_file(
-                        review_path,
-                        review_path.relative_to(root).as_posix(),
-                        kind=ArtifactKind.SOURCE,
-                        owner_type="creative",
-                        owner_id=job.job_id.value,
-                    )
-
-        manifest = runtime.run_dir(work_item.source_run_id) / "manifest.json"
-        print_job(job, str(manifest) if manifest.exists() else None)
-        _write_line(f"Dashboard:    /dashboard/creatives/{job.job_id.value}")
-        if not outcome.result.success:
-            logger.error(
-                "Run ended in exception: {} ({})",
-                outcome.result.exception_type,
-                outcome.result.error,
-            )
-            return 1
-        return 0
-    finally:
-        await database.close()
-
-
 async def _cmd_inspect(runtime: CreativeRuntime, args: argparse.Namespace) -> int:
     job = await _load_job(runtime, args.job, args.run)
     if job is None:
@@ -478,18 +363,6 @@ async def _async_main(args: argparse.Namespace, settings: ApplicationSettings) -
     }:
         if (args.fixture is None) == (args.local_loop is None):
             raise ValueError("Use exactly one of --fixture or --local-loop")
-        image_config_path = getattr(args, "image_config", None)
-        review_config_path = getattr(args, "review_config", None)
-        image_config = load_image_config(image_config_path) if image_config_path else None
-        review_config = (
-            load_semantic_reviewer_config(review_config_path) if review_config_path else None
-        )
-        product_segmenter_config_path = getattr(settings, "product_segmenter_config", None)
-        product_segmenter_config = (
-            load_product_segmenter_config(product_segmenter_config_path)
-            if product_segmenter_config_path
-            else None
-        )
         learning_config_path = getattr(args, "learning_config", None)
         learning_config = (
             load_performance_learning_config(learning_config_path) if learning_config_path else None
@@ -507,17 +380,6 @@ async def _async_main(args: argparse.Namespace, settings: ApplicationSettings) -
             preparation_api_key=settings.credential(
                 load_preparation_config(preparation_config).api_key_env
             ),
-            image_config=image_config,
-            image_api_key=(
-                settings.credential(image_config.api_key_env or image_config.token_env)
-                if image_config
-                else None
-            ),
-            product_segmenter_config=product_segmenter_config,
-            review_config=review_config,
-            review_api_key=(
-                settings.credential(review_config.api_key_env) if review_config else None
-            ),
             learning_config=learning_config,
             learning_api_key=(
                 settings.credential(learning_config.api_key_env) if learning_config else None
@@ -532,11 +394,7 @@ async def _async_main(args: argparse.Namespace, settings: ApplicationSettings) -
                 _write_line(f"Duplicates:    {outcome.duplicate_count}")
                 _write_line(
                     "External writes: disabled; model mode: "
-                    + (
-                        "configured"
-                        if image_config or review_config or learning_config
-                        else "synthetic"
-                    )
+                    + ("configured" if learning_config else "synthetic")
                 )
                 return 0
             run = await runtime.repository.get(args.run_id)
@@ -774,46 +632,7 @@ async def _async_main(args: argparse.Namespace, settings: ApplicationSettings) -
             return 0 if result.success else 1
         finally:
             runtime.repository.close()
-    image_config = None
-    brief = None
-    if args.command == "run":
-        options = (args.image_config, args.image_dataset, args.case)
-        if any(options) and not all(options):
-            raise FixtureError("Image run needs --image-config, --image-dataset and --case")
-        if all(options):
-            if not 0 <= args.seed < 2**32:
-                raise FixtureError("Seed must be an unsigned 32-bit integer")
-            image_config = load_image_config(args.image_config)
-            dataset = load_image_dataset(args.image_dataset)
-            case = next((case for case in dataset.cases if case.case_id == args.case), None)
-            if case is None:
-                raise FixtureError("Selected case does not exist in image dataset")
-            brief = case.input
-    if settings.database_backend == "postgresql" and args.command == "run":
-        if image_config is None or brief is None:
-            raise FixtureError("PostgreSQL run requires an image config, dataset and case")
-        return await _cmd_run_postgres_image(args, settings, image_config, brief)
-
-    runtime = build_runtime(
-        args.db,
-        args.artifacts,
-        args.config,
-        image_config=image_config,
-        image_api_key=(
-            settings.credential(image_config.api_key_env or image_config.token_env)
-            if image_config is not None
-            else None
-        ),
-        product_segmenter_config=(
-            load_product_segmenter_config(product_segmenter_config_path)
-            if (
-                product_segmenter_config_path := getattr(settings, "product_segmenter_config", None)
-            )
-            else None
-        ),
-        image_brief=brief,
-        seed=getattr(args, "seed", 0),
-    )
+    runtime = build_runtime(args.db, args.artifacts, args.config)
     if args.command == "run":
         return await _cmd_run(runtime, args)
     if args.command == "replay":
@@ -841,9 +660,6 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     except ValidationError:
         logger.error("Invalid configuration/input/review; check schema and required fields")
-        return 1
-    except ImageGenerationError as e:
-        logger.error("Image pilot error: {}", e)
         return 1
     except VideoGenerationError as e:
         logger.error("Video pilot error: {}", e)

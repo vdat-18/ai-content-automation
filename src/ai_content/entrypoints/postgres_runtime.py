@@ -19,18 +19,6 @@ from ai_content.domains.marketing.creative.adapters.postgres_repository import (
 )
 from ai_content.domains.marketing.creative.bootstrap import CreativeRuntime
 from ai_content.domains.marketing.creative.bootstrap import build_runtime as build_creative
-from ai_content.domains.marketing.creative.config.images import (
-    ImageBackendConfig,
-    load_image_config,
-)
-from ai_content.domains.marketing.creative.config.reviewers import (
-    SemanticReviewerConfig,
-    load_semantic_reviewer_config,
-)
-from ai_content.domains.marketing.creative.config.segmentation import (
-    ProductSegmenterConfig,
-    load_product_segmenter_config,
-)
 from ai_content.domains.marketing.creative_feedback.adapters.baml_learning import (
     BamlPerformanceLearningAnalyzer,
 )
@@ -70,21 +58,6 @@ from ai_content.domains.marketing.data_sources.adapters.postgres_repository impo
 from ai_content.domains.marketing.media_lab.adapters.asset_postgres_repository import (
     PostgresMediaAssetRepository,
 )
-from ai_content.domains.marketing.media_lab.adapters.planning_job_postgres_repository import (
-    PostgresMediaLabPlanningJobRepository,
-)
-from ai_content.domains.marketing.media_lab.adapters.postgres_repository import (
-    PostgresMediaLabImageRepository,
-)
-from ai_content.domains.marketing.media_lab.adapters.video_ad_postgres_repository import (
-    PostgresMediaLabVideoAdRepository,
-)
-from ai_content.domains.marketing.media_lab.adapters.video_postgres_repository import (
-    PostgresMediaLabVideoRepository,
-)
-from ai_content.domains.marketing.media_lab.adapters.video_project_postgres_repository import (
-    PostgresMediaLabVideoProjectRepository,
-)
 from ai_content.domains.marketing.performance_data.adapters.postgres_repository import (
     PostgresGmcRunRepository,
 )
@@ -122,14 +95,6 @@ class PostgresRuntimeContainer:
         config_dir: Path,
         preparation_config_path: Path | None = None,
         preparation_api_key: str | None = None,
-        image_config_path: Path | None = None,
-        image_api_key: str | None = None,
-        product_segmenter_config_path: Path | None = None,
-        product_segmenter_runpod_endpoint_id: str | None = None,
-        product_segmenter_runpod_api_key: str | None = None,
-        legacy_local_models_enabled: bool = False,
-        review_config_path: Path | None = None,
-        review_api_key: str | None = None,
         learning_config_path: Path | None = None,
         learning_api_key: str | None = None,
         execution_backend: str = "lease_worker",
@@ -143,31 +108,6 @@ class PostgresRuntimeContainer:
             preparation_config_path or config_dir / "preparation/synthetic.json"
         )
         self.preparation_api_key = preparation_api_key
-        self.image_config: ImageBackendConfig | None = (
-            load_image_config(image_config_path) if image_config_path is not None else None
-        )
-        if (
-            self.image_config is not None
-            and self.image_config.backend in {"invokeai", "comfyui"}
-            and not legacy_local_models_enabled
-        ):
-            raise ValueError(
-                "Legacy local image backends require AIC_LEGACY_LOCAL_MODELS_ENABLED=true"
-            )
-        self.image_api_key = image_api_key
-        self.product_segmenter_config: ProductSegmenterConfig | None = (
-            load_product_segmenter_config(product_segmenter_config_path)
-            if product_segmenter_config_path is not None
-            else None
-        )
-        self.product_segmenter_runpod_endpoint_id = product_segmenter_runpod_endpoint_id
-        self.product_segmenter_runpod_api_key = product_segmenter_runpod_api_key
-        self.review_config: SemanticReviewerConfig | None = (
-            load_semantic_reviewer_config(review_config_path)
-            if review_config_path is not None
-            else None
-        )
-        self.review_api_key = review_api_key
         self.learning_config: PerformanceLearningConfig | None = (
             load_performance_learning_config(learning_config_path)
             if learning_config_path is not None
@@ -214,11 +154,6 @@ class PostgresRuntimeContainer:
         self.gmc_repository = PostgresGmcRunRepository(engine)
         self.data_source_repository = PostgresDataSourceRepository(engine)
         self.research_crawl_repository = PostgresResearchCrawlRepository(engine)
-        self.media_lab_image_repository = PostgresMediaLabImageRepository(engine)
-        self.media_lab_video_repository = PostgresMediaLabVideoRepository(engine)
-        self.media_lab_video_project_repository = PostgresMediaLabVideoProjectRepository(engine)
-        self.media_lab_video_ad_repository = PostgresMediaLabVideoAdRepository(engine)
-        self.media_lab_planning_job_repository = PostgresMediaLabPlanningJobRepository(engine)
         self.media_lab_asset_repository = PostgresMediaAssetRepository(engine)
         self.execution_status_store = PostgresCommandQueue(engine)
         if execution_backend == "celery":
@@ -237,15 +172,7 @@ class PostgresRuntimeContainer:
             None,
             self.artifacts_root,
             config_dir=self.config_dir,
-            image_config=self.image_config,
-            image_api_key=self.image_api_key,
-            product_segmenter_config=self.product_segmenter_config,
-            product_segmenter_runpod_endpoint_id=self.product_segmenter_runpod_endpoint_id,
-            product_segmenter_runpod_api_key=self.product_segmenter_runpod_api_key,
-            reviewer_config=self.review_config,
-            reviewer_api_key=self.review_api_key,
             repository=self.creative_repository,
-            usage_tracker=self.ai_usage_tracker,
         )
 
     def performance(self) -> PerformanceDecisionRuntime:
@@ -264,13 +191,6 @@ class PostgresRuntimeContainer:
             self.artifacts_root,
             self.creative_repository,
             self.preparation_api_key,
-            self.image_config,
-            self.image_api_key,
-            self.product_segmenter_config,
-            self.product_segmenter_runpod_endpoint_id,
-            self.product_segmenter_runpod_api_key,
-            self.review_config,
-            self.review_api_key,
             self.ai_usage_tracker,
         )
 

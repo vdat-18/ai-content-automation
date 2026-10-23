@@ -32,7 +32,7 @@ test("research crawler guides Marketing from keyword discovery through review", 
   assert.match(page, /Videos only/);
   assert.match(page, /Images and videos/);
   assert.match(page, /media_mode: mediaMode/);
-  assert.match(page, /useState\("gemini-2\.5-flash"\)/);
+  assert.match(page, /useState\("grok-4-fast-reasoning"\)/);
   assert.match(page, /analysis_model_id: analysisModelId/);
   assert.doesNotMatch(page, /Jev navigation is unchanged/);
   assert.doesNotMatch(page, /Pick the project first/);

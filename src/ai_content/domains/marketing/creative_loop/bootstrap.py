@@ -9,9 +9,6 @@ from pathlib import Path
 from ai_content.domains.marketing.creative.bootstrap import (
     build_runtime as build_creative_runtime,
 )
-from ai_content.domains.marketing.creative.config.images import ImageBackendConfig
-from ai_content.domains.marketing.creative.config.reviewers import SemanticReviewerConfig
-from ai_content.domains.marketing.creative.config.segmentation import ProductSegmenterConfig
 from ai_content.domains.marketing.creative.domain.entities import ApprovalDecision
 from ai_content.domains.marketing.creative_feedback.bootstrap import (
     build_fixture_runtime as build_feedback_runtime,
@@ -221,13 +218,6 @@ def build_runtime(
     fixture_path: Path = Path("config/fixtures/creative_loop_synthetic.json"),
     preparation_config: Path = Path("config/preparation/synthetic.json"),
     preparation_api_key: str | None = None,
-    image_config: ImageBackendConfig | None = None,
-    image_api_key: str | None = None,
-    product_segmenter_config: ProductSegmenterConfig | None = None,
-    product_segmenter_runpod_endpoint_id: str | None = None,
-    product_segmenter_runpod_api_key: str | None = None,
-    review_config: SemanticReviewerConfig | None = None,
-    review_api_key: str | None = None,
     learning_config: PerformanceLearningConfig | None = None,
     learning_api_key: str | None = None,
     local_loop_path: Path | None = None,
@@ -244,13 +234,6 @@ def build_runtime(
         db_path,
         artifacts_root,
         preparation_api_key=preparation_api_key,
-        image_config=image_config,
-        image_api_key=image_api_key,
-        product_segmenter_config=product_segmenter_config,
-        product_segmenter_runpod_endpoint_id=product_segmenter_runpod_endpoint_id,
-        product_segmenter_runpod_api_key=product_segmenter_runpod_api_key,
-        review_config=review_config,
-        review_api_key=review_api_key,
     )
     creative = build_creative_runtime(db_path, artifacts_root, config_dir=config_dir)
     feedback = build_feedback_runtime(

@@ -166,21 +166,6 @@ services:
     <<: *python-service
     environment:
       <<: *python-environment
-      AIC_LEGACY_LOCAL_MODELS_ENABLED: ${AIC_LEGACY_LOCAL_MODELS_ENABLED:-false}
-      AIC_AI_MODEL_LAB_CONFIG: ${AIC_AI_MODEL_LAB_CONFIG:-}
-      MODEL_LAB_API_KEY: ${MODEL_LAB_API_KEY:-}
-      AIC_MEDIA_LAB_COMFYUI_URL: ${AIC_MEDIA_LAB_COMFYUI_URL:-}
-      AIC_MEDIA_LAB_IMAGE_COMFYUI_URL: ${AIC_MEDIA_LAB_IMAGE_COMFYUI_URL:-}
-      AIC_MEDIA_LAB_VIDEO_COMFYUI_URL: ${AIC_MEDIA_LAB_VIDEO_COMFYUI_URL:-}
-      AIC_MEDIA_LAB_IMAGE_RUNPOD_ENDPOINT_ID: ${AIC_MEDIA_LAB_IMAGE_RUNPOD_ENDPOINT_ID:-}
-      AIC_MEDIA_LAB_IMAGE_RUNPOD_API_KEY: ${AIC_MEDIA_LAB_IMAGE_RUNPOD_API_KEY:-}
-      AIC_MEDIA_LAB_VIDEO_RUNPOD_ENDPOINT_ID: ${AIC_MEDIA_LAB_VIDEO_RUNPOD_ENDPOINT_ID:-}
-      AIC_MEDIA_LAB_VIDEO_RUNPOD_API_KEY: ${AIC_MEDIA_LAB_VIDEO_RUNPOD_API_KEY:-}
-      AIC_MEDIA_LAB_VERIFIER_RUNPOD_ENDPOINT_ID: ${AIC_MEDIA_LAB_VERIFIER_RUNPOD_ENDPOINT_ID:-}
-      AIC_MEDIA_LAB_VERIFIER_RUNPOD_API_KEY: ${AIC_MEDIA_LAB_VERIFIER_RUNPOD_API_KEY:-}
-      AIC_MEDIA_LAB_ORCHESTRATOR_CONFIG: ${AIC_MEDIA_LAB_ORCHESTRATOR_CONFIG:-/app/config/media_lab/nine-router-image-orchestrator.example.json}
-      AIC_MEDIA_LAB_VIDEO_ORCHESTRATOR_CONFIG: ${AIC_MEDIA_LAB_VIDEO_ORCHESTRATOR_CONFIG:-/app/config/media_lab/nine-router-video-orchestrator.example.json}
-      AIC_MEDIA_LAB_VIDEO_VERIFIER_CONFIG: ${AIC_MEDIA_LAB_VIDEO_VERIFIER_CONFIG:-}
     command:
       - uvicorn
       - ai_content.entrypoints.api.app:app
@@ -248,9 +233,6 @@ services:
     environment:
       <<: *python-environment
       PROMETHEUS_MULTIPROC_DIR: /tmp/aicontent-prometheus
-      AIC_AI_IMAGE_CONFIG: ${AIC_AI_IMAGE_CONFIG:-}
-      AIC_AI_PRODUCT_SEGMENTER_CONFIG: ${AIC_AI_PRODUCT_SEGMENTER_CONFIG:-}
-      AIC_AI_REVIEW_CONFIG: ${AIC_AI_REVIEW_CONFIG:-/app/config/reviewers/nine-router.example.json}
       AIC_AI_LEARNING_CONFIG: ${AIC_AI_LEARNING_CONFIG:-/app/config/creative_feedback/nine-router.example.json}
       IMAGE_API_KEY: ${IMAGE_API_KEY:-}
     command:
@@ -294,7 +276,6 @@ services:
       dockerfile: deploy/docker/frontend.Dockerfile
       target: runtime
       args:
-        VITE_ENABLE_LEGACY_LOCAL_MODELS: ${VITE_ENABLE_LEGACY_LOCAL_MODELS:-}
     depends_on:
       api:
         condition: service_healthy

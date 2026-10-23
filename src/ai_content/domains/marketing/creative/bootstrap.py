@@ -14,7 +14,6 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 
-from ai_content.platform.ai_usage import AIUsageTracker
 from ai_content.platform.artifacts.store import ArtifactStore
 
 from .adapters.artifacts import (
@@ -27,29 +26,17 @@ from .adapters.fakes import (
     FakeContextCollector,
     FakeIdeaGenerator,
     FakeImageGenerator,
-    SyntheticProductSegmenter,
 )
-from .adapters.image_files import FileGeneratedImageStore, TechnicalImageChecker
 from .adapters.in_memory import FakeApprovalQueue, FakeExceptionQueue
 from .adapters.local_context import load_preparation_context
-from .adapters.openai_compatible_reviews import BamlSemanticReviewer
-from .adapters.pillow_renderer import PillowStaticRenderer
-from .adapters.provided_brief import ProvidedBriefContext, ProvidedBriefIdeas
-from .adapters.sam3_product_segmenter import Sam3ProductSegmenter
 from .adapters.sqlite_repository import SqliteCreativeRepository
-from .application.image_generation import StoredImageGenerator
-from .application.qa import CompositeCreativeQAChecker, ShadowSemanticCreativeQAChecker
 from .application.use_cases import (
     ProcessApproval,
     ProcessResult,
     RunCreativeWorkflow,
 )
-from .config.images import ImageBackendConfig
 from .config.loader import ConfigError, ConfigLoader
-from .config.reviewers import SemanticReviewerConfig
-from .config.segmentation import ProductSegmenterConfig
 from .domain.entities import ApprovalDecision, CreativeJobId
-from .image_pilot import build_image_backend
 from .ports.contracts import (
     CreativeConstraints,
     CreativeWorkItemInput,
@@ -65,7 +52,6 @@ from .ports.contracts import (
     RubricVersion,
     RuleVersion,
     SkuInput,
-    StaticCreativeInput,
     StaticVariationPlan,
     WorkflowVersionRef,
 )
@@ -352,14 +338,12 @@ class CreativeRuntime:
         config_loader: ConfigLoader,
         run_workflow: RunCreativeWorkflow,
         process_approval: ProcessApproval,
-        image_brief: StaticCreativeInput | None = None,
     ) -> None:
         self.repository = repository
         self.artifact_store = artifact_store
         self.config_loader = config_loader
         self.run_workflow = run_workflow
         self.process_approval = process_approval
-        self.image_brief = image_brief
 
     async def run(self, work_item: CreativeWorkItemInput) -> RunOutcome:
         """Execute the workflow and write the artifact tree."""
@@ -379,16 +363,7 @@ class CreativeRuntime:
         except ConfigError as e:
             raise FixtureError(f"Config resolution failed: {e}") from e
 
-        if self.image_brief is not None:
-            brief = self.image_brief
-            if (
-                brief.prompt_version != work_item.prompt_version
-                or brief.rubric_version != work_item.rubric_version
-                or brief.policy_version != work_item.policy_version
-                or brief.objective != work_item.objective
-            ):
-                raise FixtureError("Brief objective/config versions must match the work item")
-        result = await self.run_workflow.execute(work_item, generation_input=self.image_brief)
+        result = await self.run_workflow.execute(work_item)
         if result.job is None or result.duplicate:
             return RunOutcome(result=result)
         manifest_path = write_job_artifacts(
@@ -428,24 +403,10 @@ def build_runtime(
     artifacts_root: Path,
     config_dir: Path = Path("config"),
     *,
-    image_config: ImageBackendConfig | None = None,
-    image_api_key: str | None = None,
-    image_brief: StaticCreativeInput | None = None,
-    reviewer_config: SemanticReviewerConfig | None = None,
-    reviewer_api_key: str | None = None,
-    product_segmenter_config: ProductSegmenterConfig | None = None,
-    product_segmenter_runpod_endpoint_id: str | None = None,
-    product_segmenter_runpod_api_key: str | None = None,
-    seed: int = 0,
     preparation: IPreparationRunner | None = None,
     repository: ICreativeRepository | None = None,
-    usage_tracker: AIUsageTracker | None = None,
 ) -> CreativeRuntime:
-    """Compose fake workflow or supervised fixed-brief image workflow."""
-    if image_brief is not None and image_config is None:
-        raise FixtureError("A fixed image brief requires image_config")
-    if preparation is not None and image_brief is not None:
-        raise FixtureError("Choose preparation or a fixed image brief, not both")
+    """Compose the fake fixture workflow, optionally with a real preparation runner."""
     if repository is None:
         if db_path is None:
             raise ValueError("db_path is required when no repository is provided")
@@ -453,53 +414,11 @@ def build_runtime(
     store = ArtifactStore(artifacts_root)
     config_loader = ConfigLoader(config_dir)
     approval_queue = FakeApprovalQueue()
-    technical_checker = (
-        TechnicalImageChecker(image_config.max_image_bytes)
-        if image_config
-        else DeterministicQAChecker()
-    )
-    if reviewer_config is not None:
-        if image_config is None:
-            raise FixtureError("Semantic review requires an image configuration")
-        reviewer = BamlSemanticReviewer(
-            reviewer_config,
-            api_key=reviewer_api_key,
-            usage_tracker=usage_tracker,
-        )
-        qa_checker = (
-            ShadowSemanticCreativeQAChecker(technical_checker, reviewer)
-            if reviewer_config.mode == "shadow"
-            else CompositeCreativeQAChecker(technical_checker, reviewer)
-        )
-    else:
-        qa_checker = technical_checker
     run_workflow = RunCreativeWorkflow(
-        context_collector=ProvidedBriefContext(image_brief)
-        if image_brief
-        else FakeContextCollector(),
-        idea_generator=ProvidedBriefIdeas(image_brief) if image_brief else FakeIdeaGenerator(),
-        generator=StoredImageGenerator(
-            build_image_backend(image_config, image_api_key),
-            FileGeneratedImageStore(store, image_config.max_image_bytes),
-            seed,
-            usage_tracker=(usage_tracker if image_config.backend != "synthetic" else None),
-            backend_name=image_config.backend,
-            model=image_config.model,
-            model_revision=image_config.model_revision,
-            renderer=PillowStaticRenderer(),
-            product_segmenter=(
-                Sam3ProductSegmenter(
-                    product_segmenter_config,
-                    runpod_endpoint_id=product_segmenter_runpod_endpoint_id,
-                    runpod_api_key=product_segmenter_runpod_api_key,
-                )
-                if product_segmenter_config is not None
-                else (SyntheticProductSegmenter() if image_config.backend == "synthetic" else None)
-            ),
-        )
-        if image_config
-        else FakeImageGenerator(),
-        qa_checker=qa_checker,
+        context_collector=FakeContextCollector(),
+        idea_generator=FakeIdeaGenerator(),
+        generator=FakeImageGenerator(),
+        qa_checker=DeterministicQAChecker(),
         repository=repository,
         approval_queue=approval_queue,
         exception_queue=FakeExceptionQueue(),
@@ -515,7 +434,6 @@ def build_runtime(
         config_loader=config_loader,
         run_workflow=run_workflow,
         process_approval=process_approval,
-        image_brief=image_brief,
     )
 
 

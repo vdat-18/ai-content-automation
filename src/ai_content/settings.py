@@ -1,10 +1,8 @@
 """Typed process settings loaded directly from environment variables."""
 
-import re
 from datetime import datetime
 from pathlib import Path
 from typing import Literal
-from urllib.parse import urlsplit
 
 from pydantic import AliasChoices, Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -23,46 +21,7 @@ class ApplicationSettings(BaseSettings):
     preparation_config: Path | None = Field(None, validation_alias="AIC_AI_PREPARATION_CONFIG")
     orchestration_config: Path | None = Field(None, validation_alias="AIC_AI_ORCHESTRATION_CONFIG")
     managed_media_config: Path | None = Field(None, validation_alias="AIC_AI_MANAGED_MEDIA_CONFIG")
-    image_config: Path | None = Field(None, validation_alias="AIC_AI_IMAGE_CONFIG")
-    product_segmenter_config: Path | None = Field(
-        None, validation_alias="AIC_AI_PRODUCT_SEGMENTER_CONFIG"
-    )
-    review_config: Path | None = Field(None, validation_alias="AIC_AI_REVIEW_CONFIG")
     learning_config: Path | None = Field(None, validation_alias="AIC_AI_LEARNING_CONFIG")
-    media_lab_orchestrator_config: Path | None = Field(
-        None, validation_alias="AIC_MEDIA_LAB_ORCHESTRATOR_CONFIG"
-    )
-    media_lab_video_orchestrator_config: Path | None = Field(
-        None, validation_alias="AIC_MEDIA_LAB_VIDEO_ORCHESTRATOR_CONFIG"
-    )
-    media_lab_video_verifier_config: Path | None = Field(
-        None, validation_alias="AIC_MEDIA_LAB_VIDEO_VERIFIER_CONFIG"
-    )
-    media_lab_comfyui_url: str | None = Field(None, validation_alias="AIC_MEDIA_LAB_COMFYUI_URL")
-    media_lab_image_comfyui_url: str | None = Field(
-        None, validation_alias="AIC_MEDIA_LAB_IMAGE_COMFYUI_URL"
-    )
-    media_lab_video_comfyui_url: str | None = Field(
-        None, validation_alias="AIC_MEDIA_LAB_VIDEO_COMFYUI_URL"
-    )
-    media_lab_image_runpod_endpoint_id: str | None = Field(
-        None, validation_alias="AIC_MEDIA_LAB_IMAGE_RUNPOD_ENDPOINT_ID"
-    )
-    media_lab_image_runpod_api_key: SecretStr | None = Field(
-        None, validation_alias="AIC_MEDIA_LAB_IMAGE_RUNPOD_API_KEY"
-    )
-    media_lab_video_runpod_endpoint_id: str | None = Field(
-        None, validation_alias="AIC_MEDIA_LAB_VIDEO_RUNPOD_ENDPOINT_ID"
-    )
-    media_lab_video_runpod_api_key: SecretStr | None = Field(
-        None, validation_alias="AIC_MEDIA_LAB_VIDEO_RUNPOD_API_KEY"
-    )
-    media_lab_verifier_runpod_endpoint_id: str | None = Field(
-        None, validation_alias="AIC_MEDIA_LAB_VERIFIER_RUNPOD_ENDPOINT_ID"
-    )
-    media_lab_verifier_runpod_api_key: SecretStr | None = Field(
-        None, validation_alias="AIC_MEDIA_LAB_VERIFIER_RUNPOD_API_KEY"
-    )
     media_asset_max_image_bytes: int = Field(
         100_000_000, gt=0, validation_alias="AIC_MEDIA_ASSET_MAX_IMAGE_BYTES"
     )
@@ -168,9 +127,6 @@ class ApplicationSettings(BaseSettings):
         5, ge=0, validation_alias="AIC_AI_OUTBOX_RETRY_DELAY_SECONDS"
     )
     environment: str = Field("development", validation_alias="AIC_AI_ENVIRONMENT")
-    legacy_local_models_enabled: bool = Field(
-        False, validation_alias="AIC_LEGACY_LOCAL_MODELS_ENABLED"
-    )
     cors_allow_origin: str | None = Field(None, validation_alias="AIC_CORS_ALLOW_ORIGINS")
 
     object_storage_backend: Literal["filesystem", "s3"] = Field(
@@ -271,13 +227,7 @@ class ApplicationSettings(BaseSettings):
 
     @field_validator(
         "orchestration_config",
-        "image_config",
-        "product_segmenter_config",
-        "review_config",
         "learning_config",
-        "media_lab_orchestrator_config",
-        "media_lab_video_orchestrator_config",
-        "media_lab_video_verifier_config",
         "data_sources_config",
         "research_screening_config",
         mode="before",
@@ -298,62 +248,6 @@ class ApplicationSettings(BaseSettings):
         return None if value == "" else value
 
     @field_validator(
-        "media_lab_comfyui_url",
-        "media_lab_image_comfyui_url",
-        "media_lab_video_comfyui_url",
-        "media_lab_image_runpod_endpoint_id",
-        "media_lab_image_runpod_api_key",
-        "media_lab_video_runpod_endpoint_id",
-        "media_lab_video_runpod_api_key",
-        "media_lab_verifier_runpod_endpoint_id",
-        "media_lab_verifier_runpod_api_key",
-        mode="before",
-    )
-    @classmethod
-    def empty_optional_media_lab_url(cls, value: object) -> object:
-        return None if value == "" else value
-
-    @field_validator(
-        "media_lab_comfyui_url",
-        "media_lab_image_comfyui_url",
-        "media_lab_video_comfyui_url",
-    )
-    @classmethod
-    def valid_media_lab_url(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        url = urlsplit(value)
-        if (
-            url.scheme not in {"http", "https"}
-            or not url.hostname
-            or url.username
-            or url.password
-            or url.query
-            or url.fragment
-        ):
-            raise ValueError("Media Lab ComfyUI URLs must be HTTP URLs without credentials")
-        return value.rstrip("/")
-
-    @field_validator(
-        "media_lab_image_runpod_endpoint_id",
-        "media_lab_video_runpod_endpoint_id",
-        "media_lab_verifier_runpod_endpoint_id",
-    )
-    @classmethod
-    def valid_runpod_endpoint_id(cls, value: str | None) -> str | None:
-        if value is not None and re.fullmatch(r"[A-Za-z0-9_-]+", value) is None:
-            raise ValueError("Runpod endpoint ID contains unsupported characters")
-        return value
-
-    @property
-    def resolved_media_lab_image_comfyui_url(self) -> str | None:
-        return self.media_lab_image_comfyui_url or self.media_lab_comfyui_url
-
-    @property
-    def resolved_media_lab_video_comfyui_url(self) -> str | None:
-        return self.media_lab_video_comfyui_url or self.media_lab_comfyui_url
-
-    @field_validator(
         "langfuse_otlp_endpoint",
         "langfuse_public_key",
         "langfuse_secret_key",
@@ -365,27 +259,6 @@ class ApplicationSettings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_runtime_dependencies(self) -> "ApplicationSettings":
-        if (self.media_lab_image_runpod_endpoint_id is None) != (
-            self.media_lab_image_runpod_api_key is None
-        ):
-            raise ValueError(
-                "AIC_MEDIA_LAB_IMAGE_RUNPOD_ENDPOINT_ID and "
-                "AIC_MEDIA_LAB_IMAGE_RUNPOD_API_KEY must be configured together"
-            )
-        if (self.media_lab_video_runpod_endpoint_id is None) != (
-            self.media_lab_video_runpod_api_key is None
-        ):
-            raise ValueError(
-                "AIC_MEDIA_LAB_VIDEO_RUNPOD_ENDPOINT_ID and "
-                "AIC_MEDIA_LAB_VIDEO_RUNPOD_API_KEY must be configured together"
-            )
-        if (self.media_lab_verifier_runpod_endpoint_id is None) != (
-            self.media_lab_verifier_runpod_api_key is None
-        ):
-            raise ValueError(
-                "AIC_MEDIA_LAB_VERIFIER_RUNPOD_ENDPOINT_ID and "
-                "AIC_MEDIA_LAB_VERIFIER_RUNPOD_API_KEY must be configured together"
-            )
         if self.database_backend == "postgresql" and self.database_url is None:
             raise ValueError("AIC_AI_DATABASE_URL is required for the PostgreSQL backend")
         if self.execution_backend == "celery":

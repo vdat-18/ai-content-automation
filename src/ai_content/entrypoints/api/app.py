@@ -103,8 +103,6 @@ from .dependencies import (
     lifespan,
 )
 from .media_assets import router as media_assets_router
-from .media_lab import router as media_lab_router
-from .model_lab import router as model_lab_router
 from .notifications import router as notifications_router
 from .research_crawler import library_router as research_library_router
 from .research_crawler import router as research_crawler_router
@@ -1698,9 +1696,6 @@ app.include_router(dashboard_router)
 app.include_router(ai_usage_router)
 app.include_router(data_sources_router)
 app.include_router(media_assets_router)
-if _APPLICATION_SETTINGS.legacy_local_models_enabled:
-    app.include_router(model_lab_router)
-    app.include_router(media_lab_router)
 _configure_cors(app)
 _mount_frontend(app)
 instrument_fastapi(app, _OBSERVABILITY_SETTINGS)
