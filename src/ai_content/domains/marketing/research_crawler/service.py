@@ -131,10 +131,8 @@ class ResearchCrawlService:
         )
 
     async def _resolve_brand_context(self, job: ResearchCrawlJob) -> ResearchBrandContext | None:
-        if job.brand_context is not None:
-            return job.brand_context
         if self._brand_context_resolver is None:
-            return None
+            return job.brand_context
         try:
             return await self._brand_context_resolver.resolve(job.brand_id)
         except Exception as error:

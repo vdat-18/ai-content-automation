@@ -69,6 +69,9 @@ class ResearchBrandContextResolver:
             for _snapshot, record in products[:_PRODUCT_LIMIT]
             if (product := _research_product(record))
         )
+        # Products without curated usage scenes are stale or uncurated leftovers when others have them.
+        curated = tuple(product for product in catalog if product.usage_scenes)
+        catalog = tuple({product.title: product for product in (curated or catalog)}.values())
         payload = {
             "brand_id": brand_id,
             "source_versions": source_versions,

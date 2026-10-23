@@ -70,7 +70,7 @@ function ScreenResearchReference(
     blurry candidate must return usable=false, reason_code="blurry_media", and profile=null. When
     usable=true, ground every profile field in visible evidence, keep observations and
     inferences separate, and never treat competitor claims as product truth. reason_code
-    must be lowercase snake_case. confidence must be between 0 and 1.
+    must be exactly one of: usable_reference, no_usable_background, text_graphic_layout, collage_or_screenshot, blurry_media, irrelevant_content, non_us_scene. confidence must be between 0 and 1.
 
     The reference is only valuable when its background can host one of the project's own
     products. Fill the scene fields from visible evidence first, then decide.
