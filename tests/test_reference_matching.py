@@ -33,11 +33,13 @@ def _record(
     matches: tuple[tuple[str, str], ...],
     background_usable: bool = True,
     advertiser: str | None = None,
+    market_fit: str = "us",
 ) -> StoredResearchRecord:
     profile = ResearchReferenceProfile(
         summary=f"{key} bedroom scene",
         relevance_to_project="sleep",
         background_usable=background_usable,
+        market_fit=market_fit,
         product_matches=tuple(
             ResearchProductMatch(product_id=product_id, match_kind=kind, confidence=0.9)
             for product_id, kind in matches
@@ -134,6 +136,15 @@ def test_shortlist_prefers_references_not_used_before() -> None:
         records, product_text="mask", product_id=_MASK, use_counts={"old": 2}, limit=2, now=_NOW
     )
     assert [item.record_key for item in picks] == ["fresh", "old"]
+
+
+def test_shortlist_ranks_non_us_scenes_lower() -> None:
+    records = [
+        _record("abroad", matches=((_MASK, "scene_fit"),), market_fit="non_us"),
+        _record("american", matches=((_MASK, "scene_fit"),)),
+    ]
+    picks = shortlist_references(records, product_text="mask", product_id=_MASK, now=_NOW)
+    assert [item.record_key for item in picks] == ["american", "abroad"]
 
 
 def test_repository_links_products_and_counts_uses(tmp_path: Path) -> None:

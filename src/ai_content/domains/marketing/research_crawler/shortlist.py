@@ -14,6 +14,7 @@ _FRESHNESS_WEIGHT = 0.20
 _FRESHNESS_HALF_LIFE_DAYS = 60.0
 _DIVERSITY_LAMBDA = 0.7
 _USE_DECAY = 0.5
+_MARKET_WEIGHT = {"us": 1.0, "neutral": 0.9, "non_us": 0.5}
 _MATCH_RELEVANCE = {"scene_fit": 1.0, "product_visible": 0.9, "style_only": 0.3}
 
 
@@ -42,6 +43,7 @@ class _Candidate:
     quality: float
     matches: dict[str, tuple[str, float]]
     uses: int
+    market_weight: float
 
 
 def _terms(*values: str | tuple[str, ...]) -> frozenset[str]:
@@ -106,6 +108,7 @@ def _candidates(
                         for match in profile.product_matches
                     },
                     uses=use_counts.get(record.record_key, 0),
+                    market_weight=_MARKET_WEIGHT[profile.market_fit],
                 )
             )
     return result
@@ -147,10 +150,14 @@ def shortlist_references(
         age_days = max((moment - candidate.record.last_seen_at).total_seconds() / 86400, 0.0)
         freshness = math.exp(-math.log(2) * age_days / _FRESHNESS_HALF_LIFE_DAYS)
         score = (
-            _RELEVANCE_WEIGHT * relevance
-            + _QUALITY_WEIGHT * candidate.quality
-            + _FRESHNESS_WEIGHT * freshness
-        ) * _USE_DECAY**candidate.uses
+            (
+                _RELEVANCE_WEIGHT * relevance
+                + _QUALITY_WEIGHT * candidate.quality
+                + _FRESHNESS_WEIGHT * freshness
+            )
+            * _USE_DECAY**candidate.uses
+            * candidate.market_weight
+        )
         reasons = (
             f"matches product: {', '.join(matched)}" if matched else "no direct product match",
             f"already used {candidate.uses} times" if candidate.uses else "not used yet",

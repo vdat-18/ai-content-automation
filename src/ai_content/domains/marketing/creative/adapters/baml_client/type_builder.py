@@ -1549,7 +1549,7 @@ class ResearchReferenceProfileDraftAst:
     def __init__(self, tb: type_builder.TypeBuilder):
         _tb = tb._tb # type: ignore (we know how to use this private attribute)
         self._bldr = _tb.class_("ResearchReferenceProfileDraft")
-        self._properties: typing.Set[str] = set([  "summary",  "relevance_to_project",  "primary_subject",  "content_goal",  "reference_types",  "product_categories",  "visual_style",  "composition",  "setting",  "colors",  "camera_motion",  "text_treatment",  "temporal_structure",  "audio_observations",  "hook",  "message",  "creative_takeaways",  "do_not_copy",  "observed_facts",  "inferences",  "media_notes",  "applicability_constraints",  "scene_type",  "scene_description",  "background_usable",  "background_reason",  "placement_note",  "camera_angle",  "lighting",  "swap_mode",  "product_matches",  ])
+        self._properties: typing.Set[str] = set([  "summary",  "relevance_to_project",  "primary_subject",  "content_goal",  "reference_types",  "product_categories",  "visual_style",  "composition",  "setting",  "colors",  "camera_motion",  "text_treatment",  "temporal_structure",  "audio_observations",  "hook",  "message",  "creative_takeaways",  "do_not_copy",  "observed_facts",  "inferences",  "media_notes",  "applicability_constraints",  "scene_type",  "scene_description",  "background_usable",  "background_reason",  "placement_note",  "camera_angle",  "lighting",  "swap_mode",  "market_fit",  "product_matches",  ])
         self._props = ResearchReferenceProfileDraftProperties(self._bldr, self._properties)
 
     def type(self) -> baml_py.FieldType:
@@ -1696,6 +1696,10 @@ class ResearchReferenceProfileDraftProperties:
     @property
     def swap_mode(self) -> type_builder.ClassPropertyViewer:
         return type_builder.ClassPropertyViewer(self.__bldr.property("swap_mode"))
+    
+    @property
+    def market_fit(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("market_fit"))
     
     @property
     def product_matches(self) -> type_builder.ClassPropertyViewer:

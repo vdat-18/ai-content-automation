@@ -177,6 +177,7 @@ class ResearchReferenceProfileDraft(BaseModel):
     camera_angle: typing.Optional[str] = None
     lighting: typing.Optional[str] = None
     swap_mode: typing.Optional[typing.Union[typing_extensions.Literal['insert'], typing_extensions.Literal['replace'], typing_extensions.Literal['style_only'], typing_extensions.Literal['reject']]] = None
+    market_fit: typing.Optional[typing.Union[typing_extensions.Literal['us'], typing_extensions.Literal['neutral'], typing_extensions.Literal['non_us']]] = None
     product_matches: typing.List["ResearchProductMatchDraft"]
 
 class ResearchScreeningDraft(BaseModel):

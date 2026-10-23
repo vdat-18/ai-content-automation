@@ -84,6 +84,7 @@ ResearchSceneType = Literal[
     "lifestyle_scene", "environment", "flatlay", "studio_plain", "cutout", "graphic", "other"
 ]
 ResearchSwapMode = Literal["insert", "replace", "style_only", "reject"]
+ResearchMarketFit = Literal["us", "neutral", "non_us"]
 ResearchMatchKind = Literal["product_visible", "scene_fit", "style_only"]
 
 
@@ -130,6 +131,7 @@ class ResearchReferenceProfile(BaseModel):
     camera_angle: str = Field(default="", max_length=200)
     lighting: str = Field(default="", max_length=300)
     swap_mode: ResearchSwapMode = "style_only"
+    market_fit: ResearchMarketFit = "neutral"
     product_matches: tuple[ResearchProductMatch, ...] = ()
 
 
@@ -344,6 +346,7 @@ __all__ = [
     "ResearchCrawlResult",
     "ResearchCrawlStatus",
     "ResearchClassification",
+    "ResearchMarketFit",
     "ResearchMatchKind",
     "ResearchMediaAsset",
     "ResearchProduct",

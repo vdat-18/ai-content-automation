@@ -43,6 +43,7 @@ class _Brand:
     items: tuple[_Item, ...]
 
 
+# The mock stores sell to US shoppers: USD prices, US sizes and US reference scenes.
 # Reference-matching facts every product carries as `reference.*` metafields: where it is
 # used, where it never appears and which look-alike products it must not be confused with.
 _REFERENCE_FACTS: dict[str, dict[str, str]] = {

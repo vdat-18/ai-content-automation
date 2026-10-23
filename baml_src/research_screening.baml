@@ -35,6 +35,7 @@ class ResearchReferenceProfileDraft {
   camera_angle string
   lighting string
   swap_mode "insert" | "replace" | "style_only" | "reject"
+  market_fit "us" | "neutral" | "non_us"
   product_matches ResearchProductMatchDraft[]
 }
 
@@ -70,6 +71,32 @@ function ScreenResearchReference(
     usable=true, ground every profile field in visible evidence, keep observations and
     inferences separate, and never treat competitor claims as product truth. reason_code
     must be lowercase snake_case. confidence must be between 0 and 1.
+
+    The reference is only valuable when its background can host one of the project's own
+    products. Fill the scene fields from visible evidence first, then decide.
+    scene_type: lifestyle_scene (real people or a lived-in setting), environment (an empty
+    real room or place), flatlay, studio_plain (plain, white or seamless studio backdrop),
+    cutout (product on a removed or flat colour background), graphic (illustration, collage,
+    poster or text-led layout), other. background_usable=true only for a real setting with
+    a surface or free area where a product could plausibly be placed at a believable scale
+    and perspective, without text, logos or another brand's product dominating the frame.
+    Plain studio, white or colour backdrops, cutouts, graphics and text-led images are
+    background_usable=false. placement_note says where the product could go. swap_mode:
+    insert (add the product into free space), replace (swap a similar existing object for
+    the product), style_only (keep only mood, colour and composition), reject (no usable
+    background and no transferable style). When background_usable=false, swap_mode must be
+    style_only or reject.
+    market_fit: the project sells to shoppers in the United States. us when the setting,
+    architecture, furnishings, people, retail context or visible language clearly read as
+    American; neutral when nothing ties the image to a country; non_us when the setting,
+    visible text or currency clearly belongs to another market (for example non-English
+    text, yen or euro prices, or a distinctly foreign home style).
+    product_matches: use ONLY product_id values from project_context.products and never
+    invent ids. Add a match only when it is true: product_visible when that kind of product
+    is actually shown in the image, scene_fit when the setting suits its usage_scenes and the
+    product could be placed there, style_only when only the mood fits. Do not match a
+    product whose avoid_scenes describe this setting, and respect each product's
+    not_to_confuse_with list. Return an empty list when no product fits.
     </runtime_contract>
 
     {{ _.role("user") }}
