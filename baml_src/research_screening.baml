@@ -77,15 +77,20 @@ function ScreenResearchReference(
     scene_type: lifestyle_scene (real people or a lived-in setting), environment (an empty
     real room or place), flatlay, studio_plain (plain, white or seamless studio backdrop),
     cutout (product on a removed or flat colour background), graphic (illustration, collage,
-    poster or text-led layout), other. background_usable=true only for a real setting with
-    a surface or free area where a product could plausibly be placed at a believable scale
-    and perspective, without text, logos or another brand's product dominating the frame.
-    Plain studio, white or colour backdrops, cutouts, graphics and text-led images are
-    background_usable=false. placement_note says where the product could go. swap_mode:
-    insert (add the product into free space), replace (swap a similar existing object for
-    the product), style_only (keep only mood, colour and composition), reject (no usable
-    background and no transferable style). When background_usable=false, swap_mode must be
-    style_only or reject.
+    poster or text-led layout), other. The goal is to put one of the project's own products
+    into this scene, so a competitor's product of the same kind in focus is an opportunity,
+    not a problem. background_usable=true when the frame shows a real scene, surface or
+    backdrop and either has free area where a product fits at a believable scale and
+    perspective, or shows a similar product that could be replaced by ours (a person wearing
+    a sleep mask, masks laid on a bed, a mask on a studio backdrop all qualify). Small
+    captions or a logo do not disqualify an image whose scene is clear. background_usable=
+    false only when there is no usable scene: text-led or graphic layouts, collages, app or
+    web screenshots, extreme close-ups with no surroundings, or text, logos and overlays
+    covering most of the frame. placement_note says where the product could go or what it
+    replaces. swap_mode: insert (add the product into free space), replace (swap a similar
+    existing object for the product), style_only (keep only mood, colour and composition),
+    reject (no usable scene and no transferable style). When background_usable=false,
+    swap_mode must be style_only or reject.
     market_fit: the project sells to shoppers in the United States. us when the setting,
     architecture, furnishings, people, retail context or visible language clearly read as
     American; neutral when nothing ties the image to a country; non_us when the setting,
