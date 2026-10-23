@@ -179,6 +179,7 @@ class ApiRuntimeSettings:
     research_screening_config_path: Path | None = None
     jev_api_url: str | None = None
     jev_api_key: str | None = None
+    vilao_api_key: str | None = None
     jev_navigation_model: str = "jev-latest"
     data_source_sync_interval_seconds: float | None = None
     meta_token_expires_at: datetime | None = None
@@ -269,6 +270,7 @@ def get_runtime_settings() -> ApiRuntimeSettings:
         research_screening_config_path=application.research_screening_config,
         jev_api_url=application.jev_api_url,
         jev_api_key=application.credential("JEV_API_KEY"),
+        vilao_api_key=application.credential("VILAO_API_KEY"),
         jev_navigation_model=application.jev_navigation_model,
         data_source_sync_interval_seconds=application.data_source_sync_interval_seconds,
         meta_token_expires_at=application.meta_token_expires_at,
@@ -884,12 +886,12 @@ def _research_screener(
             "Research analysis unavailable because its configuration is invalid: {}", error
         )
         return None
-    if not settings.router_api_key:
+    if not settings.vilao_api_key:
         logger.error("Research analysis unavailable because its API key is not configured")
         return None
     return NineRouterResearchScreener(
         config,
-        api_key=settings.router_api_key,
+        api_key=settings.vilao_api_key,
         usage_tracker=usage_tracker,
         artifact_reader=artifact_reader,
     )

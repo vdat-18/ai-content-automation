@@ -424,107 +424,6 @@ gmc_ingestion_runs = _run_table(
     Column("status", Text, nullable=False),
 )
 
-media_lab_image_runs = Table(
-    "media_lab_image_runs",
-    metadata,
-    Column("run_id", Text, primary_key=True),
-    Column("generation_state", Text, nullable=False),
-    Column("review_state", Text, nullable=False),
-    Column("intent", Text, nullable=False),
-    Column("backend_run_id", Text),
-    Column("parent_run_id", Text),
-    Column("payload", JSONB, nullable=False),
-    *_timestamps(),
-    CheckConstraint(
-        "generation_state IN ('queued', 'running', 'succeeded', 'failed', 'interrupted')",
-        name="valid_media_lab_image_generation_state",
-    ),
-    CheckConstraint(
-        "review_state IN ('not_ready', 'awaiting_human_review', 'approved', 'rejected')",
-        name="valid_media_lab_image_review_state",
-    ),
-    schema="marketing",
-)
-Index("ix_media_lab_image_runs_backend", media_lab_image_runs.c.backend_run_id)
-Index("ix_media_lab_image_runs_created", media_lab_image_runs.c.created_at)
-
-media_lab_video_runs = Table(
-    "media_lab_video_runs",
-    metadata,
-    Column("run_id", Text, primary_key=True),
-    Column("generation_state", Text, nullable=False),
-    Column("review_state", Text, nullable=False),
-    Column("intent", Text, nullable=False),
-    Column("backend_run_id", Text),
-    Column("payload", JSONB, nullable=False),
-    *_timestamps(),
-    CheckConstraint(
-        "generation_state IN ('queued', 'running', 'succeeded', 'failed', 'interrupted')",
-        name="valid_media_lab_video_generation_state",
-    ),
-    CheckConstraint(
-        "review_state IN ('not_ready', 'awaiting_human_review', 'approved', 'rejected')",
-        name="valid_media_lab_video_review_state",
-    ),
-    schema="marketing",
-)
-Index("ix_media_lab_video_runs_backend", media_lab_video_runs.c.backend_run_id)
-Index("ix_media_lab_video_runs_created", media_lab_video_runs.c.created_at)
-
-media_lab_video_projects = Table(
-    "media_lab_video_projects",
-    metadata,
-    Column("project_id", Text, primary_key=True),
-    Column("source_run_id", Text, nullable=False, unique=True),
-    Column("state", Text, nullable=False),
-    Column("payload", JSONB, nullable=False),
-    *_timestamps(),
-    CheckConstraint(
-        "state IN ('assembling', 'awaiting_human_review', 'approved', 'rejected', 'failed')",
-        name="valid_media_lab_video_project_state",
-    ),
-    schema="marketing",
-)
-Index("ix_media_lab_video_projects_state", media_lab_video_projects.c.state)
-Index("ix_media_lab_video_projects_created", media_lab_video_projects.c.created_at)
-
-media_lab_video_ad_jobs = Table(
-    "media_lab_video_ad_jobs",
-    metadata,
-    Column("job_id", Text, primary_key=True),
-    Column("source_run_id", Text, nullable=False, unique=True),
-    Column("state", Text, nullable=False),
-    Column("payload", JSONB, nullable=False),
-    *_timestamps(),
-    CheckConstraint(
-        "state IN ('planning', 'needs_input', 'generating_shots', "
-        "'selecting_segments', 'assembling', 'completed', 'failed', "
-        "'cancel_requested', 'cancelled')",
-        name="valid_media_lab_video_ad_job_state",
-    ),
-    schema="marketing",
-)
-Index("ix_media_lab_video_ad_jobs_state", media_lab_video_ad_jobs.c.state)
-Index("ix_media_lab_video_ad_jobs_created", media_lab_video_ad_jobs.c.created_at)
-
-media_lab_planning_jobs = Table(
-    "media_lab_planning_jobs",
-    metadata,
-    Column("job_id", Text, primary_key=True),
-    Column("source_run_id", Text, nullable=False, unique=True),
-    Column("state", Text, nullable=False),
-    Column("payload", JSONB, nullable=False),
-    *_timestamps(),
-    CheckConstraint(
-        "state IN ('planning', 'ready', 'needs_input', 'failed')",
-        name="valid_media_lab_planning_job_state",
-    ),
-    schema="marketing",
-)
-Index("ix_media_lab_planning_jobs_state", media_lab_planning_jobs.c.state)
-Index("ix_media_lab_planning_jobs_created", media_lab_planning_jobs.c.created_at)
-
-
 media_lab_assets = Table(
     "media_lab_assets",
     metadata,
@@ -808,11 +707,6 @@ __all__ = [
     "execution_commands",
     "gmc_ingestion_runs",
     "media_lab_assets",
-    "media_lab_image_runs",
-    "media_lab_planning_jobs",
-    "media_lab_video_runs",
-    "media_lab_video_projects",
-    "media_lab_video_ad_jobs",
     "marketing_creative_automation_states",
     "metadata",
     "notifications",

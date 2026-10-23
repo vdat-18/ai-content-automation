@@ -171,6 +171,7 @@ class ApplicationSettings(BaseSettings):
 
     router_api_key: SecretStr | None = Field(None, validation_alias="ROUTER_API_KEY")
     jev_api_key: SecretStr | None = Field(None, validation_alias="JEV_API_KEY")
+    vilao_api_key: SecretStr | None = Field(None, validation_alias="VILAO_API_KEY")
     image_api_key: SecretStr | None = Field(None, validation_alias="IMAGE_API_KEY")
     video_api_key: SecretStr | None = Field(None, validation_alias="VIDEO_API_KEY")
     invokeai_token: SecretStr | None = Field(None, validation_alias="INVOKEAI_TOKEN")
@@ -312,6 +313,7 @@ class ApplicationSettings(BaseSettings):
         credentials = {
             "ROUTER_API_KEY": self.router_api_key,
             "JEV_API_KEY": self.jev_api_key,
+            "VILAO_API_KEY": self.vilao_api_key,
             "IMAGE_API_KEY": self.image_api_key,
             "VIDEO_API_KEY": self.video_api_key,
             "INVOKEAI_TOKEN": self.invokeai_token,

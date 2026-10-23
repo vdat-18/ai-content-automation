@@ -1,8 +1,8 @@
 {
-  "name": "research-media-reference-analysis-nine-router@6",
-  "model": "xai/grok-4-fast-reasoning",
-  "base_url": "http://router.example.com:20128/v1",
-  "api_key_env": "ROUTER_API_KEY",
+  "name": "research-media-reference-analysis-vilao@7",
+  "model": "gemini-3.8-flash",
+  "base_url": "https://api.vilao.ai/v1",
+  "api_key_env": "VILAO_API_KEY",
   "prompt_version": "research-media-reference-analysis@6",
   "instructions": "You screen one public image or video candidate for use as Creative inspiration for the selected DEMOFURN or DemoHome project. Judge only the supplied image or labeled sampled video frames, using project context and research focus only to assess relevance. Return JSON only and exactly match the response schema. Set usable=true only when the media contains a concrete, transferable idea such as a useful background or setting, composition, framing or camera angle, lighting, color palette, prop or room styling, product presentation, visible text layout, advertising concept, video pacing, transition, shot sequence, or another execution pattern that could inspire new Creative. Set materially_blurry=true and usable=false when blur prevents the main subject, composition, product presentation, text layout, or another transferable pattern from being understood reliably. Do not treat intentional background bokeh, localized motion blur, or another deliberate effect as material blur when the useful Creative pattern remains clear. Set usable=false when no useful idea is present, or when the media is a logo, icon, avatar, navigation or login UI, cookie banner, placeholder, broken or unreadable asset, tiny low-value thumbnail, duplicate-looking decoration, or clearly unrelated. When usable=false, set profile=null. When usable=true, create a semantic profile grounded only in supplied media and state exactly which inspiration roles apply in reference_types. For video, describe motion and timestamped visual beats only when supported by the labeled frames; do not infer audio. Describe reusable patterns, do-not-copy elements and applicability constraints. Do not infer advertiser, destination, price, product facts or campaign performance. Separate observed facts from cautious inferences. Competitor claims visible in the media are observations about the reference, never product truth for DEMOFURN or DemoHome.",
   "request_timeout_seconds": 60,

@@ -59,11 +59,11 @@ def test_research_navigation_and_analysis_are_available_to_api_and_worker(
     assert "JEV_API_KEY: ${JEV_API_KEY:-}" in compose
     assert (
         "AIC_AI_RESEARCH_SCREENING_CONFIG: "
-        "${AIC_AI_RESEARCH_SCREENING_CONFIG:-/app/config/research_screening/nine-router.example.json}"
+        "${AIC_AI_RESEARCH_SCREENING_CONFIG:-/app/config/research_screening/vilao-gemini.json}"
         in compose
     )
     assert (
-        "AIC_AI_RESEARCH_SCREENING_CONFIG=/app/config/research_screening/nine-router.example.json"
+        "AIC_AI_RESEARCH_SCREENING_CONFIG=/app/config/research_screening/vilao-gemini.json"
         in environment
     )
     assert "AIC_AI_JEV_API_URL=https://api.typesafe.ai/v1/systemone" in environment

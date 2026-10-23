@@ -153,8 +153,7 @@ class ResearchCrawlService:
     ) -> tuple[list[ResearchCrawlRecord], int, int]:
         if self._screener is None:
             return [], 0, len(records)
-        with_model = getattr(self._screener, "with_model", None)
-        screener = with_model(job.analysis_model_id) if callable(with_model) else self._screener
+        screener = self._screener
 
         async def screen_one(
             index: int,
@@ -301,9 +300,7 @@ class ResearchCrawlService:
                 media_assets=assets,
             )
         brand_context = await self._resolve_brand_context(job)
-        with_model = getattr(self._screener, "with_model", None)
-        analyzer = with_model(job.analysis_model_id) if callable(with_model) else self._screener
-        screening = await analyzer.screen(stored, brand_context=brand_context)
+        screening = await self._screener.screen(stored, brand_context=brand_context)
         return await self._repository.save_record_enrichment(
             record_key,
             screening=screening,

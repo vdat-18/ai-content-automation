@@ -52,7 +52,7 @@ class ResearchScreeningConfig(BaseModel):
     name: str = Field(min_length=1)
     model: str = Field(min_length=1)
     base_url: str
-    api_key_env: str = "ROUTER_API_KEY"
+    api_key_env: str = "VILAO_API_KEY"
     prompt_version: str = Field(min_length=1)
     instructions: str = Field(min_length=1)
     request_timeout_seconds: float = Field(default=60, gt=0, le=180)
@@ -161,27 +161,6 @@ class NineRouterResearchScreener:
     @property
     def max_concurrency(self) -> int:
         return self._config.max_concurrency
-
-    def with_model(self, model: str | None) -> NineRouterResearchScreener:
-        if model is None or model == self._config.model:
-            return self
-        from ai_content.platform.llm_routing import route_approved_agent_model
-
-        return NineRouterResearchScreener(
-            self._config.model_copy(
-                update={
-                    "model": route_approved_agent_model(
-                        model,
-                        configured_model=self._config.model,
-                    )
-                }
-            ),
-            api_key=self._api_key,
-            usage_tracker=self._usage_tracker,
-            artifact_reader=self._artifact_reader,
-            client=self._client,
-            baml_client=(self._baml_client if self._custom_baml_client else None),
-        )
 
     def can_reuse(
         self,
