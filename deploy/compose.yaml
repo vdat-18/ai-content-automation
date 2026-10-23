@@ -93,6 +93,8 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: ${AIC_RABBITMQ_USER:?set AIC_RABBITMQ_USER}
       RABBITMQ_DEFAULT_PASS: ${AIC_RABBITMQ_PASSWORD:?set AIC_RABBITMQ_PASSWORD}
+      # Long research crawls hold their message past the 30-minute default ack timeout.
+      RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: -rabbit consumer_timeout 7200000
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
     networks:
