@@ -20,8 +20,12 @@ class ScraplingCrawler:
             await progress(ResearchCrawlProgress(phase="opening_browser"))
         response = await AsyncFetcher.get(url)
         # TODO: extract platform records into extracted["records"].
-        return bytes(response.body), {
+        body = bytes(response.body)
+        return body, {
             "final_url": str(response.url),
+            "platform": "generic",
             "http_status": int(response.status),
+            "content_type": str(response.headers.get("content-type", "")),
+            "raw_size_bytes": len(body),
             "records": [],
         }
