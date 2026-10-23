@@ -42,8 +42,10 @@ def build_final_creative_review(
         if not result.success or artifact is None or not result.attempts:
             raise ValueError("Final review requires every requested asset to pass production QA")
         evaluation = result.attempts[-1].evaluation
-        if evaluation.outcome != "pass":
-            raise ValueError("Final review requires a passing final QA evaluation")
+        # "human_review" outputs (e.g. product check still failing) go to this human review
+        # with the reason in their QA summary; only an unresolved revision blocks it.
+        if evaluation.outcome == "revise":
+            raise ValueError("Final review cannot include an output that still needs revision")
         assets.append(
             ReviewableCreativeAsset(
                 asset_version_id=asset_version_id,

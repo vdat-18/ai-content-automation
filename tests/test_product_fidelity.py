@@ -103,3 +103,27 @@ def test_verdict_parsing() -> None:
     assert passed.outcome == "pass"
     failed = _evaluation('{"verdict": "fail", "summary": "Frame is wood.", "issues": []}')
     assert failed.outcome == "revise" and failed.issues[0].repair_instruction
+
+
+def test_outputs_that_still_fail_the_check_reach_human_review() -> None:
+    from ai_content.domains.marketing.creative.application.final_review import (
+        build_final_creative_review,
+    )
+
+    evaluator = _Evaluator(["revise", "revise", "revise"])
+    result = asyncio.run(_service(_Provider(), evaluator).produce_image(_request()))
+    review = build_final_creative_review(
+        review_id="review-1",
+        request_id="req-1",
+        package_id="pkg-1",
+        brand_id="AuraSleep",
+        sku_id="sku-1",
+        objective="conversion",
+        platform="meta",
+        direction_summary="Halloween night routine.",
+        expected_image_count=1,
+        expected_video_count=0,
+        results=(("req-1:image:1:v1", "image", result),),
+    )
+
+    assert review.assets[0].qa_summary.startswith("Product fidelity still failing")
