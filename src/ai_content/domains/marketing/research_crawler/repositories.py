@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import sqlite3
 from datetime import UTC, datetime
 from pathlib import Path
@@ -27,6 +28,7 @@ from ai_content.platform.execution.celery_scheduler import enqueue_celery_comman
 from .brand_context import brand_alias_keys
 from .identity import research_record_content_hash, research_record_key
 from .models import (
+    MediaFingerprint,
     ResearchClassification,
     ResearchCrawlJob,
     ResearchCrawlRecord,
@@ -512,6 +514,25 @@ class SqliteResearchCrawlRepository:
                 "INSERT OR IGNORE INTO research_reference_uses VALUES (?, ?, ?, ?)",
                 [(*_split_reference(item), batch_id, now) for item in reference_ids],
             )
+
+    async def known_media_fingerprints(
+        self, workspace_id: str, brand_id: str, *, exclude_record_key: str
+    ) -> list[MediaFingerprint]:
+        rows = self._connection.execute(
+            "SELECT record_key, payload FROM research_records "
+            "WHERE workspace_id = ? AND brand_id = ? AND record_key != ? "
+            "AND deleted_at IS NULL AND screening_status IN ('kept', 'auto_filtered')",
+            (workspace_id, brand_id, exclude_record_key),
+        ).fetchall()
+        fingerprints: list[MediaFingerprint] = []
+        for row in rows:
+            payload = json.loads(row["payload"])
+            screening = payload.get("screening")
+            if screening and screening.get("reason_code") != "duplicate_media":
+                fingerprints.extend(
+                    _image_fingerprints(row["record_key"], payload.get("media_assets", []))
+                )
+        return fingerprints
 
     async def reference_use_counts(self, record_keys: tuple[str, ...]) -> dict[str, int]:
         if not record_keys:
@@ -1034,6 +1055,31 @@ class PostgresResearchCrawlRepository:
         async with self._engine.begin() as connection:
             await connection.execute(insert(research_reference_uses).on_conflict_do_nothing(), rows)
 
+    async def known_media_fingerprints(
+        self, workspace_id: str, brand_id: str, *, exclude_record_key: str
+    ) -> list[MediaFingerprint]:
+        async with self._engine.connect() as connection:
+            rows = await connection.execute(
+                select(
+                    research_records.c.record_key,
+                    research_records.c.payload["media_assets"],
+                ).where(
+                    research_records.c.workspace_id == workspace_id,
+                    research_records.c.brand_id == brand_id,
+                    research_records.c.record_key != exclude_record_key,
+                    research_records.c.deleted_at.is_(None),
+                    research_records.c.screening_status.in_(("kept", "auto_filtered")),
+                    func.jsonb_typeof(research_records.c.payload["screening"]) == "object",
+                    research_records.c.payload["screening"]["reason_code"].astext
+                    != "duplicate_media",
+                )
+            )
+            return [
+                fingerprint
+                for record_key, assets in rows
+                for fingerprint in _image_fingerprints(record_key, assets or [])
+            ]
+
     async def reference_use_counts(self, record_keys: tuple[str, ...]) -> dict[str, int]:
         if not record_keys:
             return {}
@@ -1331,6 +1377,18 @@ def _require_reviewable(stored: StoredResearchRecord) -> None:
         for asset in stored.media_assets
     ):
         raise ValueError("Research media must be captured before it can be reviewed")
+
+
+def _image_fingerprints(record_key: str, assets: list[dict]) -> list[MediaFingerprint]:
+    return [
+        MediaFingerprint(
+            record_key=record_key,
+            sha256=asset.get("sha256"),
+            perceptual_hash=asset.get("perceptual_hash"),
+        )
+        for asset in assets
+        if asset.get("media_kind") == "image" and asset.get("status") == "available"
+    ]
 
 
 def _media_content_hash(media_assets: list[ResearchMediaAsset]) -> str:

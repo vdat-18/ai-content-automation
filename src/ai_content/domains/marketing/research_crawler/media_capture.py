@@ -11,6 +11,7 @@ import httpx
 from .artifacts import ResearchCrawlArtifactWriter
 from .identity import media_source_fingerprint
 from .models import ResearchMediaAsset
+from .perceptual_hash import perceptual_hash
 
 
 class ResearchMediaCapturer:
@@ -94,6 +95,7 @@ class ResearchMediaCapturer:
                 artifact_ref=artifact_ref,
                 content_type=content_type,
                 sha256=checksum,
+                perceptual_hash=perceptual_hash(content) if kind == "image" else None,
                 size_bytes=len(content),
             )
         except (ValueError, httpx.HTTPError, OSError):

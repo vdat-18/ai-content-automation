@@ -15,6 +15,7 @@ from .brand_context import ResearchBrandContextResolver
 from .identity import canonicalize_media_url, research_record_content_hash, research_record_key
 from .media_capture import ResearchMediaCapturer
 from .models import (
+    MediaFingerprint,
     ResearchBrandContext,
     ResearchCrawlJob,
     ResearchCrawlProgress,
@@ -24,6 +25,7 @@ from .models import (
     ResearchScreening,
     StoredResearchRecord,
 )
+from .perceptual_hash import is_duplicate_hash
 from .repository import ResearchCrawlRepository
 from .scrapling_adapter import ScraplingCrawler
 from .screening import NineRouterResearchScreener
@@ -165,7 +167,16 @@ class ResearchCrawlService:
                 existing.screening, existing, brand_context
             ):
                 return index, record, existing.screening, False, existing.screening_status
+            own = _image_fingerprints(existing)
+            duplicate_of = _duplicate_of(own, known) if existing.screening is None else None
+            if duplicate_of is not None:
+                screening = screener.duplicate_screening(
+                    existing, brand_context, duplicate_of=duplicate_of
+                )
+                return index, record, screening, True, "auto_filtered"
             screening = await screener.screen(existing, brand_context=brand_context)
+            if screening.status == "completed":
+                known.extend(own)
             status = (
                 "unavailable"
                 if screening.status == "failed"
@@ -173,6 +184,9 @@ class ResearchCrawlService:
             )
             return index, record, screening, True, status
 
+        known = await self._repository.known_media_fingerprints(
+            job.workspace_id, job.brand_id, exclude_record_key=""
+        )
         concurrency = max(1, int(getattr(screener, "max_concurrency", 1)))
         results: list[tuple[int, ResearchCrawlRecord, ResearchScreening, bool, str]] = []
         processed = 0
@@ -376,6 +390,36 @@ class ResearchCrawlService:
                 }
             )
         )
+
+
+def _image_fingerprints(record: StoredResearchRecord) -> list[MediaFingerprint]:
+    return [
+        MediaFingerprint(
+            record_key=record.record_key,
+            sha256=asset.sha256,
+            perceptual_hash=asset.perceptual_hash,
+        )
+        for asset in record.media_assets
+        if asset.media_kind == "image" and asset.status == "available"
+    ]
+
+
+def _duplicate_of(own: list[MediaFingerprint], known: list[MediaFingerprint]) -> str | None:
+    """Return the record that already shows the same picture, if there is one."""
+
+    for mine in own:
+        for other in known:
+            if other.record_key == mine.record_key:
+                continue
+            same_file = mine.sha256 is not None and mine.sha256 == other.sha256
+            same_picture = (
+                mine.perceptual_hash is not None
+                and other.perceptual_hash is not None
+                and is_duplicate_hash(mine.perceptual_hash, other.perceptual_hash)
+            )
+            if same_file or same_picture:
+                return other.record_key
+    return None
 
 
 def _candidate_record(

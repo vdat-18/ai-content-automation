@@ -4,8 +4,13 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
+from urllib.parse import urlsplit, urlunsplit
 
 from .models import ResearchCrawlRecord
+
+_SIGNED_CDN_SUFFIXES = ("fbcdn.net", "cdninstagram.com")
+_PINTEREST_SIZE = re.compile(r"^/(?:\d+x\d*|originals)/")
 
 
 def canonicalize_source_url(url: str) -> str:
@@ -46,7 +51,18 @@ def source_record_id(url: str) -> str:
 
 
 def canonicalize_media_url(url: str) -> str:
-    return url.strip()
+    """Drop what changes between visits but does not change the picture."""
+
+    stripped = url.strip()
+    parsed = urlsplit(stripped)
+    host = (parsed.hostname or "").lower()
+    if host.endswith(_SIGNED_CDN_SUFFIXES):
+        return urlunsplit((parsed.scheme, parsed.netloc, parsed.path, "", ""))
+    if host.endswith("pinimg.com"):
+        return urlunsplit(
+            (parsed.scheme, parsed.netloc, _PINTEREST_SIZE.sub("/size/", parsed.path, 1), "", "")
+        )
+    return stripped
 
 
 def media_source_fingerprint(url: str) -> str:

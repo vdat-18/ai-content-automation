@@ -175,6 +175,29 @@ class NineRouterResearchScreener:
             and screening.context_version == _context_version(brand_context, record)
         )
 
+    def duplicate_screening(
+        self,
+        record: StoredResearchRecord,
+        brand_context: ResearchBrandContext | None,
+        *,
+        duplicate_of: str,
+    ) -> ResearchScreening:
+        """Mark a picture as already reviewed under another record, without calling the model."""
+
+        return ResearchScreening(
+            status="completed",
+            prompt_version=self._config.prompt_version,
+            model=self._config.model,
+            content_hash=_analysis_content_hash(record),
+            config_hash=self._config.config_hash,
+            context_version=_context_version(brand_context, record),
+            usable=False,
+            reason_code="duplicate_media",
+            reason=f"The same picture was already reviewed as {duplicate_of}.",
+            confidence=1,
+            last_attempted_at=datetime.now(UTC),
+        )
+
     async def screen(
         self,
         record: StoredResearchRecord,

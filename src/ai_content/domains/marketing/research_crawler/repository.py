@@ -7,6 +7,7 @@ from typing import Protocol
 from ai_content.platform.execution import EnqueueCommand
 
 from .models import (
+    MediaFingerprint,
     ResearchClassification,
     ResearchCrawlJob,
     ResearchCrawlRecord,
@@ -65,6 +66,10 @@ class ResearchCrawlRepository(Protocol):
     ) -> None: ...
 
     async def reference_use_counts(self, record_keys: tuple[str, ...]) -> dict[str, int]: ...
+
+    async def known_media_fingerprints(
+        self, workspace_id: str, brand_id: str, *, exclude_record_key: str
+    ) -> list[MediaFingerprint]: ...
 
     async def review_records(
         self,

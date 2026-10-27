@@ -63,8 +63,17 @@ class ResearchMediaAsset(BaseModel):
     artifact_ref: str | None = None
     content_type: str | None = None
     sha256: str | None = None
+    perceptual_hash: str | None = None
     size_bytes: int | None = None
     error_code: str | None = None
+
+
+class MediaFingerprint(BaseModel):
+    model_config = ConfigDict(frozen=True)
+
+    record_key: str
+    sha256: str | None = None
+    perceptual_hash: str | None = None
 
 
 class ResearchClassification(BaseModel):
