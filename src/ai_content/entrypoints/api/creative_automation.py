@@ -887,6 +887,8 @@ async def _process_automation_request(
                         reference_id=item.reference_id,
                         artifact_ref=item.artifact_ref,
                         checksum_sha256=item.checksum_sha256,
+                        swap_mode=item.swap_mode,
+                        placement_note=item.placement_note,
                     )
                     for item in request.reference_candidates
                     if item.reference_id in assigned_reference_ids
@@ -2601,6 +2603,16 @@ def _creative_reference_assignments(
     )
 
 
+def _edit_ready_description(description: str, swap_mode: str | None, placement: str) -> str:
+    if swap_mode is None:
+        return description
+    action = "swaps the matching product" if swap_mode == "replace" else "adds the product"
+    note = f" Placement: {placement}." if placement else ""
+    return (
+        f"Edit-ready scene: production keeps this photograph and {action}.{note} {description}"
+    )[:4000]
+
+
 def _research_reference_description(record) -> tuple[str, tuple[tuple[str, str], ...]]:
     profile = record.screening.profile if record.screening is not None else None
     if profile is None:
@@ -2687,6 +2699,12 @@ async def _creative_reference_candidates(
             if record.review_status != "approved" or record.screening_status != "kept":
                 continue
             description, reference_labels = _research_reference_description(record)
+            profile = record.screening.profile if record.screening is not None else None
+            swap_mode = (
+                profile.swap_mode
+                if profile is not None and profile.swap_mode in {"insert", "replace"}
+                else None
+            )
             for media in record.media_assets:
                 if (
                     media.media_kind != "image"
@@ -2705,10 +2723,16 @@ async def _creative_reference_candidates(
                         media_id=media.media_id,
                         artifact_ref=media.artifact_ref,
                         checksum_sha256=media.sha256,
-                        description=description or "Marketing-approved research reference image",
+                        description=_edit_ready_description(
+                            description or "Marketing-approved research reference image",
+                            swap_mode,
+                            profile.placement_note if swap_mode and profile else "",
+                        ),
                         platform=record.platform,
                         source_url=record.source_url,
                         labels=reference_labels,
+                        swap_mode=swap_mode,
+                        placement_note=profile.placement_note if swap_mode and profile else "",
                     )
                 )
 
@@ -3500,7 +3524,10 @@ def _video_scene_duration_max_seconds(payload, providers, settings) -> int:
             None,
         )
         if selected_model is not None:
-            return max(selected_model.supported_generation_durations_seconds)
+            return min(
+                max(selected_model.supported_generation_durations_seconds),
+                settings.creative_automation_video_source_duration_max_seconds,
+            )
     return settings.creative_automation_video_source_duration_max_seconds
 
 

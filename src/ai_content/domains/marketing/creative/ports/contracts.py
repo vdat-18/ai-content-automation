@@ -92,6 +92,8 @@ class CreativeReferenceCandidate:
     platform: str
     source_url: str | None = None
     labels: tuple[tuple[str, str], ...] = ()
+    swap_mode: Literal["insert", "replace"] | None = None
+    placement_note: str = ""
 
     def __post_init__(self) -> None:
         required = (

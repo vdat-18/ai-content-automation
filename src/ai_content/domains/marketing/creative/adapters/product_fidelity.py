@@ -21,13 +21,21 @@ from ai_content.domains.marketing.creative.ports.media_production import (
 from .managed_media import ManagedMediaArtifactSink
 
 _INSTRUCTIONS = (
-    "You check product fidelity in advertising images. Image 1 is the official product "
-    "packshot and is the only product truth. Image 2 is a generated ad. Judge only the "
-    "product, not the scene, people, props or style. The product in image 2 must keep the "
+    "You check advertising images for product fidelity and photographic realism. Image 1 is "
+    "the official product packshot and is the only product truth. Image 2 is a generated ad. "
+    "Judge the product first, not the scene, people, props or style. The product in image 2 "
+    "must keep the "
     "same product type and silhouette (for example a tube must stay a tube), proportions, "
     "colors and finishes of every part, materials, and visible details. Any text, label, "
     "logo or brand name on the product that is not on the packshot is a failure. A product "
     "that is partly hidden or seen from another angle is fine when what is visible matches. "
+    "Then judge realism and fail the image only for a clear defect a photo edit could fix: "
+    "the product floats without a contact shadow, shadows or highlights contradict the light "
+    "direction, the product's size is implausible next to people or objects, a material looks "
+    "wrong (for example silk rendered as plastic), hands, faces or limbs are distorted, or "
+    "stray text, logos or watermarks appear. Use a code starting with realism_ for these, "
+    "and make the fix one short instruction naming the exact part of the image. Taste and "
+    "style preferences are not failures. "
     'Return JSON only: {"verdict": "pass" | "fail", "summary": "<one sentence>", '
     '"issues": [{"code": "<snake_case>", "detail": "<what differs>", '
     '"fix": "<instruction for the next image generation>"}]}. Use an empty issues list '

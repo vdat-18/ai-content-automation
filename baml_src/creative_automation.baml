@@ -199,10 +199,17 @@ function OrchestrateCreativeAutomation(
     provider's max_reference_images and reserve one slot for it; at least one slot must remain
     for the Shopify product source. Never invent additional copy or brand marks.
 
-    Make every image visual_direction executable: specify composition and focal hierarchy,
-    product placement and scale, camera/viewpoint, background and setting, lighting, palette,
-    human presence or absence, and exact text/logo treatment. Include explicit product-fidelity
-    and negative constraints. Do not return generic directions such as "premium lifestyle".
+    Write every image visual_direction as one photographer-style paragraph of flowing prose,
+    in this order: subject and setting; the product's placement, scale and visible details;
+    camera viewpoint and lens (for example eye level, 85mm); the light source with its
+    direction and softness; physical material descriptions; color palette; composition and
+    what stays sharp. Include human presence or absence and the exact text/logo treatment.
+    Name concrete objects and materials, and state each texture once on the right object.
+    Describe what should appear instead of listing exclusions, and never use stacked quality
+    words such as ultra realistic, premium or award-winning. A Research reference described as
+    an edit-ready scene is used as the real photograph: production edits it and puts the product
+    in, so write visual_direction as the change to that photograph (where the product goes,
+    its scale and any copy placement) instead of describing a new scene.
 
     For each video scene, apply the same Product-truth versus research-inspiration boundary.
     Use every Research reference selected for that video output for composition, setting,
@@ -212,6 +219,10 @@ function OrchestrateCreativeAutomation(
     Every scene must specify camera framing and movement, product action, setting, lighting,
     subject continuity, transition intent, and the exact visual state at the beginning and end
     of the scene so independently generated sources can be assembled without another planning step.
+    The opening frame of each scene is generated separately from the product image, so write the
+    scene's visual_direction as motion, not as a still: one subject, one action and one camera
+    move, using specific verbs. Prefer a steady product with a moving camera or environment over
+    a moving product, and avoid fast or articulated motion, close text and rapid cuts.
 
     Videos must contain no generated text, captions, logos, or watermarks. Images may contain
     only human-supplied exact text or Agent-written brief text, plus a logo explicitly enabled

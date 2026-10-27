@@ -34,6 +34,10 @@ class ManagedImageModelConfig(BaseModel):
     supports_logo_input: bool = True
     reference_field: Literal["image", "images"] = "image"
     request_mode: Literal["json_generation", "json_edit", "multipart_edit"] = "json_generation"
+    # Quality used when a request names none; some providers default to their lowest tier.
+    default_quality: Literal["auto", "low", "medium", "high", "xhigh", "max"] | None = None
+    # Send the resolution tier to the provider instead of only using it for pricing.
+    send_resolution: bool = False
     cost_per_output: Decimal | None = Field(default=None, gt=0)
     cost_per_output_by_setting: dict[str, Decimal] = Field(default_factory=dict)
     input_image_cost: Decimal = Field(default=Decimal("0"), ge=0)
@@ -58,6 +62,11 @@ class ManagedImageModelConfig(BaseModel):
             raise ValueError("Image resolutions must be unique")
         if len(set(self.supported_qualities)) != len(self.supported_qualities):
             raise ValueError("Image qualities must be unique")
+        if (
+            self.default_quality is not None
+            and self.default_quality not in self.supported_qualities
+        ):
+            raise ValueError("Default image quality must be a supported quality")
         if len(set(self.supported_input_fidelities)) != len(self.supported_input_fidelities):
             raise ValueError("Image input fidelities must be unique")
         if not self.supported_modes or len(set(self.supported_modes)) != len(self.supported_modes):

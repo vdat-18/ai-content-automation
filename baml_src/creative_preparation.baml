@@ -250,9 +250,9 @@ function WriteCreativeBrief(
     Make every variation executable without another strategy-writing step. Its
     visual_direction must specify the composition and focal hierarchy, exact product
     placement and scale, camera/viewpoint, setting and background, lighting, palette,
-    human presence or absence, and the intended use of approved text and logo. It must
-    also state product-fidelity and negative constraints clearly enough for an image
-    or video planner to act on them. Use heading and subtext as exact proposed copy,
+    human presence or absence, and the intended use of approved text and logo. Write it as
+    plain descriptive prose of what the finished photograph or clip shows, and state what
+    must stay true about the product, instead of listing exclusions. Use heading and subtext as exact proposed copy,
     not as vague themes. heading and each variation heading must always be a non-empty
     internal creative title, even when the request disables rendered text; the application
     will not render it unless text is enabled. Use production_level to describe the concrete

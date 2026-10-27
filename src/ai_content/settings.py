@@ -115,8 +115,9 @@ class ApplicationSettings(BaseSettings):
     creative_automation_video_duration_max_seconds: int = Field(
         60, ge=1, validation_alias="AIC_AI_CREATIVE_AUTOMATION_VIDEO_DURATION_MAX_SECONDS"
     )
+    # Clips of 5-8 seconds stay stable; longer single generations distort products and people.
     creative_automation_video_source_duration_max_seconds: int = Field(
-        15, ge=1, validation_alias="AIC_AI_CREATIVE_AUTOMATION_VIDEO_SOURCE_DURATION_MAX_SECONDS"
+        8, ge=1, validation_alias="AIC_AI_CREATIVE_AUTOMATION_VIDEO_SOURCE_DURATION_MAX_SECONDS"
     )
     celery_broker_connection_timeout_seconds: int = Field(
         10, ge=1, le=60, validation_alias="AIC_AI_CELERY_BROKER_CONNECTION_TIMEOUT_SECONDS"

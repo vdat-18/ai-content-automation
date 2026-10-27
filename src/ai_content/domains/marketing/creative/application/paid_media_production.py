@@ -16,6 +16,7 @@ from ai_content.domains.marketing.creative.ports.media_production import (
     PaidMediaArtifact,
     PaidMediaGenerationLimits,
     PaidMediaQualityEvaluation,
+    PaidMediaSource,
     PaidVideoGenerationRequest,
 )
 
@@ -83,10 +84,8 @@ class PaidMediaProductionService:
             repairs = " ".join(
                 item.repair_instruction for item in evaluation.issues if item.repair_instruction
             )
-            attempt_request = replace(
-                request,
-                request_id=f"{request.request_id}:attempt-{attempt_number + 1}",
-                visual_direction=f"{request.visual_direction} Product corrections: {repairs}",
+            attempt_request = _repair_request(
+                provider.descriptor, request, artifact, attempt_number + 1, repairs
             )
         total_cost = sum((item.artifact.cost for item in attempts), start=Decimal("0"))
         return PaidMediaProductionResult(
@@ -241,6 +240,40 @@ def _greatest_common_divisor(left: int, right: int) -> int:
     while right:
         left, right = right, left % right
     return left
+
+
+def _repair_request(
+    descriptor,
+    request: PaidImageGenerationRequest,
+    artifact: PaidMediaArtifact,
+    attempt_number: int,
+    repairs: str,
+) -> PaidImageGenerationRequest:
+    """Fix only what failed by editing the generated image, not by redrawing the scene."""
+
+    request_id = f"{request.request_id}:attempt-{attempt_number}"
+    model = next(
+        (item for item in descriptor.image_models if item.model_id == request.model_id),
+        None,
+    )
+    limit = model.max_reference_images if model is not None else descriptor.max_reference_images
+    can_edit = model is not None and "multi_image_edit" in model.supported_modes
+    slots = limit - 1 - (1 if request.logo_source else 0)
+    products = tuple(item for item in request.sources if item.role == "product")[:slots]
+    if not can_edit or not products or not repairs:
+        return replace(
+            request,
+            request_id=request_id,
+            visual_direction=f"{request.visual_direction} Product corrections: {repairs}",
+        )
+    draft = PaidMediaSource(artifact.artifact_ref, artifact.checksum_sha256, "draft")
+    return replace(
+        request,
+        request_id=request_id,
+        visual_direction=repairs,
+        sources=(draft, *products),
+        generation_mode="multi_image_edit",
+    )
 
 
 __all__ = [

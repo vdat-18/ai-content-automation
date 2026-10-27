@@ -136,6 +136,8 @@ class MarketingCreativeAutomationProducer:
                             reference_id=item.reference_id,
                             artifact_ref=item.artifact_ref,
                             checksum_sha256=item.checksum_sha256,
+                            swap_mode=item.swap_mode,
+                            placement_note=item.placement_note,
                         )
                         for item in selected_reference_candidates
                     )
@@ -410,7 +412,12 @@ class MarketingCreativeAutomationProducer:
                     raise ValueError(
                         "Exact Shopify image production does not support Research references"
                     )
-                plan_sources += selected_references
+                # A reference whose scene is kept goes first: the model edits its first image.
+                plan_sources = (
+                    tuple(item for item in selected_references if item.swap_mode)
+                    + plan_sources
+                    + tuple(item for item in selected_references if not item.swap_mode)
+                )
                 if image_uses_exact_source_transform:
                     plan_sources = _single_product_source(plan_sources)
                 headline, subtext, cta_text = _resolved_image_copy(

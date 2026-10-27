@@ -16,6 +16,7 @@ from decimal import Decimal
 from io import BytesIO
 from pathlib import Path
 from time import monotonic
+from typing import Literal
 from urllib.parse import urlsplit
 
 import httpx
@@ -254,6 +255,8 @@ class ImmutableProductSourceResolver:
         reference_id: str,
         artifact_ref: str,
         checksum_sha256: str,
+        swap_mode: Literal["insert", "replace"] | None = None,
+        placement_note: str = "",
     ) -> PaidMediaSource:
         await self._sink.materialize(
             artifact_ref,
@@ -265,6 +268,8 @@ class ImmutableProductSourceResolver:
             checksum_sha256=checksum_sha256,
             role="style",
             media_id=reference_id,
+            swap_mode=swap_mode,
+            note=placement_note or None,
         )
 
     async def _read_source(self, source_ref: str) -> tuple[bytes, str]:
@@ -538,7 +543,8 @@ class NineRouterImageProvider:
         ):
             raise ValueError("Configured image model does not support output compression")
         resolution = request.resolution or model.supported_resolutions[0]
-        cost_per_output = model.cost_rate(resolution, request.quality)
+        quality = request.quality or model.default_quality
+        cost_per_output = model.cost_rate(resolution, quality)
         model_sources = request.sources + ((request.logo_source,) if request.logo_source else ())
         if len(model_sources) > model.max_reference_images:
             raise ValueError("Image plan selected more sources than the provider supports")
@@ -551,8 +557,10 @@ class NineRouterImageProvider:
             "size": request.image_size
             or _provider_image_size(model, request.width, request.height),
         }
-        if request.quality is not None:
-            payload["quality"] = request.quality
+        if quality is not None:
+            payload["quality"] = quality
+        if model.send_resolution:
+            payload["resolution"] = resolution
         if request.background is not None:
             payload["background"] = request.background
         if request.moderation is not None:
@@ -1153,6 +1161,59 @@ def _verify_file_checksum(path: Path, checksum_sha256: str, max_bytes: int | Non
 
 
 def _image_prompt(request: PaidImageGenerationRequest) -> str:
+    sources = request.sources + ((request.logo_source,) if request.logo_source else ())
+    text_direction = _text_direction(request)
+    logo_direction = (
+        " The final supplied reference image is the approved logo asset. Render that exact logo "
+        "clearly in the finished image without redesigning, replacing, or inventing it."
+        if request.include_logo
+        else " The image contains no logo."
+    )
+    product = _positions(sources, "product")
+    product_identity = (
+        f"The product must look exactly like product image{'s' if len(product) > 1 else ''} "
+        f"{', '.join(product)}: same shape, proportions, colors, materials and visible details."
+    )
+    draft = next((item for item in sources if item.role == "draft"), None)
+    if draft is not None:
+        return (
+            f"Edit image {_positions(sources, 'draft')[0]}: {request.visual_direction}. "
+            "Everything else stays identical: composition, crop, lighting, props, people and "
+            f"background. {product_identity}{text_direction}{logo_direction}"
+        )
+    scene = next((item for item in sources if item.role == "style" and item.swap_mode), None)
+    if scene is not None:
+        position = _positions(sources, "style")[0]
+        action = (
+            f"Replace the matching product in the scene with the product from image"
+            f"{'s' if len(product) > 1 else ''} {', '.join(product)}."
+            if scene.swap_mode == "replace"
+            else f"Add the product from image{'s' if len(product) > 1 else ''} "
+            f"{', '.join(product)} to the scene."
+        )
+        placement = f" Placement: {scene.note}." if scene.note else ""
+        return (
+            f"Edit the photograph in image {position}. {action}{placement} Keep the people, room, "
+            "composition, camera angle, framing, lens perspective and lighting of image "
+            f"{position} unchanged. {product_identity} Relight the product to match the scene, "
+            "with natural contact shadows, believable scale and correct perspective. "
+            f"{request.visual_direction}.{text_direction}{logo_direction}"
+        )
+    style = _positions(sources, "style")
+    style_direction = (
+        f" Image{'s' if len(style) > 1 else ''} {', '.join(style)} show the intended layout, "
+        "lighting and mood: borrow the look and feel only, and leave out their product, brand, "
+        "logo and text."
+        if style
+        else ""
+    )
+    return (
+        f"{request.visual_direction}. A photograph in a natural, contemporary American setting. "
+        f"{product_identity}{style_direction}{text_direction}{logo_direction}"
+    )
+
+
+def _text_direction(request: PaidImageGenerationRequest) -> str:
     copy = []
     if request.headline:
         copy.append(f'headline: "{request.headline}"')
@@ -1160,32 +1221,17 @@ def _image_prompt(request: PaidImageGenerationRequest) -> str:
         copy.append(f'supporting text: "{request.subtext}"')
     if request.cta_text:
         copy.append(f'CTA: "{request.cta_text}"')
-    text_direction = (
-        " Render the following approved copy directly in the finished image, exactly as written, "
-        f"with legible professional typography: {'; '.join(copy)}. Do not add any other text."
-        if request.include_text
-        else " Do not include text, captions, labels, or typographic marks."
-    )
-    logo_direction = (
-        " The final supplied reference image is the approved logo asset. Render that exact logo "
-        "clearly in the finished image without redesigning, replacing, or inventing it."
-        if request.include_logo
-        else " Do not include a logo."
-    )
-    source_roles = _source_role_legend(
-        request.sources + ((request.logo_source,) if request.logo_source else ())
-    )
-    return (
-        f"Create a product-faithful advertising image. {request.visual_direction}. "
-        "Use contemporary United States commercial styling. "
-        f"{source_roles} "
-        "Inputs with the product role define immutable product identity. Inputs with the "
-        "Research/reference role are inspiration for layout, composition, background, lighting "
-        "and mood only; "
-        "never copy their product, brand, logo or text."
-        f"{text_direction}{logo_direction} "
-        "No visible watermark, borders, or UI. Return one finished advertising image."
-    )
+    if request.include_text:
+        return (
+            " Render the following approved copy directly in the finished image, exactly as "
+            f"written, with legible professional typography: {'; '.join(copy)}. "
+            "Add no other text."
+        )
+    return " The image contains no text, captions, labels, watermarks or borders."
+
+
+def _positions(sources: tuple[PaidMediaSource, ...], role: str) -> list[str]:
+    return [str(index) for index, item in enumerate(sources, start=1) if item.role == role]
 
 
 def _image_model_descriptor(model: ManagedImageModelConfig) -> PaidImageModelDescriptor:
@@ -1255,24 +1301,23 @@ def _video_prompt(request: PaidVideoGenerationRequest) -> str:
         audio_parts.append(f"Voice: {request.voice_direction}")
     if request.music_direction:
         audio_parts.append(f"Music: {request.music_direction}")
-    audio = " ".join(part for part in audio_parts if part).strip() or "No voice and no music."
+    audio = " ".join(part for part in audio_parts if part).strip() or "Near silence."
     source_roles = _source_role_legend(request.sources)
     return (
-        f"Create one continuous product-faithful advertising clip. {request.visual_direction}. "
-        f"Continuity: {request.continuity_direction}. Audio: {audio}. "
-        f"{source_roles} "
-        "Product-role inputs define product identity. Research/reference-role inputs may guide "
-        "composition, setting, lighting and pacing only; never copy their product, brand, logo "
-        "or text. "
-        "Do not generate text, captions, subtitles, logos, watermarks, borders, or UI. "
-        "Keep product geometry, color, material and human identity stable."
+        f"{request.visual_direction}. Continuity: {request.continuity_direction}. "
+        f"Sound: {audio}. {source_roles} "
+        "The product keeps the exact shape, label, color and material of its input image for "
+        "the whole clip, and people keep a stable identity. One continuous shot with smooth, "
+        "believable motion. Input images set the look; borrow the look of style references "
+        "only, never their product, brand, logo or text. The footage is clean, with no "
+        "captions, logos or overlays."
     )
 
 
 def _source_role_legend(sources: tuple[PaidMediaSource, ...]) -> str:
     """Describe the exact provider input order so role semantics are not ambiguous."""
 
-    positions: dict[str, list[str]] = {"product": [], "style": [], "logo": []}
+    positions: dict[str, list[str]] = {"product": [], "style": [], "logo": [], "draft": []}
     for index, source in enumerate(sources, start=1):
         positions.setdefault(source.role, []).append(str(index))
     labels = []
@@ -1282,6 +1327,8 @@ def _source_role_legend(sources: tuple[PaidMediaSource, ...]) -> str:
         labels.append("Research/style reference input positions: " + ", ".join(positions["style"]))
     if positions["logo"]:
         labels.append(f"Approved logo input positions: {', '.join(positions['logo'])}")
+    if positions["draft"]:
+        labels.append(f"Image to edit input positions: {', '.join(positions['draft'])}")
     if positions.get("keyframe"):
         labels.append(
             "Opening keyframe input positions (start the clip from this exact frame): "

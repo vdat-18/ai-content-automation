@@ -53,11 +53,14 @@ class ProductMediaSourceRef:
 class PaidMediaSource:
     asset_ref: str
     checksum_sha256: str
-    role: Literal["product", "style", "background", "character", "keyframe", "logo"]
+    role: Literal["product", "style", "background", "character", "keyframe", "logo", "draft"]
     source_id: str | None = None
     product_id: str | None = None
     media_id: str | None = None
     variant_ids: tuple[str, ...] = ()
+    # A style reference whose scene is kept: "insert" adds the product, "replace" swaps an object.
+    swap_mode: Literal["insert", "replace"] | None = None
+    note: str | None = None
 
     def __post_init__(self) -> None:
         if not self.asset_ref.strip():
@@ -440,6 +443,8 @@ class IFrozenProductMediaResolver(IPaidMediaSourceResolver, Protocol):
         reference_id: str,
         artifact_ref: str,
         checksum_sha256: str,
+        swap_mode: Literal["insert", "replace"] | None = None,
+        placement_note: str = "",
     ) -> PaidMediaSource: ...
 
 
