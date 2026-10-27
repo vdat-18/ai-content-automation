@@ -22,14 +22,15 @@ test("research crawler guides Marketing from keyword discovery through review", 
   assert.match(page, /Waiting for analysis/);
   assert.match(page, /aria-pressed=\{brandId === item\}/);
   assert.match(page, /Public results URL/);
-  assert.match(page, /Analysis model/);
+  assert.doesNotMatch(page, /Analysis model/);
+  assert.doesNotMatch(page, /DEMOFURN|DemoHome/);
+  assert.match(page, /sourcePerformanceCandidates/);
   assert.match(page, /Media to collect/);
   assert.match(page, /Images only/);
   assert.match(page, /Videos only/);
   assert.match(page, /Images and videos/);
   assert.match(page, /media_mode: mediaMode/);
-  assert.match(page, /useState\("grok-4-fast-reasoning"\)/);
-  assert.match(page, /analysis_model_id: analysisModelId/);
+  assert.doesNotMatch(page, /analysis_model_id/);
   assert.doesNotMatch(page, /Jev navigation is unchanged/);
   assert.doesNotMatch(page, /Pick the project first/);
   assert.doesNotMatch(page, /Do not paste a private link/);

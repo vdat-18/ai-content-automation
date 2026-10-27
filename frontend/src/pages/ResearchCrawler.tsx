@@ -9,18 +9,19 @@ import { pilotApi } from "../services/pilotApi";
 import type { ResearchCrawlCreateRequest, ResearchCrawlJob, ResearchMediaMode } from "../types/pilotApi";
 
 const activeStatuses = new Set(["queued", "pending", "running", "retry_wait"]);
-const marketingProjects = ["DEMOFURN", "DemoHome"];
-const analysisModelOptions = ["grok-4-fast-reasoning", "grok-4.7"];
-const modelLabel = (modelId: string | null) => modelId?.split("/").at(-1) || "default";
 
 export function ResearchCrawlerPage() {
   const queryClient = useQueryClient();
   const { brand, notify } = useWorkspace();
-  const initialBrand = brand === "DemoHome" ? "DemoHome" : "DEMOFURN";
-  const [brandId, setBrandId] = useState(initialBrand);
+  const brands = useQuery({
+    queryKey: ["source-brands"],
+    queryFn: ({ signal }) => pilotApi.sourcePerformanceCandidates({ limit: 1 }, signal),
+    select: (data) => data.brands,
+  });
+  const [pickedBrand, setBrandId] = useState<string | null>(null);
+  const brandId = pickedBrand ?? (brands.data?.includes(brand) ? brand : brands.data?.[0] ?? "");
   const [projectId, setProjectId] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
-  const [analysisModelId, setAnalysisModelId] = useState("grok-4-fast-reasoning");
   const [mediaMode, setMediaMode] = useState<ResearchMediaMode>("images_and_videos");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const crawls = useQuery({
@@ -50,7 +51,6 @@ export function ResearchCrawlerPage() {
       brand_id: brandId.trim(),
       source_url: sourceUrl.trim(),
       media_mode: mediaMode,
-      analysis_model_id: analysisModelId,
     };
     if (projectId.trim()) payload.project_id = projectId.trim();
     create.mutate(payload);
@@ -71,12 +71,11 @@ export function ResearchCrawlerPage() {
             <fieldset className="research-project-picker">
               <legend>Project</legend>
               <div role="group" aria-label="Choose project">
-                {marketingProjects.map((item) => <button key={item} type="button" aria-pressed={brandId === item} className={brandId === item ? "is-selected" : ""} onClick={() => { setBrandId(item); }}><strong>{item}</strong></button>)}
+                {brands.data?.map((item) => <button key={item} type="button" aria-pressed={brandId === item} className={brandId === item ? "is-selected" : ""} onClick={() => { setBrandId(item); }}><strong>{item}</strong></button>)}
               </div>
             </fieldset>
             <label><span>Research focus (optional)</span><input maxLength={120} value={projectId} onChange={(event) => setProjectId(event.target.value)} placeholder="Example: competitor desk visuals" /></label>
             <label><span>Media to collect</span><select value={mediaMode} onChange={(event) => setMediaMode(event.target.value as ResearchMediaMode)}><option value="images">Images only</option><option value="videos">Videos only</option><option value="images_and_videos">Images and videos</option></select></label>
-            <label><span>Analysis model</span><select value={analysisModelId} onChange={(event) => setAnalysisModelId(event.target.value)}>{analysisModelOptions.map((model) => <option key={model} value={model}>{modelLabel(model)}</option>)}</select></label>
             <label className="research-url-field"><span>Public results URL</span><input required type="url" maxLength={4096} value={sourceUrl} onChange={(event) => setSourceUrl(event.target.value)} placeholder="Paste the final public search, category, or listing URL" /></label>
             <button className="primary-button" disabled={create.isPending || !brandId.trim() || !sourceUrl.trim()}>
               {create.isPending && <LoaderCircle className="spin" size={16} />} Start crawl
@@ -91,7 +90,7 @@ export function ResearchCrawlerPage() {
           <div className="research-job-list">
             {crawls.data?.items.map((job) => (
               <button key={job.job_id} type="button" className={selected?.job_id === job.job_id ? "is-selected" : ""} onClick={() => setSelectedId(job.job_id)}>
-                <span><strong>{job.result?.title || hostname(job.source_url)}</strong><small>{job.brand_id} · {job.project_id || "General research"} · {mediaModeLabel(job.media_mode)} · {modelLabel(job.analysis_model_id)}</small></span>
+                <span><strong>{job.result?.title || hostname(job.source_url)}</strong><small>{job.brand_id} · {job.project_id || "General research"} · {mediaModeLabel(job.media_mode)}</small></span>
                 <span className={`badge status-${job.status}`}>{job.status.replaceAll("_", " ")}</span>
               </button>
             ))}

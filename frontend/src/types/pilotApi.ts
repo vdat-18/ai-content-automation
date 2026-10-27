@@ -911,7 +911,6 @@ export type ResearchCrawlCreateRequest = {
   project_id?: string;
   source_url: string;
   media_mode: ResearchMediaMode;
-  analysis_model_id: string;
 };
 
 export type ResearchMediaMode = "images" | "videos" | "images_and_videos";
