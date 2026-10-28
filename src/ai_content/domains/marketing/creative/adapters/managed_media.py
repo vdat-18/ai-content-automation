@@ -572,11 +572,7 @@ class NineRouterImageProvider:
         payload["output_format"] = request.file_format
         endpoint = "images/generations"
         if model.request_mode in {"json_generation", "json_edit"} and encoded_sources:
-            payload[model.reference_field] = (
-                {"image_url": encoded_sources[0]}
-                if model.reference_field == "image"
-                else [{"image_url": item} for item in encoded_sources]
-            )
+            payload[model.reference_field] = _reference_payload(model, encoded_sources)
         if model.request_mode == "json_edit":
             if not encoded_sources:
                 raise ValueError("Image edit requests require at least one source image")
@@ -1232,6 +1228,15 @@ def _text_direction(request: PaidImageGenerationRequest) -> str:
 
 def _positions(sources: tuple[PaidMediaSource, ...], role: str) -> list[str]:
     return [str(index) for index, item in enumerate(sources, start=1) if item.role == role]
+
+
+def _reference_payload(model: ManagedImageModelConfig, encoded_sources: list[str]):
+    if model.reference_field == "image":
+        return {"image_url": encoded_sources[0]}
+    if model.request_mode == "json_edit":
+        # xAI's /images/edits takes typed entries: {"type": "image_url", "url": ...}.
+        return [{"type": "image_url", "url": item} for item in encoded_sources]
+    return [{"image_url": item} for item in encoded_sources]
 
 
 def _image_model_descriptor(model: ManagedImageModelConfig) -> PaidImageModelDescriptor:

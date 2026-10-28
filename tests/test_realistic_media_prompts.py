@@ -109,3 +109,15 @@ def test_video_prompt_asks_for_motion_and_keeps_the_product_stable() -> None:
     assert prompt.startswith("Slow push-in")
     assert "exact shape, label, color and material" in prompt
     assert "Do not generate" not in prompt
+
+
+def test_edit_mode_sends_xai_typed_reference_entries() -> None:
+    from ai_content.domains.marketing.creative.adapters.managed_media import _reference_payload
+    from ai_content.domains.marketing.creative.config.managed_media import (
+        ManagedImageModelConfig,
+    )
+
+    edit = ManagedImageModelConfig(model="m", reference_field="images", request_mode="json_edit")
+    generation = ManagedImageModelConfig(model="m", reference_field="images")
+    assert _reference_payload(edit, ["data:a"]) == [{"type": "image_url", "url": "data:a"}]
+    assert _reference_payload(generation, ["data:a"]) == [{"image_url": "data:a"}]
