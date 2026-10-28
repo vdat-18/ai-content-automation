@@ -626,8 +626,9 @@ class MarketingCreativeAutomationProducer:
                 sku_id=package.request.sku_id,
                 variation_key=f"{video_plan.variation_key}:{scene.scene_id}:keyframe",
                 visual_direction=(
-                    f"Opening frame of this video scene: {scene.visual_direction} "
-                    f"{video_plan.continuity_plan}"
+                    "One single photograph showing only the first moment of this video scene, "
+                    "as one continuous frame (never a collage, grid, split screen or storyboard): "
+                    f"{scene.visual_direction} {video_plan.continuity_plan}"
                 ).strip(),
                 width=width,
                 height=height,
