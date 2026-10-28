@@ -626,8 +626,10 @@ class MarketingCreativeAutomationProducer:
                 sku_id=package.request.sku_id,
                 variation_key=f"{video_plan.variation_key}:{scene.scene_id}:keyframe",
                 visual_direction=(
-                    "One single photograph showing only the first moment of this video scene, "
-                    "as one continuous frame (never a collage, grid, split screen or storyboard): "
+                    "One single photograph showing only the very first instant of this video scene, "
+                    "before its action starts, so nothing the scene is about to do has happened "
+                    "yet (a product about to be picked up is still resting where it is), as one "
+                    "continuous frame (never a collage, grid, split screen or storyboard): "
                     f"{scene.visual_direction} {video_plan.continuity_plan}"
                 ).strip(),
                 width=width,
@@ -658,6 +660,25 @@ class MarketingCreativeAutomationProducer:
         assert isinstance(request, PaidVideoGenerationRequest)
         return await self._production.produce_video(request)
 
+    async def _produce_keyframes(
+        self,
+        requests: tuple[PaidImageGenerationRequest, ...],
+    ) -> tuple[PaidMediaProductionResult, ...]:
+        """Make scene openers in order; each edits the previous one so people and room persist."""
+
+        results: list[PaidMediaProductionResult] = []
+        for index, request in enumerate(requests):
+            if index and results[-1].selected_artifact is not None:
+                request = _chained_keyframe_request(request, results[-1].selected_artifact)
+            try:
+                outcome = await self._produce("image", request)
+            except Exception as error:
+                outcome = error
+            results.append(_provider_result(outcome))
+            if not results[-1].success:
+                break
+        return tuple(results)
+
     async def _produce_video(
         self,
         asset_version_id: str,
@@ -667,11 +688,7 @@ class MarketingCreativeAutomationProducer:
         keyframe_requests: tuple[PaidImageGenerationRequest, ...],
         expects_audio: bool,
     ) -> tuple[PaidMediaProductionResult, tuple, Decimal]:
-        keyframe_outcomes = await asyncio.gather(
-            *(self._produce("image", request) for request in keyframe_requests),
-            return_exceptions=True,
-        )
-        keyframe_results = tuple(_provider_result(outcome) for outcome in keyframe_outcomes)
+        keyframe_results = await self._produce_keyframes(keyframe_requests)
         keyframe_cost = sum((result.total_cost for result in keyframe_results), start=Decimal("0"))
         if not all(
             result.success and result.selected_artifact is not None for result in keyframe_results
@@ -998,6 +1015,24 @@ def _revision_direction(base: str, revision_request) -> str:
         f"{base}\n\nReviewer revision requirements:\n{revision_request.reason.strip()}\n"
         f"{guidance}\n"
         "Preserve the exact product and Variant identity from the supplied product source."
+    )
+
+
+def _chained_keyframe_request(
+    request: PaidImageGenerationRequest,
+    previous,
+) -> PaidImageGenerationRequest:
+    products = tuple(item for item in request.sources if item.role == "product")
+    draft = PaidMediaSource(previous.artifact_ref, previous.checksum_sha256, "draft")
+    return replace(
+        request,
+        visual_direction=(
+            "Keep the same person, clothing, room, light and product exactly as in the edited "
+            "image, and change only what the next scene's opening frame needs: "
+            f"{request.visual_direction}"
+        ),
+        sources=(draft, *products[: max(len(request.sources) - 1, 0)]),
+        generation_mode="multi_image_edit" if products else "single_image_edit",
     )
 
 

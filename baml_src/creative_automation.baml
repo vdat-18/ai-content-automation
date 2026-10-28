@@ -219,10 +219,17 @@ function OrchestrateCreativeAutomation(
     Every scene must specify camera framing and movement, product action, setting, lighting,
     subject continuity, transition intent, and the exact visual state at the beginning and end
     of the scene so independently generated sources can be assembled without another planning step.
-    The opening frame of each scene is generated separately from the product image, so write the
+    The opening frame of each scene is generated from the product image, so write the
     scene's visual_direction as motion, not as a still: one subject, one action and one camera
-    move, using specific verbs. Prefer a steady product with a moving camera or environment over
-    a moving product, and avoid fast or articulated motion, close text and rapid cuts.
+    move, using specific verbs. Give every scene a different, visible action and camera move
+    so the video is lively, and keep each action physically plausible. Plan a multi-scene video
+    as one continuous story in one place with one person and one outfit: scene N must end in
+    exactly the state scene N+1 begins in (where the product is, what the person holds or
+    wears, where the camera is), and the product must never already be in use before the
+    scene that shows it being picked up or put on. Never describe the product both worn and
+    held in the same opening frame. Prefer a steady product with a moving camera or
+    environment over a moving product, and avoid fast or articulated motion, close text and
+    rapid cuts.
 
     Videos must contain no generated text, captions, logos, or watermarks. Images may contain
     only human-supplied exact text or Agent-written brief text, plus a logo explicitly enabled
