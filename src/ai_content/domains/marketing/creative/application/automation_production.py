@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import logging
 from dataclasses import replace
 from datetime import UTC, datetime
 from decimal import Decimal
@@ -44,6 +45,8 @@ from ai_content.domains.marketing.creative.ports.preparation_store import (
 )
 
 from .automation_workflow import record_final_review, record_production_outcome
+
+logger = logging.getLogger(__name__)
 
 
 class MarketingCreativeAutomationProducer:
@@ -610,6 +613,12 @@ class MarketingCreativeAutomationProducer:
             descriptor.image_models[0],
         )
         width, height = _profile_dimensions(aspect_ratio)
+        requested_quality = package.request.image_quality
+        quality = (
+            requested_quality
+            if requested_quality in model.supported_qualities
+            else (model.supported_qualities[0] if model.supported_qualities else None)
+        )
         return tuple(
             PaidImageGenerationRequest(
                 request_id=f"{scene_request.request_id}:keyframe",
@@ -630,6 +639,13 @@ class MarketingCreativeAutomationProducer:
                 provider_id=descriptor.provider_id,
                 model_id=model.model_id,
                 resolution=model.supported_resolutions[0],
+                quality=quality,
+                generation_mode=(
+                    "multi_image_edit"
+                    if "multi_image_edit" in model.supported_modes
+                    and sum(source.role == "product" for source in scene_request.sources) > 1
+                    else "single_image_edit"
+                ),
             )
             for scene, scene_request in zip(video_plan.scenes, scene_requests, strict=True)
         )
@@ -988,6 +1004,7 @@ def _provider_result(
     result: PaidMediaProductionResult | BaseException,
 ) -> PaidMediaProductionResult:
     if isinstance(result, Exception):
+        logger.error("Paid media provider call failed", exc_info=result)
         return _provider_failure_result()
     if isinstance(result, BaseException):
         raise result
