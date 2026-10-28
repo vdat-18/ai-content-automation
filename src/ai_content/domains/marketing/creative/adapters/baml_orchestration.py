@@ -715,7 +715,7 @@ def _validate_product_source_budgets(
                     raise ValueError(
                         "Reference-to-video requires two or three Shopify product images"
                     )
-            elif product_count != 1 or reference_count:
+            elif product_count != 1 or (reference_count and not reference_to_video):
                 raise ValueError(
                     "Image-to-video fallback requires one product image and no Research reference"
                 )
