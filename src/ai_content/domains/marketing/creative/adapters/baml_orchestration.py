@@ -8,7 +8,7 @@ import hashlib
 import json
 import re
 from collections.abc import Callable
-from dataclasses import asdict, fields, is_dataclass
+from dataclasses import asdict, fields, is_dataclass, replace
 from typing import Protocol
 
 from baml_py import Collector, Image
@@ -441,6 +441,9 @@ def _to_plan(
     if len(video_keys) != len(set(video_keys)):
         raise ValueError("Orchestration model returned duplicate video variation keys")
 
+    image_plans, video_plans = _apply_human_references(
+        request, candidate_ids, image_plans, video_plans
+    )
     _validate_reference_evidence(request, image_plans, video_plans)
     known_evidence_refs.update(item.reference_id for item in request.reference_candidates)
 
@@ -507,6 +510,46 @@ def _reference_rationale(request, provided, selected_reference_ids) -> str:
     if mode == CreativeReferenceSelectionMode.HUMAN and selected_reference_ids:
         return "Human-selected Research references."
     return ""
+
+
+def _with_references(evidence_refs, reference_ids, candidate_ids) -> tuple[str, ...]:
+    others = tuple(item for item in evidence_refs if item not in candidate_ids)
+    return (*others, *reference_ids)
+
+
+def _apply_human_references(request, candidate_ids, image_plans, video_plans):
+    """Human assignments are authoritative, so set them in code instead of trusting the model."""
+
+    mode = request.reference_selection_mode
+    if mode == CreativeReferenceSelectionMode.NONE and request.reference_assignments:
+        mode = CreativeReferenceSelectionMode.HUMAN
+    if mode != CreativeReferenceSelectionMode.HUMAN:
+        return image_plans, video_plans
+
+    def align(output_key, plan):
+        ids = _assigned_reference_ids(request, output_key)
+        return replace(
+            plan,
+            reference_ids=ids,
+            reference_rationale=_reference_rationale(request, plan.reference_rationale, ids),
+            evidence_refs=_with_references(plan.evidence_refs, ids, candidate_ids),
+        )
+
+    images = tuple(align(f"image:{i}", plan) for i, plan in enumerate(image_plans, start=1))
+    videos = []
+    for index, plan in enumerate(video_plans, start=1):
+        aligned = align(f"video:{index}", plan)
+        scenes = tuple(
+            replace(
+                scene,
+                evidence_refs=_with_references(
+                    scene.evidence_refs, aligned.reference_ids, candidate_ids
+                ),
+            )
+            for scene in aligned.scenes
+        )
+        videos.append(replace(aligned, scenes=scenes))
+    return images, tuple(videos)
 
 
 def _validate_reference_evidence(request, image_plans, video_plans) -> None:
