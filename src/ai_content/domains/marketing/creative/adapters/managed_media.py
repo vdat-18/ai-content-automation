@@ -477,6 +477,11 @@ class SourcePreservingVideoProvider:
             "Exact Shopify video renderer creates one final clip and does not assemble scenes"
         )
 
+    async def still_frame(
+        self, clip: PaidMediaArtifact, at_seconds: float, request_id: str
+    ) -> PaidMediaArtifact:
+        return await _still_frame(self._sink, clip, at_seconds, request_id)
+
 
 class NineRouterImageProvider:
     def __init__(
@@ -946,6 +951,11 @@ class NineRouterVideoProvider:
             configuration_version=self._config.configuration_version,
             requested_model=self._model.model,
         )
+
+    async def still_frame(
+        self, clip: PaidMediaArtifact, at_seconds: float, request_id: str
+    ) -> PaidMediaArtifact:
+        return await _still_frame(self._sink, clip, at_seconds, request_id)
 
     async def _request(
         self,
@@ -1611,6 +1621,63 @@ def _ratio_dimensions(aspect_ratio: str) -> tuple[int, int]:
         "3:2": (1620, 1080),
         "2:3": (1080, 1620),
     }[aspect_ratio]
+
+
+async def _still_frame(
+    sink: ManagedMediaArtifactSink, clip: PaidMediaArtifact, at_seconds: float, request_id: str
+) -> PaidMediaArtifact:
+    """Save the clip's frame at the cut point so the next scene can start from it."""
+
+    started = monotonic()
+    content = await asyncio.to_thread(
+        _extract_frame, sink.local_path(clip.artifact_ref), at_seconds
+    )
+    stored = await sink.write(
+        content, request_id=request_id, filename="frame.png", owner_id=request_id
+    )
+    with Image.open(BytesIO(content)) as image:
+        width, height = image.size
+    return PaidMediaArtifact(
+        artifact_ref=stored.artifact_ref,
+        checksum_sha256=stored.checksum_sha256,
+        content_type="image/png",
+        provider_id=clip.provider_id,
+        provider_job_id=f"frame-{clip.provider_job_id}",
+        model="ffmpeg",
+        model_revision=None,
+        elapsed_seconds=monotonic() - started,
+        cost=Decimal("0"),
+        width=width,
+        height=height,
+    )
+
+
+def _extract_frame(path: Path, at_seconds: float) -> bytes:
+    if shutil.which("ffmpeg") is None:
+        raise RuntimeError("ffmpeg is required to continue a video from its last frame")
+    with tempfile.TemporaryDirectory(prefix="creative-frame-") as temporary:
+        output = Path(temporary) / "frame.png"
+        result = subprocess.run(
+            ["ffmpeg", "-v", "error", "-y", "-ss", f"{max(at_seconds, 0):.3f}", "-i", str(path)]
+            + ["-frames:v", "1", str(output)],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=120,
+        )
+        if result.returncode != 0 or not output.exists():
+            # Seeking past the end yields nothing; fall back to the clip's final frame.
+            result = subprocess.run(
+                ["ffmpeg", "-v", "error", "-y", "-sseof", "-0.1", "-i", str(path)]
+                + ["-frames:v", "1", "-update", "1", str(output)],
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=120,
+            )
+        if result.returncode != 0 or not output.exists():
+            raise RuntimeError("Could not extract the video frame to continue from")
+        return output.read_bytes()
 
 
 def _probe_video(path: Path) -> dict[str, object]:

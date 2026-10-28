@@ -463,6 +463,12 @@ class IManagedVideoGenerationProvider(Protocol):
         """Join source clips in order while preserving their native audio."""
         ...
 
+    async def still_frame(
+        self, clip: PaidMediaArtifact, at_seconds: float, request_id: str
+    ) -> PaidMediaArtifact:
+        """Save one frame of a clip so the next scene can start exactly there."""
+        ...
+
 
 class IPaidImageQualityEvaluator(Protocol):
     async def evaluate_image(

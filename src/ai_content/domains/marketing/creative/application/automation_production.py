@@ -602,7 +602,11 @@ class MarketingCreativeAutomationProducer:
         scene_requests: tuple[PaidVideoGenerationRequest, ...],
         aspect_ratio: str,
     ) -> tuple[PaidImageGenerationRequest, ...]:
-        """Plan one product-faithful still per scene; each scene video starts from it."""
+        """Plan the product-faithful still the first scene starts from.
+
+        Later scenes start from the previous scene's frame at its cut point, so people, room
+        and product stay continuous across the whole video.
+        """
         descriptor = self._providers.require_image().descriptor
         model = next(
             (
@@ -635,7 +639,7 @@ class MarketingCreativeAutomationProducer:
                 width=width,
                 height=height,
                 sources=tuple(
-                    source for source in scene_request.sources if source.role == "product"
+                    sorted(scene_request.sources, key=lambda source: source.role != "product")
                 )[: model.max_reference_images],
                 limits=self._image_limits,
                 aspect_ratio=aspect_ratio,
@@ -646,11 +650,11 @@ class MarketingCreativeAutomationProducer:
                 generation_mode=(
                     "multi_image_edit"
                     if "multi_image_edit" in model.supported_modes
-                    and sum(source.role == "product" for source in scene_request.sources) > 1
+                    and min(len(scene_request.sources), model.max_reference_images) > 1
                     else "single_image_edit"
                 ),
             )
-            for scene, scene_request in zip(video_plan.scenes, scene_requests, strict=True)
+            for scene, scene_request in zip(video_plan.scenes[:1], scene_requests[:1], strict=True)
         )
 
     async def _produce(self, kind, request) -> PaidMediaProductionResult:
@@ -659,25 +663,6 @@ class MarketingCreativeAutomationProducer:
             return await self._production.produce_image(request)
         assert isinstance(request, PaidVideoGenerationRequest)
         return await self._production.produce_video(request)
-
-    async def _produce_keyframes(
-        self,
-        requests: tuple[PaidImageGenerationRequest, ...],
-    ) -> tuple[PaidMediaProductionResult, ...]:
-        """Make scene openers in order; each edits the previous one so people and room persist."""
-
-        results: list[PaidMediaProductionResult] = []
-        for index, request in enumerate(requests):
-            if index and results[-1].selected_artifact is not None:
-                request = _chained_keyframe_request(request, results[-1].selected_artifact)
-            try:
-                outcome = await self._produce("image", request)
-            except Exception as error:
-                outcome = error
-            results.append(_provider_result(outcome))
-            if not results[-1].success:
-                break
-        return tuple(results)
 
     async def _produce_video(
         self,
@@ -688,30 +673,50 @@ class MarketingCreativeAutomationProducer:
         keyframe_requests: tuple[PaidImageGenerationRequest, ...],
         expects_audio: bool,
     ) -> tuple[PaidMediaProductionResult, tuple, Decimal]:
-        keyframe_results = await self._produce_keyframes(keyframe_requests)
-        keyframe_cost = sum((result.total_cost for result in keyframe_results), start=Decimal("0"))
-        if not all(
-            result.success and result.selected_artifact is not None for result in keyframe_results
+        (keyframe_outcome,) = await asyncio.gather(
+            self._produce("image", keyframe_requests[0]), return_exceptions=True
+        )
+        keyframe_result = _provider_result(keyframe_outcome)
+        keyframe_cost = keyframe_result.total_cost
+        if not keyframe_result.success or keyframe_result.selected_artifact is None:
+            return _failed_scene_result((keyframe_result,)), (), keyframe_cost
+        start_frame = keyframe_result.selected_artifact
+        produced: list[PaidMediaProductionResult] = []
+        for index, (request, scene) in enumerate(
+            zip(scene_requests, video_plan.scenes, strict=True)
         ):
-            return _failed_scene_result(keyframe_results), (), keyframe_cost
-        scene_requests = tuple(
-            replace(
-                request,
-                sources=(
-                    PaidMediaSource(
-                        asset_ref=keyframe.selected_artifact.artifact_ref,
-                        checksum_sha256=keyframe.selected_artifact.checksum_sha256,
-                        role="keyframe",
+            (outcome,) = await asyncio.gather(
+                self._produce(
+                    "video",
+                    replace(
+                        request,
+                        sources=(
+                            PaidMediaSource(
+                                asset_ref=start_frame.artifact_ref,
+                                checksum_sha256=start_frame.checksum_sha256,
+                                role="keyframe",
+                            ),
+                        ),
                     ),
                 ),
+                return_exceptions=True,
             )
-            for request, keyframe in zip(scene_requests, keyframe_results, strict=True)
-        )
-        scene_outcomes = await asyncio.gather(
-            *(self._produce("video", request) for request in scene_requests),
-            return_exceptions=True,
-        )
-        scene_results = tuple(_provider_result(outcome) for outcome in scene_outcomes)
+            result = _provider_result(outcome)
+            produced.append(result)
+            if not result.success or result.selected_artifact is None:
+                break
+            if index + 1 < len(scene_requests):
+                try:
+                    start_frame = await self._production.still_frame(
+                        result.selected_artifact,
+                        scene.usable_duration_seconds - 0.05,
+                        f"{request.request_id}:last-frame",
+                    )
+                except Exception:
+                    logger.exception("Could not continue the video from scene %s", scene.scene_id)
+                    produced.append(_provider_failure_result())
+                    break
+        scene_results = tuple(produced)
         scene_artifacts = tuple(
             result.selected_artifact
             for result in scene_results
@@ -1015,24 +1020,6 @@ def _revision_direction(base: str, revision_request) -> str:
         f"{base}\n\nReviewer revision requirements:\n{revision_request.reason.strip()}\n"
         f"{guidance}\n"
         "Preserve the exact product and Variant identity from the supplied product source."
-    )
-
-
-def _chained_keyframe_request(
-    request: PaidImageGenerationRequest,
-    previous,
-) -> PaidImageGenerationRequest:
-    products = tuple(item for item in request.sources if item.role == "product")
-    draft = PaidMediaSource(previous.artifact_ref, previous.checksum_sha256, "draft")
-    return replace(
-        request,
-        visual_direction=(
-            "Keep the same person, clothing, room, light and product exactly as in the edited "
-            "image, and change only what the next scene's opening frame needs: "
-            f"{request.visual_direction}"
-        ),
-        sources=(draft, *products[: max(len(request.sources) - 1, 0)]),
-        generation_mode="multi_image_edit" if products else "single_image_edit",
     )
 
 

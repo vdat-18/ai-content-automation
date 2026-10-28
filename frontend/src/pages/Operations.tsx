@@ -214,7 +214,7 @@ export function CreativeAutomationLauncher() {
   const [imageCta, setImageCta] = useState("");
   const [videoModelId, setVideoModelId] = useState("");
   const [videoResolution, setVideoResolution] = useState<"480p" | "720p" | "1080p">("720p");
-  const [videoDurationSeconds, setVideoDurationSeconds] = useState(15);
+  const [videoDurationSeconds, setVideoDurationSeconds] = useState(30);
   const [videoGenerateAudio, setVideoGenerateAudio] = useState(true);
   const [executionMode] = useState<"brief_only" | "generate_once">("generate_once");
   const [capabilities, setCapabilities] = useState<MarketingCreativeAutomationCapabilities | null>(null);

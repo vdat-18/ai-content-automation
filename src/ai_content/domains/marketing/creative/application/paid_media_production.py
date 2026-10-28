@@ -119,6 +119,11 @@ class PaidMediaProductionService:
             )
         return _result(request.limits, artifact)
 
+    async def still_frame(
+        self, clip: PaidMediaArtifact, at_seconds: float, request_id: str
+    ) -> PaidMediaArtifact:
+        return await self._providers.require_video().still_frame(clip, at_seconds, request_id)
+
     async def produce_video(
         self,
         request: PaidVideoGenerationRequest,

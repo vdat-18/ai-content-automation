@@ -220,7 +220,7 @@ test("Creative production uses exact per-ratio quantities and provider capabilit
   assert.match(src("pages", "Operations.tsx"), /const preferredAgentModelId = "grok-4-fast-reasoning"/);
   assert.match(src("pages", "Operations.tsx"), /const preferredImageModelId = "grok-imagine-image"/);
   assert.match(src("pages", "Operations.tsx"), /const preferredVideoModelId = "grok-imagine-video"/);
-  assert.match(src("pages", "Operations.tsx"), /useState\(15\)/);
+  assert.match(src("pages", "Operations.tsx"), /useState\(30\)/);
   assert.match(src("pages", "Operations.tsx"), /className="automation-output-settings"/);
   assert.match(src("pages", "Operations.tsx"), /2\. Additional requirements \(optional\)/);
   assert.match(src("pages", "Operations.tsx"), /3\. Visual references \(optional\)/);
