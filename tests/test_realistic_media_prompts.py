@@ -123,3 +123,7 @@ def test_reference_payload_matches_each_provider_shape() -> None:
     assert _reference_payload(generation, ["data:a"]) == [{"image_url": "data:a"}]
     gemini = ManagedImageModelConfig(model="m", reference_encoding="data_url")
     assert _reference_payload(gemini, ["data:a", "data:b"]) == "data:a"
+    gemini_multi = ManagedImageModelConfig(
+        model="m", reference_field="images", reference_encoding="data_url"
+    )
+    assert _reference_payload(gemini_multi, ["data:a", "data:b"]) == ["data:a", "data:b"]

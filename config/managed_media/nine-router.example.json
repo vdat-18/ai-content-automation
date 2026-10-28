@@ -30,12 +30,13 @@
         "1k"
       ],
       "supported_modes": [
-        "single_image_edit"
+        "single_image_edit",
+        "multi_image_edit"
       ],
-      "max_reference_images": 1,
+      "max_reference_images": 4,
       "supports_text_rendering": true,
       "supports_logo_input": false,
-      "reference_field": "image",
+      "reference_field": "images",
       "reference_encoding": "data_url",
       "request_mode": "json_generation",
       "cost_per_output": "0.04"

@@ -54,6 +54,8 @@ def check_references(
     issues: list[str] = []
     source_ids = {
         *(source.source_id for source in context.package.evidence),
+        # Human-selected Research references are evidence the writer may cite.
+        *(reference.reference_id for reference in context.references),
         *allowed_evidence_refs,
     }
     if not evidence_refs or not set(evidence_refs).issubset(source_ids):
