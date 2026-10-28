@@ -203,7 +203,7 @@ function OrchestrateCreativeAutomation(
     in this order: subject and setting; the product's placement, scale and visible details;
     camera viewpoint and lens (for example eye level, 85mm); the light source with its
     direction and softness; physical material descriptions; color palette; composition and
-    what stays sharp. Include human presence or absence and the exact text/logo treatment.
+    what stays sharp. Because the image provider may receive the product only as a description, state the product's exact colour in plain words (for example dusty blue, not just blue), the shape, strap or handle style, closures, stitching, finish and any print or logo, copied from the supplied Product images. Include human presence or absence and the exact text/logo treatment.
     Name concrete objects and materials, and state each texture once on the right object.
     Describe what should appear instead of listing exclusions, and never use stacked quality
     words such as ultra realistic, premium or award-winning. A Research reference described as
