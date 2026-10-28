@@ -1231,6 +1231,8 @@ def _positions(sources: tuple[PaidMediaSource, ...], role: str) -> list[str]:
 
 
 def _reference_payload(model: ManagedImageModelConfig, encoded_sources: list[str]):
+    if model.reference_encoding == "data_url":
+        return encoded_sources[0] if model.reference_field == "image" else list(encoded_sources)
     if model.reference_field == "image":
         return {"image_url": encoded_sources[0]}
     if model.request_mode == "json_edit":

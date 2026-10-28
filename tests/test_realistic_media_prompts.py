@@ -111,7 +111,7 @@ def test_video_prompt_asks_for_motion_and_keeps_the_product_stable() -> None:
     assert "Do not generate" not in prompt
 
 
-def test_edit_mode_sends_xai_typed_reference_entries() -> None:
+def test_reference_payload_matches_each_provider_shape() -> None:
     from ai_content.domains.marketing.creative.adapters.managed_media import _reference_payload
     from ai_content.domains.marketing.creative.config.managed_media import (
         ManagedImageModelConfig,
@@ -121,3 +121,5 @@ def test_edit_mode_sends_xai_typed_reference_entries() -> None:
     generation = ManagedImageModelConfig(model="m", reference_field="images")
     assert _reference_payload(edit, ["data:a"]) == [{"type": "image_url", "url": "data:a"}]
     assert _reference_payload(generation, ["data:a"]) == [{"image_url": "data:a"}]
+    gemini = ManagedImageModelConfig(model="m", reference_encoding="data_url")
+    assert _reference_payload(gemini, ["data:a", "data:b"]) == "data:a"

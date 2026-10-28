@@ -34,6 +34,8 @@ class ManagedImageModelConfig(BaseModel):
     supports_logo_input: bool = True
     reference_field: Literal["image", "images"] = "image"
     request_mode: Literal["json_generation", "json_edit", "multipart_edit"] = "json_generation"
+    # Gemini through 9Router reads plain data-URL strings instead of {"image_url": ...} entries.
+    reference_encoding: Literal["image_url_entry", "data_url"] = "image_url_entry"
     # Quality used when a request names none; some providers default to their lowest tier.
     default_quality: Literal["auto", "low", "medium", "high", "xhigh", "max"] | None = None
     # Send the resolution tier to the provider instead of only using it for pricing.
