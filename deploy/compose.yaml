@@ -179,6 +179,8 @@ services:
       - "8000"
     expose:
       - "8000"
+    ports:
+      - "${AIC_DEBUG_BIND_ADDRESS:-127.0.0.1}:${AIC_DEBUG_API_PORT:-8000}:8000"
     depends_on:
       migrate:
         condition: service_completed_successfully
