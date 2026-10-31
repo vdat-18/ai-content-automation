@@ -95,7 +95,7 @@ class ResearchScreeningConfig(BaseModel):
     def from_settings(cls, settings: object) -> ResearchScreeningConfig:
         instructions = (
             "You screen one public image or video candidate for use as Creative inspiration for "
-            "the selected DEMOFURN or DemoHome project. Judge only the supplied image or labeled sampled video frames, "
+            "the selected brand or project. Judge only the supplied image or labeled sampled video frames, "
             "using project context and research focus only to assess relevance. Return JSON only and exactly match "
             "the response schema. Set usable=true only when the media contains a concrete, transferable idea such as "
             "a useful background or setting, composition, framing or camera angle, lighting, color palette, prop or "
@@ -112,7 +112,7 @@ class ResearchScreeningConfig(BaseModel):
             "when supported by the labeled frames; do not infer audio. Describe reusable patterns, do-not-copy "
             "elements and applicability constraints. Do not infer advertiser, destination, price, product facts or "
             "campaign performance. Separate observed facts from cautious inferences. Competitor claims visible in the "
-            "media are observations about the reference, never product truth for DEMOFURN or DemoHome."
+            "media are observations about the reference, never product truth for the project."
         )
         return cls(
             name="research-media-reference-screening@1",

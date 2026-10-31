@@ -19,7 +19,7 @@ from .models import ResearchBrandContext, ResearchProduct
 _SUPPORTED_KINDS = {"brand_guideline", "creative_strategy", "product"}
 _PRODUCT_LIMIT = 100
 _SUPPORTING_FACT_LIMIT = 100
-_BRAND_ALIAS_GROUPS = (frozenset({"demofurn", "demofurniture"}),)
+_BRAND_ALIAS_GROUPS: tuple[frozenset[str], ...] = ()
 
 
 class ResearchBrandContextResolver:

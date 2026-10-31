@@ -223,12 +223,8 @@ class ApiRuntimeSettings:
     media_asset_max_preview_image_pixels: int = 2_073_600
     media_asset_processing_timeout_seconds: int = 120
     shopify_access_token: str | None = None
-    shopify_demohome_access_token: str | None = None
-    shopify_demofurn_access_token: str | None = None
-    shopify_demohome_client_id: str | None = None
-    shopify_demohome_client_secret: str | None = None
-    shopify_demofurn_client_id: str | None = None
-    shopify_demofurn_client_secret: str | None = None
+    shopify_client_id: str | None = None
+    shopify_client_secret: str | None = None
     lark_tenant_access_token: str | None = None
     lark_app_id: str | None = None
     lark_app_secret: str | None = None
@@ -344,26 +340,10 @@ def get_runtime_settings() -> ApiRuntimeSettings:
             if application.shopify_access_token
             else None
         ),
-        shopify_demohome_access_token=(
-            application.shopify_demohome_access_token.get_secret_value()
-            if application.shopify_demohome_access_token
-            else None
-        ),
-        shopify_demofurn_access_token=(
-            application.shopify_demofurn_access_token.get_secret_value()
-            if application.shopify_demofurn_access_token
-            else None
-        ),
-        shopify_demohome_client_id=application.shopify_demohome_client_id,
-        shopify_demohome_client_secret=(
-            application.shopify_demohome_client_secret.get_secret_value()
-            if application.shopify_demohome_client_secret
-            else None
-        ),
-        shopify_demofurn_client_id=application.shopify_demofurn_client_id,
-        shopify_demofurn_client_secret=(
-            application.shopify_demofurn_client_secret.get_secret_value()
-            if application.shopify_demofurn_client_secret
+        shopify_client_id=application.shopify_client_id,
+        shopify_client_secret=(
+            application.shopify_client_secret.get_secret_value()
+            if application.shopify_client_secret
             else None
         ),
         lark_tenant_access_token=(
@@ -948,16 +928,10 @@ def _research_screener(
     api_key = settings.screening_api_key or settings.vilao_api_key
     if not api_key:
         return None
-    try:
-        if settings.research_screening_config_path is not None:
-            config = load_research_screening_config(settings.research_screening_config_path)
-        else:
-            config = ResearchScreeningConfig.from_settings(settings)
-    except (OSError, ValueError) as error:
-        logger.error(
-            "Research analysis unavailable because its configuration is invalid: {}", error
-        )
-        return None
+    if settings.research_screening_config_path is not None:
+        config = load_research_screening_config(settings.research_screening_config_path)
+    else:
+        config = ResearchScreeningConfig.from_settings(settings)
     return NineRouterResearchScreener(
         config,
         api_key=api_key,
@@ -1100,20 +1074,8 @@ def _build_data_source_runtime(
         settings.db_path,
         settings.artifacts_root,
         shopify_token=settings.shopify_access_token,
-        shopify_source_tokens={
-            "shopify-demohome-products": settings.shopify_demohome_access_token,
-            "shopify-demofurn-products": settings.shopify_demofurn_access_token,
-        },
-        shopify_source_client_credentials={
-            "shopify-demohome-products": (
-                settings.shopify_demohome_client_id,
-                settings.shopify_demohome_client_secret,
-            ),
-            "shopify-demofurn-products": (
-                settings.shopify_demofurn_client_id,
-                settings.shopify_demofurn_client_secret,
-            ),
-        },
+        shopify_source_tokens={},
+        shopify_source_client_credentials={},
         lark_token=settings.lark_tenant_access_token,
         lark_app_id=settings.lark_app_id,
         lark_app_secret=settings.lark_app_secret,

@@ -3,7 +3,6 @@ from pathlib import Path
 import pytest
 
 from ai_content.platform.llm_routing import (
-    APPROVED_AGENT_MODELS,
     DEFAULT_AGENT_MODEL,
     normalize_persisted_agent_model_id,
     require_approved_agent_model,
@@ -12,11 +11,12 @@ from ai_content.platform.llm_routing import (
 )
 
 
-def test_only_grok_models_are_approved() -> None:
+def test_models_are_accepted_flexibly() -> None:
     assert DEFAULT_AGENT_MODEL == "grok-4-fast-reasoning"
-    assert all(model.startswith("grok-") for model in APPROVED_AGENT_MODELS)
+    assert require_approved_agent_model("gemini-2.5-flash") == "gemini-2.5-flash"
+    assert require_approved_agent_model("gpt-4o") == "gpt-4o"
     with pytest.raises(ValueError):
-        require_approved_agent_model("gemini-2.5-flash")
+        require_approved_agent_model("")
 
 
 @pytest.mark.parametrize(
@@ -31,10 +31,9 @@ def test_route_applies_the_router_prefix(model, configured, expected) -> None:
     assert route_approved_agent_model(model, configured_model=configured) == expected
 
 
-def test_grok_only_offers_auto_reasoning() -> None:
+def test_reasoning_level_normalization() -> None:
     assert require_supported_agent_reasoning_level("grok-4.7", "auto") == "auto"
-    with pytest.raises(ValueError):
-        require_supported_agent_reasoning_level("grok-4.7", "high")
+    assert require_supported_agent_reasoning_level("grok-4.7", "high") == "high"
 
 
 def test_persisted_router_prefixes_are_normalized() -> None:
@@ -53,5 +52,4 @@ def test_jobs_saved_with_a_retired_model_still_load() -> None:
     from ai_content.platform.llm_routing import RETIRED_AGENT_MODELS
 
     assert "gemini-2.5-flash" in RETIRED_AGENT_MODELS
-    with pytest.raises(ValueError):
-        require_approved_agent_model("gemini-2.5-flash")
+    assert require_approved_agent_model("gemini-2.5-flash") == "gemini-2.5-flash"

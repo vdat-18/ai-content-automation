@@ -214,23 +214,9 @@ class ApplicationSettings(BaseSettings):
     )
 
     shopify_access_token: SecretStr | None = Field(None, validation_alias="SHOPIFY_ACCESS_TOKEN")
-    shopify_demohome_access_token: SecretStr | None = Field(
-        None, validation_alias="SHOPIFY_DEMOHOME_ACCESS_TOKEN"
-    )
-    shopify_demofurn_access_token: SecretStr | None = Field(
-        None, validation_alias="SHOPIFY_DEMOFURN_ACCESS_TOKEN"
-    )
-    shopify_demohome_client_id: str | None = Field(
-        None, validation_alias="SHOPIFY_DEMOHOME_CLIENT_ID"
-    )
-    shopify_demohome_client_secret: SecretStr | None = Field(
-        None, validation_alias="SHOPIFY_DEMOHOME_CLIENT_SECRET"
-    )
-    shopify_demofurn_client_id: str | None = Field(
-        None, validation_alias="SHOPIFY_DEMOFURN_CLIENT_ID"
-    )
-    shopify_demofurn_client_secret: SecretStr | None = Field(
-        None, validation_alias="SHOPIFY_DEMOFURN_CLIENT_SECRET"
+    shopify_client_id: str | None = Field(None, validation_alias="SHOPIFY_CLIENT_ID")
+    shopify_client_secret: SecretStr | None = Field(
+        None, validation_alias="SHOPIFY_CLIENT_SECRET"
     )
     lark_tenant_access_token: SecretStr | None = Field(
         None, validation_alias="LARK_TENANT_ACCESS_TOKEN"

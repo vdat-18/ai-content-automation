@@ -185,25 +185,15 @@ async def _execute_command(
         object_storage=storage_settings.build() if storage_settings.backend == "s3" else None,
         object_storage_bucket=storage_settings.bucket,
     )
-    try:
-        managed_media = build_managed_media_runtime(
-            config_path=settings.managed_media_config,
-            api_key=settings.credential("ROUTER_API_KEY"),
-            image_api_key=settings.credential("IMAGE_API_KEY"),
-            video_api_key=settings.credential("VIDEO_API_KEY"),
-            artifact_store=container.artifacts,
-            artifact_service=container.artifact_service,
-            state_repository=container.creative_automation_state_repository,
-        )
-    except (OSError, ValueError) as error:
-        logger.error("Managed Creative media disabled: {}", error)
-        managed_media = build_managed_media_runtime(
-            config_path=None,
-            api_key=None,
-            artifact_store=container.artifacts,
-            artifact_service=None,
-            state_repository=container.creative_automation_state_repository,
-        )
+    managed_media = build_managed_media_runtime(
+        config_path=settings.managed_media_config,
+        api_key=settings.credential("ROUTER_API_KEY"),
+        image_api_key=settings.credential("IMAGE_API_KEY"),
+        video_api_key=settings.credential("VIDEO_API_KEY"),
+        artifact_store=container.artifacts,
+        artifact_service=container.artifact_service,
+        state_repository=container.creative_automation_state_repository,
+    )
 
     loop_dispatcher = CreativeLoopCommandDispatcher(
         None,
@@ -493,20 +483,8 @@ async def _execute_command(
         settings.data_root / "state.db",
         settings.data_root / "artifacts",
         shopify_token=_secret_value(settings.shopify_access_token),
-        shopify_source_tokens={
-            "shopify-demohome-products": _secret_value(settings.shopify_demohome_access_token),
-            "shopify-demofurn-products": _secret_value(settings.shopify_demofurn_access_token),
-        },
-        shopify_source_client_credentials={
-            "shopify-demohome-products": (
-                settings.shopify_demohome_client_id,
-                _secret_value(settings.shopify_demohome_client_secret),
-            ),
-            "shopify-demofurn-products": (
-                settings.shopify_demofurn_client_id,
-                _secret_value(settings.shopify_demofurn_client_secret),
-            ),
-        },
+        shopify_source_tokens={},
+        shopify_source_client_credentials={},
         lark_token=_secret_value(settings.lark_tenant_access_token),
         lark_app_id=settings.lark_app_id,
         lark_app_secret=_secret_value(settings.lark_app_secret),
@@ -588,16 +566,10 @@ def _build_research_screener(
     api_key = settings.screening_api_key_value or settings.credential("VILAO_API_KEY")
     if not api_key:
         return None
-    try:
-        if settings.research_screening_config is not None:
-            config = load_research_screening_config(settings.research_screening_config)
-        else:
-            config = ResearchScreeningConfig.from_settings(settings)
-    except (OSError, ValueError) as error:
-        logger.error(
-            "Research analysis unavailable because its configuration is invalid: {}", error
-        )
-        return None
+    if settings.research_screening_config is not None:
+        config = load_research_screening_config(settings.research_screening_config)
+    else:
+        config = ResearchScreeningConfig.from_settings(settings)
     return NineRouterResearchScreener(
         config,
         api_key=api_key,

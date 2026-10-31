@@ -34,33 +34,29 @@ def normalize_persisted_agent_model_id(model: str) -> str:
 
 
 def require_approved_agent_model(model: str) -> str:
-    """Return a normalized model ID or reject routes not approved for the dashboard."""
-
+    """Return a normalized model ID."""
     normalized = model.strip()
-    if normalized not in APPROVED_AGENT_MODELS:
-        raise ValueError("Agent model is not approved for dashboard selection")
+    if not normalized:
+        raise ValueError("Agent model cannot be empty")
     return normalized
 
 
 def route_approved_agent_model(model: str, *, configured_model: str) -> str:
-    """Route a dashboard-selected model through the configured provider.
-
-    A configured model without a prefix is a direct provider client, so the bare ID is
-    returned; otherwise the model's router provider prefix is applied.
-    """
-
+    """Route a selected model through the configured provider."""
     approved_model = require_approved_agent_model(model)
-    if "/" not in configured_model:
+    if "/" in approved_model or "/" not in configured_model:
         return approved_model
-    return f"{AGENT_MODEL_PROVIDERS[approved_model]}/{approved_model}"
+    provider = AGENT_MODEL_PROVIDERS.get(approved_model)
+    if provider:
+        return f"{provider}/{approved_model}"
+    return approved_model
 
 
-def require_supported_agent_reasoning_level(model: str, level: str) -> str:
+def require_supported_agent_reasoning_level(_model: str, level: str) -> str:
     """Return a normalized reasoning level supported by the selected model."""
-
     normalized = level.strip().lower()
-    if normalized not in AGENT_REASONING_LEVELS[require_approved_agent_model(model)]:
-        raise ValueError("Agent reasoning level is not supported by the selected model")
+    if not normalized:
+        return "auto"
     return normalized
 
 

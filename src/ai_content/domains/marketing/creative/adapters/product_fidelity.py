@@ -54,6 +54,7 @@ class NineRouterProductFidelityEvaluator:
         model: str,
         sink: ManagedMediaArtifactSink,
         timeout_seconds: float,
+        instructions: str | None = None,
         client: httpx.AsyncClient | None = None,
     ) -> None:
         self._url = f"{base_url.rstrip('/')}/chat/completions"
@@ -61,6 +62,7 @@ class NineRouterProductFidelityEvaluator:
         self._model = model
         self._sink = sink
         self._timeout_seconds = timeout_seconds
+        self._instructions = instructions or _INSTRUCTIONS
         self._client = client
 
     async def evaluate_image(
@@ -74,7 +76,7 @@ class NineRouterProductFidelityEvaluator:
             "temperature": 0,
             "stream": False,
             "messages": [
-                {"role": "system", "content": _INSTRUCTIONS},
+                {"role": "system", "content": self._instructions},
                 {
                     "role": "user",
                     "content": [
@@ -147,4 +149,9 @@ def _evaluation(content: str) -> PaidMediaQualityEvaluation:
     return PaidMediaQualityEvaluation("revise", f"Product fidelity check failed. {summary}", issues)
 
 
-__all__ = ["NineRouterProductFidelityEvaluator"]
+ProductFidelityEvaluator = NineRouterProductFidelityEvaluator
+
+__all__ = [
+    "NineRouterProductFidelityEvaluator",
+    "ProductFidelityEvaluator",
+]
