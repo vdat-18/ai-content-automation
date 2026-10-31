@@ -48,10 +48,9 @@ assembled with FFmpeg.
 ## Reference research
 
 The crawler collects public ad images, drops duplicates (URL, SHA-256 and perceptual hash),
-and has Gemini screen each one once: usable background, product matches, market fit (still the US; to
-switch to Vietnam) and a
-swap mode (insert or replace the product). A human approves the references, and approved ones
-are ranked per product for Creative.
+and has Gemini screen each one once: usable background, product matches, market fit (still
+the US; to switch to Vietnam) and a swap mode (insert or replace the product). A human
+approves the references, and approved ones are ranked per product for Creative.
 
 ## Mock data
 
