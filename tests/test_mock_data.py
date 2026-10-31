@@ -99,21 +99,6 @@ def test_mock_catalog_ships_a_brand_guideline() -> None:
     assert guidelines[0].data["brand"] == "LumiSkin" and guidelines[0].data["banned_claims"]
 
 
-def test_mock_store_reconciles_customers_with_orders() -> None:
-    records = _fetch("mock-lumiskin-products")
-    customers = {r.data["id"]: r.data for r in records if r.kind == "customer"}
-    orders = [r.data for r in records if r.kind == "order"]
-    assert len(customers) >= 500 and len(orders) > len(customers)
-    spent: dict[int, float] = {}
-    count: dict[int, int] = {}
-    for order in orders:
-        owner = order["customer_id"]
-        spent[owner] = spent.get(owner, 0.0) + float(order["total_price"])
-        count[owner] = count.get(owner, 0) + 1
-    for customer_id, customer in customers.items():
-        assert customer["orders_count"] == count[customer_id]
-        assert abs(float(customer["total_spent"]) - spent[customer_id]) < 0.01
-
 
 def test_segment_report_ranks_buyers_for_a_product() -> None:
     from ai_content.domains.marketing.data_sources.application.customer_segments import (

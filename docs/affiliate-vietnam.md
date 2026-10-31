@@ -1,65 +1,84 @@
-# AI Content Automation for Affiliate Marketing
+# AI Content Automation for Affiliate Marketing (Autonomous Architecture)
 
-Hệ thống tự động hóa sản xuất nội dung hình ảnh và video ngắn (30–60s) phục vụ tiếp thị liên kết (Affiliate Marketing) trên các nền tảng video ngắn (TikTok Shop, Shopee Video, Facebook Reels). 
+Hệ thống tự động hóa sản xuất nội dung video ngắn (30–60s) phục vụ tiếp thị liên kết (Affiliate Marketing) trên các nền tảng video ngắn (TikTok Shop, Shopee Video, Facebook Reels). 
 
-Định hướng vận hành: AI tự động nghiên cứu, viết kịch bản, render ảnh và video; người dùng kiểm duyệt nhanh (Human-in-the-loop) trước khi xuất bản cùng link affiliate.
-
----
-
-## 1. Input & Output
-
-### Input
-- **Sản phẩm (Product Data)**:
-  - Ảnh packshot sản phẩm gốc (ảnh chất lượng cao, rõ bao bì/nhãn mác/chi tiết).
-  - Thông tin cơ bản: Tên sản phẩm, tính năng cốt lõi, công dụng nổi bật, phân khúc khách hàng.
-- **Quy tắc thương hiệu (Brand Guidelines & Rules)**:
-  - Tone of voice (phong cách ngôn từ), phong cách thị giác (visual style).
-  - Quy tắc tuân thủ (Claims rules: từ khóa cấm, rào cản nền tảng, không nói quá công dụng).
-- **Tư liệu tham khảo (Reference Ads - Tùy chọn / Tự động)**:
-  - Các mẫu quảng cáo thực tế từ thị trường đã qua bộ lọc (được duyệt về góc chụp, bối cảnh để ghép sản phẩm vào).
-
-### Output
-- **Gói nội dung xuất bản (Post Package)**:
-  - **Ảnh tĩnh (Product Stills)**: Ảnh chất lượng cao ghép sản phẩm thật vào bối cảnh sinh hoạt/lifestyle thực tế, bảo toàn 100% chi tiết packshot gốc.
-  - **Video ngắn (30–60s)**: Video gồm 4–8 phân cảnh liền mạch (seamless continuity) về bối cảnh, nhân vật và sản phẩm.
-  - **Kịch bản & Caption**: Đoạn mở đầu thu hút (Hook), nội dung thuyết phục, lời kêu gọi hành động (CTA), danh sách hashtag tối ưu.
-  - **Affiliate Package**: Link affiliate tương ứng (TikTok Shop, Shopee, Accesstrade/Ecomobi) kèm Sub-ID để theo dõi chuyển đổi.
+Định hướng vận hành: **Tự động hóa 1-Click (Autonomous Flow)** — Người dùng chỉ cần dán link sản phẩm; toàn bộ quá trình bóc tách dữ liệu sản phẩm và media gốc, đối chiếu SecondBrain, tự chọn bối cảnh tham khảo (references), viết kịch bản và sinh video 30–60s liền mạch đều do Agent tự động thực hiện.
 
 ---
 
-## 2. Kế hoạch triển khai & Giải pháp tối ưu (Implementation Plan)
+## 1. Luồng vận hành tổng thể (End-to-End Workflow)
 
-### Bước 1: Tiền xử lý & Nghiên cứu bối cảnh (Context & Reference Preparation)
-- **Tối ưu hóa**: Không để AI tự tưởng tượng bối cảnh từ đầu (dễ bị ảo giác). Tận dụng bối cảnh từ các quảng cáo thực tế đã được sàng lọc hoặc bối cảnh sinh hoạt chuẩn của đối tượng mục tiêu.
-- **Cơ chế**: Lọc trùng lặp ảnh tham khảo bằng perceptual hash (pHash); AI Vision sàng lọc góc máy phù hợp để thay thế (swap) sản phẩm.
-
-### Bước 2: Tạo Brief & Kịch bản phân cảnh (Storyboard Scripting)
-- **Tối ưu hóa**: Chuẩn hóa kịch bản cho video 30–60s theo công thức bán hàng:
-  - `0–3s`: Hook gây chú ý thị giác hoặc vấn đề thường gặp.
-  - `3–15s`: Trải nghiệm sản phẩm thực tế và công năng cốt lõi.
-  - `15–30s (đến 60s)`: Đi sâu vào chi tiết, chứng minh hiệu quả, so sánh hoặc hướng dẫn sử dụng.
-  - `Phân cảnh cuối`: Kêu gọi bấm vào link / giỏ hàng (CTA).
-- **Cấu trúc kỹ thuật**: Kịch bản được chia nhỏ thành các scene từ 5–8 giây, có mô tả chi tiết trạng thái camera, chuyển động và vị trí sản phẩm.
-
-### Bước 3: Sinh Ảnh & Video liền mạch (Visual Continuity & Fidelity)
-- **Tối ưu độ trung thực sản phẩm (Product Fidelity)**: Sử dụng mô hình sinh ảnh nạp trực tiếp ảnh packshot gốc để thay thế/ghép vào khung hình, tránh hiện tượng AI vẽ lại làm biến dạng nhãn hiệu.
-- **Tối ưu tính liền mạch video (Video Continuity)**:
-  - Scene 1 sinh từ ảnh tĩnh chuẩn sản phẩm.
-  - Từ Scene 2 trở đi: Trích xuất frame cuối cùng của clip trước (qua FFmpeg) làm frame mồi (first-frame conditioning) cho clip tiếp theo. Đảm bảo nhân vật, quần áo, góc phòng và sản phẩm không bị thay đổi đột ngột giữa các cảnh.
-  - Ghép nối các phân đoạn clip thành video hoàn chỉnh bằng FFmpeg.
-- **Tự động thẩm định (Automated Quality Check)**: AI chấm điểm độ nhận diện sản phẩm trong video; nếu sản phẩm bị mờ nhạt hoặc biến dạng, tự động yêu cầu sinh lại phân cảnh đó.
-
-### Bước 4: Kiểm duyệt tinh gọn & Đóng gói (Human Review & Export)
-- Giao diện trực quan cho người duyệt kiểm tra trong vòng dưới 1 phút:
-  - Xem video hoàn chỉnh, kiểm tra kịch bản và caption.
-  - Một nút bấm để: Duyệt (Approve), Yêu cầu sinh lại phân cảnh lỗi (Regenerate scene), hoặc Chỉnh sửa nhanh văn bản.
-- Sau khi duyệt, hệ thống đóng gói đầy đủ video, ảnh thumbnail, caption và link affiliate để sẵn sàng đăng tải.
+```text
+[Dán Link Sản Phẩm (Shopee / TikTok Shop) + Link Affiliate]
+                            ↓
+               [BƯỚC 1: PRODUCT INTAKE AGENT]
+  - Tự động cào toàn bộ thông tin sản phẩm: Tiêu đề, thông số, mô tả chi tiết, phân loại
+  - Tự động cào toàn bộ media: Bộ ảnh gốc đa góc độ (packshot, cận cảnh chất liệu, chi tiết)
+  - LLM trích xuất: USP, tính năng nổi bật, kịch bản sử dụng thực tế
+                            ↓
+       [BƯỚC 2: SECONDBRAIN & AUTO-REFERENCE MATCHING]
+  - Nạp Creative Playbook từ SecondBrain: Rule Hook 3s, từ cấm nền tảng, góc quay
+  - Agent tự quét kho References: tự chọn 1-2 bối cảnh phù hợp nhất (không cần chọn tay)
+                            ↓
+         [BƯỚC 3: CREATIVE ENGINE & MEDIA GENERATION]
+  - BAML Orchestrator: Viết kịch bản bán hàng 30–60s (Hook -> Demo -> CTA)
+  - Managed Media Runtime: Ghép sản phẩm thật vào bối cảnh + nối các cảnh qua FFmpeg (Frame Chaining)
+  - Product Fidelity Check: Tự động kiểm tra độ nét và bảo toàn logo/chi tiết sản phẩm
+                            ↓
+                    [GÓI XUẤT BẢN HOÀN CHỈNH]
+  - File Video MP4 30–60s hoàn chỉnh
+  - Caption + Hashtag tối ưu SEO
+  - Link Affiliate sẵn sàng gắn giỏ hàng
+```
 
 ---
 
-## 3. Lộ trình phát triển tiếp theo
+## 2. Chi tiết các thành phần cốt lõi
 
-1. **Hiện tại**: Tập trung hoàn thiện ổn định chất lượng video 30–60s, đảm bảo tính nhất quán của video và hình ảnh sản phẩm chuẩn xác.
-2. **Giai đoạn tiếp theo**:
-   - Thử nghiệm mở rộng độ dài video (>60s) cho các sản phẩm cần review chuyên sâu (review đồ gia dụng, đồ công nghệ).
-   - Tối ưu hóa luồng lên lịch đăng và đồng bộ dữ liệu chuyển đổi từ các sàn thương mại điện tử.
+### A. Product Intake: Đọc toàn bộ thông tin & Media sản phẩm
+* **Không cần nhập liệu thủ công**: Hệ thống nhận link URL từ sàn (Shopee / TikTok Shop).
+* **Bóc tách toàn bộ thông tin chi tiết**: Tiêu đề sản phẩm, bảng thông số kỹ thuật (specs), mô tả công dụng, cách dùng và các phân loại hàng.
+* **Thu thập bộ Media gốc (Product Truth)**:
+  * Tải toàn bộ ảnh có độ phân giải cao nhất của nhà bán hàng: ảnh nền trắng/packshot, ảnh cận cảnh chất liệu, ảnh chụp các góc độ khác nhau.
+  * Đóng gói thành bộ ảnh tham chiếu đa chiều (Multi-angle packet) làm dữ liệu mồi chuẩn cho AI sinh hình ảnh.
+
+### B. SecondBrain (Cẩm nang bí kíp Affiliate)
+SecondBrain đóng vai trò là kho tri thức (Knowledge Base) định hướng cho các Agent sáng tạo:
+* **Bộ quy tắc Hook (0–3s đầu)**: Danh sách các cấu trúc mở đầu giật tít, khơi gợi trí tò mò hoặc đánh vào nỗi đau người tiêu dùng.
+* **Bộ quy tắc tuân thủ (Compliance & Safe Words)**: Danh mục từ ngữ bị cấm hoặc hạn chế trên TikTok Shop / Shopee (tránh cam kết 100%, trị dứt điểm, vĩnh viễn... để không bị bóp tương tác hoặc cấm giỏ hàng).
+* **Quy chuẩn thị giác (Visual Style Rules)**: Bối cảnh đời sống Việt Nam chân thật, góc cầm sản phẩm 45 độ, ánh sáng rõ mặt sản phẩm, nhãn mác luôn hướng về camera.
+* **Bài học tích lũy (Feedback Loop)**: Ghi nhận phong cách video nào tạo ra tương tác cao để các lần sau Agent tự ưu tiên áp dụng.
+
+### C. Tự động chọn bối cảnh tham khảo (Auto-Reference Matching)
+* Tận dụng kho dữ liệu quảng cáo xu hướng đã cào (`research_crawler`).
+* **Agent tự làm hoàn toàn**:
+  * Dựa trên danh mục sản phẩm (ví dụ: Đồ gia dụng phòng bếp, Mỹ phẩm dưỡng da, Thời trang công sở).
+  * Agent tự lọc và xếp hạng (Screening & Shortlist) các mẫu video/ảnh có bối cảnh đẹp, ánh sáng tốt và góc máy thuận lợi để ghép sản phẩm vào.
+  * Người dùng không phải tìm kiếm hay tích chọn thủ công từng tư liệu tham khảo.
+
+### D. Sinh Video ngắn liền mạch (30–60s Video Continuity)
+* **Kịch bản phân cảnh chuẩn bán hàng**:
+  * `0–3s (Hook)`: Thị giác mạnh hoặc tình huống gây tò mò, giữ chân người xem dừng lại.
+  * `3–15s (Experience)`: Trải nghiệm sản phẩm thực tế tận tay (texture, cách sử dụng).
+  * `15–30s+ (Value & Proof)`: Phân tích ưu điểm nổi trội từ thông số và công năng sản phẩm.
+  * `Cảnh cuối (CTA)`: Lời kêu gọi hành động rõ ràng hướng dẫn bấm vào giỏ hàng vàng/link bên dưới.
+* **Kỹ thuật Video Continuity**:
+  * Trích xuất frame cuối của cảnh trước (bằng FFmpeg) làm frame mồi (first-frame) cho cảnh tiếp theo (Frame Chaining).
+  * Đảm bảo cùng một người mẫu, cùng trang phục, cùng bối cảnh phòng và giữ nguyên hình dáng sản phẩm trong suốt 30–60s.
+
+---
+
+## 3. Lộ trình triển khai R&D (Roadmap)
+
+1. **Giai đoạn 1 (Core Prototype)**: 
+   - Crawler lấy toàn bộ thông tin sản phẩm (mô tả, thông số) và bộ media ảnh gốc từ Shopee.
+   - LLM trích xuất USP & sinh 3 mẫu kịch bản Hook.
+   - Ráp nối pipeline sinh video ngắn 30s với kỹ thuật Frame Chaining và kiểm định chất lượng (VLM).
+2. **Giai đoạn 2 (Scale & Integration)**: 
+   - Auto-Reference Matching hoàn chỉnh với kho video mẫu.
+   - Tích hợp SecondBrain hai chiều (vừa đọc quy tắc vừa ghi nhận kết quả).
+   - Mở rộng crawler cho TikTok Shop.
+3. **Giai đoạn 3 (Automation & Optimization)**: 
+   - Mở rộng thời lượng video lên 60s.
+   - Kết nối công cụ Product Hunter (Kalodata/FastMoss) gợi ý sản phẩm trending.
+   - Auto-publish API lên TikTok / Shopee.
