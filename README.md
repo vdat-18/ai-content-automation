@@ -20,16 +20,33 @@ connected, and nothing is published anywhere.
 
 ## Models
 
-Every AI step goes through a 9Router gateway and uses Grok: `grok-4-fast-reasoning`
-(default) or `grok-4.7` for the agents, Grok Imagine Image for images and Grok Imagine
-Video for video. Copy the `*.example.json` router profiles under `config/` to git-ignored
-`*.local.json` files with your gateway URL and point the `AIC_AI_*_CONFIG` variables at them.
+Every AI step goes through a 9Router gateway (v0.5.111 or newer). Agents and the
+screening step use Grok (`grok-4-fast-reasoning`) and Gemini. Product stills are made with
+`gemini/gemini-3.1-flash-image-preview`, which reads the product packshot and, for a
+reference run, the reference photo, so the product replaces the one in the reference scene.
+Videos use `xai/grok-imagine-video-1.5`. The xAI image models stay in the config as
+fallbacks, but 9Router drops their reference images. Copy the `*.example.json` router
+profiles under `config/` to git-ignored `*.local.json` files with your gateway URL and point
+the `AIC_AI_*_CONFIG` variables at them.
+
+9Router must forward every `images` entry and map the requested size to the Gemini aspect
+ratio. Stock 9Router sends only the first image, so the demo server runs a small patch to its
+image route. Re-apply it after updating or recreating the 9Router container.
 
 ## Video
 
-Videos are 15-60 seconds. The agent writes a storyboard of scenes (at most 15 seconds
-each); every scene first gets a product-faithful keyframe from the image model, the
-clip is animated from that keyframe, and the clips are assembled with FFmpeg.
+Videos are 15-60 seconds (30 seconds by default). The agent writes one continuous story as
+scenes of at most 8 seconds. Scene 1 starts from a Gemini still built from the packshot and
+the reference scene; every later scene starts from the last usable frame of the previous clip,
+extracted with FFmpeg, so the person, room and product stay the same. The clips are then
+assembled with FFmpeg.
+
+## Reference research
+
+The crawler collects public ad images, drops duplicates (URL, SHA-256 and perceptual hash),
+and has Gemini screen each one once: usable background, product matches, US-market fit and a
+swap mode (insert or replace the product). A human approves the references, and approved ones
+are ranked per product for Creative.
 
 ## Mock data
 
@@ -68,6 +85,11 @@ uv run pytest
 uv run ruff check .
 pnpm --dir frontend install && pnpm --dir frontend build
 ```
+
+## Direction
+
+The next goal is turning approved videos into affiliate content for Vietnam, with a human
+approving every post. See [docs/affiliate-vietnam.md](docs/affiliate-vietnam.md).
 
 ## Status
 
