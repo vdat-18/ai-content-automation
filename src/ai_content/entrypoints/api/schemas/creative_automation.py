@@ -117,8 +117,9 @@ class MarketingCreativeAutomationCreateRequest(BaseModel):
     product_selections: list[MarketingCreativeProductSelectionRequest] = Field(default_factory=list)
     sku_ids: list[str] = Field(default_factory=list)
     brand: str = Field(min_length=1)
-    market: Literal["US"] = "US"
-    platform: str = Field(default="meta", min_length=1)
+    market: str = Field(default="VN", min_length=2, max_length=10)
+    platform: str = Field(default="tiktok", min_length=1)
+    affiliate_link: str | None = Field(default=None, max_length=500)
     objective: str = Field(default="conversion", min_length=1)
     agent_model_id: str | None = Field(default=None, min_length=1)
     agent_reasoning_effort: Literal["auto", "minimal", "low", "medium", "high"] = "auto"

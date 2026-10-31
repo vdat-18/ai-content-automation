@@ -149,7 +149,7 @@ function OrchestrateCreativeAutomation(
     voice or music mode based on the brief. Legacy null requests may choose audio from the
     declared provider capabilities. Enabled modes require concise directions; disabled
     modes require null directions.
-    When voice is enabled, direct natural US English appropriate to the concept. Keep one
+    When voice is enabled, direct natural spoken language matching the target market (natural Vietnamese for VN market, US English for US). Keep one
     voice and music identity across a multi-source video, never split a sentence
     across sources, and keep music subordinate to speech. Scene audio_direction must be
     executable by the native-audio video model and consistent with the portfolio audio plan.
@@ -190,8 +190,7 @@ function OrchestrateCreativeAutomation(
     their applicable layout, framing, lighting, palette, and creative patterns into visual_direction.
     References are inspiration only: never copy their product, advertiser, logo, copy, claims,
     or distinctive brand assets. The supplied Shopify product and Variant remain the only
-    product identity and truth. Design for the United States market with natural American
-    commercial styling. Follow the request's explicit include_text and include_logo choices.
+    product identity and truth. Tailor the setting and aesthetic to the target market (for VN, adopt natural Vietnamese living space and social commerce style for TikTok Shop/Shopee; for US, natural American commercial styling). Follow the request's explicit include_text and include_logo choices.
     When text is enabled with exact human copy, preserve it. When text is enabled without
     exact copy, use the Agent-written heading and subtext from the prepared brief. Incorporate
     enabled text and logo into the image-model direction so the provider returns one complete
@@ -228,6 +227,10 @@ function OrchestrateCreativeAutomation(
     completely, including every person who is in shot when it starts. The product must never
     already be in use before the scene that shows it being picked up or put on, and never
     describe it both worn and held in the same opening state.
+    Structure the video sequence for high-converting short-form affiliate video (30-60s):
+    - Opening scene: A high-impact visual hook or relatable everyday problem that stops the scroll.
+    - Middle scenes: Hands-on demonstration, real-life usage, and key product benefits.
+    - Closing scene: Clear, compelling call-to-action (CTA) guiding the viewer to the shopping cart / affiliate link.
     Write each scene's visual_direction as lively motion, not as a still: give every scene a
     different, clear physical action by the subject plus a purposeful camera move such as a
     push-in, orbit, tracking shot or handheld follow, using specific verbs and a

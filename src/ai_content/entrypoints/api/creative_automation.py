@@ -2460,7 +2460,7 @@ def _request(
         request_id=f"mca-{request_key}",
         brand=payload.brand,
         sku_id=sku_id,
-        market=settings.creative_automation_default_market,
+        market=payload.market or settings.creative_automation_default_market,
         platform=payload.platform,
         objective=payload.objective,
         output=CreativeOutputSelection(
