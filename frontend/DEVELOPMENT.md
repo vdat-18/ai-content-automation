@@ -1,22 +1,21 @@
-# Backend-only Marketing Dashboard
+# Dashboard
 
-This Dashboard renders records persisted by the local Python pilot APIs. It does
-not call a live Ads platform, publish creative work, send messages, or silently
-fall back to browser mock data.
+This Dashboard renders records persisted by the local Python APIs. It does not publish
+anything, send messages, or fall back to browser mock data.
 
 ## Active Routes
 
-- `/`: overview from `/api/v1/dashboard/snapshot`
-- `/approvals`: persisted approval inbox
-- `/creatives`: persisted Creative jobs, versions, and audit details
-- `/performance`: persisted Performance decisions, feedback lineage, and GMC runs
-- `/workflows`: unified Creative loop and durable command status
-- `/exceptions`: persisted operational/policy exceptions
-- `/data-sources`: read-only sandbox connector status and manual sync
-- `/ai-usage`: durable provider-call and cost ledger
+- `/creative-production` (home): create images and videos for a product, review runs
+- `/creatives`: generated images and videos, versions and audit details
+- `/approvals`: approval inbox
+- `/workflows`: Creative loop and durable command status
+- `/research-crawler`: collect references from a public results URL
+- `/research-library`: review and approve references for Creative
+- `/second-brain`: creative rules and knowledge
+- `/data-sources`: sandbox product sources and manual sync
+- `/notifications`: notifications
 
-Unknown URLs show a "Page not found" panel. The brand selector is visible only
-where a surface currently applies it (`/ai-usage`).
+Unknown URLs show a "Page not found" panel.
 
 ## Run And Check
 
@@ -68,7 +67,7 @@ isolated browser context. If Playwright is supplied by a shared runtime, set
 - Active route pages use React Query hooks backed by pilot APIs.
 - Browser-local mock workflow modules and their legacy-only tests were removed;
   active pages use persisted backend state only.
-- Approval actions remain business gates; no action publishes Ads or writes to a
+- Approval actions are business gates; no action publishes a post or writes to a
   source system.
 - Creative cards use API `display_title` and `thumbnail_web_url`; the list does
   not make a detail request per thumbnail.
