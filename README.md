@@ -31,7 +31,10 @@ the `AIC_AI_*_CONFIG` variables at them.
 
 9Router must forward every `images` entry and map the requested size to the Gemini aspect
 ratio. Stock 9Router sends only the first image, so the demo server runs a small patch to its
-image route. Re-apply it after updating or recreating the 9Router container.
+image route (`/opt/9router/gemini_patch.js` on the server, original file kept next to it).
+Re-apply it after updating or recreating the 9Router container:
+`docker cp gemini_patch.js nine-router:/tmp/ && docker exec nine-router node /tmp/gemini_patch.js && docker restart nine-router`.
+The app also needs a 9Router API key in `deploy/.env` (`ROUTER_API_KEY`).
 
 ## Video
 
