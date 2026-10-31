@@ -11,10 +11,6 @@ from ai_content.domains.marketing.creative.bootstrap import CreativeRuntime
 from ai_content.domains.marketing.creative_feedback.bootstrap import CreativeFeedbackRuntime
 from ai_content.domains.marketing.creative_intake.bootstrap import CreativeIntakeRuntime
 from ai_content.domains.marketing.creative_loop.bootstrap import CreativeLoopRuntime
-from ai_content.domains.marketing.performance_data.ports.interfaces import IGmcRunRepository
-from ai_content.domains.marketing.performance_decisions.bootstrap import (
-    PerformanceDecisionRuntime,
-)
 from ai_content.platform.execution import CommandStatus, CommandStatusStore, resolve_queue_call
 
 from .dependencies import (
@@ -22,8 +18,6 @@ from .dependencies import (
     get_creative_feedback_runtime,
     get_creative_intake_runtime,
     get_creative_loop_runtime,
-    get_gmc_repository,
-    get_performance_decision_runtime,
     get_runtime,
 )
 from .schemas.dashboard import (
@@ -190,8 +184,6 @@ async def get_dashboard_snapshot(
     loops: CreativeLoopRuntime = Depends(get_creative_loop_runtime),
     intake: CreativeIntakeRuntime = Depends(get_creative_intake_runtime),
     feedback: CreativeFeedbackRuntime = Depends(get_creative_feedback_runtime),
-    performance: PerformanceDecisionRuntime = Depends(get_performance_decision_runtime),
-    gmc: IGmcRunRepository = Depends(get_gmc_repository),
     queue: CommandStatusStore = Depends(get_command_status_store),
 ) -> DashboardSnapshotResponse:
     (
@@ -199,27 +191,15 @@ async def get_dashboard_snapshot(
         loop_runs,
         intake_runs,
         feedback_runs,
-        performance_runs,
-        gmc_runs,
     ) = await asyncio.gather(
         creative.repository.list_jobs(),
         loops.repository.list(),
         intake.repository.list(),
         feedback.repository.list(),
-        performance.repository.list(),
-        gmc.list(),
     )
     commands = await resolve_queue_call(queue.list())
 
-    linked_performance = {run.initial_performance_run_id for run in loop_runs}
-    linked_feedback = {run.feedback_run_id for run in loop_runs if run.feedback_run_id}
     linked_creative = {run.creative_job_id for run in loop_runs if run.creative_job_id}
-    linked_intake = {
-        ref
-        for run in loop_runs
-        for ref in (run.initial_intake_run_id, run.next_intake_run_id)
-        if ref
-    }
 
     approvals: list[DashboardApprovalResponse] = []
     workflows: list[DashboardWorkflowResponse] = []
@@ -330,178 +310,6 @@ async def get_dashboard_snapshot(
                     evidence_refs=(),
                     created_at=_creative_job_updated_at(job),
                     action_path=f"/creatives/{job.job_id.value}",
-                )
-            )
-
-    for run in performance_runs:
-        if run.run_id in linked_performance:
-            continue
-        state = run.evaluation.state.value
-        workflows.append(
-            _workflow(
-                workflow_id=run.run_id,
-                workstream="performance",
-                title="Performance decision",
-                detail=f"{run.snapshot.subject.subject_type.value}: {run.evaluation.classification.value}",
-                state="completed" if run.decision else state,
-                brand_id=run.snapshot.subject.brand_id,
-                entity_id=run.run_id,
-                updated_at=run.decided_at or run.created_at,
-                action_path="/performance?view=decisions",
-            )
-        )
-        if run.decision is None and state == "ready_for_review":
-            approvals.append(
-                _approval(
-                    approval_id=f"performance:{run.run_id}",
-                    workstream="performance",
-                    kind="performance_decision",
-                    title="Performance recommendation",
-                    detail=f"{run.evaluation.classification.value} → {run.evaluation.recommendation.value}",
-                    brand_id=run.snapshot.subject.brand_id,
-                    entity_id=run.run_id,
-                    version_ref=run.evaluation.evaluation_id,
-                    created_at=run.created_at,
-                    action_path="/performance?view=decisions",
-                )
-            )
-        if state in {"needs_evidence", "blocked_conflict"}:
-            exceptions.append(
-                _exception(
-                    exception_id=f"performance:{run.run_id}:{state}",
-                    workstream="performance",
-                    title="Performance evidence is incomplete",
-                    detail=f"Decision evaluation is {state}.",
-                    queue="operations",
-                    severity="blocking",
-                    brand_id=run.snapshot.subject.brand_id,
-                    entity_id=run.run_id,
-                    evidence_refs=run.evaluation.evidence_refs,
-                    created_at=run.created_at,
-                    action_path="/performance?view=decisions",
-                )
-            )
-
-    for run in feedback_runs:
-        if run.run_id in linked_feedback:
-            continue
-        state = run.state.value
-        workflows.append(
-            _workflow(
-                workflow_id=run.run_id,
-                workstream="creative",
-                title="Creative feedback lineage",
-                detail=f"Creative version {run.release.creative_version_id}",
-                state="completed" if run.decision else state,
-                brand_id=run.release.brand_id,
-                entity_id=run.run_id,
-                updated_at=run.decided_at or run.created_at,
-                action_path="/performance?view=decisions",
-            )
-        )
-        if run.decision is None and state == "ready_for_review" and run.lesson is not None:
-            approvals.append(
-                _approval(
-                    approval_id=f"creative-feedback:{run.run_id}",
-                    workstream="creative",
-                    kind="creative_feedback",
-                    title="Creative lesson approval",
-                    detail=run.lesson.summary,
-                    brand_id=run.release.brand_id,
-                    entity_id=run.run_id,
-                    version_ref=run.lesson.lesson_id,
-                    created_at=run.created_at,
-                    action_path="/performance?view=decisions",
-                )
-            )
-        if state in {"needs_evidence", "blocked_conflict"}:
-            exceptions.append(
-                _exception(
-                    exception_id=f"creative-feedback:{run.run_id}:{state}",
-                    workstream="creative",
-                    title="Creative feedback cannot be linked",
-                    detail=f"Feedback lineage is {state}.",
-                    queue="operations",
-                    severity="blocking",
-                    brand_id=run.release.brand_id,
-                    entity_id=run.run_id,
-                    evidence_refs=run.performance.evidence_refs,
-                    created_at=run.created_at,
-                    action_path="/performance?view=decisions",
-                )
-            )
-
-    for run in intake_runs:
-        if run.run_id in linked_intake:
-            continue
-        state = run.release.handoff_state.value if run.release else run.state.value
-        workflows.append(
-            _workflow(
-                workflow_id=run.run_id,
-                workstream="creative",
-                title="Creative context intake",
-                detail=f"{run.trigger.brand_id} · {run.trigger.sku_id}",
-                state=state,
-                brand_id=run.trigger.brand_id,
-                entity_id=run.run_id,
-                updated_at=run.created_at,
-                action_path=(
-                    f"/creatives/{run.release.downstream_job_id}"
-                    if run.release and run.release.downstream_job_id
-                    else "/workflows"
-                ),
-            )
-        )
-        for issue in run.issues:
-            if not issue.required_for_release:
-                continue
-            exceptions.append(
-                _exception(
-                    exception_id=f"creative-intake:{run.run_id}:{issue.code}",
-                    workstream="creative",
-                    title="Creative context gate blocked",
-                    detail=issue.detail,
-                    queue="policy" if issue.status.value == "policy" else "operations",
-                    severity="blocking",
-                    brand_id=run.trigger.brand_id,
-                    entity_id=run.run_id,
-                    evidence_refs=issue.evidence_refs,
-                    created_at=run.created_at,
-                    action_path="/exceptions",
-                )
-            )
-
-    for run in gmc_runs:
-        state = run.status.value
-        workflows.append(
-            _workflow(
-                workflow_id=run.run_id,
-                workstream="performance",
-                title="GMC data ingestion",
-                detail=f"{run.specification.brand_id} · {run.total_rows} rows",
-                state="completed" if state == "ready" else state,
-                brand_id=run.specification.brand_id,
-                entity_id=run.run_id,
-                updated_at=run.created_at,
-                action_path="/performance?view=decisions",
-            )
-        )
-        for issue in run.issues:
-            if issue.severity.value != "blocking":
-                continue
-            exceptions.append(
-                _exception(
-                    exception_id=f"gmc:{run.run_id}:{issue.code}",
-                    workstream="performance",
-                    title="GMC ingestion is blocked",
-                    detail=issue.detail,
-                    queue="operations",
-                    severity="blocking",
-                    brand_id=run.specification.brand_id,
-                    entity_id=run.run_id,
-                    evidence_refs=(issue.source_ref,) if issue.source_ref else (),
-                    created_at=run.created_at,
-                    action_path="/performance?view=decisions",
                 )
             )
 

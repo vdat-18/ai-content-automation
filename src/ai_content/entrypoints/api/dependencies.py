@@ -90,16 +90,6 @@ from ai_content.domains.marketing.media_lab.bootstrap import (
     build_media_asset_runtime,
 )
 from ai_content.domains.marketing.media_lab.domain.assets import MediaAssetLimits
-from ai_content.domains.marketing.performance_data.adapters.sqlite_repository import (
-    SqliteGmcRunRepository,
-)
-from ai_content.domains.marketing.performance_data.ports.interfaces import IGmcRunRepository
-from ai_content.domains.marketing.performance_decisions.bootstrap import (
-    PerformanceDecisionRuntime,
-)
-from ai_content.domains.marketing.performance_decisions.bootstrap import (
-    build_read_runtime as build_performance_decision_read_runtime,
-)
 from ai_content.domains.marketing.research_crawler.artifacts import (
     ResearchCrawlArtifactWriter,
 )
@@ -955,36 +945,6 @@ async def get_ai_usage_repository(request: Request) -> AsyncIterator[AIUsageRepo
 
 
 get_execution_queue = get_command_scheduler
-
-
-async def get_gmc_repository(request: Request) -> AsyncIterator[IGmcRunRepository]:
-    """Yield the local read-only GMC run repository."""
-    settings = get_runtime_settings()
-    postgres = _postgres_runtime(request)
-    if postgres is not None:
-        yield postgres.gmc_repository
-        return
-    repository = SqliteGmcRunRepository(settings.db_path)
-    try:
-        yield repository
-    finally:
-        repository.close()
-
-
-async def get_performance_decision_runtime(
-    request: Request,
-) -> AsyncIterator[PerformanceDecisionRuntime]:
-    """Yield the local Performance decision runtime without external actions."""
-    settings = get_runtime_settings()
-    postgres = _postgres_runtime(request)
-    if postgres is not None:
-        yield postgres.performance()
-        return
-    runtime = build_performance_decision_read_runtime(settings.db_path, settings.artifacts_root)
-    try:
-        yield runtime
-    finally:
-        runtime.repository.close()
 
 
 async def get_creative_feedback_runtime(
