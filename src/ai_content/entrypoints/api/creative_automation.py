@@ -3999,14 +3999,23 @@ def _latency_response(
 
 
 def _configured_model_api_key(settings, api_key_env: str | None) -> str | None:
+    if hasattr(settings, "orch_api_key") and settings.orch_api_key:
+        return settings.orch_api_key
     credential = getattr(settings, "credential", None)
     if callable(credential):
-        return credential(api_key_env)
-    if api_key_env == "ROUTER_API_KEY":
-        return settings.router_api_key
+        try:
+            return credential(api_key_env)
+        except ValueError:
+            pass
+    if api_key_env in {"ROUTER_API_KEY", "AIC_ORCH_API_KEY", "AIC_PREP_API_KEY"}:
+        return (
+            getattr(settings, "orch_api_key", None)
+            or getattr(settings, "prep_api_key", None)
+            or getattr(settings, "router_api_key", None)
+        )
     if api_key_env is None:
         return None
-    raise ValueError(f"Unsupported model credential environment variable: {api_key_env}")
+    return getattr(settings, "orch_api_key", None) or getattr(settings, "router_api_key", None)
 
 
 async def _existing_or_initialize_state(

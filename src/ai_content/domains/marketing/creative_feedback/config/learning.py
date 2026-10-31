@@ -18,11 +18,32 @@ class PerformanceLearningConfig(BaseModel):
 
     model: str = Field(min_length=1)
     base_url: str
+    api_key: str | None = None
     api_key_env: str | None = None
     diagnosis_prompt: LearningPrompt
     synthesis_prompt: LearningPrompt
     rubric_version: str = Field(min_length=1)
     timeout_seconds: float = Field(default=60, gt=0)
+
+    @classmethod
+    def from_settings(
+        cls, settings: object, config_dir: Path | None = None
+    ) -> "PerformanceLearningConfig":
+        root = config_dir or getattr(settings, "config_dir", Path("config"))
+        prompt_dir = root / "creative_feedback/prompts"
+        return cls(
+            model=getattr(settings, "learning_model", "xai/grok-4-fast-reasoning"),
+            base_url=getattr(settings, "learning_base_url", "http://127.0.0.1:1234/v1"),
+            api_key=getattr(settings, "learning_api_key_value", None),
+            diagnosis_prompt=LearningPrompt.model_validate_json(
+                (prompt_dir / "diagnose_ads_outcome.v1.json").read_text(encoding="utf-8")
+            ),
+            synthesis_prompt=LearningPrompt.model_validate_json(
+                (prompt_dir / "synthesize_creative_lesson.v1.json").read_text(encoding="utf-8")
+            ),
+            rubric_version="performance-learning@1-draft",
+            timeout_seconds=getattr(settings, "learning_timeout", 60.0),
+        )
 
     @model_validator(mode="after")
     def validate_endpoint(self) -> "PerformanceLearningConfig":

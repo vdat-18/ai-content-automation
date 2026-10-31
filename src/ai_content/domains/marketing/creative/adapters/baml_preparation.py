@@ -101,14 +101,13 @@ class BamlPreparationModel:
         self._image_reader = image_reader or read_local_image
         # BAML INFO logs include full prompts; application telemetry records metadata only.
         set_log_level("OFF")
-        if config.api_key_env:
-            if not api_key:
-                raise PreparationError(
-                    "Configured model credential environment variable is missing",
-                    "model_credentials_missing",
-                )
-        else:
-            api_key = "local-no-auth"
+        resolved_key = api_key or config.api_key
+        if config.api_key_env and not resolved_key:
+            raise PreparationError(
+                "Configured model credential environment variable is missing",
+                "model_credentials_missing",
+            )
+        api_key = resolved_key or "local-no-auth"
         if config.fallback_model is not None:
             raise PreparationError(
                 "Creative Orchestrator does not allow automatic model fallback",

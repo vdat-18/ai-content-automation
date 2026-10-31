@@ -61,10 +61,24 @@ def build_managed_media_runtime(
         "VIDEO_API_KEY": video_api_key,
     }
     configured_image_key = (
-        credentials.get(config.resolved_image_api_key_env) if config is not None else None
+        image_api_key
+        or (config.resolved_image_api_key if config is not None else None)
+        or (
+            credentials.get(config.resolved_image_api_key_env)
+            if config is not None and config.resolved_image_api_key_env
+            else None
+        )
+        or api_key
     )
     configured_video_key = (
-        credentials.get(config.resolved_video_api_key_env) if config is not None else None
+        video_api_key
+        or (config.resolved_video_api_key if config is not None else None)
+        or (
+            credentials.get(config.resolved_video_api_key_env)
+            if config is not None and config.resolved_video_api_key_env
+            else None
+        )
+        or api_key
     )
     has_required_keys = bool(
         config is not None

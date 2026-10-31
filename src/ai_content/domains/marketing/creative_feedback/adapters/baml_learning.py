@@ -51,14 +51,15 @@ class BamlPerformanceLearningAnalyzer:
         client: _BamlLearningClient | None = None,
     ) -> None:
         self._config = config
-        if config.api_key_env and not api_key:
+        resolved_key = api_key or config.api_key
+        if config.api_key_env and not resolved_key:
             raise PerformanceLearningAnalysisError("Performance Learning credential is missing")
         set_log_level("OFF")
         self._client = client or b.with_options(
             env={
                 "LOCAL_LLM_BASE_URL": config.base_url,
                 "LOCAL_LLM_MODEL": config.model,
-                "LOCAL_LLM_API_KEY": api_key or "local-no-auth",
+                "LOCAL_LLM_API_KEY": resolved_key or "local-no-auth",
             }
         )
         source = get_baml_files()["performance_learning.baml"]

@@ -3,14 +3,24 @@ name: ai-content-automation
 x-python-environment: &python-environment
   BAML_LOG: "OFF"
   AIC_AI_CONFIG_DIR: /app/config
-  AIC_AI_PREPARATION_CONFIG: ${AIC_AI_PREPARATION_CONFIG:-/app/config/preparation/nine-router.example.json}
-  AIC_AI_ORCHESTRATION_CONFIG: ${AIC_AI_ORCHESTRATION_CONFIG:-/app/config/orchestration/nine-router.example.json}
+  AIC_PREP_BASE_URL: ${AIC_PREP_BASE_URL:-https://api.x.ai/v1}
+  AIC_PREP_API_KEY: ${AIC_PREP_API_KEY:-}
+  AIC_PREP_MODEL: ${AIC_PREP_MODEL:-xai/grok-4-fast-reasoning}
+  AIC_ORCH_BASE_URL: ${AIC_ORCH_BASE_URL:-https://api.x.ai/v1}
+  AIC_ORCH_API_KEY: ${AIC_ORCH_API_KEY:-}
+  AIC_ORCH_MODEL: ${AIC_ORCH_MODEL:-xai/grok-4-fast-reasoning}
+  AIC_IMAGE_BASE_URL: ${AIC_IMAGE_BASE_URL:-https://api.x.ai/v1}
+  AIC_IMAGE_API_KEY: ${AIC_IMAGE_API_KEY:-}
+  AIC_VIDEO_BASE_URL: ${AIC_VIDEO_BASE_URL:-https://api.x.ai/v1}
+  AIC_VIDEO_API_KEY: ${AIC_VIDEO_API_KEY:-}
   AIC_AI_MANAGED_MEDIA_CONFIG: ${AIC_AI_MANAGED_MEDIA_CONFIG:-/app/config/managed_media/nine-router.example.json}
-  ROUTER_API_KEY: ${ROUTER_API_KEY:-}
-  IMAGE_API_KEY: ${IMAGE_API_KEY:-}
-  VIDEO_API_KEY: ${VIDEO_API_KEY:-}
+  AIC_SCREENING_BASE_URL: ${AIC_SCREENING_BASE_URL:-https://generativelanguage.googleapis.com/v1beta}
+  AIC_SCREENING_API_KEY: ${AIC_SCREENING_API_KEY:-}
+  AIC_SCREENING_MODEL: ${AIC_SCREENING_MODEL:-gemini-3.8-flash}
+  AIC_LEARNING_BASE_URL: ${AIC_LEARNING_BASE_URL:-https://api.x.ai/v1}
+  AIC_LEARNING_API_KEY: ${AIC_LEARNING_API_KEY:-}
+  AIC_LEARNING_MODEL: ${AIC_LEARNING_MODEL:-xai/grok-4-fast-reasoning}
   JEV_API_KEY: ${JEV_API_KEY:-}
-  VILAO_API_KEY: ${VILAO_API_KEY:-}
   AIC_AI_DATA_ROOT: /var/lib/aicontent/pilot
   AIC_AI_DATABASE_BACKEND: postgresql
   AIC_AI_DATABASE_URL: >-
@@ -41,7 +51,6 @@ x-python-environment: &python-environment
   AIC_BACKUP_S3_REGION: ${AIC_BACKUP_S3_REGION:-us-east-1}
   AIC_BACKUP_S3_PREFIX: ${AIC_BACKUP_S3_PREFIX:-aicontent-backups}
   AIC_AI_DATA_SOURCES_CONFIG: ${AIC_AI_DATA_SOURCES_CONFIG:-}
-  AIC_AI_RESEARCH_SCREENING_CONFIG: ${AIC_AI_RESEARCH_SCREENING_CONFIG:-/app/config/research_screening/vilao-gemini.json}
   AIC_AI_DATA_SOURCE_TIMEOUT_SECONDS: ${AIC_AI_DATA_SOURCE_TIMEOUT_SECONDS:-60}
   AIC_AI_RESEARCH_CRAWL_TIMEOUT_SECONDS: ${AIC_AI_RESEARCH_CRAWL_TIMEOUT_SECONDS:-300}
   AIC_AI_JEV_API_URL: ${AIC_AI_JEV_API_URL:-}

@@ -18,10 +18,50 @@ class ApplicationSettings(BaseSettings):
 
     data_root: Path = Field(Path(".creative-pilot"), validation_alias="AIC_AI_DATA_ROOT")
     config_dir: Path = Field(Path("config"), validation_alias="AIC_AI_CONFIG_DIR")
-    preparation_config: Path | None = Field(None, validation_alias="AIC_AI_PREPARATION_CONFIG")
-    orchestration_config: Path | None = Field(None, validation_alias="AIC_AI_ORCHESTRATION_CONFIG")
+
+    # --- Brief & ideas preparation (BAML) ---
+    prep_base_url: str = Field("http://127.0.0.1:1234/v1", validation_alias="AIC_PREP_BASE_URL")
+    prep_api_key: SecretStr | None = Field(None, validation_alias="AIC_PREP_API_KEY")
+    prep_model: str = Field("xai/grok-4-fast-reasoning", validation_alias="AIC_PREP_MODEL")
+    prep_reasoning_effort: str = Field("medium", validation_alias="AIC_PREP_REASONING_EFFORT")
+    prep_max_tokens: int = Field(12000, gt=0, validation_alias="AIC_PREP_MAX_TOKENS")
+    prep_max_attempts: int = Field(3, ge=1, le=3, validation_alias="AIC_PREP_MAX_ATTEMPTS")
+    prep_timeout: float = Field(90, gt=0, validation_alias="AIC_PREP_TIMEOUT")
+
+    # --- Creative orchestration (BAML) ---
+    orch_base_url: str = Field("http://127.0.0.1:1234/v1", validation_alias="AIC_ORCH_BASE_URL")
+    orch_api_key: SecretStr | None = Field(None, validation_alias="AIC_ORCH_API_KEY")
+    orch_model: str = Field("xai/grok-4-fast-reasoning", validation_alias="AIC_ORCH_MODEL")
+    orch_reasoning_effort: str = Field("medium", validation_alias="AIC_ORCH_REASONING_EFFORT")
+    orch_max_tokens: int = Field(32000, gt=0, validation_alias="AIC_ORCH_MAX_TOKENS")
+    orch_max_attempts: int = Field(3, ge=1, le=5, validation_alias="AIC_ORCH_MAX_ATTEMPTS")
+    orch_timeout: float = Field(180, gt=0, validation_alias="AIC_ORCH_TIMEOUT")
+
+    # --- Image & video generation ---
+    image_base_url: str = Field("http://127.0.0.1:1234/v1", validation_alias="AIC_IMAGE_BASE_URL")
+    image_api_key: SecretStr | None = Field(None, validation_alias="AIC_IMAGE_API_KEY")
+    video_base_url: str = Field("http://127.0.0.1:1234/v1", validation_alias="AIC_VIDEO_BASE_URL")
+    video_api_key: SecretStr | None = Field(None, validation_alias="AIC_VIDEO_API_KEY")
     managed_media_config: Path | None = Field(None, validation_alias="AIC_AI_MANAGED_MEDIA_CONFIG")
-    learning_config: Path | None = Field(None, validation_alias="AIC_AI_LEARNING_CONFIG")
+
+    # --- Research reference screening ---
+    screening_base_url: str = Field(
+        "http://127.0.0.1:1234/v1", validation_alias="AIC_SCREENING_BASE_URL"
+    )
+    screening_api_key: SecretStr | None = Field(None, validation_alias="AIC_SCREENING_API_KEY")
+    screening_model: str = Field("gemini-3.8-flash", validation_alias="AIC_SCREENING_MODEL")
+    screening_max_concurrency: int = Field(
+        5, ge=1, le=12, validation_alias="AIC_SCREENING_MAX_CONCURRENCY"
+    )
+    screening_timeout: float = Field(60, gt=0, validation_alias="AIC_SCREENING_TIMEOUT")
+
+    # --- Performance learning / creative feedback (BAML) ---
+    learning_base_url: str = Field(
+        "http://127.0.0.1:1234/v1", validation_alias="AIC_LEARNING_BASE_URL"
+    )
+    learning_api_key: SecretStr | None = Field(None, validation_alias="AIC_LEARNING_API_KEY")
+    learning_model: str = Field("xai/grok-4-fast-reasoning", validation_alias="AIC_LEARNING_MODEL")
+    learning_timeout: float = Field(60, gt=0, validation_alias="AIC_LEARNING_TIMEOUT")
     media_asset_max_image_bytes: int = Field(
         100_000_000, gt=0, validation_alias="AIC_MEDIA_ASSET_MAX_IMAGE_BYTES"
     )
@@ -44,9 +84,6 @@ class ApplicationSettings(BaseSettings):
         120, gt=0, validation_alias="AIC_MEDIA_ASSET_PROCESSING_TIMEOUT_SECONDS"
     )
     data_sources_config: Path | None = Field(None, validation_alias="AIC_AI_DATA_SOURCES_CONFIG")
-    research_screening_config: Path | None = Field(
-        None, validation_alias="AIC_AI_RESEARCH_SCREENING_CONFIG"
-    )
     data_source_timeout_seconds: float = Field(
         60, gt=0, le=60, validation_alias="AIC_AI_DATA_SOURCE_TIMEOUT_SECONDS"
     )
@@ -54,6 +91,9 @@ class ApplicationSettings(BaseSettings):
         300, gt=0, le=300, validation_alias="AIC_AI_RESEARCH_CRAWL_TIMEOUT_SECONDS"
     )
     jev_api_url: str | None = Field(None, validation_alias="AIC_AI_JEV_API_URL")
+    jev_api_key: SecretStr | None = Field(
+        None, validation_alias=AliasChoices("AIC_JEV_API_KEY", "JEV_API_KEY")
+    )
     research_cookies_file: Path | None = Field(
         None, validation_alias="AIC_AI_RESEARCH_COOKIES_FILE"
     )
@@ -173,13 +213,6 @@ class ApplicationSettings(BaseSettings):
         None, validation_alias="AIC_AI_LANGFUSE_SECRET_KEY"
     )
 
-    router_api_key: SecretStr | None = Field(None, validation_alias="ROUTER_API_KEY")
-    jev_api_key: SecretStr | None = Field(None, validation_alias="JEV_API_KEY")
-    vilao_api_key: SecretStr | None = Field(None, validation_alias="VILAO_API_KEY")
-    image_api_key: SecretStr | None = Field(None, validation_alias="IMAGE_API_KEY")
-    video_api_key: SecretStr | None = Field(None, validation_alias="VIDEO_API_KEY")
-    invokeai_token: SecretStr | None = Field(None, validation_alias="INVOKEAI_TOKEN")
-    opportunity_api_key: SecretStr | None = Field(None, validation_alias="OPPORTUNITY_API_KEY")
     shopify_access_token: SecretStr | None = Field(None, validation_alias="SHOPIFY_ACCESS_TOKEN")
     shopify_demohome_access_token: SecretStr | None = Field(
         None, validation_alias="SHOPIFY_DEMOHOME_ACCESS_TOKEN"
@@ -231,10 +264,7 @@ class ApplicationSettings(BaseSettings):
     klaviyo_api_key: SecretStr | None = Field(None, validation_alias="KLAVIYO_API_KEY")
 
     @field_validator(
-        "orchestration_config",
-        "learning_config",
         "data_sources_config",
-        "research_screening_config",
         "research_cookies_file",
         mode="before",
     )
@@ -306,30 +336,68 @@ class ApplicationSettings(BaseSettings):
 
     @property
     def preparation_config_path(self) -> Path:
-        return self.preparation_config or self.config_dir / "preparation/synthetic.json"
+        return self.config_dir / "preparation/synthetic.json"
 
     @property
     def orchestration_config_path(self) -> Path:
-        return self.orchestration_config or self.config_dir / "orchestration/synthetic.json"
+        return self.config_dir / "orchestration/synthetic.json"
+
+    @property
+    def learning_config(self) -> Path | None:
+        return None
+
+    @property
+    def research_screening_config(self) -> Path | None:
+        return None
+
+    @property
+    def prep_api_key_value(self) -> str | None:
+        return self.prep_api_key.get_secret_value() if self.prep_api_key else None
+
+    @property
+    def orch_api_key_value(self) -> str | None:
+        return self.orch_api_key.get_secret_value() if self.orch_api_key else None
+
+    @property
+    def image_api_key_value(self) -> str | None:
+        return self.image_api_key.get_secret_value() if self.image_api_key else None
+
+    @property
+    def video_api_key_value(self) -> str | None:
+        return self.video_api_key.get_secret_value() if self.video_api_key else None
+
+    @property
+    def screening_api_key_value(self) -> str | None:
+        return self.screening_api_key.get_secret_value() if self.screening_api_key else None
+
+    @property
+    def learning_api_key_value(self) -> str | None:
+        return self.learning_api_key.get_secret_value() if self.learning_api_key else None
+
+    @property
+    def jev_api_key_value(self) -> str | None:
+        return self.jev_api_key.get_secret_value() if self.jev_api_key else None
 
     def credential(self, name: str | None) -> str | None:
         if name is None:
             return None
-        credentials = {
-            "ROUTER_API_KEY": self.router_api_key,
-            "JEV_API_KEY": self.jev_api_key,
-            "VILAO_API_KEY": self.vilao_api_key,
-            "IMAGE_API_KEY": self.image_api_key,
-            "VIDEO_API_KEY": self.video_api_key,
-            "INVOKEAI_TOKEN": self.invokeai_token,
-            "OPPORTUNITY_API_KEY": self.opportunity_api_key,
+        credentials: dict[str, str | None] = {
+            "ROUTER_API_KEY": self.orch_api_key_value or self.prep_api_key_value,
+            "JEV_API_KEY": self.jev_api_key_value,
+            "VILAO_API_KEY": self.screening_api_key_value,
+            "IMAGE_API_KEY": self.image_api_key_value,
+            "VIDEO_API_KEY": self.video_api_key_value,
+            "AIC_PREP_API_KEY": self.prep_api_key_value,
+            "AIC_ORCH_API_KEY": self.orch_api_key_value,
+            "AIC_IMAGE_API_KEY": self.image_api_key_value,
+            "AIC_VIDEO_API_KEY": self.video_api_key_value,
+            "AIC_SCREENING_API_KEY": self.screening_api_key_value,
+            "AIC_LEARNING_API_KEY": self.learning_api_key_value,
+            "AIC_JEV_API_KEY": self.jev_api_key_value,
         }
         if name not in credentials:
             raise ValueError(f"Unsupported credential environment variable: {name}")
-        value = credentials[name]
-        if isinstance(value, SecretStr):
-            return value.get_secret_value()
-        return value
+        return credentials[name]
 
     def object_storage(self) -> ObjectStorageSettings:
         return ObjectStorageSettings(

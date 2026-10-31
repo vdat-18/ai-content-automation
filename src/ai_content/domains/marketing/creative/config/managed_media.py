@@ -162,10 +162,13 @@ class ManagedMediaConfig(BaseModel):
     approved: bool = False
     configuration_version: str = Field(min_length=1)
     base_url: str
-    api_key_env: str = "ROUTER_API_KEY"
+    api_key: str | None = None
+    api_key_env: str | None = None
     image_base_url: str | None = None
+    image_api_key: str | None = None
     image_api_key_env: str | None = None
     video_base_url: str | None = None
+    video_api_key: str | None = None
     video_api_key_env: str | None = None
     allow_insecure_http: bool = False
     selected_sku_enabled: bool = False
@@ -213,7 +216,7 @@ class ManagedMediaConfig(BaseModel):
             self.resolved_image_api_key_env,
             self.resolved_video_api_key_env,
         }:
-            if not api_key_env.isidentifier():
+            if api_key_env is not None and not api_key_env.isidentifier():
                 raise ValueError("Managed media API key names must be environment variables")
         if (
             self.image is None
@@ -253,12 +256,20 @@ class ManagedMediaConfig(BaseModel):
         return self.video_base_url or self.base_url
 
     @property
-    def resolved_image_api_key_env(self) -> str:
+    def resolved_image_api_key_env(self) -> str | None:
         return self.image_api_key_env or self.api_key_env
 
     @property
-    def resolved_video_api_key_env(self) -> str:
+    def resolved_video_api_key_env(self) -> str | None:
         return self.video_api_key_env or self.api_key_env
+
+    @property
+    def resolved_image_api_key(self) -> str | None:
+        return self.image_api_key or self.api_key
+
+    @property
+    def resolved_video_api_key(self) -> str | None:
+        return self.video_api_key or self.api_key
 
     @property
     def resolved_video_models(self) -> tuple[ManagedVideoModelConfig, ...]:

@@ -123,6 +123,7 @@ from ai_content.domains.marketing.research_crawler.scrapling_adapter import (
 )
 from ai_content.domains.marketing.research_crawler.screening import (
     NineRouterResearchScreener,
+    ResearchScreeningConfig,
     load_research_screening_config,
 )
 from ai_content.domains.marketing.research_crawler.service import ResearchCrawlService
@@ -160,6 +161,31 @@ class ApiRuntimeSettings:
     config_dir: Path
     preparation_config_path: Path | None = None
     orchestration_config_path: Path | None = None
+    prep_base_url: str = "http://127.0.0.1:1234/v1"
+    prep_api_key: str | None = None
+    prep_model: str = "xai/grok-4-fast-reasoning"
+    prep_reasoning_effort: str = "medium"
+    prep_max_tokens: int = 12000
+    prep_max_attempts: int = 3
+    prep_timeout: float = 90
+    orch_base_url: str = "http://127.0.0.1:1234/v1"
+    orch_api_key: str | None = None
+    orch_model: str = "xai/grok-4-fast-reasoning"
+    orch_reasoning_effort: str = "medium"
+    orch_max_tokens: int = 32000
+    orch_max_attempts: int = 3
+    orch_timeout: float = 180
+    image_base_url: str = "http://127.0.0.1:1234/v1"
+    video_base_url: str = "http://127.0.0.1:1234/v1"
+    screening_base_url: str = "http://127.0.0.1:1234/v1"
+    screening_api_key: str | None = None
+    screening_model: str = "gemini-3.8-flash"
+    screening_max_concurrency: int = 5
+    screening_timeout: float = 60
+    learning_base_url: str = "http://127.0.0.1:1234/v1"
+    learning_api_key: str | None = None
+    learning_model: str = "xai/grok-4-fast-reasoning"
+    learning_timeout: float = 60
     router_api_key: str | None = None
     image_api_key: str | None = None
     video_api_key: str | None = None
@@ -236,6 +262,31 @@ def get_runtime_settings() -> ApiRuntimeSettings:
         config_dir=application.config_dir,
         preparation_config_path=application.preparation_config_path,
         orchestration_config_path=application.orchestration_config_path,
+        prep_base_url=application.prep_base_url,
+        prep_api_key=application.prep_api_key_value,
+        prep_model=application.prep_model,
+        prep_reasoning_effort=application.prep_reasoning_effort,
+        prep_max_tokens=application.prep_max_tokens,
+        prep_max_attempts=application.prep_max_attempts,
+        prep_timeout=application.prep_timeout,
+        orch_base_url=application.orch_base_url,
+        orch_api_key=application.orch_api_key_value,
+        orch_model=application.orch_model,
+        orch_reasoning_effort=application.orch_reasoning_effort,
+        orch_max_tokens=application.orch_max_tokens,
+        orch_max_attempts=application.orch_max_attempts,
+        orch_timeout=application.orch_timeout,
+        image_base_url=application.image_base_url,
+        video_base_url=application.video_base_url,
+        screening_base_url=application.screening_base_url,
+        screening_api_key=application.screening_api_key_value,
+        screening_model=application.screening_model,
+        screening_max_concurrency=application.screening_max_concurrency,
+        screening_timeout=application.screening_timeout,
+        learning_base_url=application.learning_base_url,
+        learning_api_key=application.learning_api_key_value,
+        learning_model=application.learning_model,
+        learning_timeout=application.learning_timeout,
         router_api_key=application.credential("ROUTER_API_KEY"),
         image_api_key=application.credential("IMAGE_API_KEY"),
         video_api_key=application.credential("VIDEO_API_KEY"),
@@ -271,7 +322,7 @@ def get_runtime_settings() -> ApiRuntimeSettings:
         data_sources_config_path=application.data_sources_config,
         data_source_timeout_seconds=application.data_source_timeout_seconds,
         research_crawl_timeout_seconds=application.research_crawl_timeout_seconds,
-        research_screening_config_path=application.research_screening_config,
+        research_screening_config_path=None,
         jev_api_url=application.jev_api_url,
         research_cookies_file=application.research_cookies_file,
         jev_api_key=application.credential("JEV_API_KEY"),
@@ -894,21 +945,22 @@ def _research_screener(
     usage_tracker: AIUsageTracker | None,
     artifact_reader: ResearchCrawlArtifactWriter,
 ) -> NineRouterResearchScreener | None:
-    if settings.research_screening_config_path is None:
+    api_key = settings.screening_api_key or settings.vilao_api_key
+    if not api_key:
         return None
     try:
-        config = load_research_screening_config(settings.research_screening_config_path)
+        if settings.research_screening_config_path is not None:
+            config = load_research_screening_config(settings.research_screening_config_path)
+        else:
+            config = ResearchScreeningConfig.from_settings(settings)
     except (OSError, ValueError) as error:
         logger.error(
             "Research analysis unavailable because its configuration is invalid: {}", error
         )
         return None
-    if not settings.vilao_api_key:
-        logger.error("Research analysis unavailable because its API key is not configured")
-        return None
     return NineRouterResearchScreener(
         config,
-        api_key=settings.vilao_api_key,
+        api_key=api_key,
         usage_tracker=usage_tracker,
         artifact_reader=artifact_reader,
     )

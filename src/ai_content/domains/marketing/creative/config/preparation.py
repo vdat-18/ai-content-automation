@@ -28,6 +28,7 @@ class _PreparationSettings(BaseModel):
     model: str = Field(min_length=1)
     fallback_model: str | None = Field(default=None, min_length=1)
     base_url: str = "http://127.0.0.1:1234/v1"
+    api_key: str | None = None
     api_key_env: str | None = None
     max_ideas: int = Field(default=3, ge=1, le=3)
     step_timeout_seconds: float = Field(default=60, gt=0)
@@ -79,6 +80,41 @@ class PreparationConfig(_PreparationSettings):
         data.pop("probe_timeout_seconds")
         payload = json.dumps(data, sort_keys=True, separators=(",", ":"))
         return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+    @classmethod
+    def from_settings(
+        cls, settings: object, config_dir: Path | None = None
+    ) -> "PreparationConfig":
+        root = config_dir or getattr(settings, "config_dir", Path("config"))
+        prompt_dir = root / "prompts/creative"
+        persona_path = prompt_dir / "v1_resolve_persona.json"
+        persona_prompt = (
+            PreparationPrompt.model_validate_json(persona_path.read_text(encoding="utf-8"))
+            if persona_path.exists()
+            else None
+        )
+        return cls(
+            name="creative-preparation",
+            backend="baml",
+            model=getattr(settings, "prep_model", "xai/grok-4-fast-reasoning"),
+            base_url=getattr(settings, "prep_base_url", "http://127.0.0.1:1234/v1"),
+            api_key=getattr(settings, "prep_api_key_value", None),
+            reasoning_effort=getattr(settings, "prep_reasoning_effort", "medium"),
+            max_output_tokens=getattr(settings, "prep_max_tokens", 12000),
+            max_attempts=getattr(settings, "prep_max_attempts", 3),
+            step_timeout_seconds=getattr(settings, "prep_timeout", 90.0),
+            run_timeout_seconds=getattr(settings, "prep_timeout", 90.0) * 3,
+            persona_prompt=persona_prompt,
+            idea_prompt=PreparationPrompt.model_validate_json(
+                (prompt_dir / "v1_prepare_ideas.json").read_text(encoding="utf-8")
+            ),
+            brief_prompt=PreparationPrompt.model_validate_json(
+                (prompt_dir / "v1_prepare_brief.json").read_text(encoding="utf-8")
+            ),
+            composition_prompt=PreparationPrompt.model_validate_json(
+                (prompt_dir / "v1_plan_static_composition.json").read_text(encoding="utf-8")
+            ),
+        )
 
 
 class _PreparationConfigFile(_PreparationSettings):

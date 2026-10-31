@@ -88,11 +88,12 @@ class BamlCreativeAutomationOrchestrator:
     ) -> None:
         if config.backend != "baml":
             raise ValueError("BAML orchestrator requires a baml configuration")
-        if config.api_key_env is not None and not api_key:
+        resolved_key = api_key or config.api_key
+        if config.api_key_env is not None and not resolved_key:
             raise ValueError("Configured orchestration model credential is missing")
         set_log_level("OFF")
         self._config = config
-        self._api_key = api_key
+        self._api_key = resolved_key
         self._custom_client = client is not None
         self._usage_tracker = usage_tracker
         self._image_reader = image_reader or read_local_image

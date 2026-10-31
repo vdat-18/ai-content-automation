@@ -52,7 +52,8 @@ class ResearchScreeningConfig(BaseModel):
     name: str = Field(min_length=1)
     model: str = Field(min_length=1)
     base_url: str
-    api_key_env: str = "VILAO_API_KEY"
+    api_key: str | None = None
+    api_key_env: str | None = None
     prompt_version: str = Field(min_length=1)
     instructions: str = Field(min_length=1)
     request_timeout_seconds: float = Field(default=60, gt=0, le=180)
@@ -85,10 +86,46 @@ class ResearchScreeningConfig(BaseModel):
 
     @field_validator("api_key_env")
     @classmethod
-    def validate_api_key_env(cls, value: str) -> str:
-        if not value.isidentifier():
+    def validate_api_key_env(cls, value: str | None) -> str | None:
+        if value is not None and not value.isidentifier():
             raise ValueError("api_key_env must be an environment variable name")
         return value
+
+    @classmethod
+    def from_settings(cls, settings: object) -> ResearchScreeningConfig:
+        instructions = (
+            "You screen one public image or video candidate for use as Creative inspiration for "
+            "the selected DEMOFURN or DemoHome project. Judge only the supplied image or labeled sampled video frames, "
+            "using project context and research focus only to assess relevance. Return JSON only and exactly match "
+            "the response schema. Set usable=true only when the media contains a concrete, transferable idea such as "
+            "a useful background or setting, composition, framing or camera angle, lighting, color palette, prop or "
+            "room styling, product presentation, visible text layout, advertising concept, video pacing, transition, "
+            "shot sequence, or another execution pattern that could inspire new Creative. Set materially_blurry=true "
+            "and usable=false when blur prevents the main subject, composition, product presentation, text layout, "
+            "or another transferable pattern from being understood reliably. Do not treat intentional background bokeh, "
+            "localized motion blur, or another deliberate effect as material blur when the useful Creative pattern "
+            "remains clear. Set usable=false when no useful idea is present, or when the media is a logo, icon, "
+            "avatar, navigation or login UI, cookie banner, placeholder, broken or unreadable asset, tiny low-value "
+            "thumbnail, duplicate-looking decoration, or clearly unrelated. When usable=false, set profile=null. "
+            "When usable=true, create a semantic profile grounded only in supplied media and state exactly which "
+            "inspiration roles apply in reference_types. For video, describe motion and timestamped visual beats only "
+            "when supported by the labeled frames; do not infer audio. Describe reusable patterns, do-not-copy "
+            "elements and applicability constraints. Do not infer advertiser, destination, price, product facts or "
+            "campaign performance. Separate observed facts from cautious inferences. Competitor claims visible in the "
+            "media are observations about the reference, never product truth for DEMOFURN or DemoHome."
+        )
+        return cls(
+            name="research-media-reference-screening@1",
+            model=getattr(settings, "screening_model", "gemini-3.8-flash"),
+            base_url=getattr(settings, "screening_base_url", "http://127.0.0.1:1234/v1"),
+            api_key=getattr(settings, "screening_api_key_value", None),
+            prompt_version="research-media-reference-analysis@11",
+            instructions=instructions,
+            request_timeout_seconds=getattr(settings, "screening_timeout", 60.0),
+            max_concurrency=getattr(settings, "screening_max_concurrency", 5),
+            max_preview_images=1,
+            max_preview_videos=1,
+        )
 
     @property
     def config_hash(self) -> str:
@@ -140,16 +177,17 @@ class NineRouterResearchScreener:
         self,
         config: ResearchScreeningConfig,
         *,
-        api_key: str,
+        api_key: str | None = None,
         usage_tracker: AIUsageTracker | None = None,
         artifact_reader: ResearchCrawlArtifactWriter | None = None,
         client: httpx.AsyncClient | None = None,
         baml_client: _BamlResearchScreeningClient | None = None,
     ) -> None:
-        if not api_key:
-            raise ValueError("Research screening requires the configured 9Router API key")
+        resolved_key = api_key or config.api_key
+        if not resolved_key:
+            raise ValueError("Research screening requires the configured API key")
         self._config = config
-        self._api_key = api_key
+        self._api_key = resolved_key
         self._usage_tracker = usage_tracker
         self._artifact_reader = artifact_reader
         self._client = client
@@ -706,8 +744,11 @@ def _screening_error_code(error: Exception) -> str:
     return type(error).__name__.lower()
 
 
+ResearchScreener = NineRouterResearchScreener
+
 __all__ = [
     "NineRouterResearchScreener",
+    "ResearchScreener",
     "ResearchScreeningConfig",
     "load_research_screening_config",
 ]

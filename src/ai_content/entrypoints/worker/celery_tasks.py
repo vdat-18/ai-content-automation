@@ -45,6 +45,7 @@ from ai_content.domains.marketing.creative.ports.contracts import (
     MarketingCreativeAutomationRequest,
 )
 from ai_content.domains.marketing.creative_feedback.config.learning import (
+    PerformanceLearningConfig,
     load_performance_learning_config,
 )
 from ai_content.domains.marketing.creative_loop.adapters.commands import (
@@ -86,6 +87,7 @@ from ai_content.domains.marketing.research_crawler.scrapling_adapter import (
 )
 from ai_content.domains.marketing.research_crawler.screening import (
     NineRouterResearchScreener,
+    ResearchScreeningConfig,
     load_research_screening_config,
 )
 from ai_content.domains.marketing.research_crawler.service import ResearchCrawlService
@@ -161,19 +163,23 @@ async def _execute_command(
     learning_settings = (
         load_performance_learning_config(settings.learning_config)
         if settings.learning_config
-        else None
+        else (
+            PerformanceLearningConfig.from_settings(settings)
+            if settings.learning_api_key_value
+            else None
+        )
     )
     container = PostgresRuntimeContainer(
         database,
         settings.data_root / "artifacts",
         settings.config_dir,
         preparation_config_path=settings.preparation_config_path,
-        preparation_api_key=settings.credential(preparation_settings.api_key_env),
+        preparation_api_key=settings.prep_api_key_value
+        or settings.credential(preparation_settings.api_key_env),
         learning_config_path=settings.learning_config,
         learning_api_key=(
-            settings.credential(learning_settings.api_key_env)
-            if learning_settings is not None
-            else None
+            settings.learning_api_key_value
+            or (settings.credential(learning_settings.api_key_env) if learning_settings else None)
         ),
         execution_backend="celery",
         object_storage=storage_settings.build() if storage_settings.backend == "s3" else None,
@@ -579,19 +585,17 @@ def _build_research_screener(
     usage_tracker,
     artifact_reader: ResearchCrawlArtifactWriter,
 ) -> NineRouterResearchScreener | None:
-    if settings.research_screening_config is None:
+    api_key = settings.screening_api_key_value or settings.credential("VILAO_API_KEY")
+    if not api_key:
         return None
     try:
-        config = load_research_screening_config(settings.research_screening_config)
+        if settings.research_screening_config is not None:
+            config = load_research_screening_config(settings.research_screening_config)
+        else:
+            config = ResearchScreeningConfig.from_settings(settings)
     except (OSError, ValueError) as error:
         logger.error(
             "Research analysis unavailable because its configuration is invalid: {}", error
-        )
-        return None
-    api_key = settings.credential(config.api_key_env)
-    if not api_key:
-        logger.error(
-            "Research analysis unavailable because {} is not configured", config.api_key_env
         )
         return None
     return NineRouterResearchScreener(

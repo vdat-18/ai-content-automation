@@ -19,6 +19,7 @@ from ai_content.domains.marketing.creative.adapters.model_readiness import (
 )
 from ai_content.domains.marketing.creative.config.preparation import load_preparation_config
 from ai_content.domains.marketing.creative_feedback.config.learning import (
+    PerformanceLearningConfig,
     load_performance_learning_config,
 )
 from ai_content.domains.marketing.creative_loop.adapters.commands import (
@@ -166,7 +167,11 @@ async def _async_main(args: argparse.Namespace, settings: ApplicationSettings) -
         learning_settings = (
             load_performance_learning_config(settings.learning_config)
             if settings.learning_config
-            else None
+            else (
+                PerformanceLearningConfig.from_settings(settings)
+                if settings.learning_api_key_value
+                else None
+            )
         )
         container = PostgresRuntimeContainer(
             database,
@@ -176,9 +181,12 @@ async def _async_main(args: argparse.Namespace, settings: ApplicationSettings) -
             preparation_api_key=preparation_api_key,
             learning_config_path=settings.learning_config,
             learning_api_key=(
-                settings.credential(learning_settings.api_key_env)
-                if learning_settings is not None
-                else None
+                settings.learning_api_key_value
+                or (
+                    settings.credential(learning_settings.api_key_env)
+                    if learning_settings is not None
+                    else None
+                )
             ),
             execution_backend=execution_backend,
             object_storage=storage_settings.build() if storage_settings.backend == "s3" else None,
