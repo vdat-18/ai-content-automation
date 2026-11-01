@@ -26,7 +26,6 @@ class _PreparationSettings(BaseModel):
     name: str = Field(min_length=1)
     backend: Literal["fake", "baml"]
     model: str = Field(min_length=1)
-    fallback_model: str | None = Field(default=None, min_length=1)
     base_url: str = "http://127.0.0.1:1234/v1"
     api_key: str | None = None
     api_key_env: str | None = None

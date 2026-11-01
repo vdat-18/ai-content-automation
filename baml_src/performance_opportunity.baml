@@ -25,7 +25,7 @@ function AnalyzeCreativeOpportunity(
   instructions: string,
   evidence_json: string
 ) -> CreativeOpportunityResult {
-  client LocalMarketingLLM
+  client MarketingLLM
   prompt #"
     {{ _.role("system") }}
     {{ instructions }}

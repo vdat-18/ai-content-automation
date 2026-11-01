@@ -147,7 +147,7 @@ function ResolveCreativePersona(
   instructions: string,
   input_json: string
 ) -> CreativePersonaHypothesis {
-  client LocalMarketingLLM
+  client MarketingLLM
   prompt #"
     {{ _.role("system") }}
     {{ instructions }}
@@ -181,7 +181,7 @@ function GenerateCreativeIdeas(
   input_json: string,
   max_ideas: int
 ) -> CreativeIdeaCandidates {
-  client LocalMarketingLLM
+  client MarketingLLM
   prompt #"
     {{ _.role("system") }}
     {{ instructions }}
@@ -223,7 +223,7 @@ function WriteCreativeBrief(
   input_json: string,
   variation_count: int
 ) -> CreativeBriefDraft {
-  client LocalMarketingLLM
+  client MarketingLLM
   prompt #"
     {{ _.role("system") }}
     {{ instructions }}
@@ -282,7 +282,7 @@ function PlanStaticComposition(
   input_json: string,
   product_images: LabeledReviewImage[]
 ) -> StaticCompositionDraft {
-  client LocalMarketingLLM
+  client MarketingLLM
   prompt #"
     {{ _.role("system") }}
     {{ instructions }}
@@ -330,7 +330,7 @@ function ReviewStaticCreative(
   input_json: string,
   sources: LabeledReviewImage[]
 ) -> StaticCreativeReview {
-  client LocalMarketingLLM
+  client MarketingLLM
   prompt #"
     {{ _.role("system") }}
     {{ instructions }}

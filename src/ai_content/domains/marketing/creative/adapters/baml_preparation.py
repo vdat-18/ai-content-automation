@@ -108,11 +108,7 @@ class BamlPreparationModel:
                 "model_credentials_missing",
             )
         api_key = resolved_key or "local-no-auth"
-        if config.fallback_model is not None:
-            raise PreparationError(
-                "Creative Orchestrator does not allow automatic model fallback",
-                "model_fallback_not_allowed",
-            )
+
         if client is not None:
             self._client = client
         else:
@@ -392,17 +388,6 @@ class BamlPreparationModel:
 
         def trace(error_code: str | None = None) -> ModelCallTrace:
             model = self._config.model
-            for completed_collector in reversed(collectors):
-                log = completed_collector.last
-                selected_call = log.selected_call if log is not None else None
-                if selected_call is None:
-                    continue
-                if (
-                    selected_call.client_name == "LocalMarketingFallbackLLM"
-                    and self._config.fallback_model is not None
-                ):
-                    model = self._config.fallback_model
-                break
             request_count = 0
             input_tokens: int | None = None
             output_tokens: int | None = None
@@ -566,13 +551,6 @@ def _collector_usage(
 ) -> tuple[str, int, int | None, int | None]:
     log = collector.last
     model = config.model
-    if (
-        log is not None
-        and log.selected_call is not None
-        and log.selected_call.client_name == "LocalMarketingFallbackLLM"
-        and config.fallback_model is not None
-    ):
-        model = config.fallback_model
     usage = collector.usage
     return (
         model,

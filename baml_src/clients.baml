@@ -1,33 +1,13 @@
-// Local-first client for Marketing LLM tasks.
-client<llm> LocalMarketingLLM {
+// Default client for Marketing LLM tasks; the Python adapters always override
+// this via a runtime ClientRegistry pointed at the configured third-party API.
+client<llm> MarketingLLM {
   provider "openai-generic"
   options {
-    base_url env.LOCAL_LLM_BASE_URL
-    model env.LOCAL_LLM_MODEL
-    api_key env.LOCAL_LLM_API_KEY
+    base_url env.MARKETING_LLM_BASE_URL
+    model env.MARKETING_LLM_MODEL
+    api_key env.MARKETING_LLM_API_KEY
     temperature 0
     max_tokens 2000
-  }
-}
-
-client<llm> LocalMarketingFallbackLLM {
-  provider "openai-generic"
-  options {
-    base_url env.LOCAL_LLM_BASE_URL
-    model env.LOCAL_LLM_FALLBACK_MODEL
-    api_key env.LOCAL_LLM_API_KEY
-    temperature 0
-    max_tokens 2000
-  }
-}
-
-client<llm> LocalMarketingLLMWithFallback {
-  provider fallback
-  options {
-    strategy [
-      LocalMarketingLLM
-      LocalMarketingFallbackLLM
-    ]
   }
 }
 
@@ -35,9 +15,9 @@ client<llm> LocalMarketingLLMWithFallback {
 client<llm> CreativeFeedbackLLM {
   provider "openai-generic"
   options {
-    base_url env.LOCAL_LLM_BASE_URL
-    model env.LOCAL_LLM_MODEL
-    api_key env.LOCAL_LLM_API_KEY
+    base_url env.MARKETING_LLM_BASE_URL
+    model env.MARKETING_LLM_MODEL
+    api_key env.MARKETING_LLM_API_KEY
     temperature 0
     max_tokens 2400
   }

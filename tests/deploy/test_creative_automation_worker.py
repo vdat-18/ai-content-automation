@@ -36,7 +36,6 @@ def test_creative_orchestration_runtime_configuration_is_available_to_api_and_wo
     settings = ApplicationSettings()
     preparation = PreparationConfig.from_settings(settings, config_dir=project_root / "config")
     assert preparation.backend == "baml"
-    assert preparation.fallback_model is None
 
 
 def test_research_navigation_and_analysis_are_available_to_api_and_worker(

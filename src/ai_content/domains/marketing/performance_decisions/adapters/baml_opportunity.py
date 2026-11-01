@@ -47,9 +47,9 @@ class BamlCreativeOpportunityAnalyzer:
         set_log_level("OFF")
         self._client = client or b.with_options(
             env={
-                "LOCAL_LLM_BASE_URL": config.base_url,
-                "LOCAL_LLM_MODEL": config.model,
-                "LOCAL_LLM_API_KEY": api_key or "local-no-auth",
+                "MARKETING_LLM_BASE_URL": config.base_url,
+                "MARKETING_LLM_MODEL": config.model,
+                "MARKETING_LLM_API_KEY": api_key or "local-no-auth",
             }
         )
         self._template_fingerprint = _template_fingerprint(
