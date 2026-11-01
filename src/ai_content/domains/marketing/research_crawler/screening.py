@@ -22,9 +22,9 @@ from baml_py.logging import set_log_level
 from PIL import Image
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
-from ai_content.domains.marketing.creative.adapters.baml_client import types as baml_types
-from ai_content.domains.marketing.creative.adapters.baml_client.async_client import b
-from ai_content.domains.marketing.creative.adapters.baml_model_profile import (
+from ai_content.domains.marketing.research_crawler.adapters.baml_client import types as baml_types
+from ai_content.domains.marketing.research_crawler.adapters.baml_client.async_client import b
+from ai_content.domains.marketing.research_crawler.adapters.baml_model_profile import (
     build_creative_orchestrator_registry,
 )
 from ai_content.platform.ai_usage import (

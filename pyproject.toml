@@ -71,6 +71,7 @@ extend-exclude = [
     "src/ai_content/domains/marketing/creative/adapters/baml_client",
     "src/ai_content/domains/marketing/performance_decisions/adapters/baml_client",
     "src/ai_content/domains/marketing/creative_feedback/adapters/baml_client",
+    "src/ai_content/domains/marketing/research_crawler/adapters/baml_client",
 ]
 
 [tool.ruff.lint]
