@@ -73,11 +73,6 @@ from ai_content.domains.marketing.creative_loop.ports.interfaces import (
     CreativeLoopEventDriftError,
     CreativeLoopInputDriftError,
 )
-from ai_content.domains.marketing.performance_data.bootstrap import (
-    build_fixture_runtime as build_gmc_runtime,
-)
-from ai_content.domains.marketing.performance_data.config.fixtures import load_gmc_fixture
-from ai_content.domains.marketing.performance_data.ports.interfaces import InputDriftError
 from ai_content.domains.marketing.performance_decisions.bootstrap import (
     build_fixture_runtime as build_performance_decision_runtime,
 )
@@ -149,10 +144,6 @@ def build_parser() -> argparse.ArgumentParser:
     reject_p.add_argument("--reviewer", required=True)
     reject_p.add_argument("--reason", required=True)
 
-    gmc = sub.add_parser(
-        "run-gmc-ingestion", help="Run a synthetic, chunked and read-only GMC ingestion"
-    )
-    gmc.add_argument("--fixture", type=Path, required=True)
     performance_decision = sub.add_parser(
         "run-performance-decision",
         help="Run synthetic Performance rules and prepare Creative demand previews",
@@ -578,31 +569,6 @@ async def _async_main(args: argparse.Namespace, settings: ApplicationSettings) -
             return 0
         finally:
             runtime.repository.close()
-    if args.command == "run-gmc-ingestion":
-        fixture = load_gmc_fixture(args.fixture)
-        runtime = build_gmc_runtime(args.db, args.artifacts, fixture)
-        try:
-            outcome = await runtime.run(fixture)
-            run = outcome.run
-            _write_line(f"Run:          {run.run_id}")
-            _write_line(f"Status:       {run.status.value}")
-            _write_line(f"Source:       {run.source.source_ref}")
-            _write_line(f"Rows:         {run.total_rows}")
-            _write_line(f"Accepted:     {run.accepted_rows}")
-            _write_line(f"Rejected:     {run.rejected_rows}")
-            _write_line(f"Matched:      {run.matched_rows}")
-            _write_line(f"GMC-only:     {run.gmc_only_rows}")
-            _write_line(f"Conflicts:    {run.conflicting_rows}")
-            _write_line(f"Duplicates:   {run.duplicate_rows}")
-            if outcome.duplicate:
-                _write_line("Duplicate trigger: existing run returned")
-            if run.normalized_artifact_ref:
-                _write_line(f"Normalized:   {run.normalized_artifact_ref}")
-            if run.rejected_artifact_ref:
-                _write_line(f"Rejected:     {run.rejected_artifact_ref}")
-            return 0 if run.status.value != "blocked" else 1
-        finally:
-            runtime.repository.close()
     if args.command == "prepare-brief":
         config = load_preparation_config(args.preparation_config)
         case = _load_cli_preparation_case(
@@ -663,9 +629,6 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     except VideoGenerationError as e:
         logger.error("Video pilot error: {}", e)
-        return 1
-    except InputDriftError as e:
-        logger.error("Input drift: {}", e)
         return 1
     except PerformanceInputDriftError as e:
         logger.error("Performance input drift: {}", e)

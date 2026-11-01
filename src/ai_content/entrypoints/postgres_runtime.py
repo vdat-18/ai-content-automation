@@ -58,9 +58,6 @@ from ai_content.domains.marketing.data_sources.adapters.postgres_repository impo
 from ai_content.domains.marketing.media_lab.adapters.asset_postgres_repository import (
     PostgresMediaAssetRepository,
 )
-from ai_content.domains.marketing.performance_data.adapters.postgres_repository import (
-    PostgresGmcRunRepository,
-)
 from ai_content.domains.marketing.performance_decisions.adapters.postgres_repository import (
     PostgresPerformanceDecisionRepository,
 )
@@ -151,7 +148,6 @@ class PostgresRuntimeContainer:
             self.creative_knowledge_repository
         )
         self.performance_repository = PostgresPerformanceDecisionRepository(engine)
-        self.gmc_repository = PostgresGmcRunRepository(engine)
         self.data_source_repository = PostgresDataSourceRepository(engine)
         self.research_crawl_repository = PostgresResearchCrawlRepository(engine)
         self.media_lab_asset_repository = PostgresMediaAssetRepository(engine)
