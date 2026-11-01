@@ -37,7 +37,7 @@ def get_checks(checks: typing.Dict[CheckName, Check]) -> typing.List[Check]:
 def all_succeeded(checks: typing.Dict[CheckName, Check]) -> bool:
     return all(check.status == "succeeded" for check in get_checks(checks))
 # #########################################################################
-# Generated enums (11)
+# Generated enums (13)
 # #########################################################################
 
 class AutomationHumanPresence(str, Enum):
@@ -75,6 +75,23 @@ class IdeaRecommendation(str, Enum):
     KEEP = "KEEP"
     REJECT = "REJECT"
 
+class LearningRecommendationAction(str, Enum):
+    REQUEST_NEW_CREATIVE = "REQUEST_NEW_CREATIVE"
+    RETEST_CREATIVE = "RETEST_CREATIVE"
+    WAIT_FOR_MORE_DATA = "WAIT_FOR_MORE_DATA"
+    NO_ACTION = "NO_ACTION"
+    MANUAL_REVIEW = "MANUAL_REVIEW"
+
+class OpportunityCategory(str, Enum):
+    SCALE_WINNER = "SCALE_WINNER"
+    REFRESH_FATIGUE = "REFRESH_FATIGUE"
+    TEST_NEW_ANGLE = "TEST_NEW_ANGLE"
+    FILL_CREATIVE_GAP = "FILL_CREATIVE_GAP"
+    INVESTIGATE_ANOMALY = "INVESTIGATE_ANOMALY"
+    DEFER_INSUFFICIENT_EVIDENCE = "DEFER_INSUFFICIENT_EVIDENCE"
+    STOP_OR_DEPRIORITIZE = "STOP_OR_DEPRIORITIZE"
+    BLOCKED_CONFLICT = "BLOCKED_CONFLICT"
+
 class SemanticCriterionStatus(str, Enum):
     PASS = "PASS"
     FAIL = "FAIL"
@@ -98,8 +115,15 @@ class TextAlignment(str, Enum):
     RIGHT = "RIGHT"
 
 # #########################################################################
-# Generated classes (21)
+# Generated classes (25)
 # #########################################################################
+
+class AdsDiagnosisResult(BaseModel):
+    observations: typing.List[str]
+    hypotheses: typing.List[str]
+    confounders: typing.List[str]
+    uncertainty: str
+    evidence_refs: typing.List[str]
 
 class AutomationImagePlan(BaseModel):
     variation_key: str
@@ -192,6 +216,20 @@ class CreativeIdeaDraft(BaseModel):
     claim_ids: typing.List[str]
     reference_ids: typing.List[str]
 
+class CreativeLessonResult(BaseModel):
+    proposal: typing.Optional["LearningProposalResult"] = None
+
+class CreativeOpportunityResult(BaseModel):
+    category: OpportunityCategory
+    priority: int
+    rationale: str
+    evidence_refs: typing.List[str]
+    uncertainty: str
+    counterargument: str
+    hypothesis: str
+    experiment: str
+    success_signal: str
+
 class CreativePersonaHypothesis(BaseModel):
     name: str
     description: str
@@ -215,6 +253,15 @@ class CreativeVariationDraft(BaseModel):
 class LabeledReviewImage(BaseModel):
     label: str
     content: baml_py.Image
+
+class LearningProposalResult(BaseModel):
+    priority: int
+    recommended_action: LearningRecommendationAction
+    hypothesis: str
+    experiment: str
+    success_signal: str
+    evidence_refs: typing.List[str]
+    uncertainty: str
 
 class ResearchProductMatchDraft(BaseModel):
     product_id: str
@@ -305,12 +352,13 @@ class StaticCreativeReview(BaseModel):
 
 
 # #########################################################################
-# Model rebuilds (21)
+# Model rebuilds (25)
 # #########################################################################
 # Resolve string forward references now that every model above is defined so
 # class declaration order never breaks Pydantic construction (issue #793).
 # Recursive models are intentionally omitted (Pydantic resolves those lazily;
 # eagerly rebuilding them can recurse).
+AdsDiagnosisResult.model_rebuild()
 AutomationImagePlan.model_rebuild()
 AutomationVideoAudioPlan.model_rebuild()
 AutomationVideoPlan.model_rebuild()
@@ -321,9 +369,12 @@ CreativeAutomationPlanDraft.model_rebuild()
 CreativeBriefDraft.model_rebuild()
 CreativeIdeaCandidates.model_rebuild()
 CreativeIdeaDraft.model_rebuild()
+CreativeLessonResult.model_rebuild()
+CreativeOpportunityResult.model_rebuild()
 CreativePersonaHypothesis.model_rebuild()
 CreativeVariationDraft.model_rebuild()
 LabeledReviewImage.model_rebuild()
+LearningProposalResult.model_rebuild()
 ResearchProductMatchDraft.model_rebuild()
 ResearchReferenceProfileDraft.model_rebuild()
 ResearchScreeningDraft.model_rebuild()

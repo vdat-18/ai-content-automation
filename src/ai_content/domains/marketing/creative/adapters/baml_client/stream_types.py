@@ -23,8 +23,15 @@ class StreamState(BaseModel, typing.Generic[StreamStateValueT]):
     value: StreamStateValueT
     state: typing_extensions.Literal["Pending", "Incomplete", "Complete"]
 # #########################################################################
-# Generated classes (21)
+# Generated classes (25)
 # #########################################################################
+
+class AdsDiagnosisResult(BaseModel):
+    observations: typing.List[str]
+    hypotheses: typing.List[str]
+    confounders: typing.List[str]
+    uncertainty: typing.Optional[str] = None
+    evidence_refs: typing.List[str]
 
 class AutomationImagePlan(BaseModel):
     variation_key: typing.Optional[str] = None
@@ -117,6 +124,20 @@ class CreativeIdeaDraft(BaseModel):
     claim_ids: typing.List[str]
     reference_ids: typing.List[str]
 
+class CreativeLessonResult(BaseModel):
+    proposal: typing.Optional["LearningProposalResult"] = None
+
+class CreativeOpportunityResult(BaseModel):
+    category: typing.Optional[types.OpportunityCategory] = None
+    priority: typing.Optional[int] = None
+    rationale: typing.Optional[str] = None
+    evidence_refs: typing.List[str]
+    uncertainty: typing.Optional[str] = None
+    counterargument: typing.Optional[str] = None
+    hypothesis: typing.Optional[str] = None
+    experiment: typing.Optional[str] = None
+    success_signal: typing.Optional[str] = None
+
 class CreativePersonaHypothesis(BaseModel):
     name: typing.Optional[str] = None
     description: typing.Optional[str] = None
@@ -140,6 +161,15 @@ class CreativeVariationDraft(BaseModel):
 class LabeledReviewImage(BaseModel):
     label: typing.Optional[str] = None
     content: typing.Optional[baml_py.Image] = None
+
+class LearningProposalResult(BaseModel):
+    priority: typing.Optional[int] = None
+    recommended_action: typing.Optional[types.LearningRecommendationAction] = None
+    hypothesis: typing.Optional[str] = None
+    experiment: typing.Optional[str] = None
+    success_signal: typing.Optional[str] = None
+    evidence_refs: typing.List[str]
+    uncertainty: typing.Optional[str] = None
 
 class ResearchProductMatchDraft(BaseModel):
     product_id: typing.Optional[str] = None
@@ -230,12 +260,13 @@ class StaticCreativeReview(BaseModel):
 
 
 # #########################################################################
-# Model rebuilds (21)
+# Model rebuilds (25)
 # #########################################################################
 # Resolve string forward references now that every model above is defined so
 # class declaration order never breaks Pydantic construction (issue #793).
 # Recursive models are intentionally omitted (Pydantic resolves those lazily;
 # eagerly rebuilding them can recurse).
+AdsDiagnosisResult.model_rebuild()
 AutomationImagePlan.model_rebuild()
 AutomationVideoAudioPlan.model_rebuild()
 AutomationVideoPlan.model_rebuild()
@@ -246,9 +277,12 @@ CreativeAutomationPlanDraft.model_rebuild()
 CreativeBriefDraft.model_rebuild()
 CreativeIdeaCandidates.model_rebuild()
 CreativeIdeaDraft.model_rebuild()
+CreativeLessonResult.model_rebuild()
+CreativeOpportunityResult.model_rebuild()
 CreativePersonaHypothesis.model_rebuild()
 CreativeVariationDraft.model_rebuild()
 LabeledReviewImage.model_rebuild()
+LearningProposalResult.model_rebuild()
 ResearchProductMatchDraft.model_rebuild()
 ResearchReferenceProfileDraft.model_rebuild()
 ResearchScreeningDraft.model_rebuild()

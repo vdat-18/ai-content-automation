@@ -32,7 +32,7 @@ function DiagnoseAdsOutcome(
   instructions: string,
   evidence_json: string
 ) -> AdsDiagnosisResult {
-  client LocalMarketingLLM
+  client CreativeFeedbackLLM
   prompt #"
     {{ _.role("system") }}
     {{ instructions }}
@@ -57,7 +57,7 @@ function SynthesizeCreativeLesson(
   evidence_json: string,
   diagnosis_json: string
 ) -> CreativeLessonResult {
-  client LocalMarketingLLM
+  client CreativeFeedbackLLM
   prompt #"
     {{ _.role("system") }}
     {{ instructions }}

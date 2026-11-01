@@ -29,6 +29,60 @@ class LlmResponseParser:
         __result__ = self.__options.merge_options(baml_options).parse_response(function_name="AnalyzeCreativeOpportunity", llm_response=llm_response, mode="request")
         return typing.cast(types.CreativeOpportunityResult, __result__)
 
+    def DiagnoseAdsOutcome(
+        self, llm_response: str, baml_options: BamlCallOptions = {},
+    ) -> types.AdsDiagnosisResult:
+        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="DiagnoseAdsOutcome", llm_response=llm_response, mode="request")
+        return typing.cast(types.AdsDiagnosisResult, __result__)
+
+    def GenerateCreativeIdeas(
+        self, llm_response: str, baml_options: BamlCallOptions = {},
+    ) -> types.CreativeIdeaCandidates:
+        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="GenerateCreativeIdeas", llm_response=llm_response, mode="request")
+        return typing.cast(types.CreativeIdeaCandidates, __result__)
+
+    def OrchestrateCreativeAutomation(
+        self, llm_response: str, baml_options: BamlCallOptions = {},
+    ) -> types.CreativeAutomationPlanDraft:
+        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="OrchestrateCreativeAutomation", llm_response=llm_response, mode="request")
+        return typing.cast(types.CreativeAutomationPlanDraft, __result__)
+
+    def PlanStaticComposition(
+        self, llm_response: str, baml_options: BamlCallOptions = {},
+    ) -> types.StaticCompositionDraft:
+        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="PlanStaticComposition", llm_response=llm_response, mode="request")
+        return typing.cast(types.StaticCompositionDraft, __result__)
+
+    def ResolveCreativePersona(
+        self, llm_response: str, baml_options: BamlCallOptions = {},
+    ) -> types.CreativePersonaHypothesis:
+        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="ResolveCreativePersona", llm_response=llm_response, mode="request")
+        return typing.cast(types.CreativePersonaHypothesis, __result__)
+
+    def ReviewStaticCreative(
+        self, llm_response: str, baml_options: BamlCallOptions = {},
+    ) -> types.StaticCreativeReview:
+        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="ReviewStaticCreative", llm_response=llm_response, mode="request")
+        return typing.cast(types.StaticCreativeReview, __result__)
+
+    def ScreenResearchReference(
+        self, llm_response: str, baml_options: BamlCallOptions = {},
+    ) -> types.ResearchScreeningDraft:
+        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="ScreenResearchReference", llm_response=llm_response, mode="request")
+        return typing.cast(types.ResearchScreeningDraft, __result__)
+
+    def SynthesizeCreativeLesson(
+        self, llm_response: str, baml_options: BamlCallOptions = {},
+    ) -> types.CreativeLessonResult:
+        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="SynthesizeCreativeLesson", llm_response=llm_response, mode="request")
+        return typing.cast(types.CreativeLessonResult, __result__)
+
+    def WriteCreativeBrief(
+        self, llm_response: str, baml_options: BamlCallOptions = {},
+    ) -> types.CreativeBriefDraft:
+        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="WriteCreativeBrief", llm_response=llm_response, mode="request")
+        return typing.cast(types.CreativeBriefDraft, __result__)
+
     
 
 class LlmStreamParser:
@@ -42,5 +96,59 @@ class LlmStreamParser:
     ) -> stream_types.CreativeOpportunityResult:
         __result__ = self.__options.merge_options(baml_options).parse_response(function_name="AnalyzeCreativeOpportunity", llm_response=llm_response, mode="stream")
         return typing.cast(stream_types.CreativeOpportunityResult, __result__)
+
+    def DiagnoseAdsOutcome(
+        self, llm_response: str, baml_options: BamlCallOptions = {},
+    ) -> stream_types.AdsDiagnosisResult:
+        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="DiagnoseAdsOutcome", llm_response=llm_response, mode="stream")
+        return typing.cast(stream_types.AdsDiagnosisResult, __result__)
+
+    def GenerateCreativeIdeas(
+        self, llm_response: str, baml_options: BamlCallOptions = {},
+    ) -> stream_types.CreativeIdeaCandidates:
+        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="GenerateCreativeIdeas", llm_response=llm_response, mode="stream")
+        return typing.cast(stream_types.CreativeIdeaCandidates, __result__)
+
+    def OrchestrateCreativeAutomation(
+        self, llm_response: str, baml_options: BamlCallOptions = {},
+    ) -> stream_types.CreativeAutomationPlanDraft:
+        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="OrchestrateCreativeAutomation", llm_response=llm_response, mode="stream")
+        return typing.cast(stream_types.CreativeAutomationPlanDraft, __result__)
+
+    def PlanStaticComposition(
+        self, llm_response: str, baml_options: BamlCallOptions = {},
+    ) -> stream_types.StaticCompositionDraft:
+        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="PlanStaticComposition", llm_response=llm_response, mode="stream")
+        return typing.cast(stream_types.StaticCompositionDraft, __result__)
+
+    def ResolveCreativePersona(
+        self, llm_response: str, baml_options: BamlCallOptions = {},
+    ) -> stream_types.CreativePersonaHypothesis:
+        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="ResolveCreativePersona", llm_response=llm_response, mode="stream")
+        return typing.cast(stream_types.CreativePersonaHypothesis, __result__)
+
+    def ReviewStaticCreative(
+        self, llm_response: str, baml_options: BamlCallOptions = {},
+    ) -> stream_types.StaticCreativeReview:
+        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="ReviewStaticCreative", llm_response=llm_response, mode="stream")
+        return typing.cast(stream_types.StaticCreativeReview, __result__)
+
+    def ScreenResearchReference(
+        self, llm_response: str, baml_options: BamlCallOptions = {},
+    ) -> stream_types.ResearchScreeningDraft:
+        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="ScreenResearchReference", llm_response=llm_response, mode="stream")
+        return typing.cast(stream_types.ResearchScreeningDraft, __result__)
+
+    def SynthesizeCreativeLesson(
+        self, llm_response: str, baml_options: BamlCallOptions = {},
+    ) -> stream_types.CreativeLessonResult:
+        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="SynthesizeCreativeLesson", llm_response=llm_response, mode="stream")
+        return typing.cast(stream_types.CreativeLessonResult, __result__)
+
+    def WriteCreativeBrief(
+        self, llm_response: str, baml_options: BamlCallOptions = {},
+    ) -> stream_types.CreativeBriefDraft:
+        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="WriteCreativeBrief", llm_response=llm_response, mode="stream")
+        return typing.cast(stream_types.CreativeBriefDraft, __result__)
 
     

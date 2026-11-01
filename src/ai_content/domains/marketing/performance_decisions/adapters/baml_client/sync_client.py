@@ -108,6 +108,132 @@ class BamlSyncClient:
                 "instructions": instructions,"evidence_json": evidence_json,
             })
             return typing.cast(types.CreativeOpportunityResult, __result__.cast_to(types, types, stream_types, False, __runtime__))
+    def DiagnoseAdsOutcome(self, instructions: str,evidence_json: str,
+        baml_options: BamlCallOptions = {},
+    ) -> types.AdsDiagnosisResult:
+        # Check if on_tick is provided
+        if 'on_tick' in baml_options:
+            __stream__ = self.stream.DiagnoseAdsOutcome(instructions=instructions,evidence_json=evidence_json,
+                baml_options=baml_options)
+            return __stream__.get_final_response()
+        else:
+            # Original non-streaming code
+            __result__ = self.__options.merge_options(baml_options).call_function_sync(function_name="DiagnoseAdsOutcome", args={
+                "instructions": instructions,"evidence_json": evidence_json,
+            })
+            return typing.cast(types.AdsDiagnosisResult, __result__.cast_to(types, types, stream_types, False, __runtime__))
+    def GenerateCreativeIdeas(self, instructions: str,input_json: str,max_ideas: int,
+        baml_options: BamlCallOptions = {},
+    ) -> types.CreativeIdeaCandidates:
+        # Check if on_tick is provided
+        if 'on_tick' in baml_options:
+            __stream__ = self.stream.GenerateCreativeIdeas(instructions=instructions,input_json=input_json,max_ideas=max_ideas,
+                baml_options=baml_options)
+            return __stream__.get_final_response()
+        else:
+            # Original non-streaming code
+            __result__ = self.__options.merge_options(baml_options).call_function_sync(function_name="GenerateCreativeIdeas", args={
+                "instructions": instructions,"input_json": input_json,"max_ideas": max_ideas,
+            })
+            return typing.cast(types.CreativeIdeaCandidates, __result__.cast_to(types, types, stream_types, False, __runtime__))
+    def OrchestrateCreativeAutomation(self, instructions: str,input_json: str,product_images: typing.List["types.LabeledReviewImage"],image_count: int,video_count: int,duration_min_seconds: int,duration_max_seconds: int,source_duration_max_seconds: int,
+        baml_options: BamlCallOptions = {},
+    ) -> types.CreativeAutomationPlanDraft:
+        # Check if on_tick is provided
+        if 'on_tick' in baml_options:
+            __stream__ = self.stream.OrchestrateCreativeAutomation(instructions=instructions,input_json=input_json,product_images=product_images,image_count=image_count,video_count=video_count,duration_min_seconds=duration_min_seconds,duration_max_seconds=duration_max_seconds,source_duration_max_seconds=source_duration_max_seconds,
+                baml_options=baml_options)
+            return __stream__.get_final_response()
+        else:
+            # Original non-streaming code
+            __result__ = self.__options.merge_options(baml_options).call_function_sync(function_name="OrchestrateCreativeAutomation", args={
+                "instructions": instructions,"input_json": input_json,"product_images": product_images,"image_count": image_count,"video_count": video_count,"duration_min_seconds": duration_min_seconds,"duration_max_seconds": duration_max_seconds,"source_duration_max_seconds": source_duration_max_seconds,
+            })
+            return typing.cast(types.CreativeAutomationPlanDraft, __result__.cast_to(types, types, stream_types, False, __runtime__))
+    def PlanStaticComposition(self, instructions: str,input_json: str,product_images: typing.List["types.LabeledReviewImage"],
+        baml_options: BamlCallOptions = {},
+    ) -> types.StaticCompositionDraft:
+        # Check if on_tick is provided
+        if 'on_tick' in baml_options:
+            __stream__ = self.stream.PlanStaticComposition(instructions=instructions,input_json=input_json,product_images=product_images,
+                baml_options=baml_options)
+            return __stream__.get_final_response()
+        else:
+            # Original non-streaming code
+            __result__ = self.__options.merge_options(baml_options).call_function_sync(function_name="PlanStaticComposition", args={
+                "instructions": instructions,"input_json": input_json,"product_images": product_images,
+            })
+            return typing.cast(types.StaticCompositionDraft, __result__.cast_to(types, types, stream_types, False, __runtime__))
+    def ResolveCreativePersona(self, instructions: str,input_json: str,
+        baml_options: BamlCallOptions = {},
+    ) -> types.CreativePersonaHypothesis:
+        # Check if on_tick is provided
+        if 'on_tick' in baml_options:
+            __stream__ = self.stream.ResolveCreativePersona(instructions=instructions,input_json=input_json,
+                baml_options=baml_options)
+            return __stream__.get_final_response()
+        else:
+            # Original non-streaming code
+            __result__ = self.__options.merge_options(baml_options).call_function_sync(function_name="ResolveCreativePersona", args={
+                "instructions": instructions,"input_json": input_json,
+            })
+            return typing.cast(types.CreativePersonaHypothesis, __result__.cast_to(types, types, stream_types, False, __runtime__))
+    def ReviewStaticCreative(self, instructions: str,input_json: str,sources: typing.List["types.LabeledReviewImage"],
+        baml_options: BamlCallOptions = {},
+    ) -> types.StaticCreativeReview:
+        # Check if on_tick is provided
+        if 'on_tick' in baml_options:
+            __stream__ = self.stream.ReviewStaticCreative(instructions=instructions,input_json=input_json,sources=sources,
+                baml_options=baml_options)
+            return __stream__.get_final_response()
+        else:
+            # Original non-streaming code
+            __result__ = self.__options.merge_options(baml_options).call_function_sync(function_name="ReviewStaticCreative", args={
+                "instructions": instructions,"input_json": input_json,"sources": sources,
+            })
+            return typing.cast(types.StaticCreativeReview, __result__.cast_to(types, types, stream_types, False, __runtime__))
+    def ScreenResearchReference(self, instructions: str,input_json: str,sources: typing.List["types.LabeledReviewImage"],
+        baml_options: BamlCallOptions = {},
+    ) -> types.ResearchScreeningDraft:
+        # Check if on_tick is provided
+        if 'on_tick' in baml_options:
+            __stream__ = self.stream.ScreenResearchReference(instructions=instructions,input_json=input_json,sources=sources,
+                baml_options=baml_options)
+            return __stream__.get_final_response()
+        else:
+            # Original non-streaming code
+            __result__ = self.__options.merge_options(baml_options).call_function_sync(function_name="ScreenResearchReference", args={
+                "instructions": instructions,"input_json": input_json,"sources": sources,
+            })
+            return typing.cast(types.ResearchScreeningDraft, __result__.cast_to(types, types, stream_types, False, __runtime__))
+    def SynthesizeCreativeLesson(self, instructions: str,evidence_json: str,diagnosis_json: str,
+        baml_options: BamlCallOptions = {},
+    ) -> types.CreativeLessonResult:
+        # Check if on_tick is provided
+        if 'on_tick' in baml_options:
+            __stream__ = self.stream.SynthesizeCreativeLesson(instructions=instructions,evidence_json=evidence_json,diagnosis_json=diagnosis_json,
+                baml_options=baml_options)
+            return __stream__.get_final_response()
+        else:
+            # Original non-streaming code
+            __result__ = self.__options.merge_options(baml_options).call_function_sync(function_name="SynthesizeCreativeLesson", args={
+                "instructions": instructions,"evidence_json": evidence_json,"diagnosis_json": diagnosis_json,
+            })
+            return typing.cast(types.CreativeLessonResult, __result__.cast_to(types, types, stream_types, False, __runtime__))
+    def WriteCreativeBrief(self, instructions: str,input_json: str,variation_count: int,
+        baml_options: BamlCallOptions = {},
+    ) -> types.CreativeBriefDraft:
+        # Check if on_tick is provided
+        if 'on_tick' in baml_options:
+            __stream__ = self.stream.WriteCreativeBrief(instructions=instructions,input_json=input_json,variation_count=variation_count,
+                baml_options=baml_options)
+            return __stream__.get_final_response()
+        else:
+            # Original non-streaming code
+            __result__ = self.__options.merge_options(baml_options).call_function_sync(function_name="WriteCreativeBrief", args={
+                "instructions": instructions,"input_json": input_json,"variation_count": variation_count,
+            })
+            return typing.cast(types.CreativeBriefDraft, __result__.cast_to(types, types, stream_types, False, __runtime__))
     
 
 
@@ -129,6 +255,114 @@ class BamlStreamClient:
           lambda x: typing.cast(types.CreativeOpportunityResult, x.cast_to(types, types, stream_types, False, __runtime__)),
           __ctx__,
         )
+    def DiagnoseAdsOutcome(self, instructions: str,evidence_json: str,
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.BamlSyncStream[stream_types.AdsDiagnosisResult, types.AdsDiagnosisResult]:
+        __ctx__, __result__ = self.__options.merge_options(baml_options).create_sync_stream(function_name="DiagnoseAdsOutcome", args={
+            "instructions": instructions,"evidence_json": evidence_json,
+        })
+        return baml_py.BamlSyncStream[stream_types.AdsDiagnosisResult, types.AdsDiagnosisResult](
+          __result__,
+          lambda x: typing.cast(stream_types.AdsDiagnosisResult, x.cast_to(types, types, stream_types, True, __runtime__)),
+          lambda x: typing.cast(types.AdsDiagnosisResult, x.cast_to(types, types, stream_types, False, __runtime__)),
+          __ctx__,
+        )
+    def GenerateCreativeIdeas(self, instructions: str,input_json: str,max_ideas: int,
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.BamlSyncStream[stream_types.CreativeIdeaCandidates, types.CreativeIdeaCandidates]:
+        __ctx__, __result__ = self.__options.merge_options(baml_options).create_sync_stream(function_name="GenerateCreativeIdeas", args={
+            "instructions": instructions,"input_json": input_json,"max_ideas": max_ideas,
+        })
+        return baml_py.BamlSyncStream[stream_types.CreativeIdeaCandidates, types.CreativeIdeaCandidates](
+          __result__,
+          lambda x: typing.cast(stream_types.CreativeIdeaCandidates, x.cast_to(types, types, stream_types, True, __runtime__)),
+          lambda x: typing.cast(types.CreativeIdeaCandidates, x.cast_to(types, types, stream_types, False, __runtime__)),
+          __ctx__,
+        )
+    def OrchestrateCreativeAutomation(self, instructions: str,input_json: str,product_images: typing.List["types.LabeledReviewImage"],image_count: int,video_count: int,duration_min_seconds: int,duration_max_seconds: int,source_duration_max_seconds: int,
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.BamlSyncStream[stream_types.CreativeAutomationPlanDraft, types.CreativeAutomationPlanDraft]:
+        __ctx__, __result__ = self.__options.merge_options(baml_options).create_sync_stream(function_name="OrchestrateCreativeAutomation", args={
+            "instructions": instructions,"input_json": input_json,"product_images": product_images,"image_count": image_count,"video_count": video_count,"duration_min_seconds": duration_min_seconds,"duration_max_seconds": duration_max_seconds,"source_duration_max_seconds": source_duration_max_seconds,
+        })
+        return baml_py.BamlSyncStream[stream_types.CreativeAutomationPlanDraft, types.CreativeAutomationPlanDraft](
+          __result__,
+          lambda x: typing.cast(stream_types.CreativeAutomationPlanDraft, x.cast_to(types, types, stream_types, True, __runtime__)),
+          lambda x: typing.cast(types.CreativeAutomationPlanDraft, x.cast_to(types, types, stream_types, False, __runtime__)),
+          __ctx__,
+        )
+    def PlanStaticComposition(self, instructions: str,input_json: str,product_images: typing.List["types.LabeledReviewImage"],
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.BamlSyncStream[stream_types.StaticCompositionDraft, types.StaticCompositionDraft]:
+        __ctx__, __result__ = self.__options.merge_options(baml_options).create_sync_stream(function_name="PlanStaticComposition", args={
+            "instructions": instructions,"input_json": input_json,"product_images": product_images,
+        })
+        return baml_py.BamlSyncStream[stream_types.StaticCompositionDraft, types.StaticCompositionDraft](
+          __result__,
+          lambda x: typing.cast(stream_types.StaticCompositionDraft, x.cast_to(types, types, stream_types, True, __runtime__)),
+          lambda x: typing.cast(types.StaticCompositionDraft, x.cast_to(types, types, stream_types, False, __runtime__)),
+          __ctx__,
+        )
+    def ResolveCreativePersona(self, instructions: str,input_json: str,
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.BamlSyncStream[stream_types.CreativePersonaHypothesis, types.CreativePersonaHypothesis]:
+        __ctx__, __result__ = self.__options.merge_options(baml_options).create_sync_stream(function_name="ResolveCreativePersona", args={
+            "instructions": instructions,"input_json": input_json,
+        })
+        return baml_py.BamlSyncStream[stream_types.CreativePersonaHypothesis, types.CreativePersonaHypothesis](
+          __result__,
+          lambda x: typing.cast(stream_types.CreativePersonaHypothesis, x.cast_to(types, types, stream_types, True, __runtime__)),
+          lambda x: typing.cast(types.CreativePersonaHypothesis, x.cast_to(types, types, stream_types, False, __runtime__)),
+          __ctx__,
+        )
+    def ReviewStaticCreative(self, instructions: str,input_json: str,sources: typing.List["types.LabeledReviewImage"],
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.BamlSyncStream[stream_types.StaticCreativeReview, types.StaticCreativeReview]:
+        __ctx__, __result__ = self.__options.merge_options(baml_options).create_sync_stream(function_name="ReviewStaticCreative", args={
+            "instructions": instructions,"input_json": input_json,"sources": sources,
+        })
+        return baml_py.BamlSyncStream[stream_types.StaticCreativeReview, types.StaticCreativeReview](
+          __result__,
+          lambda x: typing.cast(stream_types.StaticCreativeReview, x.cast_to(types, types, stream_types, True, __runtime__)),
+          lambda x: typing.cast(types.StaticCreativeReview, x.cast_to(types, types, stream_types, False, __runtime__)),
+          __ctx__,
+        )
+    def ScreenResearchReference(self, instructions: str,input_json: str,sources: typing.List["types.LabeledReviewImage"],
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.BamlSyncStream[stream_types.ResearchScreeningDraft, types.ResearchScreeningDraft]:
+        __ctx__, __result__ = self.__options.merge_options(baml_options).create_sync_stream(function_name="ScreenResearchReference", args={
+            "instructions": instructions,"input_json": input_json,"sources": sources,
+        })
+        return baml_py.BamlSyncStream[stream_types.ResearchScreeningDraft, types.ResearchScreeningDraft](
+          __result__,
+          lambda x: typing.cast(stream_types.ResearchScreeningDraft, x.cast_to(types, types, stream_types, True, __runtime__)),
+          lambda x: typing.cast(types.ResearchScreeningDraft, x.cast_to(types, types, stream_types, False, __runtime__)),
+          __ctx__,
+        )
+    def SynthesizeCreativeLesson(self, instructions: str,evidence_json: str,diagnosis_json: str,
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.BamlSyncStream[stream_types.CreativeLessonResult, types.CreativeLessonResult]:
+        __ctx__, __result__ = self.__options.merge_options(baml_options).create_sync_stream(function_name="SynthesizeCreativeLesson", args={
+            "instructions": instructions,"evidence_json": evidence_json,"diagnosis_json": diagnosis_json,
+        })
+        return baml_py.BamlSyncStream[stream_types.CreativeLessonResult, types.CreativeLessonResult](
+          __result__,
+          lambda x: typing.cast(stream_types.CreativeLessonResult, x.cast_to(types, types, stream_types, True, __runtime__)),
+          lambda x: typing.cast(types.CreativeLessonResult, x.cast_to(types, types, stream_types, False, __runtime__)),
+          __ctx__,
+        )
+    def WriteCreativeBrief(self, instructions: str,input_json: str,variation_count: int,
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.BamlSyncStream[stream_types.CreativeBriefDraft, types.CreativeBriefDraft]:
+        __ctx__, __result__ = self.__options.merge_options(baml_options).create_sync_stream(function_name="WriteCreativeBrief", args={
+            "instructions": instructions,"input_json": input_json,"variation_count": variation_count,
+        })
+        return baml_py.BamlSyncStream[stream_types.CreativeBriefDraft, types.CreativeBriefDraft](
+          __result__,
+          lambda x: typing.cast(stream_types.CreativeBriefDraft, x.cast_to(types, types, stream_types, True, __runtime__)),
+          lambda x: typing.cast(types.CreativeBriefDraft, x.cast_to(types, types, stream_types, False, __runtime__)),
+          __ctx__,
+        )
     
 
 class BamlHttpRequestClient:
@@ -144,6 +378,69 @@ class BamlHttpRequestClient:
             "instructions": instructions,"evidence_json": evidence_json,
         }, mode="request")
         return __result__
+    def DiagnoseAdsOutcome(self, instructions: str,evidence_json: str,
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.baml_py.HTTPRequest:
+        __result__ = self.__options.merge_options(baml_options).create_http_request_sync(function_name="DiagnoseAdsOutcome", args={
+            "instructions": instructions,"evidence_json": evidence_json,
+        }, mode="request")
+        return __result__
+    def GenerateCreativeIdeas(self, instructions: str,input_json: str,max_ideas: int,
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.baml_py.HTTPRequest:
+        __result__ = self.__options.merge_options(baml_options).create_http_request_sync(function_name="GenerateCreativeIdeas", args={
+            "instructions": instructions,"input_json": input_json,"max_ideas": max_ideas,
+        }, mode="request")
+        return __result__
+    def OrchestrateCreativeAutomation(self, instructions: str,input_json: str,product_images: typing.List["types.LabeledReviewImage"],image_count: int,video_count: int,duration_min_seconds: int,duration_max_seconds: int,source_duration_max_seconds: int,
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.baml_py.HTTPRequest:
+        __result__ = self.__options.merge_options(baml_options).create_http_request_sync(function_name="OrchestrateCreativeAutomation", args={
+            "instructions": instructions,"input_json": input_json,"product_images": product_images,"image_count": image_count,"video_count": video_count,"duration_min_seconds": duration_min_seconds,"duration_max_seconds": duration_max_seconds,"source_duration_max_seconds": source_duration_max_seconds,
+        }, mode="request")
+        return __result__
+    def PlanStaticComposition(self, instructions: str,input_json: str,product_images: typing.List["types.LabeledReviewImage"],
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.baml_py.HTTPRequest:
+        __result__ = self.__options.merge_options(baml_options).create_http_request_sync(function_name="PlanStaticComposition", args={
+            "instructions": instructions,"input_json": input_json,"product_images": product_images,
+        }, mode="request")
+        return __result__
+    def ResolveCreativePersona(self, instructions: str,input_json: str,
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.baml_py.HTTPRequest:
+        __result__ = self.__options.merge_options(baml_options).create_http_request_sync(function_name="ResolveCreativePersona", args={
+            "instructions": instructions,"input_json": input_json,
+        }, mode="request")
+        return __result__
+    def ReviewStaticCreative(self, instructions: str,input_json: str,sources: typing.List["types.LabeledReviewImage"],
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.baml_py.HTTPRequest:
+        __result__ = self.__options.merge_options(baml_options).create_http_request_sync(function_name="ReviewStaticCreative", args={
+            "instructions": instructions,"input_json": input_json,"sources": sources,
+        }, mode="request")
+        return __result__
+    def ScreenResearchReference(self, instructions: str,input_json: str,sources: typing.List["types.LabeledReviewImage"],
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.baml_py.HTTPRequest:
+        __result__ = self.__options.merge_options(baml_options).create_http_request_sync(function_name="ScreenResearchReference", args={
+            "instructions": instructions,"input_json": input_json,"sources": sources,
+        }, mode="request")
+        return __result__
+    def SynthesizeCreativeLesson(self, instructions: str,evidence_json: str,diagnosis_json: str,
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.baml_py.HTTPRequest:
+        __result__ = self.__options.merge_options(baml_options).create_http_request_sync(function_name="SynthesizeCreativeLesson", args={
+            "instructions": instructions,"evidence_json": evidence_json,"diagnosis_json": diagnosis_json,
+        }, mode="request")
+        return __result__
+    def WriteCreativeBrief(self, instructions: str,input_json: str,variation_count: int,
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.baml_py.HTTPRequest:
+        __result__ = self.__options.merge_options(baml_options).create_http_request_sync(function_name="WriteCreativeBrief", args={
+            "instructions": instructions,"input_json": input_json,"variation_count": variation_count,
+        }, mode="request")
+        return __result__
     
 
 class BamlHttpStreamRequestClient:
@@ -157,6 +454,69 @@ class BamlHttpStreamRequestClient:
     ) -> baml_py.baml_py.HTTPRequest:
         __result__ = self.__options.merge_options(baml_options).create_http_request_sync(function_name="AnalyzeCreativeOpportunity", args={
             "instructions": instructions,"evidence_json": evidence_json,
+        }, mode="stream")
+        return __result__
+    def DiagnoseAdsOutcome(self, instructions: str,evidence_json: str,
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.baml_py.HTTPRequest:
+        __result__ = self.__options.merge_options(baml_options).create_http_request_sync(function_name="DiagnoseAdsOutcome", args={
+            "instructions": instructions,"evidence_json": evidence_json,
+        }, mode="stream")
+        return __result__
+    def GenerateCreativeIdeas(self, instructions: str,input_json: str,max_ideas: int,
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.baml_py.HTTPRequest:
+        __result__ = self.__options.merge_options(baml_options).create_http_request_sync(function_name="GenerateCreativeIdeas", args={
+            "instructions": instructions,"input_json": input_json,"max_ideas": max_ideas,
+        }, mode="stream")
+        return __result__
+    def OrchestrateCreativeAutomation(self, instructions: str,input_json: str,product_images: typing.List["types.LabeledReviewImage"],image_count: int,video_count: int,duration_min_seconds: int,duration_max_seconds: int,source_duration_max_seconds: int,
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.baml_py.HTTPRequest:
+        __result__ = self.__options.merge_options(baml_options).create_http_request_sync(function_name="OrchestrateCreativeAutomation", args={
+            "instructions": instructions,"input_json": input_json,"product_images": product_images,"image_count": image_count,"video_count": video_count,"duration_min_seconds": duration_min_seconds,"duration_max_seconds": duration_max_seconds,"source_duration_max_seconds": source_duration_max_seconds,
+        }, mode="stream")
+        return __result__
+    def PlanStaticComposition(self, instructions: str,input_json: str,product_images: typing.List["types.LabeledReviewImage"],
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.baml_py.HTTPRequest:
+        __result__ = self.__options.merge_options(baml_options).create_http_request_sync(function_name="PlanStaticComposition", args={
+            "instructions": instructions,"input_json": input_json,"product_images": product_images,
+        }, mode="stream")
+        return __result__
+    def ResolveCreativePersona(self, instructions: str,input_json: str,
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.baml_py.HTTPRequest:
+        __result__ = self.__options.merge_options(baml_options).create_http_request_sync(function_name="ResolveCreativePersona", args={
+            "instructions": instructions,"input_json": input_json,
+        }, mode="stream")
+        return __result__
+    def ReviewStaticCreative(self, instructions: str,input_json: str,sources: typing.List["types.LabeledReviewImage"],
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.baml_py.HTTPRequest:
+        __result__ = self.__options.merge_options(baml_options).create_http_request_sync(function_name="ReviewStaticCreative", args={
+            "instructions": instructions,"input_json": input_json,"sources": sources,
+        }, mode="stream")
+        return __result__
+    def ScreenResearchReference(self, instructions: str,input_json: str,sources: typing.List["types.LabeledReviewImage"],
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.baml_py.HTTPRequest:
+        __result__ = self.__options.merge_options(baml_options).create_http_request_sync(function_name="ScreenResearchReference", args={
+            "instructions": instructions,"input_json": input_json,"sources": sources,
+        }, mode="stream")
+        return __result__
+    def SynthesizeCreativeLesson(self, instructions: str,evidence_json: str,diagnosis_json: str,
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.baml_py.HTTPRequest:
+        __result__ = self.__options.merge_options(baml_options).create_http_request_sync(function_name="SynthesizeCreativeLesson", args={
+            "instructions": instructions,"evidence_json": evidence_json,"diagnosis_json": diagnosis_json,
+        }, mode="stream")
+        return __result__
+    def WriteCreativeBrief(self, instructions: str,input_json: str,variation_count: int,
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.baml_py.HTTPRequest:
+        __result__ = self.__options.merge_options(baml_options).create_http_request_sync(function_name="WriteCreativeBrief", args={
+            "instructions": instructions,"input_json": input_json,"variation_count": variation_count,
         }, mode="stream")
         return __result__
     

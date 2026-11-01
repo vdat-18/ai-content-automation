@@ -23,7 +23,7 @@ class StreamState(BaseModel, typing.Generic[StreamStateValueT]):
     value: StreamStateValueT
     state: typing_extensions.Literal["Pending", "Incomplete", "Complete"]
 # #########################################################################
-# Generated classes (3)
+# Generated classes (25)
 # #########################################################################
 
 class AdsDiagnosisResult(BaseModel):
@@ -33,8 +33,134 @@ class AdsDiagnosisResult(BaseModel):
     uncertainty: typing.Optional[str] = None
     evidence_refs: typing.List[str]
 
+class AutomationImagePlan(BaseModel):
+    variation_key: typing.Optional[str] = None
+    scenario: typing.Optional[str] = None
+    creative_hypothesis: typing.Optional[str] = None
+    human_presence: typing.Optional[types.AutomationHumanPresence] = None
+    visual_direction: typing.Optional[str] = None
+    product_id: typing.Optional[str] = None
+    selected_variant_id: typing.Optional[str] = None
+    selected_media_ids: typing.Optional[typing.List[str]] = None
+    reference_ids: typing.Optional[typing.List[str]] = None
+    reference_rationale: typing.Optional[str] = None
+    evidence_refs: typing.List[str]
+
+class AutomationVideoAudioPlan(BaseModel):
+    voice_mode: typing.Optional[types.AutomationVideoVoiceMode] = None
+    music_mode: typing.Optional[types.AutomationVideoMusicMode] = None
+    voice_direction: typing.Optional[str] = None
+    music_direction: typing.Optional[str] = None
+    continuity_direction: typing.Optional[str] = None
+
+class AutomationVideoPlan(BaseModel):
+    variation_key: typing.Optional[str] = None
+    scenario: typing.Optional[str] = None
+    creative_hypothesis: typing.Optional[str] = None
+    human_presence: typing.Optional[types.AutomationHumanPresence] = None
+    generation_strategy: typing.Optional[types.AutomationVideoGenerationStrategy] = None
+    final_duration_seconds: typing.Optional[int] = None
+    continuity_plan: typing.Optional[str] = None
+    audio_plan: typing.Optional["AutomationVideoAudioPlan"] = None
+    product_id: typing.Optional[str] = None
+    reference_ids: typing.Optional[typing.List[str]] = None
+    reference_rationale: typing.Optional[str] = None
+    scenes: typing.List["AutomationVideoScenePlan"]
+    evidence_refs: typing.List[str]
+
+class AutomationVideoScenePlan(BaseModel):
+    scene_id: typing.Optional[str] = None
+    purpose: typing.Optional[str] = None
+    visual_direction: typing.Optional[str] = None
+    audio_direction: typing.Optional[str] = None
+    transition_direction: typing.Optional[str] = None
+    generation_duration_seconds: typing.Optional[int] = None
+    usable_duration_seconds: typing.Optional[int] = None
+    selected_variant_id: typing.Optional[str] = None
+    selected_media_ids: typing.Optional[typing.List[str]] = None
+    evidence_refs: typing.List[str]
+
+class CompositionRegion(BaseModel):
+    x: typing.Optional[int] = None
+    y: typing.Optional[int] = None
+    width: typing.Optional[int] = None
+    height: typing.Optional[int] = None
+
+class CompositionTextPlacement(BaseModel):
+    region: typing.Optional["CompositionRegion"] = None
+    alignment: typing.Optional[types.TextAlignment] = None
+    text_color: typing.Optional[str] = None
+    background_color: typing.Optional[str] = None
+
+class CreativeAutomationPlanDraft(BaseModel):
+    readiness: typing.Optional[types.CreativeAutomationReadiness] = None
+    missing_context: typing.List[str]
+    strategy_summary: typing.Optional[str] = None
+    rationale: typing.Optional[str] = None
+    evidence_refs: typing.List[str]
+    image_plans: typing.List["AutomationImagePlan"]
+    video_plans: typing.List["AutomationVideoPlan"]
+    uncertainties: typing.List[str]
+
+class CreativeBriefDraft(BaseModel):
+    heading: typing.Optional[str] = None
+    visual_direction: typing.Optional[str] = None
+    evidence_refs: typing.List[str]
+    subtext: typing.Optional[str] = None
+    claim_ids: typing.List[str]
+    reference_ids: typing.List[str]
+    variations: typing.List["CreativeVariationDraft"]
+
+class CreativeIdeaCandidates(BaseModel):
+    ideas: typing.List["CreativeIdeaDraft"]
+
+class CreativeIdeaDraft(BaseModel):
+    persona_id: typing.Optional[str] = None
+    angle: typing.Optional[str] = None
+    hook: typing.Optional[str] = None
+    concept: typing.Optional[str] = None
+    rationale: typing.Optional[str] = None
+    evidence_refs: typing.List[str]
+    claim_ids: typing.List[str]
+    reference_ids: typing.List[str]
+
 class CreativeLessonResult(BaseModel):
     proposal: typing.Optional["LearningProposalResult"] = None
+
+class CreativeOpportunityResult(BaseModel):
+    category: typing.Optional[types.OpportunityCategory] = None
+    priority: typing.Optional[int] = None
+    rationale: typing.Optional[str] = None
+    evidence_refs: typing.List[str]
+    uncertainty: typing.Optional[str] = None
+    counterargument: typing.Optional[str] = None
+    hypothesis: typing.Optional[str] = None
+    experiment: typing.Optional[str] = None
+    success_signal: typing.Optional[str] = None
+
+class CreativePersonaHypothesis(BaseModel):
+    name: typing.Optional[str] = None
+    description: typing.Optional[str] = None
+    rationale: typing.Optional[str] = None
+    evidence_refs: typing.List[str]
+    uncertainties: typing.List[str]
+
+class CreativeVariationDraft(BaseModel):
+    variation_key: typing.Optional[str] = None
+    heading: typing.Optional[str] = None
+    visual_direction: typing.Optional[str] = None
+    evidence_refs: typing.List[str]
+    subtext: typing.Optional[str] = None
+    awareness_stage: typing.Optional[str] = None
+    angle: typing.Optional[str] = None
+    offer: typing.Optional[str] = None
+    production_level: typing.Optional[str] = None
+    claim_ids: typing.List[str]
+    reference_ids: typing.List[str]
+
+class LabeledReviewImage(BaseModel):
+    label: typing.Optional[str] = None
+    content: typing.Optional[baml_py.Image] = None
 
 class LearningProposalResult(BaseModel):
     priority: typing.Optional[int] = None
@@ -45,18 +171,123 @@ class LearningProposalResult(BaseModel):
     evidence_refs: typing.List[str]
     uncertainty: typing.Optional[str] = None
 
+class ResearchProductMatchDraft(BaseModel):
+    product_id: typing.Optional[str] = None
+    match_kind: typing.Optional[typing.Union[typing_extensions.Literal['product_visible'], typing_extensions.Literal['scene_fit'], typing_extensions.Literal['style_only']]] = None
+    confidence: typing.Optional[float] = None
+
+class ResearchReferenceProfileDraft(BaseModel):
+    summary: typing.Optional[str] = None
+    relevance_to_project: typing.Optional[str] = None
+    primary_subject: typing.Optional[str] = None
+    content_goal: typing.Optional[str] = None
+    reference_types: typing.List[str]
+    product_categories: typing.List[str]
+    visual_style: typing.List[str]
+    composition: typing.List[str]
+    setting: typing.List[str]
+    colors: typing.List[str]
+    camera_motion: typing.List[str]
+    text_treatment: typing.List[str]
+    temporal_structure: typing.List[str]
+    audio_observations: typing.List[str]
+    hook: typing.Optional[str] = None
+    message: typing.Optional[str] = None
+    creative_takeaways: typing.List[str]
+    do_not_copy: typing.List[str]
+    observed_facts: typing.List[str]
+    inferences: typing.List[str]
+    media_notes: typing.List[str]
+    applicability_constraints: typing.List[str]
+    scene_type: typing.Optional[typing.Union[typing_extensions.Literal['lifestyle_scene'], typing_extensions.Literal['environment'], typing_extensions.Literal['flatlay'], typing_extensions.Literal['studio_plain'], typing_extensions.Literal['cutout'], typing_extensions.Literal['graphic'], typing_extensions.Literal['other']]] = None
+    scene_description: typing.Optional[str] = None
+    background_usable: typing.Optional[bool] = None
+    background_reason: typing.Optional[str] = None
+    placement_note: typing.Optional[str] = None
+    camera_angle: typing.Optional[str] = None
+    lighting: typing.Optional[str] = None
+    swap_mode: typing.Optional[typing.Union[typing_extensions.Literal['insert'], typing_extensions.Literal['replace'], typing_extensions.Literal['style_only'], typing_extensions.Literal['reject']]] = None
+    market_fit: typing.Optional[typing.Union[typing_extensions.Literal['us'], typing_extensions.Literal['neutral'], typing_extensions.Literal['non_us']]] = None
+    product_matches: typing.List["ResearchProductMatchDraft"]
+
+class ResearchScreeningDraft(BaseModel):
+    usable: typing.Optional[bool] = None
+    materially_blurry: typing.Optional[bool] = None
+    reason_code: typing.Optional[str] = None
+    reason: typing.Optional[str] = None
+    confidence: typing.Optional[float] = None
+    profile: typing.Optional["ResearchReferenceProfileDraft"] = None
+
+class SemanticCriterionReview(BaseModel):
+    criterion_id: typing.Optional[str] = None
+    status: typing.Optional[types.SemanticCriterionStatus] = None
+    reason: typing.Optional[str] = None
+    score: typing.Optional[float] = None
+    confidence: typing.Optional[float] = None
+    evidence: typing.List["SemanticReviewEvidence"]
+    issue: typing.Optional["SemanticReviewIssue"] = None
+
+class SemanticReviewEvidence(BaseModel):
+    description: typing.Optional[str] = None
+    source_ref: typing.Optional[str] = None
+    region: typing.Optional[typing.List[float]] = None
+
+class SemanticReviewIssue(BaseModel):
+    code: typing.Optional[str] = None
+    severity: typing.Optional[types.SemanticIssueSeverity] = None
+    repair_action: typing.Optional[types.SemanticRepairAction] = None
+    description: typing.Optional[str] = None
+
+class StaticCompositionDraft(BaseModel):
+    visual_prompt: typing.Optional[str] = None
+    product_source_index: typing.Optional[int] = None
+    segmentation_prompt: typing.Optional[str] = None
+    product_region: typing.Optional["CompositionRegion"] = None
+    heading: typing.Optional["CompositionTextPlacement"] = None
+    subtext: typing.Optional["CompositionTextPlacement"] = None
+    logo_region: typing.Optional["CompositionRegion"] = None
+    rationale: typing.Optional[str] = None
+    evidence_refs: typing.List[str]
+
+class StaticCreativeReview(BaseModel):
+    criteria: typing.List["SemanticCriterionReview"]
+    summary: typing.Optional[str] = None
+    warnings: typing.List[str]
+
 # #########################################################################
 # Generated type aliases (0)
 # #########################################################################
 
 
 # #########################################################################
-# Model rebuilds (3)
+# Model rebuilds (25)
 # #########################################################################
 # Resolve string forward references now that every model above is defined so
 # class declaration order never breaks Pydantic construction (issue #793).
 # Recursive models are intentionally omitted (Pydantic resolves those lazily;
 # eagerly rebuilding them can recurse).
 AdsDiagnosisResult.model_rebuild()
+AutomationImagePlan.model_rebuild()
+AutomationVideoAudioPlan.model_rebuild()
+AutomationVideoPlan.model_rebuild()
+AutomationVideoScenePlan.model_rebuild()
+CompositionRegion.model_rebuild()
+CompositionTextPlacement.model_rebuild()
+CreativeAutomationPlanDraft.model_rebuild()
+CreativeBriefDraft.model_rebuild()
+CreativeIdeaCandidates.model_rebuild()
+CreativeIdeaDraft.model_rebuild()
 CreativeLessonResult.model_rebuild()
+CreativeOpportunityResult.model_rebuild()
+CreativePersonaHypothesis.model_rebuild()
+CreativeVariationDraft.model_rebuild()
+LabeledReviewImage.model_rebuild()
 LearningProposalResult.model_rebuild()
+ResearchProductMatchDraft.model_rebuild()
+ResearchReferenceProfileDraft.model_rebuild()
+ResearchScreeningDraft.model_rebuild()
+SemanticCriterionReview.model_rebuild()
+SemanticReviewEvidence.model_rebuild()
+SemanticReviewIssue.model_rebuild()
+StaticCompositionDraft.model_rebuild()
+StaticCreativeReview.model_rebuild()

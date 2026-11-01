@@ -31,6 +31,17 @@ client<llm> LocalMarketingLLMWithFallback {
   }
 }
 
+// Dedicated client for creative_feedback tasks, which need a larger token budget.
+client<llm> CreativeFeedbackLLM {
+  provider "openai-generic"
+  options {
+    base_url env.LOCAL_LLM_BASE_URL
+    model env.LOCAL_LLM_MODEL
+    api_key env.LOCAL_LLM_API_KEY
+    temperature 0
+    max_tokens 2400
+  }
+}
 
 // Provider-neutral semantic orchestration client. Provider and model are runtime values.
 client<llm> OrchestrationModel {

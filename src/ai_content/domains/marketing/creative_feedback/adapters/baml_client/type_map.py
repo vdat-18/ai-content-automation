@@ -19,13 +19,103 @@ type_map = {
     "types.AdsDiagnosisResult": types.AdsDiagnosisResult,
     "stream_types.AdsDiagnosisResult": stream_types.AdsDiagnosisResult,
 
+    "types.AutomationImagePlan": types.AutomationImagePlan,
+    "stream_types.AutomationImagePlan": stream_types.AutomationImagePlan,
+
+    "types.AutomationVideoAudioPlan": types.AutomationVideoAudioPlan,
+    "stream_types.AutomationVideoAudioPlan": stream_types.AutomationVideoAudioPlan,
+
+    "types.AutomationVideoPlan": types.AutomationVideoPlan,
+    "stream_types.AutomationVideoPlan": stream_types.AutomationVideoPlan,
+
+    "types.AutomationVideoScenePlan": types.AutomationVideoScenePlan,
+    "stream_types.AutomationVideoScenePlan": stream_types.AutomationVideoScenePlan,
+
+    "types.CompositionRegion": types.CompositionRegion,
+    "stream_types.CompositionRegion": stream_types.CompositionRegion,
+
+    "types.CompositionTextPlacement": types.CompositionTextPlacement,
+    "stream_types.CompositionTextPlacement": stream_types.CompositionTextPlacement,
+
+    "types.CreativeAutomationPlanDraft": types.CreativeAutomationPlanDraft,
+    "stream_types.CreativeAutomationPlanDraft": stream_types.CreativeAutomationPlanDraft,
+
+    "types.CreativeBriefDraft": types.CreativeBriefDraft,
+    "stream_types.CreativeBriefDraft": stream_types.CreativeBriefDraft,
+
+    "types.CreativeIdeaCandidates": types.CreativeIdeaCandidates,
+    "stream_types.CreativeIdeaCandidates": stream_types.CreativeIdeaCandidates,
+
+    "types.CreativeIdeaDraft": types.CreativeIdeaDraft,
+    "stream_types.CreativeIdeaDraft": stream_types.CreativeIdeaDraft,
+
     "types.CreativeLessonResult": types.CreativeLessonResult,
     "stream_types.CreativeLessonResult": stream_types.CreativeLessonResult,
+
+    "types.CreativeOpportunityResult": types.CreativeOpportunityResult,
+    "stream_types.CreativeOpportunityResult": stream_types.CreativeOpportunityResult,
+
+    "types.CreativePersonaHypothesis": types.CreativePersonaHypothesis,
+    "stream_types.CreativePersonaHypothesis": stream_types.CreativePersonaHypothesis,
+
+    "types.CreativeVariationDraft": types.CreativeVariationDraft,
+    "stream_types.CreativeVariationDraft": stream_types.CreativeVariationDraft,
+
+    "types.LabeledReviewImage": types.LabeledReviewImage,
+    "stream_types.LabeledReviewImage": stream_types.LabeledReviewImage,
 
     "types.LearningProposalResult": types.LearningProposalResult,
     "stream_types.LearningProposalResult": stream_types.LearningProposalResult,
 
+    "types.ResearchProductMatchDraft": types.ResearchProductMatchDraft,
+    "stream_types.ResearchProductMatchDraft": stream_types.ResearchProductMatchDraft,
+
+    "types.ResearchReferenceProfileDraft": types.ResearchReferenceProfileDraft,
+    "stream_types.ResearchReferenceProfileDraft": stream_types.ResearchReferenceProfileDraft,
+
+    "types.ResearchScreeningDraft": types.ResearchScreeningDraft,
+    "stream_types.ResearchScreeningDraft": stream_types.ResearchScreeningDraft,
+
+    "types.SemanticCriterionReview": types.SemanticCriterionReview,
+    "stream_types.SemanticCriterionReview": stream_types.SemanticCriterionReview,
+
+    "types.SemanticReviewEvidence": types.SemanticReviewEvidence,
+    "stream_types.SemanticReviewEvidence": stream_types.SemanticReviewEvidence,
+
+    "types.SemanticReviewIssue": types.SemanticReviewIssue,
+    "stream_types.SemanticReviewIssue": stream_types.SemanticReviewIssue,
+
+    "types.StaticCompositionDraft": types.StaticCompositionDraft,
+    "stream_types.StaticCompositionDraft": stream_types.StaticCompositionDraft,
+
+    "types.StaticCreativeReview": types.StaticCreativeReview,
+    "stream_types.StaticCreativeReview": stream_types.StaticCreativeReview,
+
+
+    "types.AutomationHumanPresence": types.AutomationHumanPresence,
+
+    "types.AutomationVideoGenerationStrategy": types.AutomationVideoGenerationStrategy,
+
+    "types.AutomationVideoMusicMode": types.AutomationVideoMusicMode,
+
+    "types.AutomationVideoVoiceMode": types.AutomationVideoVoiceMode,
+
+    "types.BriefReviewOutcome": types.BriefReviewOutcome,
+
+    "types.CreativeAutomationReadiness": types.CreativeAutomationReadiness,
+
+    "types.IdeaRecommendation": types.IdeaRecommendation,
 
     "types.LearningRecommendationAction": types.LearningRecommendationAction,
+
+    "types.OpportunityCategory": types.OpportunityCategory,
+
+    "types.SemanticCriterionStatus": types.SemanticCriterionStatus,
+
+    "types.SemanticIssueSeverity": types.SemanticIssueSeverity,
+
+    "types.SemanticRepairAction": types.SemanticRepairAction,
+
+    "types.TextAlignment": types.TextAlignment,
 
 }

@@ -100,6 +100,5 @@ networks. The plan, compliance checklist and open questions are in
 ## Status
 
 Work in progress on the `dev` branch. The package is `ai_content` under `src/`.
-Remaining legacy modules (email, creator outreach, local-model media lab) are
-scheduled for removal; the demo flow lives in `domains/marketing/creative`,
-`research_crawler`, `creative_loop` and `creative_knowledge`.
+The demo flow lives in `domains/marketing/creative`, `research_crawler`,
+`creative_loop` and `creative_knowledge`.
