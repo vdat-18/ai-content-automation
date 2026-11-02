@@ -20,7 +20,6 @@ class DataSourceStatusResponse(BaseModel):
     artifact_ref: str | None
     error_code: str | None
     error_message: str | None
-    credential_expires_at: datetime | None = None
     sync_command_id: str | None = None
     sync_status: str | None = None
 

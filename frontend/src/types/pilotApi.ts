@@ -178,32 +178,6 @@ export type GmcRun = {
   issues: { code: string; severity: string; detail: string; source_ref: string | null }[];
 };
 
-export type DataSourceStatus = {
-  source_id: string;
-  provider: "shopify" | "lark" | "google" | "google_merchant" | "klaviyo";
-  name: string;
-  category: string;
-  purpose: string;
-  status: "healthy" | "error" | "not_synced";
-  last_sync_at: string | null;
-  record_count: number;
-  changed: boolean | null;
-  snapshot_id: string | null;
-  artifact_ref: string | null;
-  error_code: string | null;
-  error_message: string | null;
-  credential_expires_at?: string | null;
-  sync_command_id: string | null;
-  sync_status: "pending" | "running" | "retry_wait" | "cancel_requested" | null;
-};
-
-export type DataSourceSyncAccepted = {
-  command_id: string;
-  source_ids: string[];
-  status: string;
-  created: boolean;
-};
-
 export type MediaAssetKind = "image" | "video";
 
 export type MediaAsset = {

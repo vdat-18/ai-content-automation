@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Check, Database, GitBranch, Image, RefreshCcw, Sparkles, Upload, Video } from "lucide-react";
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import { ArrowLeft, ArrowRight, Check, GitBranch, Image, Sparkles, Upload, Video } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
-import { useDataSources, useDataSourceSync, useDataSourcesSyncAll } from "../hooks/useDataSources";
 import { usePilotDashboard } from "../hooks/usePilotDashboard";
 import { Badge, EmptyState, PageHeader, Panel, PanelHeader, SkeletonPage, StatusBadge } from "../components/ui";
 
@@ -1203,35 +1201,3 @@ export function WorkflowsPage() {
   );
 }
 
-export function DataSourcesPage() {
-  const { t, formatDate } = useI18n();
-  const sources = useDataSources();
-  const sync = useDataSourceSync();
-  const syncAll = useDataSourcesSyncAll();
-  if (sources.isLoading) return <SkeletonPage />;
-  const data = sources.data?.items ?? [];
-  const hasActiveSync = data.some((source) => source.sync_status != null);
-  const tokenUrgency = (source: (typeof data)[number]) => {
-    if (!source.credential_expires_at) return null;
-    const remaining = new Date(source.credential_expires_at).getTime() - Date.now();
-    if (remaining <= 0) return <Badge tone="danger">{t("Token expired")}</Badge>;
-    const hours = Math.round(remaining / 3_600_000);
-    if (hours <= 24) return <Badge tone="warning">{t("Token expires in {hours}h", { hours: Math.max(1, hours) })}</Badge>;
-    return null;
-  };
-  const statusData = [
-    { name: t("Healthy"), value: data.filter((x) => x.status === "healthy").length, color: "var(--green)" },
-    { name: t("Not synced"), value: data.filter((x) => x.status === "not_synced").length, color: "var(--amber)" },
-    { name: t("Error"), value: data.filter((x) => x.status === "error").length, color: "var(--red)" },
-  ];
-  return (
-    <>
-      <PageHeader eyebrow="Read-only input health" title="Data sources" description="Real read-only API checks against configured source resources." variant="operator" />
-      {sources.error && <p className="form-error" role="alert">{sources.error.message}</p>}
-      {!data.length ? <EmptyState icon={<Database />} title={t("No data sources configured")} text={t("Ask an administrator to provide the local data-source configuration. Read-only sync starts after configuration.")} /> : <>
-      <div className="source-overview"><Panel><div role="img" aria-label={`${t("Data source status")}: ${data.filter((x) => x.status === "healthy").length}/${data.length} ${t("healthy")}`} style={{ display: "contents" }}><ResponsiveContainer width="100%" height={190}><PieChart><Pie data={statusData} dataKey="value" innerRadius={55} outerRadius={76} paddingAngle={4}>{statusData.map((item) => <Cell key={item.name} fill={item.color} />)}</Pie><Tooltip contentStyle={{ background: "var(--paper)", border: "1px solid var(--line)", borderRadius: 8, boxShadow: "var(--shadow-md)", fontSize: "var(--text-xs)" }} labelStyle={{ color: "var(--muted)" }} itemStyle={{ color: "var(--ink)" }} /></PieChart></ResponsiveContainer></div><div><strong>{data.filter((x) => x.status === "healthy").length}/{data.length}</strong><span>{t("healthy")}</span></div></Panel><Panel><h2>{t("Data readiness")}</h2><p>{data.every((item) => item.status === "healthy") ? t("All configured sources have a successful snapshot.") : t("Sync each source and inspect any authentication or resource errors.")}</p><div className="readiness-row"><span>{t("Mode")}</span><Badge tone="success">{t("Read only")}</Badge></div><div className="readiness-row"><span>{t("Resources")}</span><Badge>{t("Allowlisted")}</Badge></div><button className="secondary-button" onClick={() => syncAll.mutate()} disabled={syncAll.isPending || sync.isPending || hasActiveSync}><RefreshCcw size={15} className={hasActiveSync ? "spin" : undefined} />{hasActiveSync ? t("Syncing…") : t("Sync all")}</button></Panel></div>
-      <div className="source-grid">{data.map((source) => { const isSyncing = source.sync_status != null; return <Panel className="source-card" key={source.source_id}><div><span className="source-icon"><Database size={19} /></span>{isSyncing ? <Badge tone="warning">{t("Syncing…")}</Badge> : source.status === "not_synced" ? <Badge tone="warning">{t("Not synced")}</Badge> : <StatusBadge status={source.status === "error" ? "failed" : "completed"} />}{tokenUrgency(source)}</div><h2>{source.name}</h2><span className="source-category">{t(source.category)} · {source.provider}</span><p>{source.purpose}</p><dl><div><dt>{t("Last sync")}</dt><dd>{source.last_sync_at ? formatDate(source.last_sync_at) : t("Never")}</dd></div><div><dt>{t("Records")}</dt><dd>{source.record_count}</dd></div><div><dt>{t("Change")}</dt><dd>{source.changed == null ? "—" : source.changed ? t("New snapshot") : t("Unchanged")}</dd></div>{source.credential_expires_at && <div><dt>{t("Token expires")}</dt><dd>{formatDate(source.credential_expires_at)}</dd></div>}</dl>{source.error_message && !isSyncing && <p className="form-error">{source.error_code}: {source.error_message}</p>}<button className="secondary-button" onClick={() => sync.mutate(source.source_id)} disabled={sync.isPending || syncAll.isPending || hasActiveSync}><RefreshCcw size={15} className={isSyncing ? "spin" : undefined} />{isSyncing ? t("Syncing…") : t("Sync now")}</button></Panel>; })}</div>
-      </>}
-    </>
-  );
-}

@@ -8,7 +8,6 @@ const NotificationsPage = lazy(() => import("./pages/Notifications").then((modul
 const ApprovalsPage = lazy(() => import("./pages/Approvals").then((module) => ({ default: module.ApprovalsPage })));
 const CreativeLibraryPage = lazy(() => import("./pages/CreativeLibrary").then((module) => ({ default: module.CreativeLibraryPage })));
 const CreativeDetailPage = lazy(() => import("./pages/CreativeJobs").then((module) => ({ default: module.CreativeDetailPage })));
-const DataSourcesPage = lazy(() => import("./pages/Operations").then((module) => ({ default: module.DataSourcesPage })));
 const WorkflowsPage = lazy(() => import("./pages/Operations").then((module) => ({ default: module.WorkflowsPage })));
 const CreativeProductionPage = lazy(() => import("./pages/Operations").then((module) => ({ default: module.CreativeProductionPage })));
 const CreativeAutomationDetailPage = lazy(() => import("./pages/Operations").then((module) => ({ default: module.CreativeAutomationDetailPage })));
@@ -34,7 +33,6 @@ export default function App() {
         <Route path="workflows" element={<WorkflowsPage />} />
         <Route path="creative-production" element={<CreativeProductionPage />} />
         <Route path="creative-production/:requestId" element={<CreativeAutomationDetailPage />} />
-        <Route path="data-sources" element={<DataSourcesPage />} />
         <Route path="media-library" element={<Navigate replace to="/creatives?view=media" />} />
         <Route path="research-crawler" element={<ResearchCrawlerPage />} />
         <Route path="research-library" element={<ResearchLibraryPage />} />

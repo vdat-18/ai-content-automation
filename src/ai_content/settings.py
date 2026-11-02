@@ -1,6 +1,5 @@
 """Typed process settings loaded directly from environment variables."""
 
-from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
 from typing import Literal
@@ -89,9 +88,6 @@ class ApplicationSettings(BaseSettings):
         120, gt=0, validation_alias="AIC_MEDIA_ASSET_PROCESSING_TIMEOUT_SECONDS"
     )
     data_sources_config: Path | None = Field(None, validation_alias="AIC_AI_DATA_SOURCES_CONFIG")
-    data_source_timeout_seconds: float = Field(
-        60, gt=0, le=60, validation_alias="AIC_AI_DATA_SOURCE_TIMEOUT_SECONDS"
-    )
     research_crawl_timeout_seconds: float = Field(
         300, gt=0, le=300, validation_alias="AIC_AI_RESEARCH_CRAWL_TIMEOUT_SECONDS"
     )
@@ -108,9 +104,6 @@ class ApplicationSettings(BaseSettings):
     )
     data_source_sync_interval_seconds: float | None = Field(
         None, ge=60, le=86400, validation_alias="AIC_AI_DATA_SOURCE_SYNC_INTERVAL_SECONDS"
-    )
-    shopify_token_expires_at: datetime | None = Field(
-        None, validation_alias="SHOPIFY_ACCESS_TOKEN_EXPIRES_AT"
     )
     media_generation_enabled: bool = Field(False, validation_alias="AIC_AI_MEDIA_GENERATION_ENABLED")
     database_backend: Literal["sqlite", "postgresql"] = Field(
@@ -213,21 +206,6 @@ class ApplicationSettings(BaseSettings):
         None, validation_alias="AIC_AI_LANGFUSE_SECRET_KEY"
     )
 
-    shopify_access_token: SecretStr | None = Field(None, validation_alias="SHOPIFY_ACCESS_TOKEN")
-    shopify_client_id: str | None = Field(None, validation_alias="SHOPIFY_CLIENT_ID")
-    shopify_client_secret: SecretStr | None = Field(
-        None, validation_alias="SHOPIFY_CLIENT_SECRET"
-    )
-    lark_tenant_access_token: SecretStr | None = Field(
-        None, validation_alias="LARK_TENANT_ACCESS_TOKEN"
-    )
-    lark_app_id: str | None = Field(None, validation_alias="LARK_APP_ID")
-    lark_app_secret: SecretStr | None = Field(None, validation_alias="LARK_APP_SECRET")
-    google_access_token: SecretStr | None = Field(None, validation_alias="GOOGLE_ACCESS_TOKEN")
-    google_merchant_access_token: SecretStr | None = Field(
-        None, validation_alias="GOOGLE_MERCHANT_ACCESS_TOKEN"
-    )
-    klaviyo_api_key: SecretStr | None = Field(None, validation_alias="KLAVIYO_API_KEY")
 
     @field_validator(
         "data_sources_config",
@@ -240,7 +218,6 @@ class ApplicationSettings(BaseSettings):
 
     @field_validator(
         "data_source_sync_interval_seconds",
-        "shopify_token_expires_at",
         mode="before",
     )
     @classmethod

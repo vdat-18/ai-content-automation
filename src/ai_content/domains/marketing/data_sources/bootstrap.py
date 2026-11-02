@@ -9,18 +9,13 @@ from ai_content.platform.artifacts import ArtifactService, ArtifactStore
 
 from .adapters import (
     FilesystemSnapshotArtifactWriter,
-    GoogleConnector,
-    GoogleMerchantConnector,
-    KlaviyoConnector,
-    LarkConnector,
     ServiceSnapshotArtifactWriter,
-    ShopifyConnector,
     SqliteDataSourceRepository,
 )
 from .application.compile_context import CreativeSourceContextCompiler
 from .application.sync import DataSourceSyncService
 from .domain.models import DataSourceDefinition, SourceSnapshot, SyncRun
-from .ports.interfaces import IDataSourceRepository
+from .ports.interfaces import IDataSourceConnector, IDataSourceRepository
 
 
 class DataSourceRuntime:
@@ -79,14 +74,6 @@ def build_runtime(
     db_path: Path,
     artifacts_root: Path,
     *,
-    shopify_token: str | None,
-    lark_token: str | None,
-    lark_app_id: str | None,
-    lark_app_secret: str | None,
-    google_token: str | None,
-    google_merchant_token: str | None,
-    klaviyo_api_key: str | None,
-    timeout_seconds: float,
     repository: IDataSourceRepository | None = None,
     artifact_service: ArtifactService | None = None,
 ) -> DataSourceRuntime:
@@ -96,16 +83,7 @@ def build_runtime(
         if artifact_service is not None
         else FilesystemSnapshotArtifactWriter(ArtifactStore(artifacts_root))
     )
-    connectors = {
-        "shopify": ShopifyConnector(
-            shopify_token,
-            timeout_seconds,
-        ),
-        "lark": LarkConnector(lark_token, lark_app_id, lark_app_secret, timeout_seconds),
-        "google": GoogleConnector(google_token, timeout_seconds),
-        "google_merchant": GoogleMerchantConnector(google_merchant_token, timeout_seconds),
-        "klaviyo": KlaviyoConnector(klaviyo_api_key, timeout_seconds),
-    }
+    connectors: dict[str, IDataSourceConnector] = {}
     return DataSourceRuntime(
         DataSourceSyncService(definitions, connectors, source_repository, artifacts),
         source_repository,

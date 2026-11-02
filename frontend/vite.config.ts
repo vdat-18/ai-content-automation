@@ -21,7 +21,6 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         output: {
           manualChunks: {
-            charts: ["recharts"],
             react: ["react", "react-dom", "react-router-dom", "@tanstack/react-query"],
           },
         },

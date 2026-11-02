@@ -27,7 +27,6 @@ from .dependencies import (
     get_command_scheduler,
     get_command_status_store,
     get_data_source_runtime,
-    get_runtime_settings,
 )
 from .schemas.data_sources import (
     CreativeSourceContextResponse,
@@ -42,11 +41,6 @@ from .schemas.data_sources import (
 )
 
 router = APIRouter(prefix="/api/v1/data-sources", tags=["data-sources"])
-
-_PROVIDER_TOKEN_EXPIRY: dict[str, str] = {
-    "shopify": "shopify_token_expires_at",
-}
-
 
 async def _active_sync_commands(
     queue: CommandStatusStore,
@@ -69,8 +63,6 @@ async def _status(
     definition = runtime.service.definitions[source_id]
     run = await runtime.repository.latest_run(source_id)
     snapshot = await runtime.repository.latest_snapshot_summary(source_id)
-    expiry_field = _PROVIDER_TOKEN_EXPIRY.get(definition.provider.value)
-    credential_expires_at = getattr(get_runtime_settings(), expiry_field) if expiry_field else None
     return DataSourceStatusResponse(
         source_id=source_id,
         provider=definition.provider.value,
@@ -89,7 +81,6 @@ async def _status(
         artifact_ref=snapshot.artifact_ref if snapshot is not None else None,
         error_code=run.error_code if run is not None else None,
         error_message=run.error_message if run is not None else None,
-        credential_expires_at=credential_expires_at,
         sync_command_id=sync_command.command_id if sync_command is not None else None,
         sync_status=sync_command.status.value if sync_command is not None else None,
     )

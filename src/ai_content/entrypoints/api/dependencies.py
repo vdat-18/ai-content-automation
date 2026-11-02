@@ -8,7 +8,6 @@ import tempfile
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
 from typing import Literal
 
@@ -175,7 +174,6 @@ class ApiRuntimeSettings:
     creative_automation_video_source_duration_max_seconds: int = 15
     object_storage: ObjectStorageSettings = ObjectStorageSettings()
     data_sources_config_path: Path | None = None
-    data_source_timeout_seconds: float = 60
     research_crawl_timeout_seconds: float = 300
     jev_api_url: str | None = None
     research_cookies_file: Path | None = None
@@ -184,7 +182,6 @@ class ApiRuntimeSettings:
     jev_navigation_model: str = "jev-latest"
     data_source_sync_interval_seconds: float | None = None
     media_generation_enabled: bool = False
-    shopify_token_expires_at: datetime | None = None
     media_asset_max_image_bytes: int = 100_000_000
     media_asset_max_video_bytes: int = 1_000_000_000
     media_asset_max_image_pixels: int = 100_000_000
@@ -192,15 +189,6 @@ class ApiRuntimeSettings:
     media_asset_max_working_image_pixels: int = 16_777_216
     media_asset_max_preview_image_pixels: int = 2_073_600
     media_asset_processing_timeout_seconds: int = 120
-    shopify_access_token: str | None = None
-    shopify_client_id: str | None = None
-    shopify_client_secret: str | None = None
-    lark_tenant_access_token: str | None = None
-    lark_app_id: str | None = None
-    lark_app_secret: str | None = None
-    google_access_token: str | None = None
-    google_merchant_access_token: str | None = None
-    klaviyo_api_key: str | None = None
 
 
 @dataclass(frozen=True)
@@ -281,7 +269,6 @@ def get_runtime_settings() -> ApiRuntimeSettings:
         ),
         object_storage=application.object_storage(),
         data_sources_config_path=application.data_sources_config,
-        data_source_timeout_seconds=application.data_source_timeout_seconds,
         research_crawl_timeout_seconds=application.research_crawl_timeout_seconds,
         jev_api_url=application.jev_api_url,
         research_cookies_file=application.research_cookies_file,
@@ -290,7 +277,6 @@ def get_runtime_settings() -> ApiRuntimeSettings:
         jev_navigation_model=application.jev_navigation_model,
         data_source_sync_interval_seconds=application.data_source_sync_interval_seconds,
         media_generation_enabled=application.media_generation_enabled,
-        shopify_token_expires_at=application.shopify_token_expires_at,
         media_asset_max_image_bytes=application.media_asset_max_image_bytes,
         media_asset_max_video_bytes=application.media_asset_max_video_bytes,
         media_asset_max_image_pixels=application.media_asset_max_image_pixels,
@@ -298,39 +284,6 @@ def get_runtime_settings() -> ApiRuntimeSettings:
         media_asset_max_working_image_pixels=application.media_asset_max_working_image_pixels,
         media_asset_max_preview_image_pixels=application.media_asset_max_preview_image_pixels,
         media_asset_processing_timeout_seconds=application.media_asset_processing_timeout_seconds,
-        shopify_access_token=(
-            application.shopify_access_token.get_secret_value()
-            if application.shopify_access_token
-            else None
-        ),
-        shopify_client_id=application.shopify_client_id,
-        shopify_client_secret=(
-            application.shopify_client_secret.get_secret_value()
-            if application.shopify_client_secret
-            else None
-        ),
-        lark_tenant_access_token=(
-            application.lark_tenant_access_token.get_secret_value()
-            if application.lark_tenant_access_token
-            else None
-        ),
-        lark_app_id=application.lark_app_id,
-        lark_app_secret=(
-            application.lark_app_secret.get_secret_value() if application.lark_app_secret else None
-        ),
-        google_access_token=(
-            application.google_access_token.get_secret_value()
-            if application.google_access_token
-            else None
-        ),
-        google_merchant_access_token=(
-            application.google_merchant_access_token.get_secret_value()
-            if application.google_merchant_access_token
-            else None
-        ),
-        klaviyo_api_key=(
-            application.klaviyo_api_key.get_secret_value() if application.klaviyo_api_key else None
-        ),
     )
 
 
@@ -907,14 +860,6 @@ def _build_data_source_runtime(
         definitions,
         settings.db_path,
         settings.artifacts_root,
-        shopify_token=settings.shopify_access_token,
-        lark_token=settings.lark_tenant_access_token,
-        lark_app_id=settings.lark_app_id,
-        lark_app_secret=settings.lark_app_secret,
-        google_token=settings.google_access_token,
-        google_merchant_token=settings.google_merchant_access_token,
-        klaviyo_api_key=settings.klaviyo_api_key,
-        timeout_seconds=settings.data_source_timeout_seconds,
         repository=postgres.data_source_repository if postgres is not None else None,
         artifact_service=postgres.artifact_service if postgres is not None else None,
     )

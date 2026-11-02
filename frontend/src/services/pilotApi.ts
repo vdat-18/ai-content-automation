@@ -10,8 +10,6 @@ import type {
   CreativeReviewContext,
   DashboardSnapshot,
   MarketingCreativeAutomationCapabilities,
-  DataSourceStatus,
-  DataSourceSyncAccepted,
   MediaAsset,
   MediaAssetKind,
   MarketingCreativeAutomationBatch,
@@ -75,7 +73,6 @@ function uploadMediaAsset(
 export const pilotApi = {
   dashboard: (signal?: AbortSignal) => getJson<DashboardSnapshot>("/api/v1/dashboard/snapshot", signal),
   uploadMediaAsset,
-  dataSources: (signal?: AbortSignal) => getJson<ListResponse<DataSourceStatus>>("/api/v1/data-sources", signal),
   researchCrawls: (signal?: AbortSignal) =>
     getJson<ResearchCrawlList>("/api/v1/marketing/research-crawls", signal),
   createResearchCrawl: (body: ResearchCrawlCreateRequest) =>
@@ -158,8 +155,6 @@ export const pilotApi = {
   takeOverMarketingCreativeManually: (requestId: string, body: object) =>
     postJson<MarketingCreativeAutomationDetail>(`/api/v1/marketing/creative-automations/${encodeURIComponent(requestId)}/manual-takeover`, body),
   sourceBrands: (signal?: AbortSignal) => getJson<SourceBrands>("/api/v1/data-sources/brands", signal),
-  syncDataSource: (sourceId: string) => postJson<DataSourceSyncAccepted>(`/api/v1/data-sources/${encodeURIComponent(sourceId)}/sync`),
-  syncAllDataSources: () => postJson<DataSourceSyncAccepted>("/api/v1/data-sources/sync-all"),
   creativeIntakes: <T>(signal?: AbortSignal) => getJson<ListResponse<T>>("/api/v1/creative/intakes", signal),
   creativeJobs: (signal?: AbortSignal) => getJson<ListResponse<CreativeJobSummary>>("/api/v1/creative/jobs?decision=all", signal),
   creativeJob: (jobId: string, signal?: AbortSignal) => getJson<CreativeJobDetail>(`/api/v1/creative/jobs/${encodeURIComponent(jobId)}`, signal),

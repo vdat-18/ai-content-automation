@@ -5,7 +5,6 @@ import {
   Bot,
   ChevronDown,
   CircleGauge,
-  Database,
   GitBranch,
   Image,
   LibraryBig,
@@ -43,7 +42,6 @@ const allNav: NavItem[] = [
   { to: "/research-library", label: "Research Library", icon: LibraryBig, group: "research" },
   { to: "/second-brain", label: "SecondBrain", icon: BrainCircuit, group: "research" },
   { to: "/workflows", label: "AI activity", icon: GitBranch, group: "activity" },
-  { to: "/data-sources", label: "Data sources", icon: Database, group: "system" },
 ];
 
 export function AppShell() {
