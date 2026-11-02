@@ -6,6 +6,7 @@ import { useI18n } from "./hooks/useI18n";
 const NotificationsPage = lazy(() => import("./pages/Notifications").then((module) => ({ default: module.NotificationsPage })));
 const ResearchCrawlerPage = lazy(() => import("./pages/ResearchCrawler").then((module) => ({ default: module.ResearchCrawlerPage })));
 const ResearchLibraryPage = lazy(() => import("./pages/ResearchLibrary").then((module) => ({ default: module.ResearchLibraryPage })));
+const ReferencesPage = lazy(() => import("./pages/References").then((module) => ({ default: module.ReferencesPage })));
 const ProductsPage = lazy(() => import("./pages/Products").then((module) => ({ default: module.ProductsPage })));
 const CreativeKnowledgePage = lazy(() => import("./pages/CreativeKnowledge").then((module) => ({ default: module.CreativeKnowledgePage })));
 
@@ -16,6 +17,7 @@ export default function App() {
         <Route index element={<Navigate replace to="/research-crawler" />} />
         <Route path="notifications" element={<NotificationsPage />} />
         <Route path="products" element={<ProductsPage />} />
+        <Route path="references" element={<ReferencesPage />} />
         <Route path="research-crawler" element={<ResearchCrawlerPage />} />
         <Route path="research-library" element={<ResearchLibraryPage />} />
         <Route path="second-brain" element={<CreativeKnowledgePage />} />
