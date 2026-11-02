@@ -812,11 +812,10 @@ async def get_creative_knowledge_service(
 def _profile_generator(settings: ApiRuntimeSettings) -> ReferenceProfileGenerator | None:
     if not settings.screening_api_key:
         return None
-    return ReferenceProfileGenerator(
+    return ReferenceProfileGenerator.from_settings(
         base_url=settings.screening_base_url,
         api_key=settings.screening_api_key,
         model=settings.screening_model,
-        timeout=settings.screening_timeout,
     )
 
 

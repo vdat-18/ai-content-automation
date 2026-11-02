@@ -23,6 +23,12 @@ class LlmResponseParser:
     def __init__(self, options: DoNotUseDirectlyCallManager):
         self.__options = options
 
+    def DraftReferenceSearchProfile(
+        self, llm_response: str, baml_options: BamlCallOptions = {},
+    ) -> types.ReferenceSearchProfileDraft:
+        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="DraftReferenceSearchProfile", llm_response=llm_response, mode="request")
+        return typing.cast(types.ReferenceSearchProfileDraft, __result__)
+
     def GenerateCreativeIdeas(
         self, llm_response: str, baml_options: BamlCallOptions = {},
     ) -> types.CreativeIdeaCandidates:
@@ -66,6 +72,12 @@ class LlmStreamParser:
 
     def __init__(self, options: DoNotUseDirectlyCallManager):
         self.__options = options
+
+    def DraftReferenceSearchProfile(
+        self, llm_response: str, baml_options: BamlCallOptions = {},
+    ) -> stream_types.ReferenceSearchProfileDraft:
+        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="DraftReferenceSearchProfile", llm_response=llm_response, mode="stream")
+        return typing.cast(stream_types.ReferenceSearchProfileDraft, __result__)
 
     def GenerateCreativeIdeas(
         self, llm_response: str, baml_options: BamlCallOptions = {},

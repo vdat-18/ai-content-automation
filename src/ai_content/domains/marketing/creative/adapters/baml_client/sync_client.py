@@ -94,6 +94,20 @@ class BamlSyncClient:
     def parse_stream(self):
       return self.__llm_stream_parser
 
+    def DraftReferenceSearchProfile(self, product_json: str,
+        baml_options: BamlCallOptions = {},
+    ) -> types.ReferenceSearchProfileDraft:
+        # Check if on_tick is provided
+        if 'on_tick' in baml_options:
+            __stream__ = self.stream.DraftReferenceSearchProfile(product_json=product_json,
+                baml_options=baml_options)
+            return __stream__.get_final_response()
+        else:
+            # Original non-streaming code
+            __result__ = self.__options.merge_options(baml_options).call_function_sync(function_name="DraftReferenceSearchProfile", args={
+                "product_json": product_json,
+            })
+            return typing.cast(types.ReferenceSearchProfileDraft, __result__.cast_to(types, types, stream_types, False, __runtime__))
     def GenerateCreativeIdeas(self, input_json: str,max_ideas: int,
         baml_options: BamlCallOptions = {},
     ) -> types.CreativeIdeaCandidates:
@@ -187,6 +201,18 @@ class BamlStreamClient:
     def __init__(self, options: DoNotUseDirectlyCallManager):
         self.__options = options
 
+    def DraftReferenceSearchProfile(self, product_json: str,
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.BamlSyncStream[stream_types.ReferenceSearchProfileDraft, types.ReferenceSearchProfileDraft]:
+        __ctx__, __result__ = self.__options.merge_options(baml_options).create_sync_stream(function_name="DraftReferenceSearchProfile", args={
+            "product_json": product_json,
+        })
+        return baml_py.BamlSyncStream[stream_types.ReferenceSearchProfileDraft, types.ReferenceSearchProfileDraft](
+          __result__,
+          lambda x: typing.cast(stream_types.ReferenceSearchProfileDraft, x.cast_to(types, types, stream_types, True, __runtime__)),
+          lambda x: typing.cast(types.ReferenceSearchProfileDraft, x.cast_to(types, types, stream_types, False, __runtime__)),
+          __ctx__,
+        )
     def GenerateCreativeIdeas(self, input_json: str,max_ideas: int,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.BamlSyncStream[stream_types.CreativeIdeaCandidates, types.CreativeIdeaCandidates]:
@@ -267,6 +293,13 @@ class BamlHttpRequestClient:
     def __init__(self, options: DoNotUseDirectlyCallManager):
         self.__options = options
 
+    def DraftReferenceSearchProfile(self, product_json: str,
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.baml_py.HTTPRequest:
+        __result__ = self.__options.merge_options(baml_options).create_http_request_sync(function_name="DraftReferenceSearchProfile", args={
+            "product_json": product_json,
+        }, mode="request")
+        return __result__
     def GenerateCreativeIdeas(self, input_json: str,max_ideas: int,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.baml_py.HTTPRequest:
@@ -317,6 +350,13 @@ class BamlHttpStreamRequestClient:
     def __init__(self, options: DoNotUseDirectlyCallManager):
         self.__options = options
 
+    def DraftReferenceSearchProfile(self, product_json: str,
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.baml_py.HTTPRequest:
+        __result__ = self.__options.merge_options(baml_options).create_http_request_sync(function_name="DraftReferenceSearchProfile", args={
+            "product_json": product_json,
+        }, mode="stream")
+        return __result__
     def GenerateCreativeIdeas(self, input_json: str,max_ideas: int,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.baml_py.HTTPRequest:
