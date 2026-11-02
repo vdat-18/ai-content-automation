@@ -182,8 +182,6 @@ class ApiRuntimeSettings:
     vilao_api_key: str | None = None
     jev_navigation_model: str = "jev-latest"
     data_source_sync_interval_seconds: float | None = None
-    meta_token_expires_at: datetime | None = None
-    google_ads_token_expires_at: datetime | None = None
     shopify_token_expires_at: datetime | None = None
     media_asset_max_image_bytes: int = 100_000_000
     media_asset_max_video_bytes: int = 1_000_000_000
@@ -199,14 +197,6 @@ class ApiRuntimeSettings:
     lark_app_id: str | None = None
     lark_app_secret: str | None = None
     google_access_token: str | None = None
-    meta_access_token: str | None = None
-    google_ads_access_token: str | None = None
-    google_ads_client_id: str | None = None
-    google_ads_client_secret: str | None = None
-    google_ads_refresh_token: str | None = None
-    google_ads_developer_token: str | None = None
-    google_ads_login_customer_id: str | None = None
-    pinterest_access_token: str | None = None
     google_merchant_access_token: str | None = None
     klaviyo_api_key: str | None = None
 
@@ -288,8 +278,6 @@ def get_runtime_settings() -> ApiRuntimeSettings:
         vilao_api_key=application.credential("VILAO_API_KEY"),
         jev_navigation_model=application.jev_navigation_model,
         data_source_sync_interval_seconds=application.data_source_sync_interval_seconds,
-        meta_token_expires_at=application.meta_token_expires_at,
-        google_ads_token_expires_at=application.google_ads_token_expires_at,
         shopify_token_expires_at=application.shopify_token_expires_at,
         media_asset_max_image_bytes=application.media_asset_max_image_bytes,
         media_asset_max_video_bytes=application.media_asset_max_video_bytes,
@@ -321,38 +309,6 @@ def get_runtime_settings() -> ApiRuntimeSettings:
         google_access_token=(
             application.google_access_token.get_secret_value()
             if application.google_access_token
-            else None
-        ),
-        meta_access_token=(
-            application.meta_access_token.get_secret_value()
-            if application.meta_access_token
-            else None
-        ),
-        google_ads_access_token=(
-            application.google_ads_access_token.get_secret_value()
-            if application.google_ads_access_token
-            else None
-        ),
-        google_ads_client_id=application.google_ads_client_id,
-        google_ads_client_secret=(
-            application.google_ads_client_secret.get_secret_value()
-            if application.google_ads_client_secret
-            else None
-        ),
-        google_ads_refresh_token=(
-            application.google_ads_refresh_token.get_secret_value()
-            if application.google_ads_refresh_token
-            else None
-        ),
-        google_ads_developer_token=(
-            application.google_ads_developer_token.get_secret_value()
-            if application.google_ads_developer_token
-            else None
-        ),
-        google_ads_login_customer_id=application.google_ads_login_customer_id,
-        pinterest_access_token=(
-            application.pinterest_access_token.get_secret_value()
-            if application.pinterest_access_token
             else None
         ),
         google_merchant_access_token=(
@@ -948,14 +904,6 @@ def _build_data_source_runtime(
         lark_app_id=settings.lark_app_id,
         lark_app_secret=settings.lark_app_secret,
         google_token=settings.google_access_token,
-        meta_token=settings.meta_access_token,
-        google_ads_token=settings.google_ads_access_token,
-        google_ads_client_id=settings.google_ads_client_id,
-        google_ads_client_secret=settings.google_ads_client_secret,
-        google_ads_refresh_token=settings.google_ads_refresh_token,
-        google_ads_developer_token=settings.google_ads_developer_token,
-        google_ads_login_customer_id=settings.google_ads_login_customer_id,
-        pinterest_token=settings.pinterest_access_token,
         google_merchant_token=settings.google_merchant_access_token,
         klaviyo_api_key=settings.klaviyo_api_key,
         timeout_seconds=settings.data_source_timeout_seconds,

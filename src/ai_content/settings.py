@@ -97,12 +97,6 @@ class ApplicationSettings(BaseSettings):
     data_source_sync_interval_seconds: float | None = Field(
         None, ge=60, le=86400, validation_alias="AIC_AI_DATA_SOURCE_SYNC_INTERVAL_SECONDS"
     )
-    meta_token_expires_at: datetime | None = Field(
-        None, validation_alias="META_ACCESS_TOKEN_EXPIRES_AT"
-    )
-    google_ads_token_expires_at: datetime | None = Field(
-        None, validation_alias="GOOGLE_ADS_ACCESS_TOKEN_EXPIRES_AT"
-    )
     shopify_token_expires_at: datetime | None = Field(
         None, validation_alias="SHOPIFY_ACCESS_TOKEN_EXPIRES_AT"
     )
@@ -217,26 +211,6 @@ class ApplicationSettings(BaseSettings):
     lark_app_id: str | None = Field(None, validation_alias="LARK_APP_ID")
     lark_app_secret: SecretStr | None = Field(None, validation_alias="LARK_APP_SECRET")
     google_access_token: SecretStr | None = Field(None, validation_alias="GOOGLE_ACCESS_TOKEN")
-    meta_access_token: SecretStr | None = Field(None, validation_alias="META_ACCESS_TOKEN")
-    google_ads_access_token: SecretStr | None = Field(
-        None, validation_alias="GOOGLE_ADS_ACCESS_TOKEN"
-    )
-    google_ads_client_id: str | None = Field(None, validation_alias="GOOGLE_ADS_CLIENT_ID")
-    google_ads_client_secret: SecretStr | None = Field(
-        None, validation_alias="GOOGLE_ADS_CLIENT_SECRET"
-    )
-    google_ads_refresh_token: SecretStr | None = Field(
-        None, validation_alias="GOOGLE_ADS_REFRESH_TOKEN"
-    )
-    google_ads_developer_token: SecretStr | None = Field(
-        None, validation_alias="GOOGLE_ADS_DEVELOPER_TOKEN"
-    )
-    google_ads_login_customer_id: str | None = Field(
-        None, validation_alias="GOOGLE_ADS_LOGIN_CUSTOMER_ID"
-    )
-    pinterest_access_token: SecretStr | None = Field(
-        None, validation_alias="PINTEREST_ACCESS_TOKEN"
-    )
     google_merchant_access_token: SecretStr | None = Field(
         None, validation_alias="GOOGLE_MERCHANT_ACCESS_TOKEN"
     )
@@ -253,8 +227,6 @@ class ApplicationSettings(BaseSettings):
 
     @field_validator(
         "data_source_sync_interval_seconds",
-        "meta_token_expires_at",
-        "google_ads_token_expires_at",
         "shopify_token_expires_at",
         mode="before",
     )

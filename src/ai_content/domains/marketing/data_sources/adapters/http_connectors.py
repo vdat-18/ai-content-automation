@@ -6,7 +6,6 @@ import asyncio
 import re
 import time
 from collections.abc import Mapping
-from decimal import Decimal, InvalidOperation
 from typing import Any
 from urllib.parse import quote, urlparse
 
@@ -915,246 +914,6 @@ class GoogleConnector:
         return tuple(records), raw
 
 
-class MetaAdsConnector:
-    def __init__(
-        self,
-        access_token: str | None,
-        timeout_seconds: float = 15,
-        transport: httpx.AsyncBaseTransport | None = None,
-    ) -> None:
-        self._token = access_token
-        self._timeout = timeout_seconds
-        self._transport = transport
-
-    async def fetch(
-        self, definition: DataSourceDefinition
-    ) -> tuple[tuple[NormalizedRecord, ...], dict[str, Any]]:
-        if not self._token:
-            raise SourceReadError("NOT_CONFIGURED", "Meta access token is not configured")
-        api_version = str(definition.metadata.get("api_version", "v23.0"))
-        headers = {"Authorization": f"Bearer {self._token}"}
-        records: list[NormalizedRecord] = []
-        raw: dict[str, Any] = {"resources": []}
-        async with httpx.AsyncClient(
-            timeout=self._timeout, follow_redirects=False, transport=self._transport
-        ) as client:
-            for resource in definition.resources:
-                if resource.get("kind") != "insights":
-                    raise SourceReadError(
-                        "INVALID_CONFIGURATION", "Meta Ads only supports insights"
-                    )
-                account_id = _required(resource, "ad_account_id")
-                params: dict[str, Any] = {
-                    "level": resource.get("level", "ad"),
-                    "limit": "500",
-                    "fields": (
-                        "campaign_id,campaign_name,adset_id,adset_name,ad_id,ad_name,"
-                        "spend,impressions,clicks,cpc,cpm,ctr,actions,action_values,purchase_roas"
-                    ),
-                }
-                if resource.get("date_preset"):
-                    params["date_preset"] = resource["date_preset"]
-                else:
-                    params["time_range"] = _meta_time_range(resource)
-                items: list[dict[str, Any]] = []
-                for _ in range(_MAX_PAGES):
-                    response = await client.get(
-                        f"{definition.base_url}/{api_version}/{account_id}/insights",
-                        params=params,
-                        headers=headers,
-                    )
-                    payload = await _json(response)
-                    page = payload.get("data")
-                    if not isinstance(page, list):
-                        raise SourceReadError("MALFORMED_RESPONSE", "Meta insights are missing")
-                    items.extend(item for item in page if isinstance(item, dict))
-                    paging = payload.get("paging", {})
-                    next_url = paging.get("next") if isinstance(paging, dict) else None
-                    if not next_url:
-                        break
-                    cursors = paging.get("cursors", {})
-                    after = cursors.get("after") if isinstance(cursors, dict) else None
-                    if not after:
-                        raise SourceReadError(
-                            "MALFORMED_RESPONSE", "Meta pagination cursor is missing"
-                        )
-                    params["after"] = after
-                else:
-                    raise SourceReadError("PAGE_LIMIT_EXCEEDED", "Meta pagination exceeded limit")
-                records.extend(_meta_insight(item, account_id) for item in items)
-                raw["resources"].append(
-                    {"kind": "insights", "ad_account_id": account_id, "items": items}
-                )
-        return tuple(records), raw
-
-
-class GoogleAdsConnector:
-    def __init__(
-        self,
-        access_token: str | None,
-        developer_token: str | None,
-        login_customer_id: str | None,
-        timeout_seconds: float = 15,
-        transport: httpx.AsyncBaseTransport | None = None,
-        *,
-        client_id: str | None = None,
-        client_secret: str | None = None,
-        refresh_token: str | None = None,
-    ) -> None:
-        self._token = access_token
-        self._developer_token = developer_token
-        self._login_customer_id = login_customer_id
-        self._timeout = timeout_seconds
-        self._transport = transport
-        self._client_id = client_id
-        self._client_secret = client_secret
-        self._refresh_token = refresh_token
-
-    async def fetch(
-        self, definition: DataSourceDefinition
-    ) -> tuple[tuple[NormalizedRecord, ...], dict[str, Any]]:
-        oauth_credentials = (self._client_id, self._client_secret, self._refresh_token)
-        if (self._refresh_token and not all(oauth_credentials)) or (
-            not self._token and not all(oauth_credentials)
-        ):
-            raise SourceReadError(
-                "NOT_CONFIGURED", "Google Ads OAuth credentials are not configured"
-            )
-        api_version = str(definition.metadata.get("api_version", "v25"))
-        headers: dict[str, str] = {}
-        if self._developer_token:
-            headers["developer-token"] = self._developer_token
-        if self._login_customer_id:
-            headers["login-customer-id"] = _digits(self._login_customer_id, "login customer ID")
-        records: list[NormalizedRecord] = []
-        raw: dict[str, Any] = {"resources": []}
-        async with httpx.AsyncClient(
-            timeout=self._timeout, follow_redirects=False, transport=self._transport
-        ) as client:
-            token = self._token
-            if self._refresh_token:
-                response = await client.post(
-                    "https://www.googleapis.com/oauth2/v3/token",
-                    data={
-                        "grant_type": "refresh_token",
-                        "client_id": self._client_id,
-                        "client_secret": self._client_secret,
-                        "refresh_token": self._refresh_token,
-                    },
-                )
-                if response.status_code in {400, 401, 403}:
-                    raise SourceReadError("AUTH_FAILED", "Google OAuth credentials are invalid")
-                payload = await _json(response)
-                token = payload.get("access_token")
-                if not isinstance(token, str) or not token:
-                    raise SourceReadError(
-                        "MALFORMED_RESPONSE", "Google OAuth response has no access token"
-                    )
-            headers["Authorization"] = f"Bearer {token}"
-            for resource in definition.resources:
-                if resource.get("kind") != "product_performance":
-                    raise SourceReadError(
-                        "INVALID_CONFIGURATION",
-                        "Google Ads only supports product_performance",
-                    )
-                customer_id = _digits(_required(resource, "customer_id"), "customer ID")
-                query = _google_ads_product_query(resource)
-                items: list[dict[str, Any]] = []
-                page_token: str | None = None
-                for _ in range(_MAX_PAGES):
-                    body: dict[str, Any] = {"query": query}
-                    if page_token:
-                        body["pageToken"] = page_token
-                    response = await client.post(
-                        f"{definition.base_url}/{api_version}/customers/{customer_id}/googleAds:search",
-                        json=body,
-                        headers=headers,
-                    )
-                    payload = await _json(response)
-                    page = payload.get("results", [])
-                    if not isinstance(page, list):
-                        raise SourceReadError(
-                            "MALFORMED_RESPONSE", "Google Ads results are missing"
-                        )
-                    items.extend(item for item in page if isinstance(item, dict))
-                    page_token = payload.get("nextPageToken")
-                    if not page_token:
-                        break
-                else:
-                    raise SourceReadError(
-                        "PAGE_LIMIT_EXCEEDED", "Google Ads pagination exceeded limit"
-                    )
-                records.extend(_google_ads_row(item, customer_id) for item in items)
-                raw["resources"].append(
-                    {"kind": "product_performance", "customer_id": customer_id, "items": items}
-                )
-        return tuple(records), raw
-
-
-class PinterestAdsConnector:
-    def __init__(
-        self,
-        access_token: str | None,
-        timeout_seconds: float = 15,
-        transport: httpx.AsyncBaseTransport | None = None,
-    ) -> None:
-        self._token = access_token
-        self._timeout = timeout_seconds
-        self._transport = transport
-
-    async def fetch(
-        self, definition: DataSourceDefinition
-    ) -> tuple[tuple[NormalizedRecord, ...], dict[str, Any]]:
-        if not self._token:
-            raise SourceReadError("NOT_CONFIGURED", "Pinterest access token is not configured")
-        headers = {"Authorization": f"Bearer {self._token}"}
-        records: list[NormalizedRecord] = []
-        raw: dict[str, Any] = {"resources": []}
-        async with httpx.AsyncClient(
-            timeout=self._timeout, follow_redirects=False, transport=self._transport
-        ) as client:
-            for resource in definition.resources:
-                if resource.get("kind") != "account_analytics":
-                    raise SourceReadError(
-                        "INVALID_CONFIGURATION",
-                        "Pinterest Ads only supports account_analytics",
-                    )
-                account_id = _required(resource, "ad_account_id")
-                params = {
-                    "start_date": _date(resource, "start_date"),
-                    "end_date": _date(resource, "end_date"),
-                    "granularity": resource.get("granularity", "TOTAL"),
-                    "columns": ",".join(
-                        (
-                            "SPEND_IN_DOLLAR",
-                            "IMPRESSION_1",
-                            "TOTAL_CLICKTHROUGH",
-                            "CTR",
-                            "TOTAL_CONVERSIONS",
-                            "TOTAL_CONVERSION_VALUE_IN_MICRO_DOLLAR",
-                        )
-                    ),
-                }
-                response = await client.get(
-                    f"{definition.base_url}/ad_accounts/{account_id}/analytics",
-                    params=params,
-                    headers=headers,
-                )
-                items = await _json_list(response, "Pinterest analytics")
-                records.extend(
-                    NormalizedRecord(
-                        "ad_performance",
-                        f"{account_id}:{item.get('DATE', index)}",
-                        {"ad_account_id": account_id, **item},
-                    )
-                    for index, item in enumerate(items, start=1)
-                )
-                raw["resources"].append(
-                    {"kind": "account_analytics", "ad_account_id": account_id, "items": items}
-                )
-        return tuple(records), raw
-
-
 class GoogleMerchantConnector:
     def __init__(
         self,
@@ -1280,97 +1039,6 @@ class KlaviyoConnector:
         return tuple(records), raw
 
 
-def _meta_time_range(resource: Mapping[str, Any]) -> str:
-    since = _date(resource, "start_date")
-    until = _date(resource, "end_date")
-    return f'{{"since":"{since}","until":"{until}"}}'
-
-
-def _meta_insight(item: Mapping[str, Any], account_id: str) -> NormalizedRecord:
-    provider_id = str(item.get("ad_id") or item.get("adset_id") or item.get("campaign_id") or "")
-    if not provider_id:
-        raise SourceReadError("MALFORMED_RESPONSE", "Meta insight has no entity ID")
-    return NormalizedRecord(
-        "ad_performance",
-        provider_id,
-        {
-            "ad_account_id": account_id,
-            "campaign_id": item.get("campaign_id"),
-            "campaign_name": item.get("campaign_name"),
-            "adset_id": item.get("adset_id"),
-            "adset_name": item.get("adset_name"),
-            "ad_id": item.get("ad_id"),
-            "ad_name": item.get("ad_name"),
-            "spend": item.get("spend"),
-            "impressions": item.get("impressions"),
-            "clicks": item.get("clicks"),
-            "cpc": item.get("cpc"),
-            "cpm": item.get("cpm"),
-            "ctr": item.get("ctr"),
-            "purchases": _action_value(item.get("actions"), "purchase"),
-            "add_to_cart": _action_value(item.get("actions"), "add_to_cart"),
-            "purchase_conversion_value": _action_value(item.get("action_values"), "purchase"),
-            "purchase_roas": item.get("purchase_roas"),
-        },
-    )
-
-
-def _action_value(value: Any, suffix: str) -> str | None:
-    if not isinstance(value, list):
-        return None
-    preferred = (suffix, f"omni_{suffix}", f"offsite_conversion.fb_pixel_{suffix}")
-    actions = {
-        str(item.get("action_type")): str(item.get("value"))
-        for item in value
-        if isinstance(item, dict) and item.get("action_type") and item.get("value") is not None
-    }
-    return next((actions[action] for action in preferred if action in actions), None)
-
-
-def _google_ads_product_query(resource: Mapping[str, Any]) -> str:
-    start_date = _date(resource, "start_date")
-    end_date = _date(resource, "end_date")
-    return (
-        "SELECT segments.product_item_id, campaign.id, campaign.name, ad_group.id, "
-        "ad_group.name, metrics.impressions, metrics.clicks, metrics.cost_micros, "
-        "metrics.conversions, metrics.conversions_value FROM shopping_performance_view "
-        f"WHERE segments.date BETWEEN '{start_date}' AND '{end_date}' "
-        "AND segments.product_item_id IS NOT NULL ORDER BY metrics.conversions_value DESC"
-    )
-
-
-def _google_ads_row(item: Mapping[str, Any], customer_id: str) -> NormalizedRecord:
-    segments = item.get("segments", {})
-    campaign = item.get("campaign", {})
-    ad_group = item.get("adGroup", {})
-    metrics = item.get("metrics", {})
-    if not all(isinstance(value, dict) for value in (segments, campaign, ad_group, metrics)):
-        raise SourceReadError("MALFORMED_RESPONSE", "Google Ads row has invalid fields")
-    sku = str(segments.get("productItemId") or "")
-    campaign_id = str(campaign.get("id") or "")
-    ad_group_id = str(ad_group.get("id") or "")
-    if not sku:
-        raise SourceReadError("MALFORMED_RESPONSE", "Google Ads row has no product item ID")
-    return NormalizedRecord(
-        "product_performance",
-        f"{customer_id}:{sku}:{campaign_id}:{ad_group_id}",
-        {
-            "customer_id": customer_id,
-            "sku": sku,
-            "campaign_id": campaign_id or None,
-            "campaign_name": campaign.get("name"),
-            "ad_group_id": ad_group_id or None,
-            "ad_group_name": ad_group.get("name"),
-            "impressions": metrics.get("impressions"),
-            "clicks": metrics.get("clicks"),
-            "cost_micros": metrics.get("costMicros"),
-            "cost": _micros(metrics.get("costMicros")),
-            "conversions": metrics.get("conversions"),
-            "conversion_value": metrics.get("conversionsValue"),
-        },
-    )
-
-
 def _merchant_product(item: Mapping[str, Any]) -> NormalizedRecord:
     attributes = item.get("productAttributes", {})
     if not isinstance(attributes, dict):
@@ -1420,29 +1088,11 @@ async def _json_list(response: httpx.Response, label: str) -> list[dict[str, Any
         raise SourceReadError("MALFORMED_RESPONSE", f"{label} must be a list")
     return [item for item in payload if isinstance(item, dict)]
 
-
-def _date(resource: Mapping[str, Any], name: str) -> str:
-    value = _required(resource, name)
-    if not _ISO_DATE.fullmatch(value):
-        raise SourceReadError("INVALID_CONFIGURATION", f"Resource field {name} must be YYYY-MM-DD")
-    return value
-
-
 def _digits(value: str, label: str) -> str:
     normalized = value.replace("-", "")
     if not normalized.isdigit():
         raise SourceReadError("INVALID_CONFIGURATION", f"{label} must contain only digits")
     return normalized
-
-
-def _micros(value: Any) -> str | None:
-    if value is None:
-        return None
-    try:
-        return format(Decimal(str(value)) / Decimal(1_000_000), "f")
-    except InvalidOperation:
-        return None
-
 
 def _same_origin_url(base_url: str, next_url: Any) -> str:
     if not isinstance(next_url, str):
@@ -1478,13 +1128,10 @@ def _tabular_records(kind: str, parent_id: str, values: list[Any]) -> tuple[Norm
 
 
 __all__ = [
-    "GoogleAdsConnector",
     "GoogleConnector",
     "GoogleMerchantConnector",
     "KlaviyoConnector",
     "LarkConnector",
-    "MetaAdsConnector",
-    "PinterestAdsConnector",
     "ShopifyConnector",
     "SourceReadError",
 ]

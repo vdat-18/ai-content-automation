@@ -12,9 +12,6 @@ class DataSourceProvider(StrEnum):
     SHOPIFY = "shopify"
     LARK = "lark"
     GOOGLE = "google"
-    META_ADS = "meta_ads"
-    GOOGLE_ADS = "google_ads"
-    PINTEREST_ADS = "pinterest_ads"
     GOOGLE_MERCHANT = "google_merchant"
     KLAVIYO = "klaviyo"
 

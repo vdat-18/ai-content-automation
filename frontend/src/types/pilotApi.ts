@@ -180,7 +180,7 @@ export type GmcRun = {
 
 export type DataSourceStatus = {
   source_id: string;
-  provider: "shopify" | "lark" | "google" | "meta_ads" | "google_ads" | "pinterest_ads" | "google_merchant" | "klaviyo";
+  provider: "shopify" | "lark" | "google" | "google_merchant" | "klaviyo";
   name: string;
   category: string;
   purpose: string;

@@ -44,8 +44,6 @@ from .schemas.data_sources import (
 router = APIRouter(prefix="/api/v1/data-sources", tags=["data-sources"])
 
 _PROVIDER_TOKEN_EXPIRY: dict[str, str] = {
-    "meta_ads": "meta_token_expires_at",
-    "google_ads": "google_ads_token_expires_at",
     "shopify": "shopify_token_expires_at",
 }
 

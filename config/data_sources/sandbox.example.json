@@ -39,42 +39,6 @@
       "metadata": { "brand": "Sandbox Brand" }
     },
     {
-      "source_id": "sandbox-meta-ads",
-      "provider": "meta_ads",
-      "name": "Sandbox Meta Ads Performance",
-      "category": "Performance",
-      "purpose": "Ad-level Creative performance evidence",
-      "base_url": "https://graph.facebook.com",
-      "resources": [
-        { "kind": "insights", "ad_account_id": "act_REPLACE_ACCOUNT_ID", "level": "ad", "date_preset": "last_30d" }
-      ],
-      "metadata": { "brand": "Sandbox Brand", "api_version": "v23.0" }
-    },
-    {
-      "source_id": "sandbox-google-ads",
-      "provider": "google_ads",
-      "name": "Sandbox Google Ads Product Performance",
-      "category": "Performance",
-      "purpose": "SKU-level Google Shopping performance evidence",
-      "base_url": "https://googleads.googleapis.com",
-      "resources": [
-        { "kind": "product_performance", "customer_id": "REPLACE_CUSTOMER_ID", "start_date": "2026-09-01", "end_date": "2026-09-14" }
-      ],
-      "metadata": { "brand": "Sandbox Brand", "api_version": "v25" }
-    },
-    {
-      "source_id": "sandbox-pinterest-ads",
-      "provider": "pinterest_ads",
-      "name": "Sandbox Pinterest Ads Performance",
-      "category": "Performance",
-      "purpose": "Pinterest revenue and conversion evidence",
-      "base_url": "https://api.pinterest.com/v5",
-      "resources": [
-        { "kind": "account_analytics", "ad_account_id": "REPLACE_ACCOUNT_ID", "start_date": "2026-09-01", "end_date": "2026-09-14", "granularity": "TOTAL" }
-      ],
-      "metadata": { "brand": "Sandbox Brand" }
-    },
-    {
       "source_id": "sandbox-google-merchant",
       "provider": "google_merchant",
       "name": "Sandbox Google Merchant Products",
