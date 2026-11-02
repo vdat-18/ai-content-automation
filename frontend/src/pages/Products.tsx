@@ -17,6 +17,7 @@ type Product = {
   images: string[];
 };
 
+type ReferenceImage = { image_id: string; product_type: string; query: string; image_url: string; pin_url: string; title: string; status: string };
 type MediaReport = { downloaded: number; duplicates: number; skipped: number; failed: number };
 type SelectResult = { product_id: string; profile: ReferenceProfile | null; error: string | null };
 type ReferenceProfile = { product_type: string; keywords: string[]; status: string };
@@ -130,6 +131,7 @@ export function ProductsPage() {
         )}
       </Panel>
       <ReferenceProfiles />
+      <ReferenceImages />
     </>
   );
 }
@@ -181,6 +183,74 @@ function ReferenceProfiles() {
           </div>
         </form>
       ))}
+    </Panel>
+  );
+}
+
+function ReferenceImages() {
+  const { t } = useI18n();
+  const client = useQueryClient();
+  const [productType, setProductType] = useState("");
+  const [status, setStatus] = useState("new");
+  const params = new URLSearchParams();
+  if (productType) params.set("product_type", productType);
+  if (status) params.set("status", status);
+  const profiles = useQuery({ queryKey: ["reference-profiles"], queryFn: ({ signal }) => getJson<ReferenceProfile[]>(`${API}/reference-profiles`, signal) });
+  const images = useQuery({
+    queryKey: ["reference-images", productType, status],
+    queryFn: ({ signal }) => getJson<ReferenceImage[]>(`${API}/reference-images?${params}`, signal),
+    refetchInterval: 10000,
+  });
+  const review = useMutation({
+    mutationFn: ({ imageId, next }: { imageId: string; next: string }) => putJson(`${API}/reference-images/${imageId}`, { status: next }),
+    onSuccess: () => client.invalidateQueries({ queryKey: ["reference-images"] }),
+  });
+  if (!profiles.data?.length) return null;
+  return (
+    <Panel>
+      <div className="panel-header">
+        <div>
+          <h2>{t("Reference images")}</h2>
+          <p>{t("Images crawled from Pinterest. Approve the ones worth using as style references.")}</p>
+        </div>
+        <span>{images.data?.length ?? 0}</span>
+      </div>
+      <div className="products-filters">
+        <label>{t("Product type")}{" "}
+          <select value={productType} onChange={(event) => setProductType(event.target.value)}>
+            <option value="">{t("All")}</option>
+            {profiles.data.map((profile) => <option key={profile.product_type} value={profile.product_type}>{profile.product_type}</option>)}
+          </select>
+        </label>
+        <label>{t("Status")}{" "}
+          <select value={status} onChange={(event) => setStatus(event.target.value)}>
+            <option value="new">{t("New")}</option>
+            <option value="approved">{t("Approved")}</option>
+            <option value="rejected">{t("Rejected")}</option>
+            <option value="">{t("All")}</option>
+          </select>
+        </label>
+      </div>
+      {images.data?.length ? (
+        <div className="reference-grid">
+          {images.data.map((image) => (
+            <figure key={image.image_id} className="reference-card">
+              <a href={`https://www.pinterest.com${image.pin_url}`} target="_blank" rel="noreferrer">
+                <img src={image.image_url} alt={image.title} loading="lazy" referrerPolicy="no-referrer" />
+              </a>
+              <figcaption>
+                <small>{image.query}</small>
+                <div>
+                  <button className="secondary-button" disabled={review.isPending || image.status === "approved"} onClick={() => review.mutate({ imageId: image.image_id, next: "approved" })}>{t("Approve")}</button>
+                  <button className="secondary-button" disabled={review.isPending || image.status === "rejected"} onClick={() => review.mutate({ imageId: image.image_id, next: "rejected" })}>{t("Reject")}</button>
+                </div>
+              </figcaption>
+            </figure>
+          ))}
+        </div>
+      ) : (
+        <EmptyState icon={<Package />} title="No reference images" text="Approve keywords, then run the Pinterest crawl from the extension." />
+      )}
     </Panel>
   );
 }
