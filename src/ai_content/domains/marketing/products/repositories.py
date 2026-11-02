@@ -244,7 +244,8 @@ class SqliteProductRepository:
         before = self._connection.total_changes
         self._connection.executemany(
             "INSERT OR IGNORE INTO reference_images "
-            "(image_id, product_type, query, image_url, pin_url, title) VALUES (?, ?, ?, ?, ?, ?)",
+            "(image_id, product_type, query, image_url, pin_url, title, status) "
+            "VALUES (?, ?, ?, ?, ?, ?, 'pending')",
             [
                 (
                     pin["image_id"],
@@ -449,6 +450,7 @@ class PostgresProductRepository:
                                 "image_url": pin["image_url"],
                                 "pin_url": pin["pin_url"],
                                 "title": pin["title"],
+                                "status": "pending",
                             }
                             for pin in pins
                         ]

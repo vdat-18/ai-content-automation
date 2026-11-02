@@ -9,6 +9,7 @@ from typing import Any, Protocol
 import httpx
 from baml_py import Image as BamlImage
 from baml_py.baml_py import BamlError
+from loguru import logger
 
 from ai_content.domains.marketing.research_crawler.adapters.baml_client import types as baml_types
 from ai_content.domains.marketing.research_crawler.adapters.baml_client.async_client import b
@@ -16,7 +17,7 @@ from ai_content.domains.marketing.research_crawler.adapters.baml_model_profile i
     build_creative_orchestrator_registry,
 )
 
-_CONCURRENCY = 4
+_CONCURRENCY = 2
 _DOWNLOAD_TIMEOUT = 30
 
 
@@ -65,7 +66,8 @@ class ReferenceImageReviewer:
                             media_type, base64.b64encode(response.content).decode("ascii")
                         ),
                     )
-                except (httpx.HTTPError, BamlError):
+                except (httpx.HTTPError, BamlError) as error:
+                    logger.warning("Reference image review failed: {}", str(error)[:300])
                     return image["image_id"], None
                 return image["image_id"], result.model_dump()
 

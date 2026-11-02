@@ -86,7 +86,7 @@ async def update_reference_profile(
 
 
 class ImageStatusUpdate(BaseModel):
-    status: Literal["new", "approved", "rejected"]
+    status: Literal["approved", "rejected"]
 
 
 @router.get("/reference-queue")

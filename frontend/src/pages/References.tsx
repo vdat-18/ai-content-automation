@@ -6,7 +6,7 @@ import { useI18n } from "../hooks/useI18n";
 import { getJson, postJson, putJson } from "../services/http";
 
 export type ReferenceProfile = { product_type: string; keywords: string[]; status: string };
-type Screening = { usable: boolean; reason: string; heavy_text: boolean; style: string[]; composition: string; colors: string[]; focal_point: string };
+type Screening = { usable: boolean; reason: string; scene_type: string; scene_description: string; placement_note: string; style: string[]; colors: string[] };
 type ReferenceImage = { image_id: string; product_type: string; query: string; image_url: string; pin_url: string; title: string; status: string; screening: Screening | null };
 type ScreenReport = { reviewed: number; usable: number; rejected: number; failed: number };
 
@@ -95,6 +95,11 @@ function ReferenceImages() {
     mutationFn: ({ imageId, next }: { imageId: string; next: string }) => putJson(`${API}/reference-images/${imageId}`, { status: next }),
     onSuccess: () => client.invalidateQueries({ queryKey: ["reference-images"] }),
   });
+  const pending = useQuery({
+    queryKey: ["reference-images", "pending"],
+    queryFn: ({ signal }) => getJson<ReferenceImage[]>(`${API}/reference-images?status=pending`, signal),
+    refetchInterval: 10000,
+  });
   const screen = useMutation({
     mutationFn: () => postJson<ScreenReport>(`${API}/reference-images/screen?limit=30`),
     onSuccess: () => client.invalidateQueries({ queryKey: ["reference-images"] }),
@@ -105,11 +110,11 @@ function ReferenceImages() {
       <div className="panel-header">
         <div>
           <h2>{t("Reference images")}</h2>
-          <p>{t("Images crawled from Pinterest. Approve the ones worth using as style references.")}</p>
+          <p>{t("Images crawled from Pinterest that Gemini accepted as scenes to borrow. Approve the ones you want to use.")}</p>
         </div>
         <div>
           <button className="secondary-button" disabled={screen.isPending} onClick={() => screen.mutate()}>
-            {screen.isPending ? t("Screening…") : t("Screen with Gemini")}
+            {screen.isPending ? t("Reviewing…") : `${t("Review pending")} (${pending.data?.length ?? 0})`}
           </button>{" "}
           <span>{images.data?.length ?? 0}</span>
         </div>
@@ -125,7 +130,7 @@ function ReferenceImages() {
         </label>
         <label>{t("Status")}{" "}
           <select value={status} onChange={(event) => setStatus(event.target.value)}>
-            <option value="new">{t("New")}</option>
+            <option value="new">{t("Passed Gemini")}</option>
             <option value="approved">{t("Approved")}</option>
             <option value="rejected">{t("Rejected")}</option>
             <option value="">{t("All")}</option>
@@ -142,8 +147,8 @@ function ReferenceImages() {
               <figcaption>
                 <small>{image.query}</small>
                 {image.screening && (
-                  <small title={image.screening.reason}>
-                    {image.screening.usable ? image.screening.style.join(", ") : `✕ ${image.screening.reason}`}
+                  <small title={image.screening.placement_note}>
+                    {image.screening.usable ? `${image.screening.scene_type}: ${image.screening.scene_description}` : `✕ ${image.screening.reason}`}
                   </small>
                 )}
                 <div>

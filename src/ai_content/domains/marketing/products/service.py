@@ -28,6 +28,7 @@ from .repositories import ProductRepository
 
 _PIN_SIZE = re.compile(r"^/(?:\d+x\d*|originals)/")
 _PINTEREST_SEARCH = "https://www.pinterest.com/search/pins/?q="
+_SCREEN_BATCH = 200
 
 
 def _clean_pins(pins: list[dict[str, Any]]) -> list[dict[str, str]]:
@@ -87,10 +88,12 @@ class ProductCatalogService:
         added = await self._repository.add_reference_images(
             product_type, str(payload["query"]), pins
         )
+        screened = await self.screen_images(_SCREEN_BATCH) if self._reviewer else None
         return {
             "stored": "reference_images",
             "received": len(payload.get("pins") or []),
             "added": added,
+            "screened": screened,
         }
 
     async def reference_queue(self, limit: int) -> list[dict[str, str]]:
@@ -115,14 +118,10 @@ class ProductCatalogService:
         return await self._repository.list_reference_images(status, product_type)
 
     async def screen_images(self, limit: int) -> dict[str, int]:
-        """Review new, unscreened images with the vision model; unusable ones are rejected."""
+        """Review pending images with the vision model: usable ones go live, the rest are rejected."""
         if self._reviewer is None:
             raise ProfileGenerationError("LLM is not configured (AIC_SCREENING_API_KEY)")
-        pending = [
-            image
-            for image in await self._repository.list_reference_images("new", None)
-            if image["screening"] is None
-        ][:limit]
+        pending = (await self._repository.list_reference_images("pending", None))[:limit]
         reviews = await self._reviewer.review_all(pending)
         counts = {"reviewed": 0, "usable": 0, "rejected": 0, "failed": 0}
         for image_id, review in reviews.items():
@@ -131,7 +130,7 @@ class ProductCatalogService:
                 continue
             usable = bool(review["usable"])
             await self._repository.set_image_screening(
-                image_id, review, None if usable else "rejected"
+                image_id, review, "new" if usable else "rejected"
             )
             counts["reviewed"] += 1
             counts["usable" if usable else "rejected"] += 1
