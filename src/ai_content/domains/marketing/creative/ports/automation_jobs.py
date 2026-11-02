@@ -35,7 +35,6 @@ class CreativeAutomationJobSnapshot:
     workflow_ref: str | None = None
     review_id: str | None = None
     asset_count: int = 0
-    ads_draft_id: str | None = None
     issues: tuple[CreativeAutomationJobIssue, ...] = ()
     input_tokens: int | None = None
     output_tokens: int | None = None

@@ -6,17 +6,6 @@ from dataclasses import replace
 from datetime import UTC, datetime
 from typing import Literal
 
-from ai_content.domains.marketing.creative.application.ads_activation import (
-    AdsActivationService,
-)
-from ai_content.domains.marketing.creative.application.ads_drafts import (
-    approve_ads_draft,
-)
-from ai_content.domains.marketing.creative.ports.ads_activation import (
-    AdsActivationApproval,
-    AdsActivationReceipt,
-    AdsDraft,
-)
 from ai_content.domains.marketing.creative.ports.automation_workflow import (
     ExactCreativeReviewDecision,
     ManualGenerationRequest,
@@ -48,9 +37,6 @@ def initialize_automation_state(
         status=MarketingCreativeAutomationStatus(status),
         final_review=None,
         review_decision=None,
-        ads_draft=None,
-        ads_approval=None,
-        ads_receipt=None,
         created_at=timestamp,
         updated_at=timestamp,
         production_assets=(),
@@ -106,9 +92,6 @@ def record_final_review(
         status=MarketingCreativeAutomationStatus.READY_FOR_REVIEW,
         final_review=review,
         review_decision=None,
-        ads_draft=None,
-        ads_approval=None,
-        ads_receipt=None,
         production_error_code=None,
         production_error_detail=None,
         revision=state.revision + 1,
@@ -256,97 +239,7 @@ def request_manual_takeover(
     )
 
 
-def attach_ads_draft(
-    state: MarketingCreativeAutomationState,
-    draft: AdsDraft,
-    *,
-    now: datetime | None = None,
-) -> MarketingCreativeAutomationState:
-    decision = state.review_decision
-    review = state.final_review
-    if (
-        state.status != MarketingCreativeAutomationStatus.CREATIVE_APPROVED
-        or decision is None
-        or decision.decision != "approve"
-        or review is None
-    ):
-        raise ValueError("Ads Draft requires an approved final Creative review")
-    if draft.request_id != state.request_id:
-        raise ValueError("Ads Draft belongs to a different automation request")
-    exact_ids = tuple(asset.asset_version_id for asset in draft.assets)
-    exact_checksums = tuple(asset.checksum_sha256 for asset in draft.assets)
-    if exact_ids != decision.asset_version_ids or exact_checksums != decision.asset_checksums:
-        raise ValueError("Ads Draft must use the exact approved Creative assets")
-    return replace(
-        state,
-        status=MarketingCreativeAutomationStatus.ADS_DRAFT_READY,
-        ads_draft=draft,
-        ads_approval=None,
-        ads_receipt=None,
-        revision=state.revision + 1,
-        updated_at=now or datetime.now(UTC),
-    )
-
-
-def approve_automation_ads_draft(
-    state: MarketingCreativeAutomationState,
-    *,
-    approval_id: str,
-    reviewer_alias: str,
-    reason: str,
-    approved_at: datetime | None = None,
-) -> tuple[MarketingCreativeAutomationState, AdsActivationApproval]:
-    if state.status != MarketingCreativeAutomationStatus.ADS_DRAFT_READY:
-        raise ValueError("Creative automation Ads Draft is not ready for approval")
-    if state.ads_draft is None:
-        raise ValueError("Creative automation Ads Draft is missing")
-    approved_draft, approval = approve_ads_draft(
-        state.ads_draft,
-        approval_id=approval_id,
-        reviewer_alias=reviewer_alias,
-        reason=reason,
-        approved_at=approved_at,
-    )
-    return (
-        replace(
-            state,
-            status=MarketingCreativeAutomationStatus.ADS_APPROVED,
-            ads_draft=approved_draft,
-            ads_approval=approval,
-            ads_receipt=None,
-            revision=state.revision + 1,
-            updated_at=approval.approved_at,
-        ),
-        approval,
-    )
-
-
-async def activate_automation_ads(
-    state: MarketingCreativeAutomationState,
-    service: AdsActivationService,
-) -> tuple[MarketingCreativeAutomationState, AdsActivationReceipt]:
-    if state.status != MarketingCreativeAutomationStatus.ADS_APPROVED:
-        raise ValueError("Creative automation Ads Draft is not approved for activation")
-    if state.ads_draft is None or state.ads_approval is None:
-        raise ValueError("Creative automation Ads approval is incomplete")
-    activated_draft, receipt = await service.activate(state.ads_draft, state.ads_approval)
-    return (
-        replace(
-            state,
-            status=MarketingCreativeAutomationStatus.ACTIVATED,
-            ads_draft=activated_draft,
-            ads_receipt=receipt,
-            revision=state.revision + 1,
-            updated_at=receipt.activated_at,
-        ),
-        receipt,
-    )
-
-
 __all__ = [
-    "activate_automation_ads",
-    "approve_automation_ads_draft",
-    "attach_ads_draft",
     "decide_final_review",
     "initialize_automation_state",
     "record_final_review",

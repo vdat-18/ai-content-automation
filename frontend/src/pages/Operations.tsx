@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Check, Database, GitBranch, Image, RefreshCcw, ShieldCheck, Sparkles, Upload, Video } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Database, GitBranch, Image, RefreshCcw, Sparkles, Upload, Video } from "lucide-react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { Link, useParams } from "react-router-dom";
 import { useDataSources, useDataSourceSync, useDataSourcesSyncAll } from "../hooks/useDataSources";
@@ -954,11 +954,6 @@ export function CreativeAutomationDetailPage() {
   const [detail, setDetail] = useState<MarketingCreativeAutomationDetail | null>(null);
   const [reviewer, setReviewer] = useState("");
   const [reason, setReason] = useState("");
-  const [destination, setDestination] = useState("");
-  const [dailyBudget, setDailyBudget] = useState("30");
-  const [currency, setCurrency] = useState("USD");
-  const [adsReviewer, setAdsReviewer] = useState("");
-  const [adsReason, setAdsReason] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -1090,47 +1085,10 @@ export function CreativeAutomationDetailPage() {
     }));
   };
 
-  const createDraft = () => {
-    if (!detail || !destination.trim() || !dailyBudget.trim()) return;
-    void run(() => pilotApi.createMarketingCreativeAdsDraft(detail.request_id, {
-      destination_ref: destination.trim(),
-      daily_budget: dailyBudget,
-      currency: currency.trim().toUpperCase(),
-      idempotency_key: globalThis.crypto?.randomUUID?.() ?? `ads-draft-${Date.now()}`,
-    }));
-  };
-
-  const approveDraft = () => {
-    const draft = detail?.ads_draft;
-    if (!detail || !draft || !adsReviewer.trim() || !adsReason.trim()) return;
-    void run(() => pilotApi.approveMarketingCreativeAdsDraft(detail.request_id, {
-      draft_id: draft.draft_id,
-      draft_fingerprint: draft.draft_fingerprint,
-      asset_version_ids: draft.asset_version_ids,
-      asset_checksums: draft.asset_checksums,
-      reviewer_alias: adsReviewer.trim(),
-      reason: adsReason.trim(),
-      idempotency_key: globalThis.crypto?.randomUUID?.() ?? `ads-approval-${Date.now()}`,
-    }));
-  };
-
-  const launchAds = () => {
-    const draft = detail?.ads_draft;
-    if (!detail || !draft || detail.ads_provider_status !== "ready") return;
-    void run(() => pilotApi.activateMarketingCreativeAdsDraft(detail.request_id, {
-      draft_id: draft.draft_id,
-      draft_fingerprint: draft.draft_fingerprint,
-      asset_version_ids: draft.asset_version_ids,
-      asset_checksums: draft.asset_checksums,
-    }));
-  };
-
   if (loading) return <SkeletonPage />;
   if (!detail) return <><Link className="back-link" to="/creative-production"><ArrowLeft size={16} />Back to Creative Production</Link><Panel><h1>Creative automation unavailable</h1>{error && <p className="form-error">{error}</p>}</Panel></>;
   const review = detail.final_review;
   const canReview = detail.status === "ready_for_review" && review && !detail.review_decision;
-  const canCreateDraft = detail.status === "creative_approved" && !detail.ads_draft;
-  const canApproveDraft = detail.status === "ads_draft_ready" && detail.ads_draft && !detail.ads_approved;
   const canRecover = ["needs_input", "awaiting_generation_provider", "production_needs_attention"].includes(detail.status) && !detail.manual_takeover;
   const hasExactSourceOutput = Boolean(
     review?.assets.some((asset) => asset.fidelity_mode === "exact_source_transform")
@@ -1204,11 +1162,6 @@ export function CreativeAutomationDetailPage() {
       </main>
       <aside className="automation-activation-column">
         <Panel><p className="eyebrow">Request</p><dl className="compact-dl"><div><dt>Route</dt><dd>{detail.route}</dd></div><div><dt>Package</dt><dd><code>{detail.package_id}</code></dd></div><div><dt>Scope</dt><dd>{requestScope || "Not recorded"}</dd></div><div><dt>Production</dt><dd>{detail.production_attempt_count} final-production attempts · ${detail.production_cost}</dd></div><div><dt>Generate again</dt><dd>{detail.generation_request_count} explicit requests</dd></div></dl></Panel>
-        {canCreateDraft && <Panel><PanelHeader title="Create Ads Draft" meta="No Ads write occurs at this step." /><div className="automation-review-fields"><label><span>Destination</span><input value={destination} onChange={(event) => setDestination(event.target.value)} placeholder="Product page or destination ID" /></label><div className="automation-budget-fields"><label><span>Daily budget</span><input type="number" min="0.01" step="0.01" value={dailyBudget} onChange={(event) => setDailyBudget(event.target.value)} /></label><label><span>Currency</span><input maxLength={3} value={currency} onChange={(event) => setCurrency(event.target.value)} /></label></div></div><button className="approve-button" disabled={saving || !destination.trim() || Number(dailyBudget) <= 0 || currency.trim().length !== 3} onClick={createDraft}>Create draft</button></Panel>}
-        {detail.ads_draft && <Panel><PanelHeader title="Ads Draft" meta="Exact Creative versions are locked." /><dl className="compact-dl"><div><dt>Destination</dt><dd>{detail.ads_draft.destination_ref}</dd></div><div><dt>Daily budget</dt><dd>{detail.ads_draft.daily_budget} {detail.ads_draft.currency}</dd></div><div><dt>Status</dt><dd>{detail.ads_draft.status.replaceAll("_", " ")}</dd></div></dl>{canApproveDraft && <><div className="automation-review-fields"><label><span>Approver</span><input value={adsReviewer} onChange={(event) => setAdsReviewer(event.target.value)} placeholder="Your name" /></label><label><span>Approval reason</span><textarea rows={2} value={adsReason} onChange={(event) => setAdsReason(event.target.value)} placeholder="Confirm budget and destination." /></label></div><button className="approve-button" disabled={saving || !adsReviewer.trim() || !adsReason.trim()} onClick={approveDraft}>Approve Ads Draft</button></>}</Panel>}
-        {detail.ads_approved && !detail.ads_activation && detail.ads_provider_status === "ready" && <Panel className="automation-launch-lock"><ShieldCheck size={22} /><div><strong>Ready to launch</strong><p>The approved adapter will publish only the exact draft and Creative versions shown above.</p><button className="approve-button" disabled={saving} onClick={launchAds}>{saving ? "Launching…" : "Launch Ads"}</button></div></Panel>}
-        {detail.ads_approved && !detail.ads_activation && detail.ads_provider_status !== "ready" && <Panel className="automation-launch-lock"><ShieldCheck size={22} /><div><strong>Approved, not published</strong><p>The exact Ads Draft is approved. Real launch remains locked until an approved least-privilege Ads adapter is configured.</p><small>Adapter status: {detail.ads_provider_status.replaceAll("_", " ")}</small></div></Panel>}
-        {detail.ads_activation && <Panel className="automation-recorded-decision"><Check size={19} /><div><strong>Ads launched</strong><p>Campaign {detail.ads_activation.campaign_id} · {detail.ads_activation.ad_ids.length} ad{detail.ads_activation.ad_ids.length === 1 ? "" : "s"}</p><small>{detail.ads_activation.platform} account {detail.ads_activation.account_id}</small></div></Panel>}
       </aside>
     </div>
     {error && <p className="form-error" role="alert">{error}</p>}

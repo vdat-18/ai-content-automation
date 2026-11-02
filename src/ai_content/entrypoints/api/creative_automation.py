@@ -37,22 +37,10 @@ from ai_content.domains.marketing.creative.adapters.baml_orchestration import (
 from ai_content.domains.marketing.creative.adapters.baml_preparation import (
     BamlPreparationModel,
 )
-from ai_content.domains.marketing.creative.application.ads_activation import (
-    AdsActivationService,
-)
-from ai_content.domains.marketing.creative.application.ads_drafts import (
-    build_ads_draft,
-)
-from ai_content.domains.marketing.creative.application.ads_provider_registry import (
-    AdsActivationProviderRegistry,
-)
 from ai_content.domains.marketing.creative.application.automation_production import (
     MarketingCreativeAutomationProducer,
 )
 from ai_content.domains.marketing.creative.application.automation_workflow import (
-    activate_automation_ads,
-    approve_automation_ads_draft,
-    attach_ads_draft,
     decide_final_review,
     initialize_automation_state,
     record_production_outcome,
@@ -70,10 +58,6 @@ from ai_content.domains.marketing.creative.config.orchestration import (
 )
 from ai_content.domains.marketing.creative.config.preparation import (
     PreparationConfig,
-)
-from ai_content.domains.marketing.creative.ports.ads_activation import (
-    AdsActivationDisabledError,
-    ExactCreativeAsset,
 )
 from ai_content.domains.marketing.creative.ports.automation_jobs import (
     CreativeAutomationBatchSnapshot,
@@ -169,7 +153,6 @@ from ai_content.platform.observability.metrics import (
 )
 
 from .dependencies import (
-    get_ads_activation_provider_registry,
     get_ai_usage_repository,
     get_command_scheduler,
     get_creative_automation_job_repository,
@@ -188,11 +171,6 @@ from .dependencies import (
 )
 from .media_assets import get_media_asset_service
 from .schemas.creative_automation import (
-    MarketingCreativeAdsActivationRequest,
-    MarketingCreativeAdsActivationResponse,
-    MarketingCreativeAdsApprovalRequest,
-    MarketingCreativeAdsDraftCreateRequest,
-    MarketingCreativeAdsDraftResponse,
     MarketingCreativeAssetResponse,
     MarketingCreativeAutomationBatchResponse,
     MarketingCreativeAutomationCapabilitiesResponse,
@@ -1170,7 +1148,6 @@ async def _process_automation_request(
 )
 async def get_marketing_creative_automation(
     request_id: str,
-    ads_providers: AdsActivationProviderRegistry = Depends(get_ads_activation_provider_registry),
     jobs: ICreativeAutomationJobRepository = Depends(get_creative_automation_job_repository),
     states: IMarketingCreativeAutomationStateRepository = Depends(
         get_creative_automation_state_repository
@@ -1187,7 +1164,6 @@ async def get_marketing_creative_automation(
     package = await storage.read_package(request_id, state.package_ref)
     return _state_response(
         state,
-        ads_providers,
         issues=(
             [
                 MarketingCreativeAutomationIssueResponse(
@@ -1232,7 +1208,6 @@ async def decide_marketing_creative_review(
     knowledge: CreativeKnowledgeService = Depends(get_creative_knowledge_service),
     jobs: ICreativeAutomationJobRepository = Depends(get_creative_automation_job_repository),
     notifications: NotificationRepository = Depends(get_notification_repository),
-    ads_providers: AdsActivationProviderRegistry = Depends(get_ads_activation_provider_registry),
 ) -> MarketingCreativeAutomationDetailResponse:
     state = await resolve_state_repository_call(states.get(request_id))
     if state is None:
@@ -1268,7 +1243,7 @@ async def decide_marketing_creative_review(
                 acceptance=payload.decision == "approve",
             )
             await _persist_state_job_projection(jobs, notifications, state)
-            return _state_response(state, ads_providers)
+            return _state_response(state)
         raise HTTPException(status_code=409, detail="Creative review was already decided")
     try:
         updated = decide_final_review(
@@ -1298,7 +1273,7 @@ async def decide_marketing_creative_review(
         acceptance=payload.decision == "approve",
     )
     await _persist_state_job_projection(jobs, notifications, updated)
-    return _state_response(updated, ads_providers)
+    return _state_response(updated)
 
 
 @router.post(
@@ -1320,7 +1295,6 @@ async def generate_marketing_creative_again(
     producer: MarketingCreativeAutomationProducer | None = Depends(
         get_creative_automation_producer
     ),
-    ads_providers: AdsActivationProviderRegistry = Depends(get_ads_activation_provider_registry),
 ) -> MarketingCreativeAutomationDetailResponse:
     state = await resolve_state_repository_call(states.get(request_id))
     if state is None:
@@ -1371,7 +1345,7 @@ async def generate_marketing_creative_again(
             )
             response.status_code = status.HTTP_202_ACCEPTED
         await _persist_state_job_projection(jobs, notifications, state)
-        return _state_response(state, ads_providers)
+        return _state_response(state)
     if settings.execution_backend != "celery" and producer is None:
         raise HTTPException(
             status_code=409,
@@ -1437,7 +1411,7 @@ async def generate_marketing_creative_again(
         )
         await _persist_state_job_projection(jobs, notifications, updated)
         response.status_code = status.HTTP_202_ACCEPTED
-        return _state_response(updated, ads_providers)
+        return _state_response(updated)
     assert producer is not None
     try:
         produced = await producer.produce(package)
@@ -1450,7 +1424,7 @@ async def generate_marketing_creative_again(
             detail="Paid media production failed before a reviewable output set was ready",
         ) from error
     await _persist_state_job_projection(jobs, notifications, produced)
-    return _state_response(produced, ads_providers)
+    return _state_response(produced)
 
 
 @router.post(
@@ -1465,7 +1439,6 @@ async def take_over_marketing_creative_manually(
     ),
     jobs: ICreativeAutomationJobRepository = Depends(get_creative_automation_job_repository),
     notifications: NotificationRepository = Depends(get_notification_repository),
-    ads_providers: AdsActivationProviderRegistry = Depends(get_ads_activation_provider_registry),
 ) -> MarketingCreativeAutomationDetailResponse:
     state = await resolve_state_repository_call(states.get(request_id))
     if state is None:
@@ -1479,7 +1452,7 @@ async def take_over_marketing_creative_manually(
             and existing.reason == payload.reason
         ):
             await _persist_state_job_projection(jobs, notifications, state)
-            return _state_response(state, ads_providers)
+            return _state_response(state)
         raise HTTPException(status_code=409, detail="Creative automation was already taken over")
     try:
         updated = request_manual_takeover(
@@ -1492,181 +1465,7 @@ async def take_over_marketing_creative_manually(
         raise HTTPException(status_code=409, detail=str(error)) from error
     await resolve_state_repository_call(states.save(updated))
     await _persist_state_job_projection(jobs, notifications, updated)
-    return _state_response(updated, ads_providers)
-
-
-@router.post(
-    "/{request_id}/ads-draft",
-    response_model=MarketingCreativeAutomationDetailResponse,
-)
-async def create_marketing_creative_ads_draft(
-    request_id: str,
-    payload: MarketingCreativeAdsDraftCreateRequest,
-    states: IMarketingCreativeAutomationStateRepository = Depends(
-        get_creative_automation_state_repository
-    ),
-    jobs: ICreativeAutomationJobRepository = Depends(get_creative_automation_job_repository),
-    notifications: NotificationRepository = Depends(get_notification_repository),
-    ads_providers: AdsActivationProviderRegistry = Depends(get_ads_activation_provider_registry),
-) -> MarketingCreativeAutomationDetailResponse:
-    state = await resolve_state_repository_call(states.get(request_id))
-    if state is None:
-        raise HTTPException(status_code=404, detail="Creative automation request not found")
-    draft_id = _workflow_entity_id("ads-draft", request_id, payload.idempotency_key)
-    if state.ads_draft is not None:
-        existing = state.ads_draft
-        if existing.draft_id != draft_id:
-            raise HTTPException(status_code=409, detail="An Ads Draft already exists")
-        if (
-            existing.destination_ref != payload.destination_ref
-            or existing.daily_budget != payload.daily_budget
-            or existing.currency != payload.currency.upper()
-        ):
-            raise HTTPException(
-                status_code=409,
-                detail="This idempotency key was already used with a different Ads Draft",
-            )
-        await _persist_state_job_projection(jobs, notifications, state)
-        return _state_response(state, ads_providers)
-    if state.final_review is None:
-        raise HTTPException(status_code=409, detail="Final Creative review is unavailable")
-    decision = state.review_decision
-    if decision is None or decision.decision != "approve":
-        raise HTTPException(status_code=409, detail="Final Creative approval is unavailable")
-    approved_ids = set(decision.asset_version_ids)
-    assets_by_id = {
-        asset.asset_version_id: ExactCreativeAsset(
-            asset.asset_version_id,
-            asset.artifact_ref,
-            asset.checksum_sha256,
-            asset.media_kind,
-        )
-        for asset in state.final_review.assets
-        if asset.asset_version_id in approved_ids
-    }
-    assets = tuple(assets_by_id[asset_id] for asset_id in decision.asset_version_ids)
-    draft = build_ads_draft(
-        draft_id=draft_id,
-        request_id=state.request_id,
-        brand_id=state.final_review.brand_id,
-        sku_id=state.final_review.sku_id,
-        platform=state.final_review.platform,
-        objective=state.final_review.objective,
-        destination_ref=payload.destination_ref,
-        daily_budget=payload.daily_budget,
-        currency=payload.currency.upper(),
-        assets=assets,
-    )
-    try:
-        updated = attach_ads_draft(state, draft)
-    except ValueError as error:
-        raise HTTPException(status_code=409, detail=str(error)) from error
-    await resolve_state_repository_call(states.save(updated))
-    await _persist_state_job_projection(jobs, notifications, updated)
-    return _state_response(updated, ads_providers)
-
-
-@router.post(
-    "/{request_id}/ads-draft/approval",
-    response_model=MarketingCreativeAutomationDetailResponse,
-)
-async def approve_marketing_creative_ads_draft(
-    request_id: str,
-    payload: MarketingCreativeAdsApprovalRequest,
-    states: IMarketingCreativeAutomationStateRepository = Depends(
-        get_creative_automation_state_repository
-    ),
-    jobs: ICreativeAutomationJobRepository = Depends(get_creative_automation_job_repository),
-    notifications: NotificationRepository = Depends(get_notification_repository),
-    ads_providers: AdsActivationProviderRegistry = Depends(get_ads_activation_provider_registry),
-) -> MarketingCreativeAutomationDetailResponse:
-    state = await resolve_state_repository_call(states.get(request_id))
-    if state is None:
-        raise HTTPException(status_code=404, detail="Creative automation request not found")
-    draft = state.ads_draft
-    if draft is None:
-        raise HTTPException(status_code=409, detail="Ads Draft is unavailable")
-    current_ids = tuple(asset.asset_version_id for asset in draft.assets)
-    current_checksums = tuple(asset.checksum_sha256 for asset in draft.assets)
-    if (
-        payload.draft_id != draft.draft_id
-        or payload.draft_fingerprint != draft.draft_fingerprint
-        or tuple(payload.asset_version_ids) != current_ids
-        or tuple(payload.asset_checksums) != current_checksums
-    ):
-        raise HTTPException(status_code=409, detail="Ads Draft changed before approval")
-    approval_id = _workflow_entity_id("ads-approval", request_id, payload.idempotency_key)
-    existing = state.ads_approval
-    if existing is not None:
-        if (
-            existing.approval_id == approval_id
-            and existing.draft_id == payload.draft_id
-            and existing.draft_fingerprint == payload.draft_fingerprint
-            and existing.asset_version_ids == current_ids
-            and existing.asset_checksums == current_checksums
-            and existing.reviewer_alias == payload.reviewer_alias
-            and existing.reason == payload.reason
-        ):
-            await _persist_state_job_projection(jobs, notifications, state)
-            return _state_response(state, ads_providers)
-        raise HTTPException(status_code=409, detail="Ads Draft was already approved")
-    try:
-        updated, _ = approve_automation_ads_draft(
-            state,
-            approval_id=approval_id,
-            reviewer_alias=payload.reviewer_alias,
-            reason=payload.reason,
-        )
-    except ValueError as error:
-        raise HTTPException(status_code=409, detail=str(error)) from error
-    await resolve_state_repository_call(states.save(updated))
-    await _persist_state_job_projection(jobs, notifications, updated)
-    return _state_response(updated, ads_providers)
-
-
-@router.post(
-    "/{request_id}/ads-draft/activate",
-    response_model=MarketingCreativeAutomationDetailResponse,
-)
-async def activate_marketing_creative_ads_draft(
-    request_id: str,
-    payload: MarketingCreativeAdsActivationRequest,
-    states: IMarketingCreativeAutomationStateRepository = Depends(
-        get_creative_automation_state_repository
-    ),
-    jobs: ICreativeAutomationJobRepository = Depends(get_creative_automation_job_repository),
-    notifications: NotificationRepository = Depends(get_notification_repository),
-    ads_providers: AdsActivationProviderRegistry = Depends(get_ads_activation_provider_registry),
-) -> MarketingCreativeAutomationDetailResponse:
-    state = await resolve_state_repository_call(states.get(request_id))
-    if state is None:
-        raise HTTPException(status_code=404, detail="Creative automation request not found")
-    draft = state.ads_draft
-    if draft is None:
-        raise HTTPException(status_code=409, detail="Ads Draft is unavailable")
-    if (
-        payload.draft_id != draft.draft_id
-        or payload.draft_fingerprint != draft.draft_fingerprint
-        or tuple(payload.asset_version_ids)
-        != tuple(asset.asset_version_id for asset in draft.assets)
-        or tuple(payload.asset_checksums) != tuple(asset.checksum_sha256 for asset in draft.assets)
-    ):
-        raise HTTPException(status_code=409, detail="Ads Draft changed before activation")
-    if state.ads_receipt is not None:
-        await _persist_state_job_projection(jobs, notifications, state)
-        return _state_response(state, ads_providers)
-    try:
-        updated, _ = await activate_automation_ads(
-            state,
-            AdsActivationService(ads_providers),
-        )
-    except AdsActivationDisabledError as error:
-        raise HTTPException(status_code=409, detail=str(error)) from error
-    except ValueError as error:
-        raise HTTPException(status_code=409, detail=str(error)) from error
-    await resolve_state_repository_call(states.save(updated))
-    await _persist_state_job_projection(jobs, notifications, updated)
-    return _state_response(updated, ads_providers)
+    return _state_response(updated)
 
 
 async def _persist_state_job_projection(
@@ -1682,7 +1481,6 @@ async def _persist_state_job_projection(
         status=state.status.value,
         review_id=state.final_review.review_id if state.final_review is not None else None,
         asset_count=_successful_output_count(state),
-        ads_draft_id=state.ads_draft.draft_id if state.ads_draft is not None else None,
         total_cost=sum(
             (asset.total_cost for asset in state.production_assets),
             start=Decimal("0"),
@@ -1846,21 +1644,6 @@ async def _notify_job_result(
             f"{item.sku_id} Creative is approved",
             "The exact Creative versions are approved and an Ads Draft can be prepared.",
         ),
-        "ads_draft_ready": (
-            "ads_approval_required",
-            f"{item.sku_id} Ads Draft needs approval",
-            "Review the destination, budget and exact Creative versions before activation.",
-        ),
-        "ads_approved": (
-            "ads_approved",
-            f"{item.sku_id} Ads Draft is approved",
-            "Activation remains locked until an approved Ads adapter is available.",
-        ),
-        "activated": (
-            "activated",
-            f"{item.sku_id} Ads are active",
-            "The approved Ads Draft was activated and its receipt was recorded.",
-        ),
         "failed": (
             "failed",
             f"{item.sku_id} failed",
@@ -1872,7 +1655,6 @@ async def _notify_job_result(
     kind, title, detail = notification_copy
     identity = (
         item.review_id
-        or item.ads_draft_id
         or (item.issues[0].code if item.issues else None)
         or item.status
     )
@@ -1957,7 +1739,6 @@ async def _persist_job_result(
         workflow_ref=item.workflow_ref,
         review_id=item.review_id,
         asset_count=item.asset_count,
-        ads_draft_id=item.ads_draft_id,
         issues=tuple(
             CreativeAutomationJobIssue(issue.code, issue.detail, issue.component)
             for issue in item.issues
@@ -2015,7 +1796,6 @@ def _job_item_response(
         workflow_ref=job.workflow_ref,
         review_id=job.review_id,
         asset_count=job.asset_count,
-        ads_draft_id=job.ads_draft_id,
         issues=[
             MarketingCreativeAutomationIssueResponse(
                 code=issue.code,
@@ -2862,11 +2642,6 @@ def _item_response(
             else None
         ),
         asset_count=(_successful_output_count(workflow_state) if workflow_state is not None else 0),
-        ads_draft_id=(
-            workflow_state.ads_draft.draft_id
-            if workflow_state is not None and workflow_state.ads_draft is not None
-            else None
-        ),
         issues=issues,
         image_count=request.output.image_output_count,
         video_count=request.output.video_output_count,
@@ -3659,14 +3434,12 @@ def _artifact_web_url(artifact_ref: str) -> str | None:
 
 def _state_response(
     state: MarketingCreativeAutomationState,
-    ads_providers: AdsActivationProviderRegistry | None = None,
     *,
     issues: list[MarketingCreativeAutomationIssueResponse] | None = None,
     trace: MarketingCreativeAutomationTraceResponse | None = None,
 ) -> MarketingCreativeAutomationDetailResponse:
     review = state.final_review
     decision = state.review_decision
-    draft = state.ads_draft
     return MarketingCreativeAutomationDetailResponse(
         request_id=state.request_id,
         package_id=state.package_id,
@@ -3779,38 +3552,6 @@ def _state_response(
                 requested_at=state.manual_takeover.requested_at,
             )
             if state.manual_takeover is not None
-            else None
-        ),
-        ads_draft=(
-            MarketingCreativeAdsDraftResponse(
-                draft_id=draft.draft_id,
-                destination_ref=draft.destination_ref,
-                daily_budget=draft.daily_budget,
-                currency=draft.currency,
-                draft_fingerprint=draft.draft_fingerprint,
-                status=draft.status.value,
-                asset_version_ids=[asset.asset_version_id for asset in draft.assets],
-                asset_checksums=[asset.checksum_sha256 for asset in draft.assets],
-                created_at=draft.created_at,
-            )
-            if draft is not None
-            else None
-        ),
-        ads_approved=state.ads_approval is not None,
-        ads_provider_status=(
-            ads_providers.status(draft.platform)
-            if ads_providers is not None and draft is not None
-            else "not_configured"
-        ),
-        ads_activation=(
-            MarketingCreativeAdsActivationResponse(
-                platform=state.ads_receipt.platform,
-                account_id=state.ads_receipt.account_id,
-                campaign_id=state.ads_receipt.campaign_id,
-                ad_ids=list(state.ads_receipt.ad_ids),
-                activated_at=state.ads_receipt.activated_at,
-            )
-            if state.ads_receipt is not None
             else None
         ),
         production_attempt_count=sum(len(asset.attempts) for asset in state.production_assets),

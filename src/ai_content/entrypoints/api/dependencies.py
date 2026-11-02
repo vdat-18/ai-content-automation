@@ -27,9 +27,6 @@ from ai_content.domains.marketing.creative.adapters.automation_storage import (
     FileMarketingCreativeAutomationStorage,
     MarketingCreativeAutomationStorage,
 )
-from ai_content.domains.marketing.creative.application.ads_provider_registry import (
-    AdsActivationProviderRegistry,
-)
 from ai_content.domains.marketing.creative.application.automation_production import (
     MarketingCreativeAutomationProducer,
 )
@@ -375,15 +372,6 @@ def get_managed_media_provider_registry(request: Request) -> ManagedMediaProvide
         request.app.state,
         "managed_media_provider_registry",
         ManagedMediaProviderRegistry(),
-    )
-
-
-def get_ads_activation_provider_registry(request: Request) -> AdsActivationProviderRegistry:
-    """Return the approved Ads registry or a fail-closed default."""
-    return getattr(
-        request.app.state,
-        "ads_activation_provider_registry",
-        AdsActivationProviderRegistry(),
     )
 
 

@@ -157,12 +157,6 @@ export const pilotApi = {
     postJson<MarketingCreativeAutomationDetail>(`/api/v1/marketing/creative-automations/${encodeURIComponent(requestId)}/generate-again`, body),
   takeOverMarketingCreativeManually: (requestId: string, body: object) =>
     postJson<MarketingCreativeAutomationDetail>(`/api/v1/marketing/creative-automations/${encodeURIComponent(requestId)}/manual-takeover`, body),
-  createMarketingCreativeAdsDraft: (requestId: string, body: object) =>
-    postJson<MarketingCreativeAutomationDetail>(`/api/v1/marketing/creative-automations/${encodeURIComponent(requestId)}/ads-draft`, body),
-  approveMarketingCreativeAdsDraft: (requestId: string, body: object) =>
-    postJson<MarketingCreativeAutomationDetail>(`/api/v1/marketing/creative-automations/${encodeURIComponent(requestId)}/ads-draft/approval`, body),
-  activateMarketingCreativeAdsDraft: (requestId: string, body: object) =>
-    postJson<MarketingCreativeAutomationDetail>(`/api/v1/marketing/creative-automations/${encodeURIComponent(requestId)}/ads-draft/activate`, body),
   sourcePerformanceCandidates: ({ brand, limit = 20 }: { brand?: string; limit?: number } = {}, signal?: AbortSignal) => {
     const query = new URLSearchParams({ limit: String(limit) });
     if (brand) query.set("brand", brand);

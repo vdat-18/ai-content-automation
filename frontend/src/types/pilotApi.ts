@@ -614,7 +614,6 @@ export type MarketingCreativeAutomationItem = {
   workflow_ref: string | null;
   review_id: string | null;
   asset_count: number;
-  ads_draft_id: string | null;
   issues: { code: string; detail: string; component: string | null }[];
   image_count: number;
   video_count: number;
@@ -725,26 +724,6 @@ export type MarketingCreativeAutomationDetail = {
     requested_by: string;
     reason: string;
     requested_at: string;
-  } | null;
-  ads_draft: {
-    draft_id: string;
-    destination_ref: string;
-    daily_budget: string;
-    currency: string;
-    draft_fingerprint: string;
-    status: string;
-    asset_version_ids: string[];
-    asset_checksums: string[];
-    created_at: string;
-  } | null;
-  ads_approved: boolean;
-  ads_provider_status: string;
-  ads_activation: {
-    platform: string;
-    account_id: string;
-    campaign_id: string;
-    ad_ids: string[];
-    activated_at: string;
   } | null;
   production_attempt_count: number;
   generation_request_count: number;

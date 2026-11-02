@@ -9,7 +9,6 @@ from decimal import Decimal
 from enum import StrEnum
 from typing import Literal, Protocol, TypeVar
 
-from .ads_activation import AdsActivationApproval, AdsActivationReceipt, AdsDraft
 from .final_review import FinalCreativeReview
 from .media_production import (
     PaidMediaArtifact,
@@ -34,9 +33,6 @@ class MarketingCreativeAutomationStatus(StrEnum):
     REVISION_REQUESTED = "revision_requested"
     MANUAL_TAKEOVER = "manual_takeover"
     CREATIVE_APPROVED = "creative_approved"
-    ADS_DRAFT_READY = "ads_draft_ready"
-    ADS_APPROVED = "ads_approved"
-    ACTIVATED = "activated"
     FAILED = "failed"
 
 
@@ -156,11 +152,8 @@ class MarketingCreativeAutomationState:
     status: MarketingCreativeAutomationStatus
     final_review: FinalCreativeReview | None
     review_decision: ExactCreativeReviewDecision | None
-    ads_draft: AdsDraft | None
-    ads_approval: AdsActivationApproval | None
     created_at: datetime
     updated_at: datetime
-    ads_receipt: AdsActivationReceipt | None = None
     production_assets: tuple[ProducedCreativeAssetRecord, ...] = ()
     production_error_code: str | None = None
     production_error_detail: str | None = None
@@ -179,16 +172,6 @@ class MarketingCreativeAutomationState:
             raise ValueError("Creative automation state revision cannot be negative")
         if self.review_decision is not None and self.final_review is None:
             raise ValueError("Creative review decision requires a final review")
-        if self.ads_draft is not None and (
-            self.review_decision is None or self.review_decision.decision != "approve"
-        ):
-            raise ValueError("Ads Draft requires an approved exact Creative review")
-        if self.ads_approval is not None and self.ads_draft is None:
-            raise ValueError("Ads approval requires an Ads Draft")
-        if self.ads_receipt is not None and self.ads_approval is None:
-            raise ValueError("Ads activation receipt requires an approval")
-        if self.status == MarketingCreativeAutomationStatus.ACTIVATED and self.ads_receipt is None:
-            raise ValueError("Activated Creative automation requires an Ads receipt")
         if self.status == MarketingCreativeAutomationStatus.MANUAL_TAKEOVER and not (
             self.manual_takeover is not None
             or (

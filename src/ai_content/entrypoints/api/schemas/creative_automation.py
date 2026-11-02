@@ -450,7 +450,6 @@ class MarketingCreativeAutomationItemResponse(BaseModel):
     workflow_ref: str | None
     review_id: str | None
     asset_count: int
-    ads_draft_id: str | None
     issues: list[MarketingCreativeAutomationIssueResponse]
     image_count: int
     video_count: int
@@ -565,26 +564,6 @@ class MarketingCreativeReviewDecisionResponse(BaseModel):
     key_visual_asset_version_id: str | None
 
 
-class MarketingCreativeAdsDraftResponse(BaseModel):
-    draft_id: str
-    destination_ref: str
-    daily_budget: Decimal
-    currency: str
-    draft_fingerprint: str
-    status: str
-    asset_version_ids: list[str]
-    asset_checksums: list[str]
-    created_at: datetime
-
-
-class MarketingCreativeAdsActivationResponse(BaseModel):
-    platform: str
-    account_id: str
-    campaign_id: str
-    ad_ids: list[str]
-    activated_at: datetime
-
-
 class MarketingCreativeAutomationEventResponse(BaseModel):
     event_id: str
     event_type: str
@@ -660,10 +639,6 @@ class MarketingCreativeAutomationDetailResponse(BaseModel):
     production_versions: list[MarketingCreativeProductionVersionResponse]
     review_decision: MarketingCreativeReviewDecisionResponse | None
     manual_takeover: MarketingCreativeManualTakeoverResponse | None
-    ads_draft: MarketingCreativeAdsDraftResponse | None
-    ads_approved: bool
-    ads_provider_status: str
-    ads_activation: MarketingCreativeAdsActivationResponse | None
     production_attempt_count: int
     generation_request_count: int
     generation_requests: list[MarketingCreativeGenerationRequestResponse]
@@ -730,58 +705,7 @@ class MarketingCreativeManualTakeoverRequest(BaseModel):
     idempotency_key: str = Field(min_length=1, max_length=200)
 
 
-class MarketingCreativeAdsDraftCreateRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    destination_ref: str = Field(min_length=1)
-    daily_budget: Decimal = Field(gt=0)
-    currency: str = Field(min_length=3, max_length=3)
-    idempotency_key: str = Field(min_length=1, max_length=200)
-
-
-class MarketingCreativeAdsApprovalRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    draft_id: str = Field(min_length=1)
-    draft_fingerprint: str = Field(min_length=64, max_length=64)
-    asset_version_ids: list[str] = Field(min_length=1)
-    asset_checksums: list[str] = Field(min_length=1)
-    reviewer_alias: str = Field(min_length=1)
-    reason: str = Field(min_length=1)
-    idempotency_key: str = Field(min_length=1, max_length=200)
-
-    @model_validator(mode="after")
-    def exact_asset_set(self) -> "MarketingCreativeAdsApprovalRequest":
-        if len(self.asset_version_ids) != len(self.asset_checksums):
-            raise ValueError("Every Ads asset version requires a checksum")
-        if any(len(value) != 64 for value in self.asset_checksums):
-            raise ValueError("Ads asset checksums must be SHA-256")
-        return self
-
-
-class MarketingCreativeAdsActivationRequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    draft_id: str = Field(min_length=1)
-    draft_fingerprint: str = Field(min_length=64, max_length=64)
-    asset_version_ids: list[str] = Field(min_length=1)
-    asset_checksums: list[str] = Field(min_length=1)
-
-    @model_validator(mode="after")
-    def exact_asset_set(self) -> "MarketingCreativeAdsActivationRequest":
-        if len(self.asset_version_ids) != len(self.asset_checksums):
-            raise ValueError("Every activation asset version requires a checksum")
-        if any(len(value) != 64 for value in self.asset_checksums):
-            raise ValueError("Activation asset checksums must be SHA-256")
-        return self
-
-
 __all__ = [
-    "MarketingCreativeAdsActivationRequest",
-    "MarketingCreativeAdsActivationResponse",
-    "MarketingCreativeAdsApprovalRequest",
-    "MarketingCreativeAdsDraftCreateRequest",
-    "MarketingCreativeAdsDraftResponse",
     "MarketingCreativeAssetResponse",
     "MarketingCreativeAutomationBatchResponse",
     "MarketingCreativeAutomationCapabilitiesResponse",
