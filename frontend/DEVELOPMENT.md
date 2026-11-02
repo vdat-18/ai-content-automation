@@ -46,20 +46,14 @@ Open `http://localhost:8080/dashboard/`. For Vite HMR and Uvicorn reload:
 docker compose --env-file deploy/.env -f deploy/compose.yaml -f deploy/compose.dev.yaml up --build
 ```
 
-## Browser Tests
+## Tests
 
-The Node suites cover active backend-only routes, Creative summaries, workflow
-deep links, responsive layouts, and navigation focus:
+The Node suites check the routing, the HTTP boundary and the research and
+SecondBrain pages:
 
 ```powershell
-$env:DASHBOARD_URL = "http://127.0.0.1:4174/dashboard"
-pnpm --dir frontend test:browser
+pnpm --dir frontend test
 ```
-
-The browser suites require the `playwright` package and installed Chrome in an
-isolated browser context. If Playwright is supplied by a shared runtime, set
-`NODE_PATH` to that runtime's Node package directory. Optionally set
-`DASHBOARD_SCREENSHOTS` to an existing output directory for screenshots.
 
 ## Data Behavior
 

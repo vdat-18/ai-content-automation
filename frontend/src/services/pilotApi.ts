@@ -1,22 +1,10 @@
-import { ApiError, deleteRequest, getJson, postJson } from "./http";
+import { getJson, postJson } from "./http";
 import type {
-  CreativeJobDetail,
-  CreativeJobSummary,
   CreativeKnowledge,
   CreativeKnowledgeBootstrapResult,
   CreativeKnowledgeList,
   CreativeKnowledgeProposalRequest,
   CreativeKnowledgeStatus,
-  CreativeReviewContext,
-  DashboardSnapshot,
-  MarketingCreativeAutomationCapabilities,
-  MediaAsset,
-  MediaAssetKind,
-  MarketingCreativeAutomationBatch,
-  MarketingCreativeAutomationDetail,
-  MarketingCreativeAutomationList,
-  MarketingCreativeAutomationRequest,
-  ProductFamilyCatalog,
   ResearchCrawlCreateRequest,
   ResearchCrawlJob,
   ResearchCrawlList,
@@ -24,73 +12,19 @@ import type {
   ResearchRecordDeleteResult,
   ResearchRecordDetail,
   ResearchRecordPage,
-  ShortlistedResearchReference,
   ResearchRecordReviewRequest,
   SourceBrands,
   WorkspaceNotification,
   WorkspaceNotificationList,
 } from "../types/pilotApi";
 
-type ListResponse<T> = { items: T[]; total: number };
-
-function uploadMediaAsset(
-  file: File,
-  mediaKind: MediaAssetKind,
-  onProgress?: (percent: number) => void,
-): Promise<MediaAsset> {
-  return new Promise((resolve, reject) => {
-    const request = new XMLHttpRequest();
-    request.open("POST", "/api/v1/media-assets");
-    request.responseType = "json";
-    request.upload.onprogress = (event) => {
-      if (event.lengthComputable) {
-        onProgress?.(Math.round((event.loaded / event.total) * 100));
-      }
-    };
-    request.onerror = () => reject(new ApiError("Media upload could not reach the API", 0));
-    request.onload = () => {
-      const payload = request.response as MediaAsset | { detail?: string } | null;
-      if (request.status >= 200 && request.status < 300 && payload && "asset_id" in payload) {
-        resolve(payload);
-        return;
-      }
-      reject(
-        new ApiError(
-          payload && "detail" in payload && typeof payload.detail === "string"
-            ? payload.detail
-            : `API returned ${request.status}`,
-          request.status,
-        ),
-      );
-    };
-    const form = new FormData();
-    form.set("media_kind", mediaKind);
-    form.set("upload", file, file.name);
-    request.send(form);
-  });
-}
-
 export const pilotApi = {
-  dashboard: (signal?: AbortSignal) => getJson<DashboardSnapshot>("/api/v1/dashboard/snapshot", signal),
-  uploadMediaAsset,
   researchCrawls: (signal?: AbortSignal) =>
     getJson<ResearchCrawlList>("/api/v1/marketing/research-crawls", signal),
   createResearchCrawl: (body: ResearchCrawlCreateRequest) =>
     postJson<ResearchCrawlJob>("/api/v1/marketing/research-crawls", body),
   researchRecords: (query: string, signal?: AbortSignal) =>
     getJson<ResearchRecordPage>(`/api/v1/marketing/research-records?${query}`, signal),
-  shortlistResearchReferences: (brandId: string, product: string, limit: number, signal?: AbortSignal) =>
-    getJson<ShortlistedResearchReference[]>(
-      `/api/v1/marketing/research-records/shortlist?brand_id=${encodeURIComponent(brandId)}&product=${encodeURIComponent(product)}&limit=${limit}`,
-      signal,
-    ),
-  researchRecord: (recordKey: string, signal?: AbortSignal) =>
-    getJson<ResearchRecordDetail>(`/api/v1/marketing/research-records/${encodeURIComponent(recordKey)}`, signal),
-  reviewResearchRecord: (recordKey: string, body: ResearchRecordReviewRequest) =>
-    postJson<ResearchRecordDetail["record"]>(
-      `/api/v1/marketing/research-records/${encodeURIComponent(recordKey)}/review`,
-      body,
-    ),
   reanalyzeResearchRecord: (recordKey: string) =>
     postJson<ResearchRecordDetail["record"]>(
       `/api/v1/marketing/research-records/${encodeURIComponent(recordKey)}/reanalyze`,
@@ -101,8 +35,6 @@ export const pilotApi = {
       ...body,
       record_keys: recordKeys,
     }),
-  deleteResearchRecord: (recordKey: string) =>
-    deleteRequest(`/api/v1/marketing/research-records/${encodeURIComponent(recordKey)}`),
   deleteResearchRecords: (recordKeys: string[]) =>
     postJson<ResearchRecordDeleteResult>("/api/v1/marketing/research-records/delete", {
       record_keys: recordKeys,
@@ -130,39 +62,11 @@ export const pilotApi = {
     postJson<CreativeKnowledge>(
       `/api/v1/marketing/creative-knowledge/${encodeURIComponent(knowledgeId)}/conflict`,
     ),
-  features: (signal?: AbortSignal) => getJson<{ media_generation: boolean }>("/api/v1/features", signal),
-  productFamilies: (query = "", limit = 24, signal?: AbortSignal) => {
-    const params = new URLSearchParams({ limit: String(limit) });
-    if (query.trim()) params.set("query", query.trim());
-    return getJson<ProductFamilyCatalog>(`/api/v1/data-sources/product-families?${params}`, signal);
-  },
   notifications: (unreadOnly = false, signal?: AbortSignal) =>
     getJson<WorkspaceNotificationList>(`/api/v1/notifications?unread_only=${unreadOnly}`, signal),
   markNotificationRead: (notificationId: string) =>
     postJson<WorkspaceNotification>(`/api/v1/notifications/${encodeURIComponent(notificationId)}/read`),
-  createMarketingCreativeAutomation: (body: MarketingCreativeAutomationRequest) =>
-    postJson<MarketingCreativeAutomationBatch>("/api/v1/marketing/creative-automations", body),
-  marketingCreativeAutomations: (signal?: AbortSignal) =>
-    getJson<MarketingCreativeAutomationList>("/api/v1/marketing/creative-automations", signal),
-  marketingCreativeAutomationCapabilities: (signal?: AbortSignal) =>
-    getJson<MarketingCreativeAutomationCapabilities>("/api/v1/marketing/creative-automations/capabilities", signal),
-  marketingCreativeAutomation: (requestId: string, signal?: AbortSignal) =>
-    getJson<MarketingCreativeAutomationDetail>(`/api/v1/marketing/creative-automations/${encodeURIComponent(requestId)}`, signal),
-  decideMarketingCreativeAutomation: (requestId: string, body: object) =>
-    postJson<MarketingCreativeAutomationDetail>(`/api/v1/marketing/creative-automations/${encodeURIComponent(requestId)}/review-decision`, body),
-  generateMarketingCreativeAgain: (requestId: string, body: object) =>
-    postJson<MarketingCreativeAutomationDetail>(`/api/v1/marketing/creative-automations/${encodeURIComponent(requestId)}/generate-again`, body),
-  takeOverMarketingCreativeManually: (requestId: string, body: object) =>
-    postJson<MarketingCreativeAutomationDetail>(`/api/v1/marketing/creative-automations/${encodeURIComponent(requestId)}/manual-takeover`, body),
   sourceBrands: (signal?: AbortSignal) => getJson<SourceBrands>("/api/v1/data-sources/brands", signal),
-  creativeIntakes: <T>(signal?: AbortSignal) => getJson<ListResponse<T>>("/api/v1/creative/intakes", signal),
-  creativeJobs: (signal?: AbortSignal) => getJson<ListResponse<CreativeJobSummary>>("/api/v1/creative/jobs?decision=all", signal),
-  creativeJob: (jobId: string, signal?: AbortSignal) => getJson<CreativeJobDetail>(`/api/v1/creative/jobs/${encodeURIComponent(jobId)}`, signal),
-  creativeReviewContext: (webUrl: string, signal?: AbortSignal) => getJson<CreativeReviewContext>(webUrl, signal),
-  creativeIntakePipeline: <T>(runId: string, signal?: AbortSignal) => getJson<T>(`/api/v1/creative/intakes/${runId}/pipeline`, signal),
-  decideCreative: <T>(jobId: string, body: object) => postJson<T>(`/api/v1/creative/jobs/${jobId}/decision`, body),
-  performanceDecisions: <T>(signal?: AbortSignal) => getJson<ListResponse<T>>("/api/v1/performance/decisions", signal),
-  decidePerformance: <T>(runId: string, body: object) => postJson<T>(`/api/v1/performance/decisions/${runId}/decision`, body),
   retryExecutionCommand: <T>(commandId: string) => postJson<T>(`/api/v1/execution/commands/${commandId}/retry`),
   cancelExecutionCommand: <T>(commandId: string) => postJson<T>(`/api/v1/execution/commands/${commandId}/cancel`),
 };

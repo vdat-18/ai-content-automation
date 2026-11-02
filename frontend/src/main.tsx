@@ -13,9 +13,6 @@ import "@fontsource/inter/500.css";
 import "@fontsource/inter/600.css";
 import "@fontsource/inter/700.css";
 import "./styles.css";
-import "./marketing/marketing.css";
-import "./marketing/shared.css";
-import "./marketing/creative.css";
 import "./marketing/workspace.css";
 
 const queryClient = new QueryClient({

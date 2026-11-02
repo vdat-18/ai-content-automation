@@ -9,8 +9,6 @@ test("research crawler guides Marketing from keyword discovery through review", 
   const page = src("pages", "ResearchCrawler.tsx");
   const catalog = src("components", "ResearchRecordCatalog.tsx");
   const library = src("pages", "ResearchLibrary.tsx");
-  const operations = src("pages", "Operations.tsx");
-  const approvals = src("pages", "Approvals.tsx");
   const styles = src("styles.css");
   const workspaceStyles = src("marketing", "workspace.css");
 
@@ -24,7 +22,7 @@ test("research crawler guides Marketing from keyword discovery through review", 
   assert.match(page, /Public results URL/);
   assert.doesNotMatch(page, /Analysis model/);
   assert.doesNotMatch(page, /DEMOFURN|DemoHome/);
-  assert.match(page, /sourcePerformanceCandidates/);
+  assert.match(page, /sourceBrands/);
   assert.match(page, /Media to collect/);
   assert.match(page, /Images only/);
   assert.match(page, /Videos only/);
@@ -78,18 +76,13 @@ test("research crawler guides Marketing from keyword discovery through review", 
   assert.match(library, /Delete selected/);
   assert.match(library, /deleteResearchRecords/);
   assert.match(library, /<ResearchRecordCatalog/);
-  assert.doesNotMatch(operations, /Marketing-approved research references/);
-  assert.match(approvals, /className="approval-toolbar"/);
   assert.match(styles, /\.research-record-grid \{[^}]*repeat\(auto-fill, minmax\(180px,/);
   assert.match(styles, /\.research-layout \{[^}]*repeat\(2, minmax\(0, 1fr\)\)/);
   assert.match(styles, /\.research-bulk-review \{/);
   assert.match(styles, /\.research-review-panel \{/);
-  assert.match(styles, /\.approval-toolbar \{/);
   assert.match(workspaceStyles, /\.research-project-picker \{/);
   assert.match(workspaceStyles, /\.research-reference-brief \{/);
   assert.match(workspaceStyles, /\.research-record-card__quick-view \{/);
   assert.match(workspaceStyles, /\.research-job-list \{ max-height: none/);
-  assert.match(workspaceStyles, /\.approvals-page \.decision-list \{ grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
-  assert.match(workspaceStyles, /\.approvals-page \.decision-card__action \{ grid-column: 2 \/ -1/);
   assert.match(styles, /@media \(max-width: 650px\)[^{]*\{[^}]*\.research-record-grid/);
 });

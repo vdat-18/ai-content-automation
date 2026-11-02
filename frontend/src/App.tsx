@@ -3,37 +3,17 @@ import { Link, Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "./components/AppShell";
 import { SkeletonPage } from "./components/ui";
 import { useI18n } from "./hooks/useI18n";
-import { useFeatures } from "./hooks/useFeatures";
 const NotificationsPage = lazy(() => import("./pages/Notifications").then((module) => ({ default: module.NotificationsPage })));
-const ApprovalsPage = lazy(() => import("./pages/Approvals").then((module) => ({ default: module.ApprovalsPage })));
-const CreativeLibraryPage = lazy(() => import("./pages/CreativeLibrary").then((module) => ({ default: module.CreativeLibraryPage })));
-const CreativeDetailPage = lazy(() => import("./pages/CreativeJobs").then((module) => ({ default: module.CreativeDetailPage })));
-const WorkflowsPage = lazy(() => import("./pages/Operations").then((module) => ({ default: module.WorkflowsPage })));
-const CreativeProductionPage = lazy(() => import("./pages/Operations").then((module) => ({ default: module.CreativeProductionPage })));
-const CreativeAutomationDetailPage = lazy(() => import("./pages/Operations").then((module) => ({ default: module.CreativeAutomationDetailPage })));
 const ResearchCrawlerPage = lazy(() => import("./pages/ResearchCrawler").then((module) => ({ default: module.ResearchCrawlerPage })));
 const ResearchLibraryPage = lazy(() => import("./pages/ResearchLibrary").then((module) => ({ default: module.ResearchLibraryPage })));
 const CreativeKnowledgePage = lazy(() => import("./pages/CreativeKnowledge").then((module) => ({ default: module.CreativeKnowledgePage })));
-
-function HomeRedirect() {
-  const features = useFeatures();
-  if (features.isLoading) return <SkeletonPage />;
-  return <Navigate replace to={features.data?.media_generation ? "/creative-production" : "/research-crawler"} />;
-}
 
 export default function App() {
   return (
     <Suspense fallback={<SkeletonPage />}><Routes>
       <Route element={<AppShell />}>
-        <Route index element={<HomeRedirect />} />
+        <Route index element={<Navigate replace to="/research-crawler" />} />
         <Route path="notifications" element={<NotificationsPage />} />
-        <Route path="approvals" element={<ApprovalsPage />} />
-        <Route path="creatives" element={<CreativeLibraryPage />} />
-        <Route path="creatives/:creativeId" element={<CreativeDetailPage />} />
-        <Route path="workflows" element={<WorkflowsPage />} />
-        <Route path="creative-production" element={<CreativeProductionPage />} />
-        <Route path="creative-production/:requestId" element={<CreativeAutomationDetailPage />} />
-        <Route path="media-library" element={<Navigate replace to="/creatives?view=media" />} />
         <Route path="research-crawler" element={<ResearchCrawlerPage />} />
         <Route path="research-library" element={<ResearchLibraryPage />} />
         <Route path="second-brain" element={<CreativeKnowledgePage />} />

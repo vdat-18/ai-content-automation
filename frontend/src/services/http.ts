@@ -45,10 +45,3 @@ export function postJson<T>(path: string, body?: object, signal?: AbortSignal): 
   });
 }
 
-export async function deleteRequest(path: string, signal?: AbortSignal): Promise<void> {
-  const response = await fetch(path, { method: "DELETE", signal });
-  if (!response.ok) {
-    const payload = await response.json().catch(() => null) as { detail?: string } | null;
-    throw new ApiError(payload?.detail ?? `API returned ${response.status}`, response.status);
-  }
-}

@@ -2,30 +2,24 @@ import { Suspense, useEffect, useRef, useState, type CSSProperties, type Pointer
 import {
   Bell,
   BrainCircuit,
-  Bot,
   ChevronDown,
   CircleGauge,
-  GitBranch,
-  Image,
   LibraryBig,
   Menu,
-  Clapperboard,
   Moon,
   Sun,
   Search,
   X,
 } from "lucide-react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
-import { useCreativeJobs, useNotifications, usePilotDashboard } from "../hooks/usePilotDashboard";
-import { useFeatures } from "../hooks/useFeatures";
+import { useNotifications } from "../hooks/useNotifications";
 import { useWorkspace } from "../hooks/useWorkspace";
 import { SkeletonPage } from "./ui";
 import { useI18n, type Language } from "../hooks/useI18n";
-import { dashboardStreamLabels } from "../marketing/labels";
 import { useTheme } from "../hooks/useTheme";
 
-type NavGroup = "marketing" | "creative" | "research" | "activity" | "system";
-type NavItem = { to: string; label: string; icon: typeof CircleGauge; count?: boolean; exception?: boolean; group: NavGroup };
+type NavGroup = "research";
+type NavItem = { to: string; label: string; icon: typeof CircleGauge; group: NavGroup };
 
 const SIDEBAR_WIDTH_KEY = "aic-sidebar-width";
 const clampSidebarWidth = (value: number) => Math.min(420, Math.max(208, value));
@@ -34,23 +28,13 @@ const readStoredSidebarWidth = () => {
   return Number.isFinite(stored) && stored >= 208 && stored <= 420 ? clampSidebarWidth(stored) : null;
 };
 
-const allNav: NavItem[] = [
-  { to: "/creative-production", label: "Creative Production", icon: Clapperboard, group: "creative" },
-  { to: "/approvals", label: "Needs approval", icon: Bell, count: true, group: "creative" },
-  { to: "/creatives", label: "Creative Library", icon: Image, group: "creative" },
+const nav: NavItem[] = [
   { to: "/research-crawler", label: "Research crawler", icon: Search, group: "research" },
   { to: "/research-library", label: "Research Library", icon: LibraryBig, group: "research" },
   { to: "/second-brain", label: "SecondBrain", icon: BrainCircuit, group: "research" },
-  { to: "/workflows", label: "AI activity", icon: GitBranch, group: "activity" },
 ];
 
-const navGroups: { group: NavGroup; label: string }[] = [
-  { group: "marketing", label: "Marketing" },
-  { group: "creative", label: "Creative workflow" },
-  { group: "research", label: "Research & knowledge" },
-  { group: "activity", label: "Automation" },
-  { group: "system", label: "Operations" },
-];
+const navGroups: { group: NavGroup; label: string }[] = [{ group: "research", label: "Research & knowledge" }];
 
 export function AppShell() {
   const { language, setLanguage, t } = useI18n();
@@ -67,12 +51,7 @@ export function AppShell() {
   const [query, setQuery] = useState("");
   const location = useLocation();
   const navigate = useNavigate();
-  const pilot = usePilotDashboard();
-  const creatives = useCreativeJobs();
   const notifications = useNotifications();
-  const features = useFeatures();
-  const mediaEnabled = features.data?.media_generation ?? false;
-  const nav = allNav.filter((item) => mediaEnabled || !["/creative-production", "/approvals", "/creatives"].includes(item.to));
 
   useEffect(() => {
     if (sidebarWidth !== null) window.localStorage.setItem(SIDEBAR_WIDTH_KEY, String(sidebarWidth));
@@ -108,8 +87,6 @@ export function AppShell() {
     window.localStorage.removeItem(SIDEBAR_WIDTH_KEY);
     setSidebarWidth(null);
   };
-  const pending = pilot.data?.summary.pending_approvals ?? 0;
-  const issues = pilot.data?.summary.open_exceptions ?? 0;
   const currentNavItem = nav.find((item) => item.to === "/"
     ? location.pathname === "/"
     : location.pathname === item.to || location.pathname.startsWith(`${item.to}/`));
@@ -147,13 +124,7 @@ export function AppShell() {
     window.addEventListener("keydown", keydown);
     return () => window.removeEventListener("keydown", keydown);
   }, []);
-  const searchable = [
-    ...nav.map((item) => ({ to: item.to, label: t(item.label), detail: t("Page") })),
-    ...(pilot.data?.approvals.map((item) => ({ to: item.action_path, label: item.title, detail: dashboardStreamLabels[item.workstream] + " · " + (item.brand_id ?? "shared") })) ?? []),
-    ...(pilot.data?.workflows.map((item) => ({ to: item.action_path, label: item.title, detail: dashboardStreamLabels[item.workstream] + " · " + t(item.state.replaceAll("_", " ")) })) ?? []),
-    ...(pilot.data?.exceptions.map((item) => ({ to: item.action_path, label: item.title, detail: t("Exception") + " · " + dashboardStreamLabels[item.workstream] })) ?? []),
-    ...(creatives.data?.items.map((item) => ({ to: `/creatives/${item.job_id}`, label: item.display_title, detail: t("Creative") + " · " + item.status.replaceAll("_", " ") })) ?? []),
-  ];
+  const searchable = nav.map((item) => ({ to: item.to, label: t(item.label), detail: t("Page") }));
   const matches = query.trim() ? searchable.filter((item) => (item.label + " " + item.detail).toLowerCase().includes(query.trim().toLowerCase())).slice(0, 20) : searchable.slice(0, 10);
 
   return (
@@ -186,22 +157,15 @@ export function AppShell() {
             if (!items.length) return null;
             return <div key={group} className="nav-group">
               <p className="nav-label">{t(label)}</p>
-              {items.map(({ to, label: itemLabel, icon: Icon, count, exception }) => (
+              {items.map(({ to, label: itemLabel, icon: Icon }) => (
                 <NavLink key={to} to={to} end={to === "/"} onClick={closeMobile}>
                   <Icon size={18} /><span>{t(itemLabel)}</span>
-                  {count && pending > 0 && <em>{pending}</em>}
-                  {exception && issues > 0 && <em className="danger-count">{issues}</em>}
                 </NavLink>
               ))}
             </div>;
           })}
         </nav>
 
-        <div className="automation-card">
-          <div><Bot size={19} /><span className="live-dot" /></div>
-          <strong>{t("AI is working")}</strong>
-          <p>{t("{count} active items", { count: pilot.data?.summary.active_commands ?? 0 })}</p>
-        </div>
         <div className="user-card"><span>LP</span><div><strong>{t("Local pilot")}</strong><small>{t("No sign-in")}</small></div><ChevronDown size={15} /></div>
         <div
           className="sidebar-resizer"
@@ -263,7 +227,7 @@ export function AppShell() {
                 aria-label={t("Search query")}
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
-                placeholder={t("Search approval, workflow, exception or creative")}
+                placeholder={t("Search pages")}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" && matches[0]) { navigate(matches[0].to); setSearchOpen(false); setQuery(""); }
                   else if (event.key === "ArrowDown") {
@@ -283,7 +247,7 @@ export function AppShell() {
                   <small>{item.detail}</small>
                 </NavLink>
               ))}
-              {!matches.length && <p className="omnibar-empty">{t("No matching records. Try another workflow, exception, or creative title.")}</p>}
+              {!matches.length && <p className="omnibar-empty">{t("No matching pages.")}</p>}
             </div>
           </div>
         </div>
