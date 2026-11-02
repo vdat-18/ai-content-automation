@@ -5,14 +5,9 @@ anything, send messages, or fall back to browser mock data.
 
 ## Active Routes
 
-- `/creative-production` (home): create images and videos for a product, review runs
-- `/creatives`: generated images and videos, versions and audit details
-- `/approvals`: approval inbox
-- `/workflows`: Creative loop and durable command status
-- `/research-crawler`: collect references from a public results URL
-- `/research-library`: review and approve references for Creative
-- `/second-brain`: creative rules and knowledge
-- `/data-sources`: sandbox product sources and manual sync
+- `/research-crawler` (home): collect references from a public results URL
+- `/research-library`: review and approve references
+- `/second-brain`: rules and knowledge, edited in place
 - `/notifications`: notifications
 
 Unknown URLs show a "Page not found" panel.
@@ -61,21 +56,7 @@ pnpm --dir frontend test
 - Active route pages use React Query hooks backed by pilot APIs.
 - Browser-local mock workflow modules and their legacy-only tests were removed;
   active pages use persisted backend state only.
-- Approval actions are business gates; no action publishes a post or writes to a
-  source system.
-- Creative cards use API `display_title` and `thumbnail_web_url`; the list does
-  not make a detail request per thumbnail.
-- Workflow IDs and step references are grouped under `Technical details`.
-- Creative version hashes and prompt/rubric/policy/workflow versions are in
-  collapsible `Audit details`.
 
 Use the VI/EN selector to localize interface copy, status labels, dates, and
 numbers. Source evidence, briefs, feedback, and generated marketing content keep
 their original language.
-
-## Cleanup Boundary
-
-`frontend/src/marketing` and browser-local storage modules retain code needed by
-existing tests and historical browser scenarios. They are intentionally not used
-as fallback data for active backend-only routes. Removing them safely requires a
-separate test/test-data migration.
