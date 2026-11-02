@@ -2,7 +2,7 @@ from pathlib import Path
 
 from ai_content.domains.marketing.creative_knowledge.bootstrap import load_knowledge_bootstrap
 
-_MANIFEST = Path(__file__).parents[1] / "config/creative_knowledge/creative_v3_2026_10_22.json"
+_MANIFEST = Path(__file__).parents[1] / "config/creative_knowledge/creative.json"
 _BRANDS = {"brand:aurasleep", "brand:oaklinehome", "brand:lumiskin"}
 
 

@@ -35,7 +35,6 @@ from .application.use_cases import (
     ProcessResult,
     RunCreativeWorkflow,
 )
-from .config.loader import ConfigError, ConfigLoader
 from .domain.entities import ApprovalDecision, CreativeJobId
 from .ports.contracts import (
     CreativeConstraints,
@@ -335,33 +334,16 @@ class CreativeRuntime:
         self,
         repository: ICreativeRepository,
         artifact_store: ArtifactStore,
-        config_loader: ConfigLoader,
         run_workflow: RunCreativeWorkflow,
         process_approval: ProcessApproval,
     ) -> None:
         self.repository = repository
         self.artifact_store = artifact_store
-        self.config_loader = config_loader
         self.run_workflow = run_workflow
         self.process_approval = process_approval
 
     async def run(self, work_item: CreativeWorkItemInput) -> RunOutcome:
         """Execute the workflow and write the artifact tree."""
-        try:
-            self.config_loader.validate_work_item_versions(
-                prompt_id=work_item.prompt_version.prompt_id,
-                prompt_version=work_item.prompt_version.version,
-                rubric_id=work_item.rubric_version.rubric_id,
-                rubric_version=work_item.rubric_version.version,
-                policy_id=work_item.policy_version.policy_id,
-                policy_version=work_item.policy_version.version,
-                rule_id=work_item.rule_version.rule_id,
-                rule_version=work_item.rule_version.version,
-                workflow_id=work_item.workflow_version.workflow_id,
-                workflow_version=work_item.workflow_version.version,
-            )
-        except ConfigError as e:
-            raise FixtureError(f"Config resolution failed: {e}") from e
 
         result = await self.run_workflow.execute(work_item)
         if result.job is None or result.duplicate:
@@ -401,7 +383,6 @@ class CreativeRuntime:
 def build_runtime(
     db_path: Path | None,
     artifacts_root: Path,
-    config_dir: Path = Path("config"),
     *,
     preparation: IPreparationRunner | None = None,
     repository: ICreativeRepository | None = None,
@@ -412,7 +393,6 @@ def build_runtime(
             raise ValueError("db_path is required when no repository is provided")
         repository = SqliteCreativeRepository(db_path)
     store = ArtifactStore(artifacts_root)
-    config_loader = ConfigLoader(config_dir)
     approval_queue = FakeApprovalQueue()
     run_workflow = RunCreativeWorkflow(
         context_collector=FakeContextCollector(),
@@ -431,7 +411,6 @@ def build_runtime(
     return CreativeRuntime(
         repository=repository,
         artifact_store=store,
-        config_loader=config_loader,
         run_workflow=run_workflow,
         process_approval=process_approval,
     )

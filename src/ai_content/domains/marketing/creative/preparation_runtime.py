@@ -15,7 +15,6 @@ from ai_content.platform.artifacts.store import ArtifactStore
 from .adapters.preparation_artifacts import FilePreparationStore
 from .adapters.sqlite_repository import SqliteCreativeRepository
 from .application.preparation import PreparationResult, PrepareCreativeBrief
-from .config.loader import ConfigLoader
 from .config.preparation import PreparationConfig
 from .ports.contracts import CreativeWorkItemInput
 from .ports.interfaces import ICreativeRepository
@@ -44,28 +43,14 @@ class PreparationRuntime:
         config: PreparationConfig,
         context: PreparationContext,
         use_case: PrepareCreativeBrief,
-        config_loader: ConfigLoader,
     ) -> None:
         self.repository = repository
         self.store = store
         self.config = config
         self.context = context
         self.use_case = use_case
-        self.config_loader = config_loader
 
     async def prepare(self, work_item: CreativeWorkItemInput) -> PreparationResult:
-        self.config_loader.validate_work_item_versions(
-            prompt_id=work_item.prompt_version.prompt_id,
-            prompt_version=work_item.prompt_version.version,
-            rubric_id=work_item.rubric_version.rubric_id,
-            rubric_version=work_item.rubric_version.version,
-            policy_id=work_item.policy_version.policy_id,
-            policy_version=work_item.policy_version.version,
-            rule_id=work_item.rule_version.rule_id,
-            rule_version=work_item.rule_version.version,
-            workflow_id=work_item.workflow_version.workflow_id,
-            workflow_version=work_item.workflow_version.version,
-        )
         fingerprint = preparation_fingerprint(work_item, self.context, self.config)
         try:
             async with asyncio.timeout(self.config.run_timeout_seconds):
@@ -87,7 +72,6 @@ def build_preparation_runtime(
     *,
     model: IPreparationModel | None = None,
     api_key: str | None = None,
-    config_dir: Path = Path("config"),
     repository: ICreativeRepository | None = None,
     usage_tracker: AIUsageTracker | None = None,
     image_reader: Callable[[str], bytes] | None = None,
@@ -117,5 +101,5 @@ def build_preparation_runtime(
         configuration=config.model_dump(mode="json"),
     )
     return PreparationRuntime(
-        repository, store, config, context, use_case, ConfigLoader(config_dir)
+        repository, store, config, context, use_case
     )

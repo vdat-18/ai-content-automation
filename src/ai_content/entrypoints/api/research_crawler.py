@@ -544,7 +544,7 @@ def _raise_record_mutation_error(error: ValueError) -> None:
 
 
 def _load_reference_keywords(config_dir: Path, brand_id: str) -> tuple[str, ...]:
-    path = config_dir / "research" / "reference_keywords.v1.json"
+    path = config_dir / "research" / "reference_keywords.json"
     payload = json.loads(path.read_text(encoding="utf-8"))
     brands = payload.get("brands")
     if not isinstance(brands, dict):

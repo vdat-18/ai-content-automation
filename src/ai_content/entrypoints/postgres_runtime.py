@@ -59,7 +59,6 @@ class PostgresRuntimeContainer:
         self,
         database: Database,
         artifacts_root: Path,
-        config_dir: Path,
         preparation_config: PreparationConfig | None = None,
         preparation_api_key: str | None = None,
         execution_backend: str = "lease_worker",
@@ -68,7 +67,6 @@ class PostgresRuntimeContainer:
     ) -> None:
         self.database = database
         self.artifacts_root = artifacts_root
-        self.config_dir = config_dir
         self.preparation_config = preparation_config
         self.preparation_api_key = preparation_api_key
         self.artifacts = ArtifactStore(artifacts_root)
@@ -124,7 +122,6 @@ class PostgresRuntimeContainer:
         return build_creative(
             None,
             self.artifacts_root,
-            config_dir=self.config_dir,
             repository=self.creative_repository,
         )
 

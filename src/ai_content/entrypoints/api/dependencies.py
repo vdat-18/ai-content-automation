@@ -368,7 +368,6 @@ async def lifespan(application: FastAPI):
         container = PostgresRuntimeContainer(
             database,
             settings.artifacts_root,
-            settings.config_dir,
             preparation_api_key=PreparationConfig.from_settings(settings).api_key,
             execution_backend=settings.execution_backend,
             object_storage=settings.object_storage.build()

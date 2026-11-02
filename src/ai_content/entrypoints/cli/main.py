@@ -58,7 +58,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--artifacts", type=Path, default=DEFAULT_ARTIFACTS, help="Artifact root dir"
     )
-    parser.add_argument("--config", type=Path, default=Path("config"), help="Config root dir")
     sub = parser.add_subparsers(dest="command", required=True)
 
     prepare = sub.add_parser(
@@ -242,7 +241,6 @@ async def _async_main(args: argparse.Namespace, settings: ApplicationSettings) -
                 dispatch_m1=args.dispatch_m1,
                 dispatch_creative=args.dispatch_creative,
                 preparation_config=PreparationConfig.from_settings(settings),
-                config_dir=args.config,
             )
             for run in outcome.runs:
                 handoff = run.release.handoff_state.value if run.release else "not_applicable"
@@ -268,7 +266,6 @@ async def _async_main(args: argparse.Namespace, settings: ApplicationSettings) -
             config,
             case.context,
             api_key=config.api_key,
-            config_dir=args.config,
         )
         try:
             result = await runtime.prepare(case.work_item)
@@ -285,7 +282,7 @@ async def _async_main(args: argparse.Namespace, settings: ApplicationSettings) -
             return 0 if result.success else 1
         finally:
             runtime.repository.close()
-    runtime = build_runtime(args.db, args.artifacts, args.config)
+    runtime = build_runtime(args.db, args.artifacts)
     if args.command == "run":
         return await _cmd_run(runtime, args)
     if args.command == "replay":

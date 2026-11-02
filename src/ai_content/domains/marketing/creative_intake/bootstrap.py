@@ -64,7 +64,6 @@ class CreativeIntakeRuntime:
         dispatch_m1: bool = False,
         dispatch_creative: bool = False,
         preparation_config: PreparationConfig | None = None,
-        config_dir: Path = Path("config"),
         image_reader: Callable[[str], bytes] | None = None,
     ) -> CreativeIntakeRuntimeResult:
         if self._use_case is None:
@@ -103,7 +102,6 @@ class CreativeIntakeRuntime:
                         config,
                         compiled.context,
                         api_key=self._preparation_api_key,
-                        config_dir=config_dir,
                         repository=self._creative_repository,
                         usage_tracker=self._usage_tracker,
                         image_reader=image_reader,
@@ -120,8 +118,7 @@ class CreativeIntakeRuntime:
                                 creative = build_creative_runtime(
                                     self._db_path,
                                     self._artifacts_root,
-                                    config_dir=config_dir,
-                                    preparation=preparation,
+                                                preparation=preparation,
                                     repository=self._creative_repository,
                                 )
                                 try:

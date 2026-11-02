@@ -152,7 +152,6 @@ async def _execute_command(
     container = PostgresRuntimeContainer(
         database,
         settings.data_root / "artifacts",
-        settings.config_dir,
         preparation_config=preparation_settings,
         preparation_api_key=preparation_settings.api_key,
         execution_backend="celery",

@@ -1013,7 +1013,6 @@ async def _process_automation_request(
             compilation.intake,
             dispatch_m1=True,
             preparation_config=preparation_config,
-            config_dir=settings.config_dir,
             image_reader=(
                 source_resolver.read_frozen_source if source_resolver is not None else None
             ),
