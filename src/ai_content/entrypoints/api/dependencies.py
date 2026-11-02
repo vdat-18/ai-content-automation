@@ -34,6 +34,7 @@ from ai_content.domains.marketing.creative.application.provider_registry import 
     ManagedMediaProviderRegistry,
 )
 from ai_content.domains.marketing.creative.bootstrap import CreativeRuntime, build_runtime
+from ai_content.domains.marketing.creative.config.managed_media import ManagedMediaConfig
 from ai_content.domains.marketing.creative.config.preparation import PreparationConfig
 from ai_content.domains.marketing.creative.managed_media_runtime import (
     build_managed_media_runtime,
@@ -160,7 +161,7 @@ class ApiRuntimeSettings:
     router_api_key: str | None = None
     image_api_key: str | None = None
     video_api_key: str | None = None
-    managed_media_config_path: Path | None = None
+    managed_media: ManagedMediaConfig | None = None
     database_backend: Literal["sqlite", "postgresql"] = "sqlite"
     database_url: str | None = None
     execution_backend: Literal["lease_worker", "celery"] = "lease_worker"
@@ -250,7 +251,7 @@ def get_runtime_settings() -> ApiRuntimeSettings:
         router_api_key=application.credential("ROUTER_API_KEY"),
         image_api_key=application.credential("IMAGE_API_KEY"),
         video_api_key=application.credential("VIDEO_API_KEY"),
-        managed_media_config_path=application.managed_media_config,
+        managed_media=ManagedMediaConfig.from_settings(application),
         database_backend=application.database_backend,
         database_url=(
             application.database_url.get_secret_value() if application.database_url else None
@@ -403,7 +404,7 @@ async def lifespan(application: FastAPI):
     )
     try:
         managed_media = build_managed_media_runtime(
-            config_path=settings.managed_media_config_path,
+            config=settings.managed_media,
             api_key=settings.router_api_key,
             image_api_key=settings.image_api_key,
             video_api_key=settings.video_api_key,
@@ -418,7 +419,7 @@ async def lifespan(application: FastAPI):
     except (OSError, ValueError) as error:
         logger.error("Managed Creative media disabled: {}", error)
         managed_media = build_managed_media_runtime(
-            config_path=None,
+            config=None,
             api_key=None,
             artifact_store=(
                 container.artifacts

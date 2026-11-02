@@ -1,6 +1,7 @@
 """Typed process settings loaded directly from environment variables."""
 
 from datetime import datetime
+from decimal import Decimal
 from pathlib import Path
 from typing import Literal
 
@@ -42,7 +43,18 @@ class ApplicationSettings(BaseSettings):
     image_api_key: SecretStr | None = Field(None, validation_alias="AIC_IMAGE_API_KEY")
     video_base_url: str = Field("http://127.0.0.1:1234/v1", validation_alias="AIC_VIDEO_BASE_URL")
     video_api_key: SecretStr | None = Field(None, validation_alias="AIC_VIDEO_API_KEY")
-    managed_media_config: Path | None = Field(None, validation_alias="AIC_AI_MANAGED_MEDIA_CONFIG")
+    media_backend: Literal["nine_router", "direct_api"] = Field(
+        "nine_router", validation_alias="AIC_MEDIA_BACKEND"
+    )
+    image_model: str | None = Field(None, validation_alias="AIC_IMAGE_MODEL")
+    video_model: str | None = Field(None, validation_alias="AIC_VIDEO_MODEL")
+    image_cost_per_output: Decimal | None = Field(
+        None, gt=0, validation_alias="AIC_IMAGE_COST_PER_OUTPUT"
+    )
+    video_cost_per_second: Decimal | None = Field(
+        None, gt=0, validation_alias="AIC_VIDEO_COST_PER_SECOND"
+    )
+    media_allowed_hosts: str = Field("", validation_alias="AIC_MEDIA_ALLOWED_HOSTS")
 
     # --- Research reference screening ---
     screening_base_url: str = Field(

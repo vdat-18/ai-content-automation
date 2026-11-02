@@ -22,6 +22,7 @@ from ai_content.domains.marketing.creative.adapters.baml_orchestration import (
 from ai_content.domains.marketing.creative.application.automation_workflow import (
     record_production_outcome,
 )
+from ai_content.domains.marketing.creative.config.managed_media import ManagedMediaConfig
 from ai_content.domains.marketing.creative.config.orchestration import (
     OrchestrationConfig,
 )
@@ -159,7 +160,7 @@ async def _execute_command(
         object_storage_bucket=storage_settings.bucket,
     )
     managed_media = build_managed_media_runtime(
-        config_path=settings.managed_media_config,
+        config=ManagedMediaConfig.from_settings(settings),
         api_key=settings.credential("ROUTER_API_KEY"),
         image_api_key=settings.credential("IMAGE_API_KEY"),
         video_api_key=settings.credential("VIDEO_API_KEY"),

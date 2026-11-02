@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from decimal import Decimal
-from pathlib import Path
 from typing import Literal, Self
 from urllib.parse import urlsplit
 
@@ -147,10 +146,6 @@ class ManagedVideoModelConfig(BaseModel):
             raise ValueError("Reference-to-video resolutions must be supported by the model")
         if self.reference_to_video_resolutions and self.max_reference_images < 2:
             raise ValueError("Reference-to-video models must accept at least two images")
-        if self.cost_per_generated_second is None and set(
-            self.cost_per_generated_second_by_resolution
-        ) != set(self.resolved_resolutions):
-            raise ValueError("Every video resolution requires an explicit cost rate")
         return self
 
 
@@ -237,6 +232,12 @@ class ManagedMediaConfig(BaseModel):
             for item in resolved_image_models
         ):
             raise ValueError("Approved managed image media requires an explicit positive cost rate")
+        if self.approved and any(
+            item.cost_per_generated_second is None
+            and set(item.cost_per_generated_second_by_resolution) != set(item.resolved_resolutions)
+            for item in resolved_video_models
+        ):
+            raise ValueError("Approved managed video media requires an explicit cost rate")
         if self.approved and (not self.allowed_source_hosts or not self.allowed_output_hosts):
             raise ValueError(
                 "Approved managed media requires non-empty source and output host allowlists"
@@ -245,6 +246,51 @@ class ManagedMediaConfig(BaseModel):
             if not host.strip() or ":" in host or "/" in host:
                 raise ValueError("Allowed media hosts must be bare hostnames")
         return self
+
+    @classmethod
+    def from_settings(cls, settings: object) -> ManagedMediaConfig | None:
+        """Build the provider profile from AIC_* environment settings."""
+
+        image_model = getattr(settings, "image_model", None)
+        video_model = getattr(settings, "video_model", None)
+        if not image_model and not video_model:
+            return None
+        hosts = tuple(
+            host.strip()
+            for host in getattr(settings, "media_allowed_hosts", "").split(",")
+            if host.strip()
+        )
+        image_key = getattr(settings, "image_api_key_value", None)
+        video_key = getattr(settings, "video_api_key_value", None)
+        return cls(
+            profile_id="managed-media",
+            backend=getattr(settings, "media_backend", "nine_router"),
+            approved=bool(getattr(settings, "media_generation_enabled", False) and hosts),
+            base_url=settings.image_base_url,
+            image_base_url=settings.image_base_url,
+            image_api_key=image_key,
+            video_base_url=settings.video_base_url,
+            video_api_key=video_key,
+            selected_sku_enabled=True,
+            image=(
+                ManagedImageModelConfig(
+                    model=image_model,
+                    cost_per_output=getattr(settings, "image_cost_per_output", None),
+                )
+                if image_model
+                else None
+            ),
+            video=(
+                ManagedVideoModelConfig(
+                    model=video_model,
+                    cost_per_generated_second=getattr(settings, "video_cost_per_second", None),
+                )
+                if video_model
+                else None
+            ),
+            allowed_source_hosts=hosts,
+            allowed_output_hosts=hosts,
+        )
 
     @property
     def resolved_image_base_url(self) -> str:
@@ -283,13 +329,8 @@ class ManagedMediaConfig(BaseModel):
         return (self.image,) if self.image is not None else ()
 
 
-def load_managed_media_config(path: Path) -> ManagedMediaConfig:
-    return ManagedMediaConfig.model_validate_json(path.read_text(encoding="utf-8"))
-
-
 __all__ = [
     "ManagedImageModelConfig",
     "ManagedMediaConfig",
     "ManagedVideoModelConfig",
-    "load_managed_media_config",
 ]

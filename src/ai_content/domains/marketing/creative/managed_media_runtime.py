@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from decimal import Decimal
-from pathlib import Path
 
 from ai_content.domains.marketing.creative.adapters.managed_media import (
     ImmutableProductSourceResolver,
@@ -24,7 +23,6 @@ from ai_content.domains.marketing.creative.application.provider_registry import 
 )
 from ai_content.domains.marketing.creative.config.managed_media import (
     ManagedMediaConfig,
-    load_managed_media_config,
 )
 from ai_content.domains.marketing.creative.ports.automation_workflow import (
     IMarketingCreativeAutomationStateRepository,
@@ -44,7 +42,7 @@ class ManagedMediaRuntime:
 
 def build_managed_media_runtime(
     *,
-    config_path: Path | None,
+    config: ManagedMediaConfig | None,
     api_key: str | None,
     image_api_key: str | None = None,
     video_api_key: str | None = None,
@@ -54,7 +52,6 @@ def build_managed_media_runtime(
 ) -> ManagedMediaRuntime:
     sink = ManagedMediaArtifactSink(artifact_store, artifact_service)
     source_preserving_image = SourcePreservingImageProvider(sink)
-    config = load_managed_media_config(config_path) if config_path is not None else None
     credentials = {
         "ROUTER_API_KEY": api_key,
         "IMAGE_API_KEY": image_api_key,
