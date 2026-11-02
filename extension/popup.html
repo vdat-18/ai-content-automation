@@ -1,0 +1,27 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      body { width: 300px; font: 13px system-ui; padding: 10px; }
+      label { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+      button { width: 100%; padding: 6px; margin-bottom: 6px; }
+      input[type=number] { width: 60px; }
+      hr { margin: 10px 0; border: 0; border-top: 1px solid #ddd; }
+      #status, #walker { margin-top: 6px; color: #444; }
+    </style>
+  </head>
+  <body>
+    <label><input type="checkbox" id="enabled" /> Thu thập khi tôi tự duyệt</label>
+    <button id="capture">Capture trang này</button>
+    <div id="status"></div>
+    <button id="harvest">Cuộn trang danh sách này để lấy thêm sản phẩm</button>
+    <hr />
+    <b>Tự duyệt danh sách sản phẩm</b>
+    <label style="margin-top:6px">Số sản phẩm: <input type="number" id="count" value="20" min="1" max="200" /></label>
+    <button id="start">Lấy danh sách từ collector và chạy</button>
+    <button id="stop">Dừng</button>
+    <div id="walker"></div>
+    <script src="popup.js"></script>
+  </body>
+</html>

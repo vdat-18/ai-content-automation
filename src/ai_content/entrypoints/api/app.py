@@ -71,6 +71,7 @@ from .dependencies import (
 )
 from .media_assets import router as media_assets_router
 from .notifications import router as notifications_router
+from .products import router as products_router
 from .research_crawler import library_router as research_library_router
 from .research_crawler import router as research_crawler_router
 from .schemas.artifacts import ArtifactResponse
@@ -881,6 +882,7 @@ app.include_router(dashboard_router)
 app.include_router(ai_usage_router)
 app.include_router(data_sources_router)
 app.include_router(media_assets_router)
+app.include_router(products_router)
 _configure_cors(app)
 _mount_frontend(app)
 instrument_fastapi(app, _OBSERVABILITY_SETTINGS)

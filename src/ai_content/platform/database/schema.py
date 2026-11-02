@@ -114,6 +114,21 @@ creative_intake_runs = _run_table(
     Column("sku_id", Text, nullable=False),
 )
 
+marketplace_products = Table(
+    "marketplace_products",
+    metadata,
+    Column("product_id", Text, primary_key=True),
+    Column("source", Text, nullable=False),
+    Column("title", Text),
+    Column("sold_count", BigInteger),
+    Column("has_video", Boolean, nullable=False, server_default=sql_text("false")),
+    Column("listing", JSONB),
+    Column("detail", JSONB),
+    Column("detail_captured_at", DateTime(timezone=True)),
+    *_timestamps(),
+    schema="marketing",
+)
+
 creative_knowledge = Table(
     "creative_knowledge",
     metadata,
@@ -683,6 +698,7 @@ Index("ix_data_source_sync_runs_source", data_source_sync_runs.c.source_id)
 
 
 __all__ = [
+    "marketplace_products",
     "ai_usage_events",
     "artifacts",
     "creative_automation_batches",

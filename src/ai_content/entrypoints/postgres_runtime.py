@@ -37,6 +37,7 @@ from ai_content.domains.marketing.data_sources.adapters.postgres_repository impo
 from ai_content.domains.marketing.media_lab.adapters.asset_postgres_repository import (
     PostgresMediaAssetRepository,
 )
+from ai_content.domains.marketing.products.repositories import PostgresProductRepository
 from ai_content.domains.marketing.research_crawler.repositories import (
     PostgresResearchCrawlRepository,
 )
@@ -104,6 +105,7 @@ class PostgresRuntimeContainer:
             self.creative_knowledge_repository
         )
         self.data_source_repository = PostgresDataSourceRepository(engine)
+        self.product_repository = PostgresProductRepository(engine)
         self.research_crawl_repository = PostgresResearchCrawlRepository(engine)
         self.media_lab_asset_repository = PostgresMediaAssetRepository(engine)
         self.execution_status_store = PostgresCommandQueue(engine)

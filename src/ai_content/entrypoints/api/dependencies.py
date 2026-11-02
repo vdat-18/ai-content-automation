@@ -78,6 +78,8 @@ from ai_content.domains.marketing.media_lab.bootstrap import (
     build_media_asset_runtime,
 )
 from ai_content.domains.marketing.media_lab.domain.assets import MediaAssetLimits
+from ai_content.domains.marketing.products.repositories import SqliteProductRepository
+from ai_content.domains.marketing.products.service import ProductCatalogService
 from ai_content.domains.marketing.research_crawler.artifacts import (
     ResearchCrawlArtifactWriter,
 )
@@ -802,6 +804,20 @@ async def get_creative_knowledge_service(
     repository = SqliteCreativeKnowledgeRepository(settings.db_path)
     try:
         yield CreativeKnowledgeService(repository)
+    finally:
+        repository.close()
+
+
+async def get_product_catalog_service(request: Request) -> AsyncIterator[ProductCatalogService]:
+    """Yield the collected marketplace product catalog."""
+    settings = get_runtime_settings()
+    postgres = _postgres_runtime(request)
+    if postgres is not None:
+        yield ProductCatalogService(postgres.product_repository)
+        return
+    repository = SqliteProductRepository(settings.db_path)
+    try:
+        yield ProductCatalogService(repository)
     finally:
         repository.close()
 
