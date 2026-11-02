@@ -132,3 +132,20 @@ async def test_ingest_screens_images_before_they_go_live(tmp_path) -> None:
     statuses = {i["product_type"]: i["status"] for i in await service.reference_images(None, None)}
     assert statuses == {"áo thun": "new", "cốc": "rejected"}
     repository.close()
+
+
+async def test_select_keeps_selection_when_llm_fails(tmp_path) -> None:
+    from baml_py.baml_py import BamlClientError
+
+    class _FailingClient:
+        async def DraftReferenceSearchProfile(self, product_json: str) -> SimpleNamespace:
+            raise BamlClientError("boom", "boom", "boom")
+
+    repository = SqliteProductRepository(tmp_path / "f.db")
+    service = ProductCatalogService(repository, ReferenceProfileGenerator(_FailingClient()))
+    await service.ingest({"kind": "page", "url": URL, "html": HTML})
+    result = await service.select("1730000000000000001")
+    assert result is not None and result["profile"] is None and "boom" in result["error"]
+    assert await service.selections() == {"1730000000000000001": None}
+    assert await service.profiles() == []
+    repository.close()

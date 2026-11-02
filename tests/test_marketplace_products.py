@@ -1,5 +1,6 @@
 import json
 from io import BytesIO
+from types import SimpleNamespace
 
 from openpyxl import load_workbook
 
@@ -107,3 +108,79 @@ async def test_media_download_skips_duplicates(tmp_path) -> None:
         again = await download_product_media(products, tmp_path, client)
     assert (report.downloaded, report.duplicates) == (1, 2)
     assert again.skipped == 1
+
+
+def test_parsing_helpers_and_rich_description() -> None:
+    from ai_content.domains.marketing.products.parsing import (
+        money,
+        parse_feed_payload,
+        parse_product_page,
+        product_id_from_url,
+    )
+
+    assert product_id_from_url(URL) == "1730000000000000001"
+    assert product_id_from_url("https://shop.tiktok.com/vn") is None
+    assert money("1.234.000", "VND") == 1234000
+    assert money("47.97", "USD") is None
+    assert money("abc", "VND") is None
+
+    info = {
+        **INFO,
+        "desc_blocks": [
+            {"type": "text", "text": "Mô tả"},
+            {"type": "ul", "content": [{"text": "ý một"}, "ý hai"]},
+        ],
+        "shipping": {},
+    }
+    html = '<script>"product_info":' + json.dumps(info, separators=(",", ":")) + "</script>"
+    product = parse_product_page(html, URL)
+    assert product is not None and product["description"] == "Mô tả\n- ý một\n- ý hai"
+    assert parse_product_page("<html></html>", URL) is None
+
+    assert parse_feed_payload("not json") == []
+    components = json.dumps(
+        {
+            "data": {
+                "components_map": [
+                    {
+                        "component_data": {
+                            "products": [
+                                {
+                                    "product_id": "7",
+                                    "product_price_info": {"currency_name": "VND"},
+                                }
+                            ]
+                        }
+                    }
+                ]
+            }
+        }
+    )
+    assert [item["product_id"] for item in parse_feed_payload(components)] == ["7"]
+
+
+async def test_reference_image_reviewer_handles_failures() -> None:
+    import httpx
+    from baml_py.baml_py import BamlClientError
+
+    from ai_content.domains.marketing.products.image_review import ReferenceImageReviewer
+
+    class _Client:
+        async def ReviewReferenceImage(self, product_type, image):
+            if product_type == "lỗi":
+                raise BamlClientError("429", "429", "429")
+            return SimpleNamespace(model_dump=lambda: {"usable": True})
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if "missing" in request.url.path:
+            return httpx.Response(404)
+        return httpx.Response(200, content=b"img", headers={"content-type": "image/jpeg"})
+
+    images = [
+        {"image_id": "ok", "product_type": "áo", "image_url": "https://x/ok.jpg"},
+        {"image_id": "gone", "product_type": "áo", "image_url": "https://x/missing.jpg"},
+        {"image_id": "rate", "product_type": "lỗi", "image_url": "https://x/rate.jpg"},
+    ]
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
+        reviews = await ReferenceImageReviewer(_Client()).review_all(images, http)
+    assert reviews == {"ok": {"usable": True}, "gone": None, "rate": None}

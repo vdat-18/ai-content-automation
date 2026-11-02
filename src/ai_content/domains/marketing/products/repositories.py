@@ -457,7 +457,10 @@ class PostgresProductRepository:
                     )
                     .on_conflict_do_nothing(index_elements=["image_id"])
                 )
-                added = (await connection.execute(statement)).rowcount
+                inserted = await connection.execute(
+                    statement.returning(reference_images.c.image_id)
+                )
+                added = len(inserted.all())
             await connection.execute(
                 insert(reference_searches)
                 .values(product_type=product_type, query=query)
