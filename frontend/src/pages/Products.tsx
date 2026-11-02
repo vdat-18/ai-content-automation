@@ -22,12 +22,10 @@ type MediaReport = { downloaded: number; duplicates: number; skipped: number; fa
 const API = "/api/v1/products";
 const toNumber = (value: number | string | null | undefined) => Number(String(value ?? 0).replace(/[.,]/g, "")) || 0;
 const vnd = (value: string | null) => (value ? `${toNumber(value).toLocaleString("vi-VN")} ₫` : "-");
-const revenue = (product: Product) => toNumber(product.price.sale) * toNumber(product.sold_count);
 const SORTS = {
   sold: (product: Product) => toNumber(product.sold_count),
   reviews: (product: Product) => toNumber(product.review_count),
   rating: (product: Product) => Number(product.rating) || 0,
-  revenue,
 } as const;
 type SortKey = keyof typeof SORTS;
 
@@ -80,7 +78,6 @@ export function ProductsPage() {
               <option value="sold">{t("Sold")}</option>
               <option value="reviews">{t("Reviews")}</option>
               <option value="rating">{t("Rating")}</option>
-              <option value="revenue">{t("Est. revenue")}</option>
             </select>
           </label>
           <label>{t("Min sold")} <input type="number" min={0} value={minSold} onChange={(event) => setMinSold(Number(event.target.value) || 0)} /></label>
@@ -89,7 +86,7 @@ export function ProductsPage() {
         {rows.length ? (
           <table className="products-table">
             <thead>
-              <tr><th></th><th>{t("Product")}</th><th>{t("Price")}</th><th>{t("Sold")}</th><th>{t("Reviews")}</th><th>{t("Rating")}</th><th>{t("Est. revenue")}</th></tr>
+              <tr><th></th><th>{t("Product")}</th><th>{t("Price")}</th><th>{t("Sold")}</th><th>{t("Reviews")}</th><th>{t("Rating")}</th></tr>
             </thead>
             <tbody>
               {rows.map((product) => (
@@ -100,7 +97,6 @@ export function ProductsPage() {
                     <td>{toNumber(product.sold_count).toLocaleString("vi-VN")}</td>
                     <td>{toNumber(product.review_count).toLocaleString("vi-VN")}</td>
                     <td>{product.rating ?? "-"}</td>
-                    <td>{revenue(product).toLocaleString("vi-VN")} ₫</td>
                 </tr>
               ))}
             </tbody>
