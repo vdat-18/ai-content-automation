@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, Check, Database, GitBranch, Image, RefreshCcw, ShieldCheck, Sparkles, Upload, Video } from "lucide-react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
-import { Link, useParams, useSearchParams } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { useDataSources, useDataSourceSync, useDataSourcesSyncAll } from "../hooks/useDataSources";
 import { usePilotDashboard } from "../hooks/usePilotDashboard";
 import { Badge, EmptyState, PageHeader, Panel, PanelHeader, SkeletonPage, StatusBadge } from "../components/ui";
@@ -14,54 +14,6 @@ import { Modal } from "../components/Modal";
 import { SplitHandle } from "../components/SplitHandle";
 import { useSplitResize } from "../hooks/useSplitResize";
 import type { MarketingCreativeAutomationBatch, MarketingCreativeAutomationCapabilities, MarketingCreativeAutomationDetail, MarketingCreativeProductSelection, ProductFamilyCandidate } from "../types/pilotApi";
-
-type CreativeLoopRun = {
-  run_id: string;
-  state: string;
-  initial_evaluation_id: string;
-  lesson_id: string | null;
-  approved_creative_version_id: string | null;
-  updated_at: string;
-};
-type CreativeLoopTimeline = {
-  run: CreativeLoopRun;
-  steps: { key: string; label: string; status: string; reference: string | null; detail: string }[];
-};
-
-const loopStageLabels = ["Opportunity", "Plan review", "Creative production", "Creative review", "Results", "Learning", "Next brief"];
-
-const loopStatePresentation = (state: string | null | undefined) => {
-  switch (state) {
-    case "awaiting_demand_approval":
-      return { title: "Experiment plan ready", detail: "Review the opportunity and decide whether the team should move into production." };
-    case "awaiting_creative_approval":
-      return { title: "Creative ready for review", detail: "Check the exact output before it can move to the results stage." };
-    case "awaiting_ads_outcome":
-      return { title: "Waiting for Ads results", detail: "The approved creative is live in the learning loop. No action is needed right now." };
-    case "awaiting_lesson_approval":
-      return { title: "Learning ready for review", detail: "Confirm the learning before AI applies it to the next creative brief." };
-    case "next_brief_ready":
-    case "completed":
-      return { title: "Next brief is ready", detail: "This learning loop is complete and the next cycle can begin." };
-    case "rejected":
-    case "deferred":
-      return { title: "Loop paused", detail: "This run is not progressing. Open the activity details if you need its audit history." };
-    default:
-      return { title: "AI is preparing the next step", detail: "This page will update automatically when the next decision or result is ready." };
-  }
-};
-type ExecutionCommand = {
-  command_id: string;
-  name: string;
-  workflow_run_id: string | null;
-  status: string;
-  attempts: number;
-  max_attempts: number;
-  updated_at: string;
-  available_at: string;
-  last_error_code: string | null;
-  last_error_message: string | null;
-};
 
 const creativeRatios = ["9:16", "4:5", "1:1", "16:9", "4:3", "3:4", "3:2", "2:3"] as const;
 const maximumOutputsPerMediaKind = 10;
@@ -996,136 +948,6 @@ export function CreativeAutomationLauncher() {
     {result && <p className="automation-created" role="status"><Check size={15} /> {result.total} {t("independent jobs created")}. <Link to="/creatives?view=media">{t("Open Creative Library")}</Link></p>}
   </Panel>;
 }
-function CreativeClosedLoopPilot() {
-  const { t, formatDate } = useI18n();
-  const [params] = useSearchParams();
-  const requestedRunId = params.get("loop");
-  const [runs, setRuns] = useState<CreativeLoopRun[]>([]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [timeline, setTimeline] = useState<CreativeLoopTimeline | null>(null);
-  const [reason, setReason] = useState("");
-  const [reviewer, setReviewer] = useState("");
-  const [loopWarning, setLoopWarning] = useState("");
-  const [error, setError] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [commands, setCommands] = useState<ExecutionCommand[]>([]);
-  const activeCommandRef = useRef<ExecutionCommand | null>(null);
-  useEffect(() => {
-    activeCommandRef.current = commands.find((command) => ["pending", "running", "retry_wait", "cancel_requested"].includes(command.status)) ?? null;
-  }, [commands]);
-
-  const loadTimeline = async (runId: string) => {
-    const payload = await pilotApi.creativeLoopTimeline<CreativeLoopTimeline>(runId);
-    setTimeline(payload);
-    setRuns((items) => items.map((item) => item.run_id === payload.run.run_id ? payload.run : item));
-  };
-
-  const loadCommands = async (runId: string) => {
-    const payload = await pilotApi.creativeLoopCommands<ExecutionCommand>(runId);
-    setCommands(payload.items);
-  };
-
-  useEffect(() => {
-    const controller = new AbortController();
-    pilotApi.creativeLoops<CreativeLoopRun>(controller.signal)
-      .then((payload) => {
-        setRuns(payload.items);
-        const requested = payload.items.find((item) => item.run_id === requestedRunId);
-        setSelectedId(requested?.run_id ?? payload.items[0]?.run_id ?? null);
-        setLoopWarning(
-          requested || !requestedRunId || payload.items.length === 0
-            ? ""
-            : "Requested workflow is not available. Showing the latest persisted run instead."
-        );
-        setError("");
-      })
-      .catch((caught: unknown) => {
-        if ((caught as { name?: string }).name !== "AbortError") setError(caught instanceof Error ? caught.message : "Creative loop API unavailable");
-      });
-    return () => controller.abort();
-  }, [requestedRunId]);
-
-  const terminalStates = new Set(["next_brief_ready", "completed", "rejected", "deferred"]);
-  const isTerminal = terminalStates.has(timeline?.run.state ?? "");
-  useEffect(() => {
-    if (!selectedId) { setTimeline(null); setCommands([]); return; }
-    const refresh = () => Promise.all([loadTimeline(selectedId), loadCommands(selectedId)]).catch((caught: unknown) => setError(caught instanceof Error ? caught.message : "Creative loop execution unavailable"));
-    void refresh();
-    if (isTerminal) return;
-    const timer = window.setInterval(() => {
-      if (document.visibilityState === "hidden" || activeCommandRef.current) return;
-      void refresh();
-    }, 2000);
-    return () => window.clearInterval(timer);
-  }, [selectedId, isTerminal]);
-
-  const post = async (path: string, body?: object) => {
-    if (!timeline) return;
-    setSaving(true); setError("");
-    try {
-      const payload = await pilotApi.postCreativeLoop<{ command: ExecutionCommand }>(timeline.run.run_id, path, body);
-      setCommands((items) => [payload.command, ...items.filter((item) => item.command_id !== payload.command.command_id)]);
-      setReason("");
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Creative loop action failed");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const retryCommand = async (commandId: string) => {
-    setSaving(true); setError("");
-    try {
-      await pilotApi.retryExecutionCommand<ExecutionCommand>(commandId);
-      if (selectedId) await loadCommands(selectedId);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Execution command retry failed");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const cancelCommand = async (commandId: string) => {
-    setSaving(true); setError("");
-    try {
-      await pilotApi.cancelExecutionCommand<ExecutionCommand>(commandId);
-      if (selectedId) await loadCommands(selectedId);
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Execution command cancellation failed");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  if (error && !runs.length) return <Panel className="mkt-issue-panel"><PanelHeader title="Creative Closed Loop API not connected" meta="Check the API and worker services." /><p>{error}</p></Panel>;
-  if (!runs.length) return <Panel><PanelHeader title="Marketing Creative Closed Loop" meta="No persisted workflow is available." /><p>A workflow will appear after a real Performance or Creative source event starts the loop.</p></Panel>;
-  const state = timeline?.run.state;
-  const decisionBody = { reviewer_alias: reviewer.trim(), reason: reason.trim() };
-  const activeCommand = commands.find((command) => ["pending", "running", "retry_wait", "cancel_requested"].includes(command.status));
-  const currentStep = loopStatePresentation(state);
-  const needsDecision = ["awaiting_demand_approval", "awaiting_creative_approval", "awaiting_lesson_approval"].includes(state ?? "");
-  return <Panel className="cross-panel creative-loop-card"><PanelHeader title="Creative learning loop" meta="One view from opportunity to the next stronger brief." action={state ? <Badge tone={needsDecision ? "warning" : "info"}>{needsDecision ? "Needs your decision" : "In progress"}</Badge> : undefined} />
-    {loopWarning && <p className="form-error" role="alert">{t(loopWarning)}</p>}
-    <div className="creative-loop-toolbar"><label><span>{t("Workflow")}</span><select value={selectedId ?? ""} onChange={(event) => { setSelectedId(event.target.value); setReason(""); }}>{runs.map((run) => <option key={run.run_id} value={run.run_id}>{formatDate(run.updated_at, { dateStyle: "medium" })} · {t(loopStatePresentation(run.state).title)}</option>)}</select></label><span className="creative-loop-updated">{t("Updated automatically")}</span></div>
-    {timeline && <><section className="workflow-current" aria-labelledby="workflow-current-title"><div className="workflow-current__icon"><GitBranch size={22} /></div><div><p className="eyebrow">{t("Current step")}</p><h3 id="workflow-current-title">{t(currentStep.title)}</h3><p>{t(currentStep.detail)}</p></div></section>
-      {activeCommand && <p className="mkt-filter-note" role="status"><strong>AI is processing the next step.</strong> This view will update automatically. <button className="secondary-button" disabled={saving || activeCommand.status === "cancel_requested"} onClick={() => void cancelCommand(activeCommand.command_id)}>Cancel</button></p>}
-      {state === "awaiting_ads_outcome"
-        ? <div className="workflow-gate workflow-gate--waiting"><div className="workflow-gate-copy"><strong>{t("Nothing to do right now")}</strong><p>The approved version is waiting for a persisted Ads outcome from the Performance data pipeline.</p></div></div>
-        : ["awaiting_demand_approval", "awaiting_creative_approval", "awaiting_lesson_approval"].includes(state ?? "")
-          ? <div className="workflow-gate"><div className="workflow-gate-copy"><strong>{t("Your decision")}</strong><p>{t("Add a short reason so the team can understand this decision later.")}</p></div><div className="workflow-gate-fields"><label>{t("Reviewer name")}<input value={reviewer} onChange={(event) => setReviewer(event.target.value)} placeholder={t("Enter your name")} /></label><label>{t("Decision reason")}<textarea rows={2} value={reason} onChange={(event) => setReason(event.target.value)} placeholder={t("What led to this decision?")} /></label></div><div className="workflow-gate-actions">{state === "awaiting_demand_approval" && <><button className="approve-button" disabled={saving || Boolean(activeCommand) || !reason.trim() || !reviewer.trim()} onClick={() => void post("demand-decision", { ...decisionBody, evaluation_id: timeline.run.initial_evaluation_id, decision: "approve" })}>Approve plan</button><button className="secondary-button" disabled={saving || Boolean(activeCommand) || !reason.trim() || !reviewer.trim()} onClick={() => void post("demand-decision", { ...decisionBody, evaluation_id: timeline.run.initial_evaluation_id, decision: "defer" })}>Decide later</button><button className="reject-button" disabled={saving || Boolean(activeCommand) || !reason.trim() || !reviewer.trim()} onClick={() => void post("demand-decision", { ...decisionBody, evaluation_id: timeline.run.initial_evaluation_id, decision: "reject" })}>Decline</button></>}{state === "awaiting_creative_approval" && <><button className="approve-button" disabled={saving || Boolean(activeCommand) || !reason.trim() || !reviewer.trim()} onClick={() => void post("creative-decision", { ...decisionBody, decision: "approve" })}>Approve creative</button><button className="reject-button" disabled={saving || Boolean(activeCommand) || !reason.trim() || !reviewer.trim()} onClick={() => void post("creative-decision", { ...decisionBody, decision: "reject" })}>Request changes</button></>}{state === "awaiting_lesson_approval" && timeline.run.lesson_id && <><button className="approve-button" disabled={saving || Boolean(activeCommand) || !reason.trim() || !reviewer.trim()} onClick={() => void post("lesson-decision", { ...decisionBody, lesson_id: timeline.run.lesson_id, decision: "approve" })}>Use this learning</button><button className="secondary-button" disabled={saving || Boolean(activeCommand) || !reason.trim() || !reviewer.trim()} onClick={() => void post("lesson-decision", { ...decisionBody, lesson_id: timeline.run.lesson_id, decision: "defer" })}>Decide later</button><button className="reject-button" disabled={saving || Boolean(activeCommand) || !reason.trim() || !reviewer.trim()} onClick={() => void post("lesson-decision", { ...decisionBody, lesson_id: timeline.run.lesson_id, decision: "reject" })}>Discard</button></>}</div></div>
-          : null}
-      <div className="workflow-progress-map" aria-label={t("Workflow progress")}>{timeline.steps.map((step, index) => <div className={`workflow-progress-step workflow-progress-step--${step.status}`} key={step.key}><span>{step.status === "completed" ? <Check size={13} /> : index + 1}</span><strong>{t(loopStageLabels[index] ?? step.label)}</strong></div>)}</div>
-      <details className="workflow-technical" open={commands.some((command) => command.status === "failed")}>
-        <summary>Workflow details</summary>
-        <div className="workflow-stage-details">{timeline.steps.map((step) => <div key={step.key}><div><strong>{step.label}</strong><p>{step.detail}</p></div><StatusBadge status={step.status} /></div>)}</div>
-        <dl className="compact-dl"><div><dt>Workflow ID</dt><dd><code>{timeline.run.run_id}</code></dd></div>{timeline.steps.filter((step) => step.reference).map((step) => <div key={step.key}><dt>{step.label}</dt><dd><code>{step.reference}</code></dd></div>)}</dl>
-        <p className="muted-copy workflow-safety-note">All displayed workflow state is persisted by the backend. Publishing and campaign mutation remain disabled.</p>
-      </details>
-      {commands.length > 0 && <details className="workflow-technical" open={commands.some((command) => command.status === "failed")}><summary>Execution history ({commands.length})</summary><div className="workflow-list">{commands.map((command) => <div className="readiness-row" key={command.command_id}><div><strong>{command.name}</strong><p className="muted-copy">Attempt {command.attempts}/{command.max_attempts}{command.last_error_code ? ` · ${command.last_error_code}: ${command.last_error_message}` : ""}</p></div><div><StatusBadge status={command.status} />{command.status === "failed" && <button className="secondary-button" disabled={saving} onClick={() => void retryCommand(command.command_id)}><RefreshCcw size={15} />Retry</button>}</div></div>)}</div></details>}
-      {error && <p className="form-error" role="alert">{error}</p>}</>}
-  </Panel>;
-}
-
 
 export function CreativeAutomationDetailPage() {
   const { requestId = "" } = useParams();
@@ -1410,24 +1232,20 @@ export function CreativeProductionPage() {
 export function WorkflowsPage() {
   const { t, formatDate } = useI18n();
   const pilot = usePilotDashboard();
-  const [params] = useSearchParams();
   const [stream, setStream] = useState("all");
-  const requestedLoopId = params.get("loop");
   if (pilot.isLoading) return <SkeletonPage />;
   const workflows = (pilot.data?.workflows ?? []).filter((item) => stream === "all" || item.workstream === stream);
-  const activityWorkflows = workflows.filter((item) => !item.action_path.includes("?loop="));
   const counts = { "AI working": workflows.filter((x) => x.status === "running").length, "Waiting for input": workflows.filter((x) => x.status === "waiting").length, "Needs attention": workflows.filter((x) => x.status === "failed").length };
   return (
     <>
       <PageHeader eyebrow="What AI is doing" title="AI activity" description="Follow business progress, see what is waiting and step in only when a decision or exception needs you." actions={<Badge tone="success"><span className="live-dot" />{t("Live")}</Badge>} />
       <div className="filterbar workflow-toolbar"><label>{t("Workstream")} <select aria-label={t("Workflow workstream")} value={stream} onChange={(event) => setStream(event.target.value)}><option value="all">{t("All Marketing")}</option>{Object.entries(dashboardStreamLabels).map(([key, label]) => <option key={key} value={key}>{t(label)}</option>)}</select></label><div className="workflow-counts">{Object.entries(counts).map(([label, value]) => <span key={label}><strong>{value}</strong> {t(label)}</span>)}</div></div>
-      {(stream === "all" || stream === "creative") && requestedLoopId && <CreativeClosedLoopPilot />}
       {pilot.error && <Panel className="mkt-issue-panel"><strong>Dashboard workflow projection unavailable</strong><p>{pilot.error.message}</p></Panel>}
       <h2>{t("All activity")}</h2>
       <div className="workflow-list workflow-list--activity">
-        {activityWorkflows.map((flow) => <Panel className="workflow-card" key={flow.workflow_id}><Link className="workflow-summary" to={flow.action_path}><span className="workflow-symbol"><GitBranch size={19} /></span><div><strong>{t(flow.title === "Static Creative production" ? "Creative output" : flow.title)}</strong><p>{flow.brand_id ?? t("Shared")} · {formatDate(flow.updated_at)}</p></div><div className="workflow-progress"><span>{t(businessStage(flow.business_stage))}</span><small>{t(dashboardStreamLabels[flow.workstream])}</small></div><StatusBadge status={flow.status} /><ArrowRight size={18} /></Link></Panel>)}
+        {workflows.map((flow) => <Panel className="workflow-card" key={flow.workflow_id}><Link className="workflow-summary" to={flow.action_path}><span className="workflow-symbol"><GitBranch size={19} /></span><div><strong>{t(flow.title === "Static Creative production" ? "Creative output" : flow.title)}</strong><p>{flow.brand_id ?? t("Shared")} · {formatDate(flow.updated_at)}</p></div><div className="workflow-progress"><span>{t(businessStage(flow.business_stage))}</span><small>{t(dashboardStreamLabels[flow.workstream])}</small></div><StatusBadge status={flow.status} /><ArrowRight size={18} /></Link></Panel>)}
       </div>
-      {!activityWorkflows.length && <EmptyState icon={<GitBranch />} title="No other activity" text="New automated work will appear here when it starts." />}
+      {!workflows.length && <EmptyState icon={<GitBranch />} title="No other activity" text="New automated work will appear here when it starts." />}
     </>
   );
 }

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ChevronLeft, ChevronRight, FileText, Image as ImageIcon, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { CreativeMedia } from "../components/CreativeMedia";
 import { SplitHandle } from "../components/SplitHandle";
@@ -162,8 +162,6 @@ function CreativePipelineRow({ job, t, selected, onSelect, onHide }: { job: Crea
 export function CreativeDetailPage() {
   const { creativeId } = useParams();
   const navigate = useNavigate();
-  const [params] = useSearchParams();
-  const loopRunId = params.get("loop");
   const { data: job, isLoading, error } = useCreativeJob(creativeId);
   const [reason, setReason] = useState("");
   const [reviewer, setReviewer] = useState("");
@@ -173,13 +171,6 @@ export function CreativeDetailPage() {
   const decision = useMutation({
     mutationFn: async (value: "approve" | "reject") => {
       const payload = { decision: value, reviewer: reviewer.trim(), reason: reason.trim() || null };
-      if (loopRunId) {
-        return pilotApi.postCreativeLoop(loopRunId, "creative-decision", {
-          decision: value,
-          reviewer_alias: payload.reviewer,
-          reason: payload.reason,
-        });
-      }
       return pilotApi.decideCreative(creativeId!, payload);
     },
     onSuccess: async () => {

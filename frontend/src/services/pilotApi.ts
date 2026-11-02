@@ -178,13 +178,6 @@ export const pilotApi = {
   decideCreative: <T>(jobId: string, body: object) => postJson<T>(`/api/v1/creative/jobs/${jobId}/decision`, body),
   performanceDecisions: <T>(signal?: AbortSignal) => getJson<ListResponse<T>>("/api/v1/performance/decisions", signal),
   decidePerformance: <T>(runId: string, body: object) => postJson<T>(`/api/v1/performance/decisions/${runId}/decision`, body),
-  creativeFeedback: <T>(signal?: AbortSignal) => getJson<ListResponse<T>>("/api/v1/creative-feedback", signal),
-  decideCreativeFeedback: <T>(runId: string, body: object) => postJson<T>(`/api/v1/creative-feedback/${runId}/decision`, body),
-  creativeLoops: <T>(signal?: AbortSignal) => getJson<ListResponse<T>>("/api/v1/marketing/creative-loops", signal),
-  creativeLoopTimeline: <T>(runId: string) => getJson<T>(`/api/v1/marketing/creative-loops/${runId}/timeline`),
-  creativeLoopCommands: <T>(runId: string) => getJson<ListResponse<T>>(`/api/v1/execution/commands?workflow_run_id=${encodeURIComponent(runId)}`),
-  startCreativeLoop: <T>(inputSnapshotId: string) => postJson<T>("/api/v1/marketing/creative-loops/commands/start", { input_snapshot_id: inputSnapshotId }),
-  postCreativeLoop: <T>(runId: string, path: string, body?: object) => postJson<T>(`/api/v1/marketing/creative-loops/${runId}/${path}`, body),
   retryExecutionCommand: <T>(commandId: string) => postJson<T>(`/api/v1/execution/commands/${commandId}/retry`),
   cancelExecutionCommand: <T>(commandId: string) => postJson<T>(`/api/v1/execution/commands/${commandId}/cancel`),
 };
