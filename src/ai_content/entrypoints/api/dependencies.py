@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Literal
 
 from celery import Celery
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from loguru import logger
 from pydantic import ValidationError
 
@@ -182,6 +182,7 @@ class ApiRuntimeSettings:
     vilao_api_key: str | None = None
     jev_navigation_model: str = "jev-latest"
     data_source_sync_interval_seconds: float | None = None
+    media_generation_enabled: bool = False
     shopify_token_expires_at: datetime | None = None
     media_asset_max_image_bytes: int = 100_000_000
     media_asset_max_video_bytes: int = 1_000_000_000
@@ -207,6 +208,15 @@ class RuntimeReadiness:
 
     ready: bool
     checks: dict[str, str]
+
+
+def require_media_generation() -> None:
+    """Reject image and video generation while the feature is switched off."""
+    if not get_runtime_settings().media_generation_enabled:
+        raise HTTPException(
+            status_code=503,
+            detail="Image and video generation is disabled (AIC_AI_MEDIA_GENERATION_ENABLED).",
+        )
 
 
 def get_runtime_settings() -> ApiRuntimeSettings:
@@ -278,6 +288,7 @@ def get_runtime_settings() -> ApiRuntimeSettings:
         vilao_api_key=application.credential("VILAO_API_KEY"),
         jev_navigation_model=application.jev_navigation_model,
         data_source_sync_interval_seconds=application.data_source_sync_interval_seconds,
+        media_generation_enabled=application.media_generation_enabled,
         shopify_token_expires_at=application.shopify_token_expires_at,
         media_asset_max_image_bytes=application.media_asset_max_image_bytes,
         media_asset_max_video_bytes=application.media_asset_max_video_bytes,

@@ -100,6 +100,7 @@ class ApplicationSettings(BaseSettings):
     shopify_token_expires_at: datetime | None = Field(
         None, validation_alias="SHOPIFY_ACCESS_TOKEN_EXPIRES_AT"
     )
+    media_generation_enabled: bool = Field(False, validation_alias="AIC_AI_MEDIA_GENERATION_ENABLED")
     database_backend: Literal["sqlite", "postgresql"] = Field(
         "sqlite", validation_alias="AIC_AI_DATABASE_BACKEND"
     )

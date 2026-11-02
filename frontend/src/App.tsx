@@ -3,6 +3,7 @@ import { Link, Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "./components/AppShell";
 import { SkeletonPage } from "./components/ui";
 import { useI18n } from "./hooks/useI18n";
+import { useFeatures } from "./hooks/useFeatures";
 const NotificationsPage = lazy(() => import("./pages/Notifications").then((module) => ({ default: module.NotificationsPage })));
 const ApprovalsPage = lazy(() => import("./pages/Approvals").then((module) => ({ default: module.ApprovalsPage })));
 const CreativeLibraryPage = lazy(() => import("./pages/CreativeLibrary").then((module) => ({ default: module.CreativeLibraryPage })));
@@ -15,11 +16,17 @@ const ResearchCrawlerPage = lazy(() => import("./pages/ResearchCrawler").then((m
 const ResearchLibraryPage = lazy(() => import("./pages/ResearchLibrary").then((module) => ({ default: module.ResearchLibraryPage })));
 const CreativeKnowledgePage = lazy(() => import("./pages/CreativeKnowledge").then((module) => ({ default: module.CreativeKnowledgePage })));
 
+function HomeRedirect() {
+  const features = useFeatures();
+  if (features.isLoading) return <SkeletonPage />;
+  return <Navigate replace to={features.data?.media_generation ? "/creative-production" : "/research-crawler"} />;
+}
+
 export default function App() {
   return (
     <Suspense fallback={<SkeletonPage />}><Routes>
       <Route element={<AppShell />}>
-        <Route index element={<Navigate replace to="/creative-production" />} />
+        <Route index element={<HomeRedirect />} />
         <Route path="notifications" element={<NotificationsPage />} />
         <Route path="approvals" element={<ApprovalsPage />} />
         <Route path="creatives" element={<CreativeLibraryPage />} />

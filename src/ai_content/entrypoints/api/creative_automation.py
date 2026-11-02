@@ -168,6 +168,7 @@ from .dependencies import (
     get_product_media_source_resolver,
     get_research_crawl_repository,
     get_runtime_settings,
+    require_media_generation,
 )
 from .media_assets import get_media_asset_service
 from .schemas.creative_automation import (
@@ -454,6 +455,7 @@ async def list_marketing_creative_automations(
 
 @router.post(
     "",
+    dependencies=[Depends(require_media_generation)],
     response_model=MarketingCreativeAutomationBatchResponse,
     status_code=status.HTTP_201_CREATED,
 )
@@ -1274,6 +1276,7 @@ async def decide_marketing_creative_review(
 
 @router.post(
     "/{request_id}/generate-again",
+    dependencies=[Depends(require_media_generation)],
     response_model=MarketingCreativeAutomationDetailResponse,
 )
 async def generate_marketing_creative_again(

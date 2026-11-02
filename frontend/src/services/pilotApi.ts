@@ -133,6 +133,7 @@ export const pilotApi = {
     postJson<CreativeKnowledge>(
       `/api/v1/marketing/creative-knowledge/${encodeURIComponent(knowledgeId)}/conflict`,
     ),
+  features: (signal?: AbortSignal) => getJson<{ media_generation: boolean }>("/api/v1/features", signal),
   productFamilies: (query = "", limit = 24, signal?: AbortSignal) => {
     const params = new URLSearchParams({ limit: String(limit) });
     if (query.trim()) params.set("query", query.trim());

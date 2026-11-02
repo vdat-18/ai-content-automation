@@ -462,6 +462,11 @@ async def _brief_artifact_reference(
     return record.artifact_id, f"/api/v1/artifacts/{record.artifact_id}/content"
 
 
+@app.get("/api/v1/features")
+async def features() -> dict[str, bool]:
+    return {"media_generation": get_runtime_settings().media_generation_enabled}
+
+
 @app.get("/api/v1/health", response_model=HealthResponse)
 async def health() -> HealthResponse:
     return HealthResponse()

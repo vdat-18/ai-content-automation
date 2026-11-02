@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useCreativeJobs, useNotifications, usePilotDashboard } from "../hooks/usePilotDashboard";
+import { useFeatures } from "../hooks/useFeatures";
 import { useWorkspace } from "../hooks/useWorkspace";
 import { SkeletonPage } from "./ui";
 import { useI18n, type Language } from "../hooks/useI18n";
@@ -34,7 +35,7 @@ const readStoredSidebarWidth = () => {
   return Number.isFinite(stored) && stored >= 208 && stored <= 420 ? clampSidebarWidth(stored) : null;
 };
 
-const nav: NavItem[] = [
+const allNav: NavItem[] = [
   { to: "/creative-production", label: "Creative Production", icon: Clapperboard, group: "creative" },
   { to: "/approvals", label: "Needs approval", icon: Bell, count: true, group: "creative" },
   { to: "/creatives", label: "Creative Library", icon: Image, group: "creative" },
@@ -63,6 +64,9 @@ export function AppShell() {
   const pilot = usePilotDashboard();
   const creatives = useCreativeJobs();
   const notifications = useNotifications();
+  const features = useFeatures();
+  const mediaEnabled = features.data?.media_generation ?? false;
+  const nav = allNav.filter((item) => mediaEnabled || !["/creative-production", "/approvals", "/creatives"].includes(item.to));
 
   useEffect(() => {
     if (sidebarWidth !== null) window.localStorage.setItem(SIDEBAR_WIDTH_KEY, String(sidebarWidth));
