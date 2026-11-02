@@ -1642,7 +1642,7 @@ async def _notify_job_result(
         "creative_approved": (
             "creative_approved",
             f"{item.sku_id} Creative is approved",
-            "The exact Creative versions are approved and an Ads Draft can be prepared.",
+            "The exact Creative versions are approved.",
         ),
         "failed": (
             "failed",

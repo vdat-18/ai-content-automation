@@ -1168,10 +1168,6 @@ body.sidebar-resizing * { cursor: col-resize !important; user-select: none !impo
 .source-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
 .source-chips span { font-size: var(--text-xs); font-weight: 500; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; }
 
-.performance-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
-.performance-strip div    { background: var(--surface); border: 1px solid var(--line); border-radius: 9px; padding: 12px; }
-.performance-strip span   { color: var(--muted); font-size: var(--text-2xs); text-transform: uppercase; font-weight: 700; letter-spacing: 0.06em; }
-.performance-strip strong { display: block; margin-top: 6px; font-size: var(--text-lg); font-weight: 700; letter-spacing: -0.03em; }
 
 /* ─────────────────────────────────────────────────────────────────────────
    APPROVALS LIST
@@ -1376,14 +1372,6 @@ body.sidebar-resizing * { cursor: col-resize !important; user-select: none !impo
 /* ─────────────────────────────────────────────────────────────────────────
    PERFORMANCE PAGES
    ───────────────────────────────────────────────────────────────────────── */
-.performance-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 16px; }
-.performance-summary > .panel { padding: 18px; position: relative; }
-.performance-summary > .panel > span { position: absolute; right: 14px; top: 14px; color: var(--green); }
-.performance-summary p        { color: var(--muted); font-size: var(--text-2xs); margin-bottom: 9px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 700; }
-.performance-summary strong   { font-size: 1.5rem; letter-spacing: -0.04em; font-family: "Inter", sans-serif; }
-.performance-summary small    { display: block; color: var(--muted); font-size: var(--text-2xs); margin-top: 5px; }
-.performance-grid             { display: grid; grid-template-columns: 1.25fr 0.75fr; gap: 16px; margin-bottom: 16px; }
-.performance-grid > .panel    { padding: 18px; }
 
 .insight-list article { display: grid; grid-template-columns: 28px 1fr; gap: 10px; padding: 12px 0; border-top: 1px solid var(--line); }
 .insight-list article > span  { font: 700 15px "Inter", sans-serif; color: var(--line-strong); }
@@ -1507,17 +1495,6 @@ body.sidebar-resizing * { cursor: col-resize !important; user-select: none !impo
 .source-candidate-scroll tr:last-child td { border-bottom: 0; }
 .source-candidate-scroll tbody tr { transition: background 0.15s var(--ease-out); }
 .source-candidate-scroll tbody tr:hover { background: var(--tint-violet-soft); }
-.performance-live-evidence, .performance-live-detail { padding: 20px; }
-.performance-live-stats { margin: 20px 0; }
-.performance-live-filter { margin: 0 0 16px; }
-.performance-live-filter > label { display: flex; align-items: center; gap: 8px; font-size: var(--text-sm); font-weight: 600; }
-.performance-live-filter select { border: 1px solid var(--line); background: var(--paper); color: var(--ink); border-radius: 8px; padding: 8px 10px; font: inherit; }
-.performance-live-filter .mkt-muted { margin: 0; }
-.performance-live-table tr { transition: background 0.15s var(--ease-out); }
-.performance-live-table tbody tr:not(.is-selected):hover { background: var(--tint-violet-soft); }
-.performance-live-table tr.is-selected { background: var(--tint-violet); }
-.performance-live-table .badge { white-space: nowrap; }
-.performance-live-lineage { border-left-color: #bf7620; }
 @media (max-width: 960px) { .source-candidate-grid { grid-template-columns: 1fr; } }
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -1760,7 +1737,6 @@ body.sidebar-resizing * { cursor: col-resize !important; user-select: none !impo
 }
 @container (max-width: 670px) {
   .overview-grid, .lower-grid { grid-template-columns: minmax(0, 1fr); }
-  .performance-strip { grid-template-columns: repeat(2, 1fr); }
   .version-grid { grid-template-columns: repeat(2, 1fr); }
 }
 @container (max-width: 640px) {
@@ -1808,7 +1784,6 @@ body.sidebar-resizing * { cursor: col-resize !important; user-select: none !impo
   .icon-button { width: 44px; height: 44px; }
   .global-search span, .global-search kbd, .environment-pill { display: none; }
   .page-header { align-items: flex-start; flex-direction: column; margin-bottom: 22px; }
-  .performance-summary, .workflow-stats, .source-grid, .settings-form, .usage-grid { grid-template-columns: 1fr; }
   .usage-filters { width: 100%; justify-content: stretch; }
   .usage-filters select { flex: 1; }
   .activity-row { grid-template-columns: 1fr; }
@@ -2039,7 +2014,6 @@ body.sidebar-resizing * { cursor: col-resize !important; user-select: none !impo
 .approval-stream-filter select { min-width: 200px; }
 .creative-summary { color: var(--ink-2); line-height: 1.6; font-size: var(--text-sm); }
 .decision-callout--sticky { position: sticky; top: calc(var(--topbar-h) + 16px); z-index: 2; box-shadow: var(--shadow-md); }
-.performance-view-switch { justify-content: flex-start; }
 
 @media (max-width: 1050px) {
   .today-grid { grid-template-columns: 1fr; }
@@ -2100,9 +2074,6 @@ body.sidebar-resizing * { cursor: col-resize !important; user-select: none !impo
 .audit-details code { overflow-wrap: anywhere; }
 
 /* Marketing-facing workflow overview: decisions first, implementation detail on demand. */
-.creative-loop-card { overflow: hidden; }
-.creative-loop-card > .panel-header { align-items: flex-start; margin-bottom: 16px; }
-.creative-loop-toolbar {
   display: flex;
   align-items: end;
   justify-content: space-between;
@@ -2112,9 +2083,6 @@ body.sidebar-resizing * { cursor: col-resize !important; user-select: none !impo
   border-block: 1px solid var(--line);
   background: var(--surface);
 }
-.creative-loop-toolbar label { display: grid; gap: 5px; min-width: min(100%, 340px); color: var(--muted); font-size: var(--text-xs); font-weight: 700; }
-.creative-loop-toolbar select { width: 100%; min-height: 36px; border: 1px solid var(--line); border-radius: 9px; background: var(--paper); color: var(--ink); padding: 0 10px; font: inherit; }
-.creative-loop-updated { color: var(--muted); font-size: var(--text-xs); white-space: nowrap; }
 .workflow-current {
   display: grid;
   grid-template-columns: 48px minmax(0, 1fr);
@@ -2131,15 +2099,6 @@ body.sidebar-resizing * { cursor: col-resize !important; user-select: none !impo
 .workflow-current h3 { margin: 0; font: 700 var(--text-lg) "Inter", sans-serif; letter-spacing: -0.025em; }
 .workflow-current > div:last-child > p:last-child { max-width: 650px; margin: 5px 0 0; color: var(--muted); font-size: var(--text-sm); line-height: 1.5; }
 .workflow-gate-fields { display: grid; grid-template-columns: minmax(180px, 0.55fr) minmax(240px, 1.45fr); gap: 12px; }
-.workflow-progress-map { display: grid; grid-template-columns: repeat(7, minmax(76px, 1fr)); gap: 7px; margin-top: 20px; }
-.workflow-progress-step { min-width: 0; padding: 10px 8px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); color: var(--muted); text-align: center; }
-.workflow-progress-step > span { width: 23px; height: 23px; display: grid; place-items: center; margin: 0 auto 7px; border: 1px solid var(--line-strong); border-radius: 50%; background: var(--paper); font-size: var(--text-2xs); font-weight: 700; }
-.workflow-progress-step strong { display: block; min-height: 2.4em; font-size: var(--text-2xs); line-height: 1.2; }
-.workflow-progress-step--completed { color: var(--ink-2); }
-.workflow-progress-step--completed > span { border-color: var(--green); background: var(--green); color: white; }
-.workflow-progress-step--running { border-color: color-mix(in srgb, var(--brand-blue) 35%, var(--line)); background: color-mix(in srgb, var(--brand-blue) 7%, var(--paper)); color: var(--ink); }
-.workflow-progress-step--running > span { border-color: var(--brand-blue); color: var(--brand-blue); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand-blue) 13%, transparent); }
-.workflow-progress-step--failed { border-color: color-mix(in srgb, var(--red) 35%, var(--line)); color: var(--red); }
 .workflow-stage-details { display: grid; gap: 0; }
 .workflow-stage-details > div { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; padding: 9px 0; border-top: 1px solid var(--line); }
 .workflow-stage-details > div:first-child { border-top: 0; }
@@ -2152,51 +2111,17 @@ body.sidebar-resizing * { cursor: col-resize !important; user-select: none !impo
 .workflow-counts span { padding: 6px 9px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); color: var(--muted); font-size: var(--text-xs); }
 .workflow-counts strong { color: var(--ink); }
 
-/* Performance decisions use business summaries first; exact rule evidence stays collapsible. */
-.performance-decision-toolbar { align-items: center; justify-content: space-between; }
-.performance-decision-toolbar > strong { font-size: var(--text-sm); }
-.performance-decision-toolbar > label { display: flex; align-items: center; gap: 7px; white-space: nowrap; font-size: var(--text-sm); font-weight: 700; }
-.performance-queue-panel, .performance-decision-card { padding: 20px; }
-.performance-decision-list { display: grid; gap: 8px; }
-.performance-decision-list > button { width: 100%; display: grid; grid-template-columns: 38px minmax(0, 1fr) auto 18px; gap: 12px; align-items: center; border: 1px solid var(--line); border-radius: 11px; background: var(--paper); color: var(--ink); padding: 12px; text-align: left; cursor: pointer; }
-.performance-decision-list > button:hover, .performance-decision-list > button.is-selected { border-color: color-mix(in srgb, var(--brand-blue) 38%, var(--line)); background: color-mix(in srgb, var(--brand-blue) 5%, var(--paper)); }
-.performance-decision-list > button > span:nth-child(2) { min-width: 0; }
-.performance-decision-list strong { display: block; font-size: var(--text-sm); }
-.performance-decision-list small { display: block; margin-top: 3px; color: var(--muted); font-size: var(--text-xs); overflow-wrap: anywhere; }
-.performance-decision-hero { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
-.performance-decision-hero .eyebrow { margin: 0 0 5px; }
-.performance-decision-hero h2 { margin: 0; font: 700 var(--text-xl) "Inter", sans-serif; letter-spacing: -0.035em; }
-.performance-decision-hero p:last-child { margin: 6px 0 0; color: var(--muted); font-size: var(--text-sm); }
-.performance-decision-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; margin: 16px 0; }
-.performance-decision-summary > div { min-height: 72px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 5px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 11px 13px; }
-.performance-decision-summary strong { font: 700 var(--text-lg) "Inter", sans-serif; }
-.performance-decision-summary span:not(.badge) { color: var(--muted); font-size: var(--text-2xs); }
-.performance-next-step { padding: 16px; border: 1px solid color-mix(in srgb, var(--brand-blue) 24%, var(--line)); border-radius: 12px; background: color-mix(in srgb, var(--brand-blue) 6%, var(--paper)); }
-.performance-next-step .eyebrow { margin: 0 0 4px; }
-.performance-next-step h3 { margin: 0; font-size: var(--text-base); }
-.performance-next-step > p:not(.eyebrow) { margin: 5px 0 0; color: var(--muted); font-size: var(--text-xs); line-height: 1.5; }
-.performance-decision-form input { width: 100%; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); padding: 10px; font: inherit; }
 
 @media (max-width: 900px) {
-  .workflow-progress-map { grid-template-columns: repeat(4, minmax(90px, 1fr)); }
   .usage-grid { grid-template-columns: minmax(0, 1fr); }
 }
 
 @media (max-width: 650px) {
-  .creative-loop-toolbar { margin-inline: -16px; padding-inline: 16px; align-items: stretch; flex-direction: column; gap: 8px; }
-  .creative-loop-updated { display: none; }
   .workflow-current { grid-template-columns: 38px minmax(0, 1fr); padding: 14px; }
   .workflow-current__icon { width: 36px; height: 36px; }
   .workflow-gate-fields { grid-template-columns: 1fr; }
-  .workflow-progress-map { grid-template-columns: repeat(2, minmax(100px, 1fr)); }
   .workflow-toolbar, .workflow-toolbar > label { align-items: stretch; }
   .workflow-counts { justify-content: flex-start; }
-  .performance-decision-toolbar { align-items: stretch; }
-  .performance-decision-toolbar > label { justify-content: space-between; }
-  .performance-decision-list > button { grid-template-columns: 36px minmax(0, 1fr) 18px; }
-  .performance-decision-list > button > .badge { grid-column: 2; justify-self: start; }
-  .performance-decision-list > button > svg:last-child { grid-column: 3; grid-row: 1; }
-  .performance-decision-summary { grid-template-columns: 1fr; }
 }
 .approval-preview {
   width: 72px;
