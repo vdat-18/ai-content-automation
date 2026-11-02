@@ -86,15 +86,10 @@ async def import_knowledge_proposals(
             raise ValueError("Applied Creative knowledge bootstrap checksum changed")
         return KnowledgeBootstrapResult(application=previous, imported=(), applied=False)
 
-    existing_items = await service.repository.list()
-    existing_by_id: dict[str, list[CreativeKnowledge]] = {}
-    for existing_item in existing_items:
-        existing_by_id.setdefault(existing_item.knowledge_id, []).append(existing_item)
     imported: list[CreativeKnowledge] = []
     for item in manifest.items:
-        versions = existing_by_id.get(item.knowledge_id, [])
-        latest = max(versions, key=lambda candidate: candidate.version) if versions else None
-        if latest is not None and _matches_bootstrap(latest, item):
+        current = await service.repository.get(item.knowledge_id)
+        if current is not None and _matches_bootstrap(current, item):
             continue
         proposed = await service.propose(
             knowledge_id=item.knowledge_id,
@@ -110,7 +105,6 @@ async def import_knowledge_proposals(
             non_conclusions=item.non_conclusions,
         )
         imported.append(proposed)
-        existing_by_id.setdefault(item.knowledge_id, []).append(proposed)
     application = AppliedKnowledgeBootstrap(
         bootstrap_id=manifest.bootstrap_id,
         schema_version=manifest.schema_version,

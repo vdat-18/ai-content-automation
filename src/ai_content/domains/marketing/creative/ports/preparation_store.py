@@ -45,7 +45,7 @@ class StrategyPackage:
 @dataclass(frozen=True)
 class CreativeKnowledgeAssignment:
     stage: str
-    version_refs: tuple[str, ...]
+    knowledge_ids: tuple[str, ...]
 
 
 @dataclass(frozen=True)

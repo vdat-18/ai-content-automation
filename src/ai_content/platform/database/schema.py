@@ -114,11 +114,10 @@ creative_intake_runs = _run_table(
     Column("sku_id", Text, nullable=False),
 )
 
-creative_knowledge_versions = Table(
-    "creative_knowledge_versions",
+creative_knowledge = Table(
+    "creative_knowledge",
     metadata,
     Column("knowledge_id", Text, primary_key=True),
-    Column("version", Integer, primary_key=True),
     Column("knowledge_type", Text, nullable=False),
     Column("status", Text, nullable=False),
     Column("authority", Text, nullable=False),
@@ -135,9 +134,8 @@ creative_knowledge_versions = Table(
     Column("valid_until", DateTime(timezone=True)),
     Column("payload", JSONB, nullable=False),
     *_timestamps(),
-    CheckConstraint("version > 0", name="positive_creative_knowledge_version"),
     CheckConstraint(
-        "status IN ('draft', 'proposed', 'approved', 'rejected', 'superseded', 'expired', 'conflict')",
+        "status IN ('draft', 'proposed', 'approved', 'rejected', 'expired', 'conflict')",
         name="valid_creative_knowledge_status",
     ),
     schema="marketing",
@@ -157,16 +155,16 @@ creative_knowledge_bootstraps = Table(
 )
 Index(
     "ix_creative_knowledge_scope",
-    creative_knowledge_versions.c.brand_id,
-    creative_knowledge_versions.c.niche_id,
-    creative_knowledge_versions.c.product_archetype,
-    creative_knowledge_versions.c.product_family_id,
-    creative_knowledge_versions.c.variant_id,
+    creative_knowledge.c.brand_id,
+    creative_knowledge.c.niche_id,
+    creative_knowledge.c.product_archetype,
+    creative_knowledge.c.product_family_id,
+    creative_knowledge.c.variant_id,
 )
 Index(
     "ix_creative_knowledge_status_type",
-    creative_knowledge_versions.c.status,
-    creative_knowledge_versions.c.knowledge_type,
+    creative_knowledge.c.status,
+    creative_knowledge.c.knowledge_type,
 )
 
 creative_automation_batches = Table(

@@ -28,7 +28,6 @@ def knowledge_from_dict(payload: dict[str, object]) -> CreativeKnowledge:
         raise ValueError("Knowledge scope must be an object")
     return CreativeKnowledge(
         knowledge_id=str(payload["knowledge_id"]),
-        version=int(payload["version"]),
         knowledge_type=KnowledgeType(str(payload["knowledge_type"])),
         title=str(payload["title"]),
         content=str(payload["content"]),
@@ -45,7 +44,6 @@ def knowledge_from_dict(payload: dict[str, object]) -> CreativeKnowledge:
         non_conclusions=tuple(str(value) for value in payload.get("non_conclusions", ())),
         effective_from=_datetime(payload.get("effective_from")),
         valid_until=_datetime(payload.get("valid_until")),
-        supersedes=str(payload["supersedes"]) if payload.get("supersedes") else None,
         approved_by=str(payload["approved_by"]) if payload.get("approved_by") else None,
         approved_at=_datetime(payload.get("approved_at")),
         created_at=_datetime(payload.get("created_at")) or datetime.now().astimezone(),

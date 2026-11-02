@@ -7,13 +7,13 @@ import sqlite3
 from datetime import datetime
 from pathlib import Path
 
-from sqlalchemy import and_, select
+from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from ai_content.platform.database.schema import (
+    creative_knowledge,
     creative_knowledge_bootstraps,
-    creative_knowledge_versions,
 )
 
 from .models import AppliedKnowledgeBootstrap, CreativeKnowledge
@@ -25,11 +25,9 @@ class SqliteCreativeKnowledgeRepository:
         self._connection = sqlite3.connect(path, check_same_thread=False)
         self._connection.execute(
             """
-            CREATE TABLE IF NOT EXISTS creative_knowledge_versions (
-                knowledge_id TEXT NOT NULL,
-                version INTEGER NOT NULL,
-                payload TEXT NOT NULL,
-                PRIMARY KEY (knowledge_id, version)
+            CREATE TABLE IF NOT EXISTS creative_knowledge (
+                knowledge_id TEXT PRIMARY KEY,
+                payload TEXT NOT NULL
             )
             """
         )
@@ -52,23 +50,23 @@ class SqliteCreativeKnowledgeRepository:
 
     async def save(self, item: CreativeKnowledge) -> None:
         self._connection.execute(
-            """INSERT INTO creative_knowledge_versions (knowledge_id, version, payload)
-               VALUES (?, ?, ?)
-               ON CONFLICT(knowledge_id, version) DO UPDATE SET payload=excluded.payload""",
-            (item.knowledge_id, item.version, json.dumps(knowledge_to_dict(item))),
+            """INSERT INTO creative_knowledge (knowledge_id, payload)
+               VALUES (?, ?)
+               ON CONFLICT(knowledge_id) DO UPDATE SET payload=excluded.payload""",
+            (item.knowledge_id, json.dumps(knowledge_to_dict(item))),
         )
         self._connection.commit()
 
-    async def get(self, knowledge_id: str, version: int) -> CreativeKnowledge | None:
+    async def get(self, knowledge_id: str) -> CreativeKnowledge | None:
         row = self._connection.execute(
-            "SELECT payload FROM creative_knowledge_versions WHERE knowledge_id=? AND version=?",
-            (knowledge_id, version),
+            "SELECT payload FROM creative_knowledge WHERE knowledge_id=?",
+            (knowledge_id,),
         ).fetchone()
         return knowledge_from_dict(json.loads(row[0])) if row else None
 
     async def list(self) -> list[CreativeKnowledge]:
         rows = self._connection.execute(
-            "SELECT payload FROM creative_knowledge_versions ORDER BY knowledge_id, version"
+            "SELECT payload FROM creative_knowledge ORDER BY knowledge_id"
         ).fetchall()
         return [knowledge_from_dict(json.loads(row[0])) for row in rows]
 
@@ -114,7 +112,6 @@ class PostgresCreativeKnowledgeRepository:
         payload = knowledge_to_dict(item)
         values = {
             "knowledge_id": item.knowledge_id,
-            "version": item.version,
             "knowledge_type": item.knowledge_type.value,
             "status": item.status.value,
             "authority": item.authority.value,
@@ -131,34 +128,24 @@ class PostgresCreativeKnowledgeRepository:
             "valid_until": item.valid_until,
             "payload": payload,
         }
-        statement = insert(creative_knowledge_versions).values(**values)
+        statement = insert(creative_knowledge).values(**values)
         statement = statement.on_conflict_do_update(
-            index_elements=["knowledge_id", "version"],
-            set_={
-                key: value
-                for key, value in values.items()
-                if key not in {"knowledge_id", "version"}
-            },
+            index_elements=["knowledge_id"],
+            set_={key: value for key, value in values.items() if key != "knowledge_id"},
         )
         async with self._engine.begin() as connection:
             await connection.execute(statement)
 
-    async def get(self, knowledge_id: str, version: int) -> CreativeKnowledge | None:
-        statement = select(creative_knowledge_versions.c.payload).where(
-            and_(
-                creative_knowledge_versions.c.knowledge_id == knowledge_id,
-                creative_knowledge_versions.c.version == version,
-            )
+    async def get(self, knowledge_id: str) -> CreativeKnowledge | None:
+        statement = select(creative_knowledge.c.payload).where(
+            creative_knowledge.c.knowledge_id == knowledge_id
         )
         async with self._engine.connect() as connection:
             payload = (await connection.execute(statement)).scalar_one_or_none()
         return knowledge_from_dict(payload) if payload else None
 
     async def list(self) -> list[CreativeKnowledge]:
-        statement = select(creative_knowledge_versions.c.payload).order_by(
-            creative_knowledge_versions.c.knowledge_id,
-            creative_knowledge_versions.c.version,
-        )
+        statement = select(creative_knowledge.c.payload).order_by(creative_knowledge.c.knowledge_id)
         async with self._engine.connect() as connection:
             payloads = (await connection.execute(statement)).scalars().all()
         return [knowledge_from_dict(payload) for payload in payloads]

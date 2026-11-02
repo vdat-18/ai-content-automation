@@ -983,7 +983,6 @@ export type CreativeKnowledgeStatus =
   | "proposed"
   | "approved"
   | "rejected"
-  | "superseded"
   | "expired"
   | "conflict";
 
@@ -1029,8 +1028,6 @@ export type CreativeKnowledgeScope = {
 
 export type CreativeKnowledge = {
   knowledge_id: string;
-  version: number;
-  version_ref: string;
   knowledge_type: CreativeKnowledgeType;
   title: string;
   content: string;
@@ -1042,7 +1039,6 @@ export type CreativeKnowledge = {
   applies_to: CreativeKnowledgeStage[];
   contributor: string | null;
   non_conclusions: string[];
-  supersedes: string | null;
   approved_by: string | null;
   approved_at: string | null;
   created_at: string;

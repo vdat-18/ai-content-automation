@@ -26,7 +26,6 @@ class KnowledgeStatus(StrEnum):
     PROPOSED = "proposed"
     APPROVED = "approved"
     REJECTED = "rejected"
-    SUPERSEDED = "superseded"
     EXPIRED = "expired"
     CONFLICT = "conflict"
 
@@ -86,7 +85,6 @@ class KnowledgeScope:
 @dataclass(frozen=True)
 class CreativeKnowledge:
     knowledge_id: str
-    version: int
     knowledge_type: KnowledgeType
     title: str
     content: str
@@ -100,7 +98,6 @@ class CreativeKnowledge:
     non_conclusions: tuple[str, ...] = ()
     effective_from: datetime | None = None
     valid_until: datetime | None = None
-    supersedes: str | None = None
     approved_by: str | None = None
     approved_at: datetime | None = None
     created_at: datetime = field(default_factory=lambda: datetime.now(UTC))
@@ -108,8 +105,6 @@ class CreativeKnowledge:
     def __post_init__(self) -> None:
         if not self.knowledge_id.strip() or not self.title.strip() or not self.content.strip():
             raise ValueError("Knowledge identity, title and content are required")
-        if self.version < 1:
-            raise ValueError("Knowledge version must be positive")
         if not self.source_refs:
             raise ValueError("Knowledge requires at least one source reference")
         if not self.applies_to:
@@ -129,10 +124,6 @@ class CreativeKnowledge:
         if self.status == KnowledgeStatus.APPROVED and not self.approved_by:
             raise ValueError("Approved knowledge requires an approver")
 
-    @property
-    def version_ref(self) -> str:
-        return f"{self.knowledge_id}@{self.version}"
-
     def decide(self, status: KnowledgeStatus, reviewer: str) -> CreativeKnowledge:
         if status not in {KnowledgeStatus.APPROVED, KnowledgeStatus.REJECTED}:
             raise ValueError("A review decision must approve or reject knowledge")
@@ -148,11 +139,6 @@ class CreativeKnowledge:
             approved_by=reviewer if status == KnowledgeStatus.APPROVED else None,
             approved_at=datetime.now(UTC) if status == KnowledgeStatus.APPROVED else None,
         )
-
-    def supersede(self) -> CreativeKnowledge:
-        if self.status != KnowledgeStatus.APPROVED:
-            raise ValueError("Only approved knowledge can be superseded")
-        return replace(self, status=KnowledgeStatus.SUPERSEDED)
 
     def active_at(self, when: datetime) -> bool:
         return (

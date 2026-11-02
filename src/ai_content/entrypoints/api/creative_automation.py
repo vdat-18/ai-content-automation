@@ -887,15 +887,15 @@ async def _process_automation_request(
         runtime_stages = (*generation_stages, KnowledgeStage.REVIEW)
         if stored_package is not None and stored_package.knowledge_assignments:
             knowledge_by_stage = {
-                KnowledgeStage(assignment.stage): await _load_creative_knowledge_versions(
+                KnowledgeStage(assignment.stage): await _load_pinned_creative_knowledge(
                     knowledge,
-                    assignment.version_refs,
+                    assignment.knowledge_ids,
                 )
                 for assignment in stored_package.knowledge_assignments
                 if KnowledgeStage(assignment.stage) in runtime_stages
             }
         elif stored_package is not None and stored_package.knowledge_refs:
-            legacy_knowledge = await _load_creative_knowledge_versions(
+            legacy_knowledge = await _load_pinned_creative_knowledge(
                 knowledge, stored_package.knowledge_refs
             )
             knowledge_by_stage = dict.fromkeys(generation_stages, legacy_knowledge)
@@ -913,7 +913,7 @@ async def _process_automation_request(
         knowledge_by_stage = {stage: knowledge_by_stage.get(stage, ()) for stage in runtime_stages}
     approved_knowledge = tuple(
         {
-            item.version_ref: item
+            item.knowledge_id: item
             for stage in generation_stages
             for item in knowledge_by_stage[stage]
         }.values()
@@ -921,7 +921,7 @@ async def _process_automation_request(
     knowledge_assignments = tuple(
         CreativeKnowledgeAssignment(
             stage=stage.value,
-            version_refs=tuple(item.version_ref for item in knowledge_by_stage.get(stage, ())),
+            knowledge_ids=tuple(item.knowledge_id for item in knowledge_by_stage.get(stage, ())),
         )
         for stage in runtime_stages
     )
@@ -932,7 +932,7 @@ async def _process_automation_request(
         compilation,
         package=replace(
             compilation.package,
-            knowledge_refs=tuple(item.version_ref for item in approved_knowledge),
+            knowledge_refs=tuple(item.knowledge_id for item in approved_knowledge),
             knowledge_assignments=knowledge_assignments,
             review_checklist=review_checklist,
         ),
@@ -984,12 +984,12 @@ async def _process_automation_request(
         cited_refs = set(persona_compilation.package.persona_resolution.persona.evidence_refs)
         preparation_knowledge = tuple(
             {
-                item.version_ref: item
+                item.knowledge_id: item
                 for item in (
                     *preparation_knowledge,
                     *knowledge_by_stage[KnowledgeStage.PERSONA],
                 )
-                if item.version_ref in cited_refs
+                if item.knowledge_id in cited_refs
                 or item in knowledge_by_stage[KnowledgeStage.PREPARATION]
             }.values()
         )
@@ -1035,7 +1035,7 @@ async def _process_automation_request(
                     brief=prepared.brief,
                     strategy=prepared.strategy,
                     automation_plan=plan,
-                    knowledge_refs=tuple(item.version_ref for item in approved_knowledge),
+                    knowledge_refs=tuple(item.knowledge_id for item in approved_knowledge),
                     knowledge_assignments=knowledge_assignments,
                     review_checklist=review_checklist,
                 )
@@ -1380,7 +1380,7 @@ async def generate_marketing_creative_again(
             requested_by=payload.requested_by,
             reason=payload.reason,
             target_asset_version_ids=tuple(payload.target_asset_version_ids),
-            knowledge_refs=tuple(item.version_ref for item in revision_knowledge),
+            knowledge_refs=tuple(item.knowledge_id for item in revision_knowledge),
             revision_guidance=revision_guidance,
         )
     except ValueError as error:
@@ -3265,20 +3265,17 @@ def _workflow_entity_id(prefix: str, request_id: str, idempotency_key: str) -> s
     return f"{prefix}-{digest}"
 
 
-async def _load_creative_knowledge_versions(
+async def _load_pinned_creative_knowledge(
     knowledge: CreativeKnowledgeService,
-    version_refs: tuple[str, ...],
+    knowledge_ids: tuple[str, ...],
 ) -> tuple[CreativeKnowledge, ...]:
-    """Load the exact SecondBrain versions pinned by an earlier attempt."""
+    """Load the SecondBrain items pinned by an earlier attempt."""
 
     resolved: list[CreativeKnowledge] = []
-    for version_ref in version_refs:
-        knowledge_id, separator, raw_version = version_ref.rpartition("@")
-        if not separator or not knowledge_id or not raw_version.isdigit():
-            raise ValueError(f"Invalid pinned Creative knowledge reference: {version_ref}")
-        item = await knowledge.repository.get(knowledge_id, int(raw_version))
-        if item is None or item.version_ref != version_ref:
-            raise ValueError(f"Pinned Creative knowledge version is unavailable: {version_ref}")
+    for knowledge_id in knowledge_ids:
+        item = await knowledge.repository.get(knowledge_id)
+        if item is None:
+            raise ValueError(f"Pinned Creative knowledge is unavailable: {knowledge_id}")
         resolved.append(item)
     return tuple(resolved)
 
@@ -3288,7 +3285,7 @@ def _creative_knowledge_memory(
 ) -> tuple[ApprovedCreativeMemory, ...]:
     return tuple(
         ApprovedCreativeMemory(
-            memory_id=item.version_ref,
+            memory_id=item.knowledge_id,
             summary=f"{item.title}: {item.content}",
             supported_facts=(item.content,),
             non_conclusions=(
@@ -3341,7 +3338,7 @@ async def _resolve_creative_knowledge(
     resolved: dict[str, CreativeKnowledge] = {}
     for candidate_scope in scopes:
         for item in await knowledge.resolve(candidate_scope, stage=stage):
-            resolved[item.version_ref] = item
+            resolved[item.knowledge_id] = item
     return tuple(resolved.values())
 
 
@@ -3601,7 +3598,7 @@ def _trace_response(
         ),
         knowledge_refs_by_stage=(
             {
-                assignment.stage: list(assignment.version_refs)
+                assignment.stage: list(assignment.knowledge_ids)
                 for assignment in package.knowledge_assignments
             }
             if package is not None

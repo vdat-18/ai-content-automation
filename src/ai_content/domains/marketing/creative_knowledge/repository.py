@@ -17,7 +17,7 @@ from .models import (
 
 class CreativeKnowledgeRepository(Protocol):
     async def save(self, item: CreativeKnowledge) -> None: ...
-    async def get(self, knowledge_id: str, version: int) -> CreativeKnowledge | None: ...
+    async def get(self, knowledge_id: str) -> CreativeKnowledge | None: ...
     async def list(self) -> list[CreativeKnowledge]: ...
     async def get_bootstrap(self, bootstrap_id: str) -> AppliedKnowledgeBootstrap | None: ...
     async def save_bootstrap(self, bootstrap: AppliedKnowledgeBootstrap) -> None: ...
@@ -31,15 +31,12 @@ def resolve_approved_knowledge(
     stage: KnowledgeStage | None = None,
 ) -> tuple[CreativeKnowledge, ...]:
     now = as_of or datetime.now(UTC)
-    latest: dict[str, CreativeKnowledge] = {}
-    for item in (candidate for candidate in items if candidate.active_at(now)):
-        current = latest.get(item.knowledge_id)
-        if current is None or item.version > current.version:
-            latest[item.knowledge_id] = item
     matched = [
         item
-        for item in latest.values()
-        if item.scope.matches(scope) and (stage is None or stage in item.applies_to)
+        for item in items
+        if item.active_at(now)
+        and item.scope.matches(scope)
+        and (stage is None or stage in item.applies_to)
     ]
     return tuple(
         sorted(

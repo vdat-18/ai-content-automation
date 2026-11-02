@@ -38,13 +38,9 @@ class CreativeKnowledgeService:
         non_conclusions: tuple[str, ...] = (),
     ) -> CreativeKnowledge:
         identifier = knowledge_id or f"knowledge-{uuid4().hex}"
-        versions = [
-            item for item in await self.repository.list() if item.knowledge_id == identifier
-        ]
-        latest = max(versions, key=lambda item: item.version) if versions else None
+        existing = await self.repository.get(identifier)
         item = CreativeKnowledge(
             knowledge_id=identifier,
-            version=(latest.version + 1 if latest else 1),
             knowledge_type=knowledge_type,
             title=title,
             content=content,
@@ -56,7 +52,7 @@ class CreativeKnowledgeService:
             applies_to=applies_to,
             contributor=contributor,
             non_conclusions=non_conclusions,
-            supersedes=latest.version_ref if latest else None,
+            created_at=existing.created_at if existing else datetime.now(UTC),
         )
         await self.repository.save(item)
         return item
@@ -64,30 +60,21 @@ class CreativeKnowledgeService:
     async def decide(
         self,
         knowledge_id: str,
-        version: int,
         *,
         status: KnowledgeStatus,
         reviewer: str,
     ) -> CreativeKnowledge:
-        item = await self.repository.get(knowledge_id, version)
+        item = await self.repository.get(knowledge_id)
         if item is None:
-            raise ValueError("Creative knowledge version not found")
+            raise ValueError("Creative knowledge not found")
         decided = item.decide(status, reviewer)
-        if status == KnowledgeStatus.APPROVED:
-            for previous in await self.repository.list():
-                if (
-                    previous.knowledge_id == knowledge_id
-                    and previous.version != version
-                    and previous.status == KnowledgeStatus.APPROVED
-                ):
-                    await self.repository.save(previous.supersede())
         await self.repository.save(decided)
         return decided
 
-    async def mark_conflict(self, knowledge_id: str, version: int) -> CreativeKnowledge:
-        item = await self.repository.get(knowledge_id, version)
+    async def mark_conflict(self, knowledge_id: str) -> CreativeKnowledge:
+        item = await self.repository.get(knowledge_id)
         if item is None:
-            raise ValueError("Creative knowledge version not found")
+            raise ValueError("Creative knowledge not found")
         if item.status not in {KnowledgeStatus.DRAFT, KnowledgeStatus.PROPOSED}:
             raise ValueError("Only draft or proposed knowledge can be marked as conflict")
         conflicted = replace(item, status=KnowledgeStatus.CONFLICT)
@@ -119,7 +106,7 @@ class CreativeKnowledgeService:
     ) -> CreativeKnowledge:
         """Persist trusted human feedback once at its exact Creative scope."""
 
-        existing = await self.repository.get(feedback_id, 1)
+        existing = await self.repository.get(feedback_id)
         if existing is not None:
             if (
                 existing.knowledge_type != KnowledgeType.FEEDBACK
@@ -134,7 +121,6 @@ class CreativeKnowledgeService:
             return existing
         item = CreativeKnowledge(
             knowledge_id=feedback_id,
-            version=1,
             knowledge_type=KnowledgeType.FEEDBACK,
             title=title,
             content=content,

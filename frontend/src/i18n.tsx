@@ -1494,7 +1494,6 @@ const vi: Record<string, string> = {
   "Knowledge proposal saved for human review.": "Đề xuất tri thức đã được lưu để con người duyệt.",
   "Knowledge proposal could not be saved.": "Không thể lưu đề xuất tri thức.",
   "cancelled": "đã hủy",
-  "superseded": "đã thay thế",
   "pass": "đạt",
   "fail": "không đạt",
 };

@@ -1,4 +1,4 @@
-"""Admin API for versioned Marketing Creative knowledge."""
+"""Admin API for Marketing Creative knowledge."""
 
 from __future__ import annotations
 
@@ -74,8 +74,6 @@ class KnowledgeBootstrapRequest(BaseModel):
 
 class KnowledgeResponse(BaseModel):
     knowledge_id: str
-    version: int
-    version_ref: str
     knowledge_type: KnowledgeType
     title: str
     content: str
@@ -87,7 +85,6 @@ class KnowledgeResponse(BaseModel):
     applies_to: list[KnowledgeStage]
     contributor: str | None
     non_conclusions: list[str]
-    supersedes: str | None
     approved_by: str | None
     approved_at: datetime | None
     created_at: datetime
@@ -109,8 +106,6 @@ class KnowledgeListResponse(BaseModel):
 def _response(item: CreativeKnowledge) -> KnowledgeResponse:
     return KnowledgeResponse(
         knowledge_id=item.knowledge_id,
-        version=item.version,
-        version_ref=item.version_ref,
         knowledge_type=item.knowledge_type,
         title=item.title,
         content=item.content,
@@ -122,7 +117,6 @@ def _response(item: CreativeKnowledge) -> KnowledgeResponse:
         applies_to=list(item.applies_to),
         contributor=item.contributor,
         non_conclusions=list(item.non_conclusions),
-        supersedes=item.supersedes,
         approved_by=item.approved_by,
         approved_at=item.approved_at,
         created_at=item.created_at,
@@ -189,10 +183,9 @@ async def list_knowledge(
     return KnowledgeListResponse(items=responses, total=len(responses))
 
 
-@router.post("/{knowledge_id}/versions/{version}/decision", response_model=KnowledgeResponse)
+@router.post("/{knowledge_id}/decision", response_model=KnowledgeResponse)
 async def decide_knowledge(
     knowledge_id: str,
-    version: int,
     payload: KnowledgeDecisionRequest,
     service: CreativeKnowledgeService = Depends(get_creative_knowledge_service),
 ) -> KnowledgeResponse:
@@ -204,7 +197,6 @@ async def decide_knowledge(
     try:
         item = await service.decide(
             knowledge_id,
-            version,
             status=payload.decision,
             reviewer=payload.reviewer,
         )
@@ -214,14 +206,13 @@ async def decide_knowledge(
     return _response(item)
 
 
-@router.post("/{knowledge_id}/versions/{version}/conflict", response_model=KnowledgeResponse)
+@router.post("/{knowledge_id}/conflict", response_model=KnowledgeResponse)
 async def mark_knowledge_conflict(
     knowledge_id: str,
-    version: int,
     service: CreativeKnowledgeService = Depends(get_creative_knowledge_service),
 ) -> KnowledgeResponse:
     try:
-        return _response(await service.mark_conflict(knowledge_id, version))
+        return _response(await service.mark_conflict(knowledge_id))
     except ValueError as exc:
         code = status.HTTP_404_NOT_FOUND if "not found" in str(exc) else status.HTTP_409_CONFLICT
         raise HTTPException(status_code=code, detail=str(exc)) from exc

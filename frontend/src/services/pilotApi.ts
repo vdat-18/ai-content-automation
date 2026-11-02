@@ -123,16 +123,15 @@ export const pilotApi = {
     postJson<CreativeKnowledge>("/api/v1/marketing/creative-knowledge", body),
   decideCreativeKnowledge: (
     knowledgeId: string,
-    version: number,
     decision: "approved" | "rejected",
     reviewer: string,
   ) => postJson<CreativeKnowledge>(
-    `/api/v1/marketing/creative-knowledge/${encodeURIComponent(knowledgeId)}/versions/${version}/decision`,
+    `/api/v1/marketing/creative-knowledge/${encodeURIComponent(knowledgeId)}/decision`,
     { decision, reviewer },
   ),
-  markCreativeKnowledgeConflict: (knowledgeId: string, version: number) =>
+  markCreativeKnowledgeConflict: (knowledgeId: string) =>
     postJson<CreativeKnowledge>(
-      `/api/v1/marketing/creative-knowledge/${encodeURIComponent(knowledgeId)}/versions/${version}/conflict`,
+      `/api/v1/marketing/creative-knowledge/${encodeURIComponent(knowledgeId)}/conflict`,
     ),
   productFamilies: (query = "", limit = 24, signal?: AbortSignal) => {
     const params = new URLSearchParams({ limit: String(limit) });

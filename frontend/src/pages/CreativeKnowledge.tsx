@@ -54,7 +54,6 @@ const statuses: Array<CreativeKnowledgeStatus | "all"> = [
   "approved",
   "conflict",
   "rejected",
-  "superseded",
   "draft",
   "expired",
 ];
@@ -126,7 +125,7 @@ function formFromKnowledge(item: CreativeKnowledge, asReusableLesson = false): P
     content: item.content,
     authority: asReusableLesson ? "team" : item.authority,
     contributor: "",
-    sourceRefs: asReusableLesson ? `knowledge:${item.version_ref}` : item.source_refs.join("\n"),
+    sourceRefs: asReusableLesson ? `knowledge:${item.knowledge_id}` : item.source_refs.join("\n"),
     evidenceRefs: item.evidence_refs.join("\n"),
     nonConclusions: item.non_conclusions.join("\n"),
     appliesTo: asReusableLesson ? ["learning"] : item.applies_to,
@@ -156,18 +155,7 @@ export function CreativeKnowledgePage() {
     queryFn: ({ signal }) => pilotApi.creativeKnowledge(undefined, signal),
   });
   const items = useMemo(() => knowledge.data?.items ?? [], [knowledge.data?.items]);
-  const histories = useMemo(() => {
-    const grouped = new Map<string, CreativeKnowledge[]>();
-    for (const item of items) {
-      const versions = grouped.get(item.knowledge_id) ?? [];
-      versions.push(item);
-      grouped.set(item.knowledge_id, versions);
-    }
-    for (const versions of grouped.values()) versions.sort((a, b) => b.version - a.version);
-    return grouped;
-  }, [items]);
-  const latestItems = useMemo(() => [...histories.values()]
-    .map((versions) => versions[0])
+  const latestItems = useMemo(() => items
     .filter((item) => statusFilter === "all" || item.status === statusFilter)
     .filter((item) => typeFilter === "all" || item.knowledge_type === typeFilter)
     .filter((item) => {
@@ -175,18 +163,17 @@ export function CreativeKnowledgePage() {
       return !needle || [item.title, item.content, item.knowledge_id, ...item.source_refs]
         .some((value) => value.toLocaleLowerCase().includes(needle));
     })
-    .sort((a, b) => b.created_at.localeCompare(a.created_at)), [histories, query, statusFilter, typeFilter]);
-  const selectedByRef = items.find((item) => item.version_ref === selectedRef);
+    .sort((a, b) => b.created_at.localeCompare(a.created_at)), [items, query, statusFilter, typeFilter]);
+  const selectedByRef = items.find((item) => item.knowledge_id === selectedRef);
   const selected = selectedByRef && latestItems.some((item) => item.knowledge_id === selectedByRef.knowledge_id)
     ? selectedByRef
     : latestItems[0] ?? null;
-  const selectedHistory = selected ? histories.get(selected.knowledge_id) ?? [] : [];
   const summary = useMemo(() => ({
-    total: histories.size,
-    approved: [...histories.values()].filter((versions) => versions[0].status === "approved").length,
-    proposed: [...histories.values()].filter((versions) => versions[0].status === "proposed").length,
-    conflict: [...histories.values()].filter((versions) => versions[0].status === "conflict").length,
-  }), [histories]);
+    total: items.length,
+    approved: items.filter((item) => item.status === "approved").length,
+    proposed: items.filter((item) => item.status === "proposed").length,
+    conflict: items.filter((item) => item.status === "conflict").length,
+  }), [items]);
 
   const refresh = async () => queryClient.invalidateQueries({ queryKey: ["creative-knowledge"] });
   const bootstrap = useMutation({
@@ -199,18 +186,18 @@ export function CreativeKnowledgePage() {
   });
   const decision = useMutation({
     mutationFn: ({ item, value }: { item: CreativeKnowledge; value: "approved" | "rejected" }) =>
-      pilotApi.decideCreativeKnowledge(item.knowledge_id, item.version, value, reviewer.trim()),
+      pilotApi.decideCreativeKnowledge(item.knowledge_id, value, reviewer.trim()),
     onSuccess: async (item) => {
-      setSelectedRef(item.version_ref);
+      setSelectedRef(item.knowledge_id);
       await refresh();
       notify(t(item.status === "approved" ? "Knowledge approved for Creative Agent use." : "Knowledge proposal rejected."), "success");
     },
     onError: (error) => notify(error instanceof Error ? error.message : t("Review decision could not be saved."), "error"),
   });
   const conflict = useMutation({
-    mutationFn: (item: CreativeKnowledge) => pilotApi.markCreativeKnowledgeConflict(item.knowledge_id, item.version),
+    mutationFn: (item: CreativeKnowledge) => pilotApi.markCreativeKnowledgeConflict(item.knowledge_id),
     onSuccess: async (item) => {
-      setSelectedRef(item.version_ref);
+      setSelectedRef(item.knowledge_id);
       await refresh();
       notify(t("Knowledge was marked as a conflict for human resolution."), "success");
     },
@@ -219,7 +206,7 @@ export function CreativeKnowledgePage() {
   const propose = useMutation({
     mutationFn: (body: CreativeKnowledgeProposalRequest) => pilotApi.proposeCreativeKnowledge(body),
     onSuccess: async (item) => {
-      setSelectedRef(item.version_ref);
+      setSelectedRef(item.knowledge_id);
       setProposalOpen(false);
       await refresh();
       notify(t("Knowledge proposal saved for human review."), "success");
@@ -302,11 +289,11 @@ export function CreativeKnowledgePage() {
       <div className="second-brain-list" aria-label={t("Knowledge topics")}>
         {latestItems.map((item) => <button
           type="button"
-          key={item.version_ref}
+          key={item.knowledge_id}
           className={selected?.knowledge_id === item.knowledge_id ? "is-active" : ""}
-          onClick={() => setSelectedRef(item.version_ref)}
+          onClick={() => setSelectedRef(item.knowledge_id)}
         >
-          <span><Badge tone={statusTone(item.status)}>{formatLabel(item.status)}</Badge><small>{t(formatLabel(item.knowledge_type))} · v{item.version}</small></span>
+          <span><Badge tone={statusTone(item.status)}>{formatLabel(item.status)}</Badge><small>{t(formatLabel(item.knowledge_type))}</small></span>
           <strong>{item.title}</strong>
           <p>{item.content}</p>
         </button>)}
@@ -321,7 +308,7 @@ export function CreativeKnowledgePage() {
         <p className="second-brain-content">{selected.content}</p>
 
         <dl className="second-brain-meta">
-          <div><dt>{t("Version")}</dt><dd>{selected.version_ref}</dd></div>
+          <div><dt>{t("ID")}</dt><dd>{selected.knowledge_id}</dd></div>
           <div><dt>{t("Authority")}</dt><dd>{t(formatLabel(selected.authority))}</dd></div>
           <div><dt>{t("Contributor")}</dt><dd>{selected.contributor || t("Not available")}</dd></div>
           <div><dt>{t("Created")}</dt><dd>{dateTime(selected.created_at)}</dd></div>
@@ -335,13 +322,8 @@ export function CreativeKnowledgePage() {
         <DetailList title={t("Evidence")} values={selected.evidence_refs} />
         <DetailList title={t("Does not conclude")} values={selected.non_conclusions} />
 
-        <section className="second-brain-history">
-          <h3>{t("Version history")}</h3>
-          <div>{selectedHistory.map((version) => <button key={version.version_ref} type="button" className={selected.version_ref === version.version_ref ? "is-active" : ""} onClick={() => setSelectedRef(version.version_ref)}>v{version.version} · {t(formatLabel(version.status))}</button>)}</div>
-        </section>
-
         <div className="second-brain-actions">
-          <button className="secondary-button" type="button" onClick={() => openUpdatedVersion(selected)}><Plus size={15} /> {t("Propose updated version")}</button>
+          <button className="secondary-button" type="button" onClick={() => openUpdatedVersion(selected)}><Plus size={15} /> {t("Edit knowledge")}</button>
           {selected.knowledge_type === "feedback" && <button className="secondary-button" type="button" onClick={() => openReusableLesson(selected)}><BrainCircuit size={15} /> {t("Propose reusable lesson")}</button>}
         </div>
 
