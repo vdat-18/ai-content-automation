@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import json
+import re
 from io import BytesIO
 from pathlib import Path
 from typing import Any
+from urllib.parse import quote_plus, urlsplit
 
 from openpyxl import Workbook
 from openpyxl.styles import Font
+
+from ai_content.domains.marketing.research_crawler.identity import media_source_fingerprint
 
 from .media import MediaDownloadReport, download_product_media
 from .parsing import (
@@ -20,6 +24,33 @@ from .parsing import (
 )
 from .references import ProfileGenerationError, ReferenceProfile, ReferenceProfileGenerator
 from .repositories import ProductRepository
+
+_PIN_SIZE = re.compile(r"^/(?:\d+x\d*|originals)/")
+_PINTEREST_SEARCH = "https://www.pinterest.com/search/pins/?q="
+
+
+def _clean_pins(pins: list[dict[str, Any]], exclude: list[str]) -> list[dict[str, str]]:
+    """Keep distinct Pinterest CDN images whose title has none of the exclude words."""
+    cleaned: dict[str, dict[str, str]] = {}
+    for pin in pins:
+        url = str(pin.get("image_url") or "")
+        parsed = urlsplit(url)
+        title = str(pin.get("title") or "")
+        if (parsed.hostname or "").endswith("pinimg.com") is False:
+            continue
+        if any(word.lower() in title.lower() for word in exclude):
+            continue
+        image_id = media_source_fingerprint(url)
+        cleaned.setdefault(
+            image_id,
+            {
+                "image_id": image_id,
+                "image_url": parsed._replace(path=_PIN_SIZE.sub("/736x/", parsed.path, 1)).geturl(),
+                "pin_url": str(pin.get("pin_url") or ""),
+                "title": title,
+            },
+        )
+    return list(cleaned.values())
 
 
 class ProductCatalogService:
@@ -43,7 +74,47 @@ class ProductCatalogService:
             items = parse_feed_payload(str(payload.get("body") or ""))
             count = await self._repository.upsert_listing(items) if items else 0
             return {"stored": "listing", "count": count}
+        if kind == "pinterest":
+            return await self._ingest_pins(payload)
         return {"stored": "ignored", "reason": "unsupported capture"}
+
+    async def _ingest_pins(self, payload: dict[str, Any]) -> dict[str, Any]:
+        product_type = str(payload["product_type"])
+        profiles = {p.product_type: p for p in await self._repository.list_profiles()}
+        exclude = profiles[product_type].exclude_keywords if product_type in profiles else []
+        pins = _clean_pins(list(payload.get("pins") or []), exclude)
+        added = await self._repository.add_reference_images(
+            product_type, str(payload["query"]), pins
+        )
+        return {
+            "stored": "reference_images",
+            "received": len(payload.get("pins") or []),
+            "added": added,
+        }
+
+    async def reference_queue(self, limit: int) -> list[dict[str, str]]:
+        """Pinterest searches of approved profiles that were not crawled yet."""
+        done = await self._repository.done_searches()
+        queue = [
+            {
+                "url": _PINTEREST_SEARCH + quote_plus(query),
+                "product_type": p.product_type,
+                "query": query,
+            }
+            for p in await self._repository.list_profiles()
+            if p.status == "approved"
+            for query in p.keywords
+            if (p.product_type, query) not in done
+        ]
+        return queue[:limit]
+
+    async def reference_images(
+        self, status: str | None, product_type: str | None
+    ) -> list[dict[str, Any]]:
+        return await self._repository.list_reference_images(status, product_type)
+
+    async def set_image_status(self, image_id: str, status: str) -> bool:
+        return await self._repository.set_image_status(image_id, status)
 
     async def queue(self, limit: int) -> list[str]:
         return await self._repository.queue(limit)

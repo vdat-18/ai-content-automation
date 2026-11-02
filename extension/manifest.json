@@ -1,12 +1,13 @@
 {
   "manifest_version": 3,
   "name": "AIC Collector (research)",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Captures product and review data from pages in your own Chrome and sends it to a local collector. Pauses for you at any security check or login.",
   "permissions": ["storage", "notifications"],
   "host_permissions": [
     "https://shop.tiktok.com/*",
     "https://www.tiktok.com/*",
+    "https://www.pinterest.com/*",
     "http://127.0.0.1:8000/*"
   ],
   "background": { "service_worker": "background.js" },
@@ -19,7 +20,11 @@
       "world": "MAIN"
     },
     {
-      "matches": ["https://shop.tiktok.com/*", "https://www.tiktok.com/*"],
+      "matches": [
+        "https://shop.tiktok.com/*",
+        "https://www.tiktok.com/*",
+        "https://www.pinterest.com/*"
+      ],
       "js": ["content.js"],
       "run_at": "document_idle"
     }

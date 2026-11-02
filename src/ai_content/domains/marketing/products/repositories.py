@@ -15,7 +15,9 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 from ai_content.platform.database.schema import (
     marketplace_products,
     product_selections,
+    reference_images,
     reference_profiles,
+    reference_searches,
 )
 
 from .parsing import SOURCE, is_non_physical, money
@@ -44,6 +46,18 @@ class ProductRepository(Protocol):
     async def list_profiles(self) -> list[ReferenceProfile]: ...
 
     async def update_profile(self, profile: ReferenceProfile) -> bool: ...
+
+    async def add_reference_images(
+        self, product_type: str, query: str, pins: list[dict[str, str]]
+    ) -> int: ...
+
+    async def done_searches(self) -> set[tuple[str, str]]: ...
+
+    async def list_reference_images(
+        self, status: str | None, product_type: str | None
+    ) -> list[dict[str, Any]]: ...
+
+    async def set_image_status(self, image_id: str, status: str) -> bool: ...
 
 
 def _sold(value: object) -> int | None:
@@ -91,6 +105,15 @@ class SqliteProductRepository:
             "CREATE TABLE IF NOT EXISTS reference_profiles ("
             "product_type TEXT PRIMARY KEY, keywords TEXT NOT NULL, "
             "exclude_keywords TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'draft')"
+        )
+        self._connection.execute(
+            "CREATE TABLE IF NOT EXISTS reference_images ("
+            "image_id TEXT PRIMARY KEY, product_type TEXT NOT NULL, query TEXT NOT NULL, "
+            "image_url TEXT NOT NULL, pin_url TEXT, title TEXT, status TEXT NOT NULL DEFAULT 'new')"
+        )
+        self._connection.execute(
+            "CREATE TABLE IF NOT EXISTS reference_searches ("
+            "product_type TEXT NOT NULL, query TEXT NOT NULL, PRIMARY KEY (product_type, query))"
         )
         self._connection.commit()
 
@@ -206,6 +229,56 @@ class SqliteProductRepository:
                 profile.status,
                 profile.product_type,
             ),
+        )
+        self._connection.commit()
+        return cursor.rowcount > 0
+
+    async def add_reference_images(
+        self, product_type: str, query: str, pins: list[dict[str, str]]
+    ) -> int:
+        before = self._connection.total_changes
+        self._connection.executemany(
+            "INSERT OR IGNORE INTO reference_images "
+            "(image_id, product_type, query, image_url, pin_url, title) VALUES (?, ?, ?, ?, ?, ?)",
+            [
+                (
+                    pin["image_id"],
+                    product_type,
+                    query,
+                    pin["image_url"],
+                    pin["pin_url"],
+                    pin["title"],
+                )
+                for pin in pins
+            ],
+        )
+        added = self._connection.total_changes - before
+        self._connection.execute(
+            "INSERT OR IGNORE INTO reference_searches (product_type, query) VALUES (?, ?)",
+            (product_type, query),
+        )
+        self._connection.commit()
+        return added
+
+    async def done_searches(self) -> set[tuple[str, str]]:
+        rows = self._connection.execute("SELECT product_type, query FROM reference_searches")
+        return {(row[0], row[1]) for row in rows}
+
+    async def list_reference_images(
+        self, status: str | None, product_type: str | None
+    ) -> list[dict[str, Any]]:
+        rows = self._connection.execute(
+            "SELECT image_id, product_type, query, image_url, pin_url, title, status "
+            "FROM reference_images WHERE (? IS NULL OR status=?) AND (? IS NULL OR product_type=?) "
+            "ORDER BY rowid",
+            (status, status, product_type, product_type),
+        ).fetchall()
+        keys = ("image_id", "product_type", "query", "image_url", "pin_url", "title", "status")
+        return [dict(zip(keys, row, strict=True)) for row in rows]
+
+    async def set_image_status(self, image_id: str, status: str) -> bool:
+        cursor = self._connection.execute(
+            "UPDATE reference_images SET status=? WHERE image_id=?", (status, image_id)
         )
         self._connection.commit()
         return cursor.rowcount > 0
@@ -338,6 +411,64 @@ class PostgresProductRepository:
                 status=profile.status,
                 updated_at=func.now(),
             )
+        )
+        async with self._engine.begin() as connection:
+            return (await connection.execute(statement)).rowcount > 0
+
+    async def add_reference_images(
+        self, product_type: str, query: str, pins: list[dict[str, str]]
+    ) -> int:
+        added = 0
+        async with self._engine.begin() as connection:
+            if pins:
+                statement = (
+                    insert(reference_images)
+                    .values(
+                        [
+                            {
+                                "image_id": pin["image_id"],
+                                "product_type": product_type,
+                                "query": query,
+                                "image_url": pin["image_url"],
+                                "pin_url": pin["pin_url"],
+                                "title": pin["title"],
+                            }
+                            for pin in pins
+                        ]
+                    )
+                    .on_conflict_do_nothing(index_elements=["image_id"])
+                )
+                added = (await connection.execute(statement)).rowcount
+            await connection.execute(
+                insert(reference_searches)
+                .values(product_type=product_type, query=query)
+                .on_conflict_do_nothing()
+            )
+        return added
+
+    async def done_searches(self) -> set[tuple[str, str]]:
+        statement = select(reference_searches.c.product_type, reference_searches.c.query)
+        async with self._engine.connect() as connection:
+            return {(row[0], row[1]) for row in (await connection.execute(statement)).all()}
+
+    async def list_reference_images(
+        self, status: str | None, product_type: str | None
+    ) -> list[dict[str, Any]]:
+        statement = select(reference_images).order_by(reference_images.c.created_at)
+        if status is not None:
+            statement = statement.where(reference_images.c.status == status)
+        if product_type is not None:
+            statement = statement.where(reference_images.c.product_type == product_type)
+        async with self._engine.connect() as connection:
+            rows = (await connection.execute(statement)).mappings().all()
+        keys = ("image_id", "product_type", "query", "image_url", "pin_url", "title", "status")
+        return [{key: row[key] for key in keys} for row in rows]
+
+    async def set_image_status(self, image_id: str, status: str) -> bool:
+        statement = (
+            reference_images.update()
+            .where(reference_images.c.image_id == image_id)
+            .values(status=status, updated_at=func.now())
         )
         async with self._engine.begin() as connection:
             return (await connection.execute(statement)).rowcount > 0

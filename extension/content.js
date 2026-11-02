@@ -118,6 +118,48 @@
     send({ type: "page-done", ok: true });
   };
 
+  // Pinterest keeps only the pins near the viewport in the DOM, so pins are gathered while scrolling.
+  const PIN_SCROLL_ROUNDS = 14;
+  const pinterestLoginWall = () =>
+    location.pathname.startsWith("/login") || Boolean(document.querySelector("[data-test-id='login-modal'], [data-test-id='registerForm']"));
+
+  const collectPins = (pins) => {
+    document.querySelectorAll("a[href*='/pin/']").forEach((link) => {
+      const img = link.querySelector("img[src*='pinimg.com']");
+      if (!img) return;
+      const pinUrl = new URL(link.getAttribute("href"), location.origin).pathname;
+      pins.set(img.src, { image_url: img.src, pin_url: pinUrl, title: (img.alt || "").trim() });
+    });
+  };
+
+  const runPinterestFlow = async (meta) => {
+    await wait(3000);
+    for (let guard = 0; pinterestLoginWall() && guard < 600; guard += 1) {
+      if (guard === 0) {
+        send({ type: "challenge", reason: "đăng nhập Pinterest" });
+        banner("AIC Collector: chờ bạn đăng nhập Pinterest");
+      }
+      send({ type: "heartbeat" });
+      await wait(2000);
+      if (!pinterestLoginWall()) send({ type: "resumed" });
+    }
+    const pins = new Map();
+    for (let round = 0; round < PIN_SCROLL_ROUNDS; round += 1) {
+      collectPins(pins);
+      window.scrollBy({ top: Math.round(window.innerHeight * 0.9), behavior: "smooth" });
+      send({ type: "heartbeat" });
+      banner(`AIC Collector: Pinterest ${round + 1}/${PIN_SCROLL_ROUNDS}, ${pins.size} ảnh`);
+      await wait(1400 + Math.random() * 900);
+    }
+    collectPins(pins);
+    send({
+      type: "ingest",
+      payload: { kind: "pinterest", product_type: meta.product_type, query: meta.query, pins: [...pins.values()] },
+    });
+    await wait(1500);
+    send({ type: "page-done", ok: pins.size > 0, reason: pins.size ? "" : "không thấy ảnh" });
+  };
+
   // Scroll a feed page (home, category, search) so the page itself loads more products.
   const harvestFeed = async (rounds) => {
     state.harvest = true;
@@ -149,8 +191,9 @@
     state.enabled = Boolean(stored.enabled);
     chrome.runtime.sendMessage({ type: "am-i-walker" }, (response) => {
       state.walker = Boolean(response?.walker);
-      if (state.walker) runWalkerFlow();
-      else if (state.enabled && !challengeReason()) setTimeout(() => snapshot("auto"), 4000);
+      if (state.walker && location.hostname.endsWith("pinterest.com")) runPinterestFlow(response.meta || {});
+      else if (state.walker) runWalkerFlow();
+      else if (state.enabled && !location.hostname.endsWith("pinterest.com") && !challengeReason()) setTimeout(() => snapshot("auto"), 4000);
     });
   });
   chrome.storage.onChanged.addListener((changes) => {

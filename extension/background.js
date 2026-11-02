@@ -78,7 +78,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       ingest(message.payload);
       break;
     case "am-i-walker":
-      getState().then((w) => sendResponse({ walker: w.running && w.tabId === sender.tab?.id }));
+      getState().then((w) => sendResponse({ walker: w.running && w.tabId === sender.tab?.id, meta: w.meta?.[w.queue[w.index]] || null }));
       return true;
     case "heartbeat":
       break;
@@ -99,7 +99,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       advance(Boolean(message.ok), message.reason || "");
       break;
     case "walker-start":
-      setState({ running: true, queue: message.urls, index: 0, done: 0, failed: 0, paused: false, tabId: null, note: "Bắt đầu" }).then(openNext);
+      setState({ running: true, queue: message.urls, meta: message.meta || {}, index: 0, done: 0, failed: 0, paused: false, tabId: null, note: "Bắt đầu" }).then(openNext);
       break;
     case "walker-stop":
       clearTimeout(timer);

@@ -149,6 +149,29 @@ reference_profiles = Table(
     schema="marketing",
 )
 
+reference_images = Table(
+    "reference_images",
+    metadata,
+    Column("image_id", Text, primary_key=True),
+    Column("product_type", Text, nullable=False),
+    Column("query", Text, nullable=False),
+    Column("image_url", Text, nullable=False),
+    Column("pin_url", Text),
+    Column("title", Text),
+    Column("status", Text, nullable=False, server_default=sql_text("'new'")),
+    *_timestamps(),
+    schema="marketing",
+)
+
+reference_searches = Table(
+    "reference_searches",
+    metadata,
+    Column("product_type", Text, primary_key=True),
+    Column("query", Text, primary_key=True),
+    *_timestamps(),
+    schema="marketing",
+)
+
 creative_knowledge = Table(
     "creative_knowledge",
     metadata,
@@ -720,7 +743,9 @@ Index("ix_data_source_sync_runs_source", data_source_sync_runs.c.source_id)
 __all__ = [
     "marketplace_products",
     "product_selections",
+    "reference_images",
     "reference_profiles",
+    "reference_searches",
     "ai_usage_events",
     "artifacts",
     "creative_automation_batches",

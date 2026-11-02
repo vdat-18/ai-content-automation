@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel
@@ -81,6 +81,38 @@ async def update_reference_profile(
     if not await service.update_profile(profile):
         raise HTTPException(status_code=404, detail="Profile not found")
     return profile.as_dict()
+
+
+class ImageStatusUpdate(BaseModel):
+    status: Literal["new", "approved", "rejected"]
+
+
+@router.get("/reference-queue")
+async def reference_queue(
+    limit: int = Query(20, ge=1, le=200),
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> list[dict[str, str]]:
+    return await service.reference_queue(limit)
+
+
+@router.get("/reference-images")
+async def list_reference_images(
+    status: str | None = None,
+    product_type: str | None = None,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> list[dict[str, Any]]:
+    return await service.reference_images(status, product_type)
+
+
+@router.put("/reference-images/{image_id}")
+async def update_reference_image(
+    image_id: str,
+    body: ImageStatusUpdate,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> dict[str, str]:
+    if not await service.set_image_status(image_id, body.status):
+        raise HTTPException(status_code=404, detail="Reference image not found")
+    return {"image_id": image_id, "status": body.status}
 
 
 @router.post("/{product_id}/select")
