@@ -119,7 +119,8 @@
   };
 
   // Pinterest keeps only the pins near the viewport in the DOM, so pins are gathered while scrolling.
-  const PIN_SCROLL_ROUNDS = 14;
+  const PIN_MAX_ROUNDS = 80; // hard stop so a search never scrolls forever
+  const PIN_IDLE_ROUNDS = 4; // stop after this many scrolls that found no new pin
   const pinterestLoginWall = () =>
     location.pathname.startsWith("/login") || Boolean(document.querySelector("[data-test-id='login-modal'], [data-test-id='registerForm']"));
 
@@ -144,12 +145,17 @@
       if (!pinterestLoginWall()) send({ type: "resumed" });
     }
     const pins = new Map();
-    for (let round = 0; round < PIN_SCROLL_ROUNDS; round += 1) {
+    const maxImages = Number(meta.max_images) || Infinity;
+    let idleRounds = 0;
+    for (let round = 0; round < PIN_MAX_ROUNDS && pins.size < maxImages && idleRounds < PIN_IDLE_ROUNDS; round += 1) {
+      const before = pins.size;
       collectPins(pins);
       window.scrollBy({ top: Math.round(window.innerHeight * 0.9), behavior: "smooth" });
       send({ type: "heartbeat" });
-      banner(`AIC Collector: Pinterest ${round + 1}/${PIN_SCROLL_ROUNDS}, ${pins.size} ảnh`);
+      banner(`AIC Collector: Pinterest ${meta.query}: ${pins.size} ảnh`);
       await wait(1400 + Math.random() * 900);
+      collectPins(pins);
+      idleRounds = pins.size === before ? idleRounds + 1 : 0;
     }
     collectPins(pins);
     send({

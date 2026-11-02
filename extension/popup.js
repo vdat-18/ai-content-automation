@@ -40,14 +40,15 @@ document.getElementById("start").addEventListener("click", async () => {
 document.getElementById("stop").addEventListener("click", () => chrome.runtime.sendMessage({ type: "walker-stop" }));
 const API = "http://127.0.0.1:8000/api/v1/products";
 document.getElementById("pins").addEventListener("click", async () => {
-  const count = Number(document.getElementById("count").value) || 20;
+  const searches = Number(document.getElementById("pin-searches").value) || 200;
+  const maxImages = Number(document.getElementById("pin-images").value) || 0;
   try {
-    const items = await (await fetch(`${API}/reference-queue?limit=${count}`)).json();
+    const items = await (await fetch(`${API}/reference-queue?limit=${searches}`)).json();
     if (!items.length) {
       walkerBox.textContent = "Chưa có từ khóa nào đã duyệt (hoặc đã crawl hết).";
       return;
     }
-    const meta = Object.fromEntries(items.map((item) => [item.url, { product_type: item.product_type, query: item.query }]));
+    const meta = Object.fromEntries(items.map((item) => [item.url, { product_type: item.product_type, query: item.query, max_images: maxImages }]));
     chrome.runtime.sendMessage({ type: "walker-start", urls: items.map((item) => item.url), meta });
   } catch (error) {
     walkerBox.textContent = `Không gọi được API: ${error}`;

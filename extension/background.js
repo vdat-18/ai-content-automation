@@ -81,6 +81,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       getState().then((w) => sendResponse({ walker: w.running && w.tabId === sender.tab?.id, meta: w.meta?.[w.queue[w.index]] || null }));
       return true;
     case "heartbeat":
+      getState().then((w) => {
+        if (w.running && !w.paused) {
+          clearTimeout(timer);
+          timer = setTimeout(() => advance(false, "timeout"), PAGE_TIMEOUT_MS);
+        }
+      });
       break;
     case "challenge":
       pauseForHuman(message.reason || "kiểm tra bảo mật");
