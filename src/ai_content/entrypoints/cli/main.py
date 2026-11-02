@@ -22,7 +22,6 @@ from ai_content.domains.marketing.creative.bootstrap import (
     load_preparation_case_dir,
     load_work_item,
 )
-from ai_content.domains.marketing.creative.config.loader import ConfigError
 from ai_content.domains.marketing.creative.config.preparation import PreparationConfig
 from ai_content.domains.marketing.creative.domain.entities import (
     ApprovalDecision,
@@ -305,7 +304,7 @@ def main(argv: list[str] | None = None) -> int:
     except FixtureError as e:
         logger.error("Fixture error: {}", e)
         return 1
-    except (PreparationError, ConfigError) as e:
+    except PreparationError as e:
         logger.error("Preparation/configuration error: {}", e)
         return 1
     except ValidationError:
