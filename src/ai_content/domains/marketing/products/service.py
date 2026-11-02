@@ -132,8 +132,11 @@ class ProductCatalogService:
     async def detail(self, product_id: str) -> dict[str, Any] | None:
         return await self._repository.get_detail(product_id)
 
-    async def select(self, product_id: str) -> dict[str, Any] | None:
-        """Mark a product for content; draft its reference search profile when an LLM is set."""
+    async def select(self, product_id: str, regenerate: bool = False) -> dict[str, Any] | None:
+        """Mark a product for content; draft its reference search profile when an LLM is set.
+
+        With regenerate, the keywords of an existing product type are replaced by a new draft.
+        """
         detail = await self._repository.get_detail(product_id)
         if detail is None:
             return None
@@ -148,6 +151,8 @@ class ProductCatalogService:
             result["error"] = str(error)
             return result
         await self._repository.add_profile_if_missing(profile)
+        if regenerate:
+            await self._repository.update_profile(profile)
         await self._repository.select_product(product_id, profile.product_type)
         result["profile"] = profile.as_dict()
         return result

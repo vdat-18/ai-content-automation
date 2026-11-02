@@ -1,6 +1,9 @@
 from types import SimpleNamespace
 
-from ai_content.domains.marketing.products.references import ReferenceProfileGenerator
+from ai_content.domains.marketing.products.references import (
+    ReferenceProfile,
+    ReferenceProfileGenerator,
+)
 from ai_content.domains.marketing.products.repositories import SqliteProductRepository
 from ai_content.domains.marketing.products.service import ProductCatalogService
 
@@ -73,4 +76,18 @@ async def test_pinterest_queue_ingest_and_filters(tmp_path) -> None:
     assert [item["query"] for item in await service.reference_queue(10)] == ["t-shirt photo"]
     assert await service.set_image_status(images[0]["image_id"], "approved")
     assert len(await service.reference_images("approved", None)) == 1
+    repository.close()
+
+
+async def test_regenerate_replaces_keywords(tmp_path) -> None:
+    repository = SqliteProductRepository(tmp_path / "r.db")
+    service = ProductCatalogService(repository, ReferenceProfileGenerator(_FakeBamlClient()))
+    await service.ingest({"kind": "page", "url": URL, "html": HTML})
+    await service.select("1730000000000000001")
+    await service.update_profile(ReferenceProfile("áo thun", ["old"], [], "approved"))
+    await service.select("1730000000000000001")
+    assert (await service.profiles())[0].keywords == ["old"]
+    await service.select("1730000000000000001", regenerate=True)
+    profile = (await service.profiles())[0]
+    assert profile.keywords[0] == "ao thun flat lay"
     repository.close()

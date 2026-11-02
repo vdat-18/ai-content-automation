@@ -118,9 +118,10 @@ async def update_reference_image(
 @router.post("/{product_id}/select")
 async def select_product(
     product_id: str,
+    regenerate: bool = False,
     service: ProductCatalogService = Depends(get_product_catalog_service),
 ) -> dict[str, Any]:
-    result = await service.select(product_id)
+    result = await service.select(product_id, regenerate)
     if result is None:
         raise HTTPException(status_code=404, detail="Product not captured")
     return result

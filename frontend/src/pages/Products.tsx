@@ -41,7 +41,8 @@ export function ProductsPage() {
   const client = useQueryClient();
   const selections = useQuery({ queryKey: ["product-selections"], queryFn: ({ signal }) => getJson<Record<string, string | null>>(`${API}/selections`, signal) });
   const select = useMutation({
-    mutationFn: (productId: string) => postJson<SelectResult>(`${API}/${productId}/select`),
+    mutationFn: ({ productId, regenerate }: { productId: string; regenerate: boolean }) =>
+      postJson<SelectResult>(`${API}/${productId}/select?regenerate=${regenerate}`),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: ["product-selections"] });
       void client.invalidateQueries({ queryKey: ["reference-profiles"] });
@@ -112,9 +113,12 @@ export function ProductsPage() {
                     <td>{product.rating ?? "-"}</td>
                     <td>
                       {product.product_id in (selections.data ?? {}) ? (
-                        <span className="badge badge--success">{selections.data?.[product.product_id] || t("Selected")}</span>
+                        <>
+                          <span className="badge badge--success">{selections.data?.[product.product_id] || t("Selected")}</span>
+                          <button className="secondary-button" disabled={select.isPending} onClick={() => select.mutate({ productId: product.product_id, regenerate: true })}>{t("Regenerate keywords")}</button>
+                        </>
                       ) : (
-                        <button className="secondary-button" disabled={select.isPending} onClick={() => select.mutate(product.product_id)}>{t("Select for content")}</button>
+                        <button className="secondary-button" disabled={select.isPending} onClick={() => select.mutate({ productId: product.product_id, regenerate: false })}>{t("Select for content")}</button>
                       )}
                     </td>
                 </tr>
