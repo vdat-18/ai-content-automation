@@ -1332,7 +1332,7 @@ class ReferenceSearchProfileDraftAst:
     def __init__(self, tb: type_builder.TypeBuilder):
         _tb = tb._tb # type: ignore (we know how to use this private attribute)
         self._bldr = _tb.class_("ReferenceSearchProfileDraft")
-        self._properties: typing.Set[str] = set([  "product_type",  "keywords",  "exclude_keywords",  ])
+        self._properties: typing.Set[str] = set([  "product_type",  "keywords",  ])
         self._props = ReferenceSearchProfileDraftProperties(self._bldr, self._properties)
 
     def type(self) -> baml_py.FieldType:
@@ -1367,10 +1367,6 @@ class ReferenceSearchProfileDraftProperties:
     @property
     def keywords(self) -> type_builder.ClassPropertyViewer:
         return type_builder.ClassPropertyViewer(self.__bldr.property("keywords"))
-    
-    @property
-    def exclude_keywords(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("exclude_keywords"))
     
     
 

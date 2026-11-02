@@ -143,7 +143,6 @@ reference_profiles = Table(
     metadata,
     Column("product_type", Text, primary_key=True),
     Column("keywords", JSONB, nullable=False),
-    Column("exclude_keywords", JSONB, nullable=False),
     Column("status", Text, nullable=False, server_default=sql_text("'draft'")),
     *_timestamps(),
     schema="marketing",

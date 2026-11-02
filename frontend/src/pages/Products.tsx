@@ -19,7 +19,7 @@ type Product = {
 
 type MediaReport = { downloaded: number; duplicates: number; skipped: number; failed: number };
 type SelectResult = { product_id: string; profile: ReferenceProfile | null; error: string | null };
-type ReferenceProfile = { product_type: string; keywords: string[]; exclude_keywords: string[]; status: string };
+type ReferenceProfile = { product_type: string; keywords: string[]; status: string };
 
 const API = "/api/v1/products";
 const toNumber = (value: number | string | null | undefined) => Number(String(value ?? 0).replace(/[.,]/g, "")) || 0;
@@ -162,7 +162,6 @@ function ReferenceProfiles() {
             save.mutate({
               product_type: profile.product_type,
               keywords: lines(String(data.get("keywords"))),
-              exclude_keywords: lines(String(data.get("exclude"))),
               status: "approved",
             });
           }}
@@ -175,10 +174,6 @@ function ReferenceProfiles() {
             <label>
               <span>{t("Keywords (one per line)")}</span>
               <textarea name="keywords" rows={5} defaultValue={profile.keywords.join("\n")} />
-            </label>
-            <label>
-              <span>{t("Exclude words")}</span>
-              <textarea name="exclude" rows={5} defaultValue={profile.exclude_keywords.join("\n")} />
             </label>
           </div>
           <div className="reference-profile__actions">

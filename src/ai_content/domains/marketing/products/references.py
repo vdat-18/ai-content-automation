@@ -19,7 +19,6 @@ from ai_content.domains.marketing.research_crawler.adapters.baml_model_profile i
 class ReferenceProfile:
     product_type: str
     keywords: list[str] = field(default_factory=list)
-    exclude_keywords: list[str] = field(default_factory=list)
     status: str = "draft"
 
     def as_dict(self) -> dict[str, Any]:
@@ -70,5 +69,4 @@ class ReferenceProfileGenerator:
         return ReferenceProfile(
             product_type=draft.product_type.strip().lower(),
             keywords=draft.keywords[:5],
-            exclude_keywords=draft.exclude_keywords[:5],
         )

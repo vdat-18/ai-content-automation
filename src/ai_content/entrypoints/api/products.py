@@ -53,7 +53,6 @@ async def download_media(
 
 class ProfileUpdate(BaseModel):
     keywords: list[str]
-    exclude_keywords: list[str] = []
     status: str = "draft"
 
 
@@ -77,7 +76,7 @@ async def update_reference_profile(
     body: ProfileUpdate,
     service: ProductCatalogService = Depends(get_product_catalog_service),
 ) -> dict[str, Any]:
-    profile = ReferenceProfile(product_type, body.keywords, body.exclude_keywords, body.status)
+    profile = ReferenceProfile(product_type, body.keywords, body.status)
     if not await service.update_profile(profile):
         raise HTTPException(status_code=404, detail="Profile not found")
     return profile.as_dict()

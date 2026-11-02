@@ -29,16 +29,14 @@ _PIN_SIZE = re.compile(r"^/(?:\d+x\d*|originals)/")
 _PINTEREST_SEARCH = "https://www.pinterest.com/search/pins/?q="
 
 
-def _clean_pins(pins: list[dict[str, Any]], exclude: list[str]) -> list[dict[str, str]]:
-    """Keep distinct Pinterest CDN images whose title has none of the exclude words."""
+def _clean_pins(pins: list[dict[str, Any]]) -> list[dict[str, str]]:
+    """Keep distinct images served from the Pinterest CDN."""
     cleaned: dict[str, dict[str, str]] = {}
     for pin in pins:
         url = str(pin.get("image_url") or "")
         parsed = urlsplit(url)
         title = str(pin.get("title") or "")
         if (parsed.hostname or "").endswith("pinimg.com") is False:
-            continue
-        if any(word.lower() in title.lower() for word in exclude):
             continue
         image_id = media_source_fingerprint(url)
         cleaned.setdefault(
@@ -80,9 +78,7 @@ class ProductCatalogService:
 
     async def _ingest_pins(self, payload: dict[str, Any]) -> dict[str, Any]:
         product_type = str(payload["product_type"])
-        profiles = {p.product_type: p for p in await self._repository.list_profiles()}
-        exclude = profiles[product_type].exclude_keywords if product_type in profiles else []
-        pins = _clean_pins(list(payload.get("pins") or []), exclude)
+        pins = _clean_pins(list(payload.get("pins") or []))
         added = await self._repository.add_reference_images(
             product_type, str(payload["query"]), pins
         )

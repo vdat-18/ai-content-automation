@@ -202,7 +202,6 @@ class LabeledReviewImage(BaseModel):
 class ReferenceSearchProfileDraft(BaseModel):
     product_type: str
     keywords: typing.List[str]
-    exclude_keywords: typing.List[str]
 
 class ResearchProductMatchDraft(BaseModel):
     product_id: str

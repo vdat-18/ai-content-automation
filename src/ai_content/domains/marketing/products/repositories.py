@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import sqlite3
 from datetime import UTC, datetime
@@ -104,8 +105,10 @@ class SqliteProductRepository:
         self._connection.execute(
             "CREATE TABLE IF NOT EXISTS reference_profiles ("
             "product_type TEXT PRIMARY KEY, keywords TEXT NOT NULL, "
-            "exclude_keywords TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'draft')"
+            "status TEXT NOT NULL DEFAULT 'draft')"
         )
+        with contextlib.suppress(sqlite3.OperationalError):
+            self._connection.execute("ALTER TABLE reference_profiles DROP COLUMN exclude_keywords")
         self._connection.execute(
             "CREATE TABLE IF NOT EXISTS reference_images ("
             "image_id TEXT PRIMARY KEY, product_type TEXT NOT NULL, query TEXT NOT NULL, "
@@ -202,11 +205,10 @@ class SqliteProductRepository:
     async def add_profile_if_missing(self, profile: ReferenceProfile) -> None:
         self._connection.execute(
             "INSERT OR IGNORE INTO reference_profiles "
-            "(product_type, keywords, exclude_keywords, status) VALUES (?, ?, ?, ?)",
+            "(product_type, keywords, status) VALUES (?, ?, ?)",
             (
                 profile.product_type,
                 json.dumps(profile.keywords, ensure_ascii=False),
-                json.dumps(profile.exclude_keywords, ensure_ascii=False),
                 profile.status,
             ),
         )
@@ -214,18 +216,15 @@ class SqliteProductRepository:
 
     async def list_profiles(self) -> list[ReferenceProfile]:
         rows = self._connection.execute(
-            "SELECT product_type, keywords, exclude_keywords, status "
-            "FROM reference_profiles ORDER BY product_type"
+            "SELECT product_type, keywords, status FROM reference_profiles ORDER BY product_type"
         ).fetchall()
-        return [ReferenceProfile(r[0], json.loads(r[1]), json.loads(r[2]), r[3]) for r in rows]
+        return [ReferenceProfile(r[0], json.loads(r[1]), r[2]) for r in rows]
 
     async def update_profile(self, profile: ReferenceProfile) -> bool:
         cursor = self._connection.execute(
-            "UPDATE reference_profiles SET keywords=?, exclude_keywords=?, status=? "
-            "WHERE product_type=?",
+            "UPDATE reference_profiles SET keywords=?, status=? WHERE product_type=?",
             (
                 json.dumps(profile.keywords, ensure_ascii=False),
-                json.dumps(profile.exclude_keywords, ensure_ascii=False),
                 profile.status,
                 profile.product_type,
             ),
@@ -382,7 +381,6 @@ class PostgresProductRepository:
             .values(
                 product_type=profile.product_type,
                 keywords=profile.keywords,
-                exclude_keywords=profile.exclude_keywords,
                 status=profile.status,
             )
             .on_conflict_do_nothing(index_elements=["product_type"])
@@ -394,12 +392,11 @@ class PostgresProductRepository:
         statement = select(
             reference_profiles.c.product_type,
             reference_profiles.c.keywords,
-            reference_profiles.c.exclude_keywords,
             reference_profiles.c.status,
         ).order_by(reference_profiles.c.product_type)
         async with self._engine.connect() as connection:
             rows = (await connection.execute(statement)).all()
-        return [ReferenceProfile(r[0], list(r[1]), list(r[2]), r[3]) for r in rows]
+        return [ReferenceProfile(r[0], list(r[1]), r[2]) for r in rows]
 
     async def update_profile(self, profile: ReferenceProfile) -> bool:
         statement = (
@@ -407,7 +404,6 @@ class PostgresProductRepository:
             .where(reference_profiles.c.product_type == profile.product_type)
             .values(
                 keywords=profile.keywords,
-                exclude_keywords=profile.exclude_keywords,
                 status=profile.status,
                 updated_at=func.now(),
             )

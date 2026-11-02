@@ -1,7 +1,6 @@
 class ReferenceSearchProfileDraft {
   product_type string
   keywords string[]
-  exclude_keywords string[]
 }
 
 function DraftReferenceSearchProfile(product_json: string) -> ReferenceSearchProfileDraft {
@@ -15,7 +14,6 @@ function DraftReferenceSearchProfile(product_json: string) -> ReferenceSearchPro
 
     product_type: short generic type in lowercase Vietnamese, for example "máy cạo râu".
     keywords: 3 to 5 Pinterest queries mixing Vietnamese and English.
-    exclude_keywords: up to 5 words that signal unrelated or junk pins.
 
     {{ _.role("user") }}
     {{ product_json }}
