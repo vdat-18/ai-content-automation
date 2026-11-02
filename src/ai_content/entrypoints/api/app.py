@@ -317,9 +317,6 @@ def _safe_artifact_url(
     if not source:
         return None
 
-    if source.startswith("fake://"):
-        return None
-
     path = Path(source)
     if not path.is_absolute():
         normalized_source = source.replace("\\", "/")

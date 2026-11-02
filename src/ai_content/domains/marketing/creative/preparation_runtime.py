@@ -93,19 +93,14 @@ def build_preparation_runtime(
     image_reader: Callable[[str], bytes] | None = None,
 ) -> PreparationRuntime:
     if model is None:
-        if config.backend == "fake":
-            from .adapters.fake_preparation import FakePreparationModel
+        from .adapters.baml_preparation import BamlPreparationModel
 
-            model = FakePreparationModel(config)
-        else:
-            from .adapters.baml_preparation import BamlPreparationModel
-
-            model = BamlPreparationModel(
-                config,
-                api_key=api_key,
-                usage_tracker=usage_tracker,
-                image_reader=image_reader,
-            )
+        model = BamlPreparationModel(
+            config,
+            api_key=api_key,
+            usage_tracker=usage_tracker,
+            image_reader=image_reader,
+        )
     if repository is None:
         if db_path is None:
             raise ValueError("db_path is required when no repository is provided")

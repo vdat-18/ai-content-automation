@@ -19,9 +19,6 @@ from ai_content.domains.marketing.creative.adapters.automation_commands import (
 from ai_content.domains.marketing.creative.adapters.baml_orchestration import (
     BamlCreativeAutomationOrchestrator,
 )
-from ai_content.domains.marketing.creative.adapters.fake_orchestration import (
-    FakeCreativeAutomationOrchestrator,
-)
 from ai_content.domains.marketing.creative.application.automation_workflow import (
     record_production_outcome,
 )
@@ -229,19 +226,15 @@ async def _execute_command(
                         raise ValueError("Pinned Creative source snapshots are unavailable")
                     snapshots.append(snapshot)
             orchestration_config = OrchestrationConfig.from_settings(settings)
-            orchestrator = (
-                FakeCreativeAutomationOrchestrator(orchestration_config)
-                if orchestration_config.backend == "fake"
-                else BamlCreativeAutomationOrchestrator(
-                    orchestration_config,
-                    api_key=orchestration_config.api_key,
-                    usage_tracker=container.ai_usage_tracker,
-                    image_provider_descriptor=managed_media.providers.image_descriptor(
-                        request.image_provider_id
-                    ),
-                    video_provider_descriptor=managed_media.providers.video_descriptor(),
-                    image_reader=managed_media.source_resolver.read_frozen_source,
-                )
+            orchestrator = BamlCreativeAutomationOrchestrator(
+                orchestration_config,
+                api_key=orchestration_config.api_key,
+                usage_tracker=container.ai_usage_tracker,
+                image_provider_descriptor=managed_media.providers.image_descriptor(
+                    request.image_provider_id
+                ),
+                video_provider_descriptor=managed_media.providers.video_descriptor(),
+                image_reader=managed_media.source_resolver.read_frozen_source,
             )
             await _process_automation_request(
                 request=request,

@@ -37,9 +37,6 @@ from ai_content.domains.marketing.creative.adapters.baml_orchestration import (
 from ai_content.domains.marketing.creative.adapters.baml_preparation import (
     BamlPreparationModel,
 )
-from ai_content.domains.marketing.creative.adapters.fake_orchestration import (
-    FakeCreativeAutomationOrchestrator,
-)
 from ai_content.domains.marketing.creative.application.ads_activation import (
     AdsActivationService,
 )
@@ -705,17 +702,13 @@ async def create_marketing_creative_automation(
     await jobs.create_batch(batch, initial_jobs)
 
     orchestration_config = OrchestrationConfig.from_settings(settings)
-    orchestrator = (
-        FakeCreativeAutomationOrchestrator(orchestration_config)
-        if orchestration_config.backend == "fake"
-        else BamlCreativeAutomationOrchestrator(
-            orchestration_config,
-            api_key=orchestration_config.api_key,
-            usage_tracker=AIUsageTracker(usage_repository),
-            image_provider_descriptor=providers.image_descriptor(payload.image_provider_id),
-            video_provider_descriptor=providers.video_descriptor(),
-            image_reader=source_resolver.read_frozen_source,
-        )
+    orchestrator = BamlCreativeAutomationOrchestrator(
+        orchestration_config,
+        api_key=orchestration_config.api_key,
+        usage_tracker=AIUsageTracker(usage_repository),
+        image_provider_descriptor=providers.image_descriptor(payload.image_provider_id),
+        video_provider_descriptor=providers.video_descriptor(),
+        image_reader=source_resolver.read_frozen_source,
     )
 
     async def process(

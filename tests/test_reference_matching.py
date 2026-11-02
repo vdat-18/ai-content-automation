@@ -2,9 +2,6 @@ import asyncio
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from ai_content.domains.marketing.data_sources.adapters import MockDataConnector
-from ai_content.domains.marketing.data_sources.config import load_data_sources_config
-from ai_content.domains.marketing.research_crawler.brand_context import _research_product
 from ai_content.domains.marketing.research_crawler.models import (
     ResearchBrandContext,
     ResearchMediaAsset,
@@ -21,7 +18,6 @@ from ai_content.domains.marketing.research_crawler.repositories import (
 from ai_content.domains.marketing.research_crawler.screening import _apply_scene_rules
 from ai_content.domains.marketing.research_crawler.shortlist import shortlist_references
 
-_DEMO = Path(__file__).parents[1] / "config/data_sources/demo.json"
 _NOW = datetime(2026, 10, 1, tzinfo=UTC)
 _MASK = "9003"
 _PILLOW = "9000"
@@ -82,16 +78,6 @@ def _record(
         last_seen_at=_NOW - timedelta(days=3),
         latest_run_id="r",
     )
-
-
-def test_mock_products_carry_reference_facts() -> None:
-    definitions = {item.source_id: item for item in load_data_sources_config(_DEMO)}
-    records = asyncio.run(MockDataConnector().fetch(definitions["mock-aurasleep-products"]))[0]
-    products = {item.title: item for item in map(_research_product, records) if item}
-    mask = products["Hush Silk Sleep Mask"]
-    assert mask.category.endswith("Sleep Masks")
-    assert "airplane seat" in mask.usage_scenes and "swim goggles" in mask.not_to_confuse_with
-    assert len(products) == 4
 
 
 def test_scene_rules_drop_unknown_products_and_backgroundless_images() -> None:

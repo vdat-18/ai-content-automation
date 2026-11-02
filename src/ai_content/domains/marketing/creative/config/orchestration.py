@@ -14,7 +14,7 @@ class OrchestrationConfig(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     profile_id: str = Field(min_length=1)
-    backend: Literal["fake", "baml"]
+    backend: Literal["baml"]
     model: str = Field(min_length=1)
     base_url: str = "http://127.0.0.1:1234/v1"
     api_key: str | None = None
