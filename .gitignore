@@ -24,3 +24,4 @@ frontend/dist/
 
 # Browser sessions for logged-in research crawls
 /.secrets/
+.coverage
