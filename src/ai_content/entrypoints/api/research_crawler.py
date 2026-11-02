@@ -8,7 +8,6 @@ import json
 import sqlite3
 from dataclasses import asdict
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Literal
 from uuid import uuid4
 
@@ -48,7 +47,6 @@ from .schemas.research_crawler import (
     ResearchCrawlCreateRequest,
     ResearchCrawlJobResponse,
     ResearchCrawlListResponse,
-    ResearchKeywordSuggestionListResponse,
     ResearchRecordBulkReviewRequest,
     ResearchRecordBulkReviewResponse,
     ResearchRecordDeleteRequest,
@@ -168,19 +166,6 @@ async def list_research_crawls(
             ResearchCrawlJobResponse.model_validate(job, from_attributes=True) for job in filtered
         ],
         total=len(filtered),
-    )
-
-
-@router.get("/keyword-suggestions", response_model=ResearchKeywordSuggestionListResponse)
-async def list_research_keyword_suggestions(
-    brand_id: str = Query(min_length=1, max_length=120),
-) -> ResearchKeywordSuggestionListResponse:
-    """Return the curated short terms Marketing uses to find reference material."""
-    settings = get_runtime_settings()
-    suggestions = _load_reference_keywords(settings.config_dir, brand_id)
-    return ResearchKeywordSuggestionListResponse(
-        brand_id=brand_id.strip(),
-        items=[{"keyword": keyword} for keyword in suggestions],
     )
 
 
@@ -538,22 +523,6 @@ def _raise_record_mutation_error(error: ValueError) -> None:
     detail = str(error)
     status_code = 404 if "do not exist" in detail else 409 if "used by Creative" in detail else 400
     raise HTTPException(status_code=status_code, detail=detail) from error
-
-
-def _load_reference_keywords(config_dir: Path, brand_id: str) -> tuple[str, ...]:
-    path = config_dir / "research" / "reference_keywords.json"
-    payload = json.loads(path.read_text(encoding="utf-8"))
-    brands = payload.get("brands")
-    if not isinstance(brands, dict):
-        raise ValueError("Research keyword config must contain a brands object")
-    requested = brand_id.strip().casefold()
-    for configured_brand, values in brands.items():
-        if str(configured_brand).casefold() != requested:
-            continue
-        if not isinstance(values, list) or not all(isinstance(value, str) for value in values):
-            raise ValueError(f"Research keywords for {configured_brand} must be strings")
-        return tuple(value.strip() for value in values if value.strip())
-    return ()
 
 
 __all__ = ["library_router", "router"]

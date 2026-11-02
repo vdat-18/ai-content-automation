@@ -13,7 +13,7 @@ x-python-environment: &python-environment
   AIC_IMAGE_API_KEY: ${AIC_IMAGE_API_KEY:-}
   AIC_VIDEO_BASE_URL: ${AIC_VIDEO_BASE_URL:-https://api.x.ai/v1}
   AIC_VIDEO_API_KEY: ${AIC_VIDEO_API_KEY:-}
-  AIC_AI_MANAGED_MEDIA_CONFIG: ${AIC_AI_MANAGED_MEDIA_CONFIG:-/app/config/managed_media/nine-router.example.json}
+  AIC_AI_MANAGED_MEDIA_CONFIG: ${AIC_AI_MANAGED_MEDIA_CONFIG:-}
   AIC_SCREENING_BASE_URL: ${AIC_SCREENING_BASE_URL:-https://generativelanguage.googleapis.com/v1beta}
   AIC_SCREENING_API_KEY: ${AIC_SCREENING_API_KEY:-}
   AIC_SCREENING_MODEL: ${AIC_SCREENING_MODEL:-gemini-3.8-flash}

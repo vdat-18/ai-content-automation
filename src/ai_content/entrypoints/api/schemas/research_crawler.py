@@ -287,15 +287,6 @@ class ResearchRecordDeleteResponse(BaseModel):
     deleted: int
 
 
-class ResearchKeywordSuggestionResponse(BaseModel):
-    keyword: str
-
-
-class ResearchKeywordSuggestionListResponse(BaseModel):
-    brand_id: str
-    items: list[ResearchKeywordSuggestionResponse]
-
-
 class ResearchRecordPageResponse(BaseModel):
     items: list[StoredResearchRecordResponse]
     total: int
@@ -315,8 +306,6 @@ __all__ = [
     "ResearchCrawlProgressResponse",
     "ResearchCrawlRecordResponse",
     "ResearchCrawlResultResponse",
-    "ResearchKeywordSuggestionListResponse",
-    "ResearchKeywordSuggestionResponse",
     "ResearchRecordBulkReviewRequest",
     "ResearchRecordBulkReviewResponse",
     "ResearchRecordDetailResponse",

@@ -842,7 +842,6 @@ const vi: Record<string, string> = {
   "Failed commands": "Command thất bại",
   "No persisted activity yet.": "Chưa có hoạt động persisted.",
   "No sandbox sources configured": "Chưa cấu hình nguồn sandbox",
-  "Ask an administrator to create a local sandbox config from sandbox.example.json. Read-only sync starts after configuration.": "Quản trị viên cần tạo cấu hình sandbox local từ sandbox.example.json. Đồng bộ chỉ đọc sẽ chạy sau khi cấu hình.",
   "No data sources configured": "Chưa cấu hình nguồn dữ liệu",
   "Ask an administrator to provide the local data-source configuration. Read-only sync starts after configuration.": "Quản trị viên cần cung cấp cấu hình nguồn dữ liệu local. Đồng bộ chỉ đọc sẽ chạy sau khi cấu hình.",
   "Syncing…": "Đang đồng bộ…",
