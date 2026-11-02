@@ -16,9 +16,6 @@ from . import stream_types
 
 type_map = {
 
-    "types.AdsDiagnosisResult": types.AdsDiagnosisResult,
-    "stream_types.AdsDiagnosisResult": stream_types.AdsDiagnosisResult,
-
     "types.AutomationImagePlan": types.AutomationImagePlan,
     "stream_types.AutomationImagePlan": stream_types.AutomationImagePlan,
 
@@ -49,12 +46,6 @@ type_map = {
     "types.CreativeIdeaDraft": types.CreativeIdeaDraft,
     "stream_types.CreativeIdeaDraft": stream_types.CreativeIdeaDraft,
 
-    "types.CreativeLessonResult": types.CreativeLessonResult,
-    "stream_types.CreativeLessonResult": stream_types.CreativeLessonResult,
-
-    "types.CreativeOpportunityResult": types.CreativeOpportunityResult,
-    "stream_types.CreativeOpportunityResult": stream_types.CreativeOpportunityResult,
-
     "types.CreativePersonaHypothesis": types.CreativePersonaHypothesis,
     "stream_types.CreativePersonaHypothesis": stream_types.CreativePersonaHypothesis,
 
@@ -63,9 +54,6 @@ type_map = {
 
     "types.LabeledReviewImage": types.LabeledReviewImage,
     "stream_types.LabeledReviewImage": stream_types.LabeledReviewImage,
-
-    "types.LearningProposalResult": types.LearningProposalResult,
-    "stream_types.LearningProposalResult": stream_types.LearningProposalResult,
 
     "types.ResearchProductMatchDraft": types.ResearchProductMatchDraft,
     "stream_types.ResearchProductMatchDraft": stream_types.ResearchProductMatchDraft,
@@ -93,10 +81,6 @@ type_map = {
     "types.CreativeAutomationReadiness": types.CreativeAutomationReadiness,
 
     "types.IdeaRecommendation": types.IdeaRecommendation,
-
-    "types.LearningRecommendationAction": types.LearningRecommendationAction,
-
-    "types.OpportunityCategory": types.OpportunityCategory,
 
     "types.TextAlignment": types.TextAlignment,
 

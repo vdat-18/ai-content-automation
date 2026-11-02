@@ -1,6 +1,6 @@
 """API contracts for persistent local execution commands."""
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 class ExecutionCommandResponse(BaseModel):
@@ -37,13 +37,8 @@ class CommandAcceptedResponse(BaseModel):
     created: bool
 
 
-class CreativeLoopStartCommandRequest(BaseModel):
-    input_snapshot_id: str = Field(min_length=1)
-
-
 __all__ = [
     "CommandAcceptedResponse",
-    "CreativeLoopStartCommandRequest",
     "ExecutionCommandListResponse",
     "ExecutionCommandResponse",
 ]

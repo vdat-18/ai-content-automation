@@ -44,10 +44,6 @@ from ai_content.domains.marketing.creative.ports.automation_workflow import (
 from ai_content.domains.marketing.creative.ports.contracts import (
     MarketingCreativeAutomationRequest,
 )
-from ai_content.domains.marketing.creative_feedback.config.learning import PerformanceLearningConfig
-from ai_content.domains.marketing.creative_loop.adapters.commands import (
-    CreativeLoopCommandDispatcher,
-)
 from ai_content.domains.marketing.data_sources.application.compile_automation import (
     MarketingCreativeAutomationCompiler,
 )
@@ -156,19 +152,12 @@ async def _execute_command(
     instrument_sqlalchemy(database.engine, observability)
     storage_settings = settings.object_storage()
     preparation_settings = PreparationConfig.from_settings(settings)
-    learning_settings = (
-        PerformanceLearningConfig.from_settings(settings)
-        if settings.learning_api_key_value
-        else None
-    )
     container = PostgresRuntimeContainer(
         database,
         settings.data_root / "artifacts",
         settings.config_dir,
         preparation_config=preparation_settings,
         preparation_api_key=preparation_settings.api_key,
-        learning_config=learning_settings,
-        learning_api_key=learning_settings.api_key if learning_settings else None,
         execution_backend="celery",
         object_storage=storage_settings.build() if storage_settings.backend == "s3" else None,
         object_storage_bucket=storage_settings.bucket,
@@ -181,15 +170,6 @@ async def _execute_command(
         artifact_store=container.artifacts,
         artifact_service=container.artifact_service,
         state_repository=container.creative_automation_state_repository,
-    )
-
-    loop_dispatcher = CreativeLoopCommandDispatcher(
-        None,
-        settings.data_root / "artifacts",
-        settings.config_dir,
-        settings.config_dir / "fixtures/creative_loop_synthetic.json",
-        preparation_settings,
-        runtime_factory=container.creative_loop,
     )
 
     async def notify_batch_if_complete(batch_id: str) -> None:
@@ -272,7 +252,6 @@ async def _execute_command(
                 intake=container.intake(),
                 providers=managed_media.providers,
                 jobs=container.creative_automation_job_repository,
-                feedback=container.feedback(),
                 knowledge=container.creative_knowledge_service,
                 notifications=container.notification_repository,
                 states=container.creative_automation_state_repository,
@@ -492,7 +471,6 @@ async def _execute_command(
         artifact_service=container.artifact_service,
     )
     dispatcher = _CompositeCommandDispatcher(
-        loop_dispatcher,
         automation_dispatcher,
         research_dispatcher,
         DataSourceCommandDispatcher(data_source_runtime),
@@ -566,12 +544,10 @@ def _build_research_screener(
 class _CompositeCommandDispatcher:
     def __init__(
         self,
-        loop_dispatcher,
         automation_dispatcher,
         research_dispatcher,
         data_source_dispatcher,
     ) -> None:
-        self._loop_dispatcher = loop_dispatcher
         self._automation_dispatcher = automation_dispatcher
         self._research_dispatcher = research_dispatcher
         self._data_source_dispatcher = data_source_dispatcher
@@ -589,7 +565,7 @@ class _CompositeCommandDispatcher:
         if command.name == DataSourceCommandName.SYNC.value:
             await self._data_source_dispatcher.dispatch(command)
             return
-        await self._loop_dispatcher.dispatch(command)
+        raise ValueError(f"Unsupported command: {command.name}")
 
 
 def _secret_value(value: SecretStr | None) -> str | None:

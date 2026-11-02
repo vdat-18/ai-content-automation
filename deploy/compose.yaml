@@ -17,9 +17,6 @@ x-python-environment: &python-environment
   AIC_SCREENING_BASE_URL: ${AIC_SCREENING_BASE_URL:-https://generativelanguage.googleapis.com/v1beta}
   AIC_SCREENING_API_KEY: ${AIC_SCREENING_API_KEY:-}
   AIC_SCREENING_MODEL: ${AIC_SCREENING_MODEL:-gemini-3.8-flash}
-  AIC_LEARNING_BASE_URL: ${AIC_LEARNING_BASE_URL:-https://api.x.ai/v1}
-  AIC_LEARNING_API_KEY: ${AIC_LEARNING_API_KEY:-}
-  AIC_LEARNING_MODEL: ${AIC_LEARNING_MODEL:-xai/grok-4-fast-reasoning}
   JEV_API_KEY: ${JEV_API_KEY:-}
   AIC_AI_DATA_ROOT: /var/lib/aicontent/pilot
   AIC_AI_DATABASE_BACKEND: postgresql
@@ -249,7 +246,6 @@ services:
     environment:
       <<: *python-environment
       PROMETHEUS_MULTIPROC_DIR: /tmp/aicontent-prometheus
-      AIC_AI_LEARNING_CONFIG: ${AIC_AI_LEARNING_CONFIG:-/app/config/creative_feedback/nine-router.example.json}
       IMAGE_API_KEY: ${IMAGE_API_KEY:-}
     command:
       - celery

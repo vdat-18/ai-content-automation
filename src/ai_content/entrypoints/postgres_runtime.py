@@ -20,17 +20,6 @@ from ai_content.domains.marketing.creative.adapters.postgres_repository import (
 from ai_content.domains.marketing.creative.bootstrap import CreativeRuntime
 from ai_content.domains.marketing.creative.bootstrap import build_runtime as build_creative
 from ai_content.domains.marketing.creative.config.preparation import PreparationConfig
-from ai_content.domains.marketing.creative_feedback.adapters.baml_learning import (
-    BamlPerformanceLearningAnalyzer,
-)
-from ai_content.domains.marketing.creative_feedback.adapters.postgres_repository import (
-    PostgresCreativeFeedbackRepository,
-)
-from ai_content.domains.marketing.creative_feedback.application.evaluation import (
-    RunCreativeFeedback,
-)
-from ai_content.domains.marketing.creative_feedback.bootstrap import CreativeFeedbackRuntime
-from ai_content.domains.marketing.creative_feedback.config.learning import PerformanceLearningConfig
 from ai_content.domains.marketing.creative_intake.adapters.postgres_repository import (
     PostgresCreativeIntakeRepository,
 )
@@ -42,28 +31,11 @@ from ai_content.domains.marketing.creative_knowledge.repositories import (
     PostgresCreativeKnowledgeRepository,
 )
 from ai_content.domains.marketing.creative_knowledge.service import CreativeKnowledgeService
-from ai_content.domains.marketing.creative_loop.adapters.postgres_repository import (
-    PostgresCreativeLoopRepository,
-)
-from ai_content.domains.marketing.creative_loop.application.workflow import RunCreativeLoop
-from ai_content.domains.marketing.creative_loop.bootstrap import CreativeLoopRuntime
-from ai_content.domains.marketing.creative_loop.config.fixtures import (
-    load_creative_loop_fixture,
-)
 from ai_content.domains.marketing.data_sources.adapters.postgres_repository import (
     PostgresDataSourceRepository,
 )
 from ai_content.domains.marketing.media_lab.adapters.asset_postgres_repository import (
     PostgresMediaAssetRepository,
-)
-from ai_content.domains.marketing.performance_decisions.adapters.postgres_repository import (
-    PostgresPerformanceDecisionRepository,
-)
-from ai_content.domains.marketing.performance_decisions.application.evaluation import (
-    RunPerformanceDecision,
-)
-from ai_content.domains.marketing.performance_decisions.bootstrap import (
-    PerformanceDecisionRuntime,
 )
 from ai_content.domains.marketing.research_crawler.repositories import (
     PostgresResearchCrawlRepository,
@@ -90,8 +62,6 @@ class PostgresRuntimeContainer:
         config_dir: Path,
         preparation_config: PreparationConfig | None = None,
         preparation_api_key: str | None = None,
-        learning_config: PerformanceLearningConfig | None = None,
-        learning_api_key: str | None = None,
         execution_backend: str = "lease_worker",
         object_storage: ObjectStorage | None = None,
         object_storage_bucket: str | None = None,
@@ -101,8 +71,6 @@ class PostgresRuntimeContainer:
         self.config_dir = config_dir
         self.preparation_config = preparation_config
         self.preparation_api_key = preparation_api_key
-        self.learning_config = learning_config
-        self.learning_api_key = learning_api_key
         self.artifacts = ArtifactStore(artifacts_root)
         engine = database.engine
         self.ai_usage_repository = PostgresAIUsageRepository(engine)
@@ -132,14 +100,11 @@ class PostgresRuntimeContainer:
             if self.artifact_service is not None
             else FileMarketingCreativeAutomationStorage(self.artifacts)
         )
-        self.creative_loop_repository = PostgresCreativeLoopRepository(engine)
         self.creative_intake_repository = PostgresCreativeIntakeRepository(engine)
-        self.creative_feedback_repository = PostgresCreativeFeedbackRepository(engine)
         self.creative_knowledge_repository = PostgresCreativeKnowledgeRepository(engine)
         self.creative_knowledge_service = CreativeKnowledgeService(
             self.creative_knowledge_repository
         )
-        self.performance_repository = PostgresPerformanceDecisionRepository(engine)
         self.data_source_repository = PostgresDataSourceRepository(engine)
         self.research_crawl_repository = PostgresResearchCrawlRepository(engine)
         self.media_lab_asset_repository = PostgresMediaAssetRepository(engine)
@@ -163,13 +128,6 @@ class PostgresRuntimeContainer:
             repository=self.creative_repository,
         )
 
-    def performance(self) -> PerformanceDecisionRuntime:
-        return PerformanceDecisionRuntime(
-            self.performance_repository,
-            self.artifacts,
-            RunPerformanceDecision(self.performance_repository),
-        )
-
     def intake(self) -> CreativeIntakeRuntime:
         return CreativeIntakeRuntime(
             self.creative_intake_repository,
@@ -180,50 +138,6 @@ class PostgresRuntimeContainer:
             self.creative_repository,
             self.preparation_api_key,
             self.ai_usage_tracker,
-        )
-
-    def feedback(self) -> CreativeFeedbackRuntime:
-        analyzer = (
-            BamlPerformanceLearningAnalyzer(
-                self.learning_config,
-                api_key=self.learning_api_key,
-            )
-            if self.learning_config is not None
-            else None
-        )
-        return CreativeFeedbackRuntime(
-            self.creative_feedback_repository,
-            self.artifacts,
-            RunCreativeFeedback(self.creative_feedback_repository, analyzer),
-        )
-
-    def creative_loop(self) -> CreativeLoopRuntime:
-        performance = self.performance()
-        intake = self.intake()
-        creative = self.creative()
-        feedback = self.feedback()
-        fixture_path = self.config_dir / "fixtures/creative_loop_synthetic.json"
-        preparation_config = self.preparation_config
-        fixture = load_creative_loop_fixture(fixture_path)
-        workflow = RunCreativeLoop(
-            self.creative_loop_repository,
-            performance,
-            intake,
-            creative,
-            feedback,
-            preparation_config=preparation_config,
-            config_dir=self.config_dir,
-        )
-        return CreativeLoopRuntime(
-            self.creative_loop_repository,
-            self.artifacts,
-            fixture,
-            workflow,
-            performance,
-            intake,
-            creative,
-            feedback,
-            self.artifact_service,
         )
 
 

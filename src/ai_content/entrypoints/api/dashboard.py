@@ -8,16 +8,12 @@ from datetime import UTC, datetime
 from fastapi import APIRouter, Depends
 
 from ai_content.domains.marketing.creative.bootstrap import CreativeRuntime
-from ai_content.domains.marketing.creative_feedback.bootstrap import CreativeFeedbackRuntime
 from ai_content.domains.marketing.creative_intake.bootstrap import CreativeIntakeRuntime
-from ai_content.domains.marketing.creative_loop.bootstrap import CreativeLoopRuntime
 from ai_content.platform.execution import CommandStatus, CommandStatusStore, resolve_queue_call
 
 from .dependencies import (
     get_command_status_store,
-    get_creative_feedback_runtime,
     get_creative_intake_runtime,
-    get_creative_loop_runtime,
     get_runtime,
 )
 from .schemas.dashboard import (
@@ -36,10 +32,6 @@ def _business_stage(state: str) -> str:
         return "plan_review"
     if state in {"awaiting_creative_approval", "awaiting_approval"}:
         return "output_review"
-    if state in {"awaiting_ads_outcome", "testing", "scheduled"}:
-        return "waiting_results"
-    if state == "awaiting_lesson_approval":
-        return "learning_review"
     if _workflow_status(state) == "failed":
         return "needs_attention"
     if _workflow_status(state) == "completed":
@@ -181,91 +173,23 @@ def _exception(
 @router.get("/snapshot", response_model=DashboardSnapshotResponse)
 async def get_dashboard_snapshot(
     creative: CreativeRuntime = Depends(get_runtime),
-    loops: CreativeLoopRuntime = Depends(get_creative_loop_runtime),
     intake: CreativeIntakeRuntime = Depends(get_creative_intake_runtime),
-    feedback: CreativeFeedbackRuntime = Depends(get_creative_feedback_runtime),
     queue: CommandStatusStore = Depends(get_command_status_store),
 ) -> DashboardSnapshotResponse:
     (
         creative_jobs,
-        loop_runs,
         intake_runs,
-        feedback_runs,
     ) = await asyncio.gather(
         creative.repository.list_jobs(),
-        loops.repository.list(),
         intake.repository.list(),
-        feedback.repository.list(),
     )
     commands = await resolve_queue_call(queue.list())
-
-    linked_creative = {run.creative_job_id for run in loop_runs if run.creative_job_id}
 
     approvals: list[DashboardApprovalResponse] = []
     workflows: list[DashboardWorkflowResponse] = []
     exceptions: list[DashboardExceptionResponse] = []
 
-    for run in loop_runs:
-        state = run.state.value
-        workflows.append(
-            _workflow(
-                workflow_id=run.run_id,
-                workstream="creative",
-                title="Marketing Creative closed loop",
-                detail=f"Current gate: {state}",
-                state=state,
-                brand_id=None,
-                entity_id=run.run_id,
-                updated_at=run.updated_at,
-                action_path=f"/workflows?loop={run.run_id}",
-            )
-        )
-        gate = {
-            "awaiting_demand_approval": ("demand", run.initial_evaluation_id),
-            "awaiting_creative_approval": ("creative", run.creative_job_id),
-            "awaiting_lesson_approval": ("lesson", run.lesson_id),
-        }.get(state)
-        if gate is not None:
-            kind, version_ref = gate
-            action_path = (
-                f"/creatives/{run.creative_job_id}?loop={run.run_id}"
-                if kind == "creative" and run.creative_job_id
-                else f"/workflows?loop={run.run_id}"
-            )
-            approvals.append(
-                _approval(
-                    approval_id=f"creative-loop:{run.run_id}:{kind}",
-                    workstream="creative",
-                    kind=f"creative_loop_{kind}",
-                    title=f"Creative loop {kind} decision",
-                    detail="Review the exact saved workflow gate before continuing.",
-                    brand_id=None,
-                    entity_id=run.run_id,
-                    version_ref=version_ref,
-                    created_at=run.updated_at,
-                    action_path=action_path,
-                )
-            )
-        if state in {"needs_evidence", "blocked_conflict"}:
-            exceptions.append(
-                _exception(
-                    exception_id=f"creative-loop:{run.run_id}:{state}",
-                    workstream="creative",
-                    title="Creative loop cannot continue",
-                    detail=f"Workflow stopped in {state}.",
-                    queue="operations",
-                    severity="blocking",
-                    brand_id=None,
-                    entity_id=run.run_id,
-                    evidence_refs=(),
-                    created_at=run.updated_at,
-                    action_path=f"/workflows?loop={run.run_id}",
-                )
-            )
-
     for job in creative_jobs:
-        if job.job_id.value in linked_creative:
-            continue
         state = job.status.value
         workflows.append(
             _workflow(

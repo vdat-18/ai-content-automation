@@ -23,18 +23,6 @@ class LlmResponseParser:
     def __init__(self, options: DoNotUseDirectlyCallManager):
         self.__options = options
 
-    def AnalyzeCreativeOpportunity(
-        self, llm_response: str, baml_options: BamlCallOptions = {},
-    ) -> types.CreativeOpportunityResult:
-        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="AnalyzeCreativeOpportunity", llm_response=llm_response, mode="request")
-        return typing.cast(types.CreativeOpportunityResult, __result__)
-
-    def DiagnoseAdsOutcome(
-        self, llm_response: str, baml_options: BamlCallOptions = {},
-    ) -> types.AdsDiagnosisResult:
-        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="DiagnoseAdsOutcome", llm_response=llm_response, mode="request")
-        return typing.cast(types.AdsDiagnosisResult, __result__)
-
     def GenerateCreativeIdeas(
         self, llm_response: str, baml_options: BamlCallOptions = {},
     ) -> types.CreativeIdeaCandidates:
@@ -65,12 +53,6 @@ class LlmResponseParser:
         __result__ = self.__options.merge_options(baml_options).parse_response(function_name="ScreenResearchReference", llm_response=llm_response, mode="request")
         return typing.cast(types.ResearchScreeningDraft, __result__)
 
-    def SynthesizeCreativeLesson(
-        self, llm_response: str, baml_options: BamlCallOptions = {},
-    ) -> types.CreativeLessonResult:
-        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="SynthesizeCreativeLesson", llm_response=llm_response, mode="request")
-        return typing.cast(types.CreativeLessonResult, __result__)
-
     def WriteCreativeBrief(
         self, llm_response: str, baml_options: BamlCallOptions = {},
     ) -> types.CreativeBriefDraft:
@@ -84,18 +66,6 @@ class LlmStreamParser:
 
     def __init__(self, options: DoNotUseDirectlyCallManager):
         self.__options = options
-
-    def AnalyzeCreativeOpportunity(
-        self, llm_response: str, baml_options: BamlCallOptions = {},
-    ) -> stream_types.CreativeOpportunityResult:
-        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="AnalyzeCreativeOpportunity", llm_response=llm_response, mode="stream")
-        return typing.cast(stream_types.CreativeOpportunityResult, __result__)
-
-    def DiagnoseAdsOutcome(
-        self, llm_response: str, baml_options: BamlCallOptions = {},
-    ) -> stream_types.AdsDiagnosisResult:
-        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="DiagnoseAdsOutcome", llm_response=llm_response, mode="stream")
-        return typing.cast(stream_types.AdsDiagnosisResult, __result__)
 
     def GenerateCreativeIdeas(
         self, llm_response: str, baml_options: BamlCallOptions = {},
@@ -126,12 +96,6 @@ class LlmStreamParser:
     ) -> stream_types.ResearchScreeningDraft:
         __result__ = self.__options.merge_options(baml_options).parse_response(function_name="ScreenResearchReference", llm_response=llm_response, mode="stream")
         return typing.cast(stream_types.ResearchScreeningDraft, __result__)
-
-    def SynthesizeCreativeLesson(
-        self, llm_response: str, baml_options: BamlCallOptions = {},
-    ) -> stream_types.CreativeLessonResult:
-        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="SynthesizeCreativeLesson", llm_response=llm_response, mode="stream")
-        return typing.cast(stream_types.CreativeLessonResult, __result__)
 
     def WriteCreativeBrief(
         self, llm_response: str, baml_options: BamlCallOptions = {},

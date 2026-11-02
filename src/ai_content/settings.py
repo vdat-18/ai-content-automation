@@ -55,25 +55,6 @@ class ApplicationSettings(BaseSettings):
     )
     screening_timeout: float = Field(60, gt=0, validation_alias="AIC_SCREENING_TIMEOUT")
 
-    # --- Performance learning / creative feedback (BAML) ---
-    learning_base_url: str = Field(
-        "http://127.0.0.1:1234/v1", validation_alias="AIC_LEARNING_BASE_URL"
-    )
-    learning_api_key: SecretStr | None = Field(None, validation_alias="AIC_LEARNING_API_KEY")
-    learning_model: str = Field("xai/grok-4-fast-reasoning", validation_alias="AIC_LEARNING_MODEL")
-    learning_timeout: float = Field(60, gt=0, validation_alias="AIC_LEARNING_TIMEOUT")
-
-    # --- Performance opportunity analysis (BAML) ---
-    opportunity_base_url: str = Field(
-        "http://127.0.0.1:1234/v1", validation_alias="AIC_OPPORTUNITY_BASE_URL"
-    )
-    opportunity_api_key: SecretStr | None = Field(
-        None, validation_alias="AIC_OPPORTUNITY_API_KEY"
-    )
-    opportunity_model: str = Field(
-        "xai/grok-4-fast-reasoning", validation_alias="AIC_OPPORTUNITY_MODEL"
-    )
-    opportunity_timeout: float = Field(60, gt=0, validation_alias="AIC_OPPORTUNITY_TIMEOUT")
     media_asset_max_image_bytes: int = Field(
         100_000_000, gt=0, validation_alias="AIC_MEDIA_ASSET_MAX_IMAGE_BYTES"
     )
@@ -353,14 +334,6 @@ class ApplicationSettings(BaseSettings):
         return self.screening_api_key.get_secret_value() if self.screening_api_key else None
 
     @property
-    def learning_api_key_value(self) -> str | None:
-        return self.learning_api_key.get_secret_value() if self.learning_api_key else None
-
-    @property
-    def opportunity_api_key_value(self) -> str | None:
-        return self.opportunity_api_key.get_secret_value() if self.opportunity_api_key else None
-
-    @property
     def jev_api_key_value(self) -> str | None:
         return self.jev_api_key.get_secret_value() if self.jev_api_key else None
 
@@ -378,7 +351,6 @@ class ApplicationSettings(BaseSettings):
             "AIC_IMAGE_API_KEY": self.image_api_key_value,
             "AIC_VIDEO_API_KEY": self.video_api_key_value,
             "AIC_SCREENING_API_KEY": self.screening_api_key_value,
-            "AIC_LEARNING_API_KEY": self.learning_api_key_value,
             "AIC_JEV_API_KEY": self.jev_api_key_value,
         }
         if name not in credentials:

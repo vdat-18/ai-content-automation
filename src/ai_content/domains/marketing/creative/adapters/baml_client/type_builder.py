@@ -20,13 +20,13 @@ from .globals import DO_NOT_USE_DIRECTLY_UNLESS_YOU_KNOW_WHAT_YOURE_DOING_RUNTIM
 class TypeBuilder(type_builder.TypeBuilder):
     def __init__(self):
         super().__init__(classes=set(
-          ["AdsDiagnosisResult","AutomationImagePlan","AutomationVideoAudioPlan","AutomationVideoPlan","AutomationVideoScenePlan","CompositionRegion","CompositionTextPlacement","CreativeAutomationPlanDraft","CreativeBriefDraft","CreativeIdeaCandidates","CreativeIdeaDraft","CreativeLessonResult","CreativeOpportunityResult","CreativePersonaHypothesis","CreativeVariationDraft","LabeledReviewImage","LearningProposalResult","ResearchProductMatchDraft","ResearchReferenceProfileDraft","ResearchScreeningDraft","StaticCompositionDraft",]
+          ["AutomationImagePlan","AutomationVideoAudioPlan","AutomationVideoPlan","AutomationVideoScenePlan","CompositionRegion","CompositionTextPlacement","CreativeAutomationPlanDraft","CreativeBriefDraft","CreativeIdeaCandidates","CreativeIdeaDraft","CreativePersonaHypothesis","CreativeVariationDraft","LabeledReviewImage","ResearchProductMatchDraft","ResearchReferenceProfileDraft","ResearchScreeningDraft","StaticCompositionDraft",]
         ), enums=set(
-          ["AutomationHumanPresence","AutomationVideoGenerationStrategy","AutomationVideoMusicMode","AutomationVideoVoiceMode","BriefReviewOutcome","CreativeAutomationReadiness","IdeaRecommendation","LearningRecommendationAction","OpportunityCategory","TextAlignment",]
+          ["AutomationHumanPresence","AutomationVideoGenerationStrategy","AutomationVideoMusicMode","AutomationVideoVoiceMode","BriefReviewOutcome","CreativeAutomationReadiness","IdeaRecommendation","TextAlignment",]
         ), runtime=DO_NOT_USE_DIRECTLY_UNLESS_YOU_KNOW_WHAT_YOURE_DOING_RUNTIME)
 
     # #########################################################################
-    # Generated enums 10
+    # Generated enums 8
     # #########################################################################
 
     @property
@@ -58,25 +58,13 @@ class TypeBuilder(type_builder.TypeBuilder):
         return IdeaRecommendationViewer(self)
 
     @property
-    def LearningRecommendationAction(self) -> "LearningRecommendationActionViewer":
-        return LearningRecommendationActionViewer(self)
-
-    @property
-    def OpportunityCategory(self) -> "OpportunityCategoryViewer":
-        return OpportunityCategoryViewer(self)
-
-    @property
     def TextAlignment(self) -> "TextAlignmentViewer":
         return TextAlignmentViewer(self)
 
 
     # #########################################################################
-    # Generated classes 21
+    # Generated classes 17
     # #########################################################################
-
-    @property
-    def AdsDiagnosisResult(self) -> "AdsDiagnosisResultViewer":
-        return AdsDiagnosisResultViewer(self)
 
     @property
     def AutomationImagePlan(self) -> "AutomationImagePlanViewer":
@@ -119,14 +107,6 @@ class TypeBuilder(type_builder.TypeBuilder):
         return CreativeIdeaDraftViewer(self)
 
     @property
-    def CreativeLessonResult(self) -> "CreativeLessonResultViewer":
-        return CreativeLessonResultViewer(self)
-
-    @property
-    def CreativeOpportunityResult(self) -> "CreativeOpportunityResultViewer":
-        return CreativeOpportunityResultViewer(self)
-
-    @property
     def CreativePersonaHypothesis(self) -> "CreativePersonaHypothesisViewer":
         return CreativePersonaHypothesisViewer(self)
 
@@ -137,10 +117,6 @@ class TypeBuilder(type_builder.TypeBuilder):
     @property
     def LabeledReviewImage(self) -> "LabeledReviewImageViewer":
         return LabeledReviewImageViewer(self)
-
-    @property
-    def LearningProposalResult(self) -> "LearningProposalResultViewer":
-        return LearningProposalResultViewer(self)
 
     @property
     def ResearchProductMatchDraft(self) -> "ResearchProductMatchDraftViewer":
@@ -161,7 +137,7 @@ class TypeBuilder(type_builder.TypeBuilder):
 
 
 # #########################################################################
-# Generated enums 10
+# Generated enums 8
 # #########################################################################
 
 class AutomationHumanPresenceAst:
@@ -486,126 +462,6 @@ class IdeaRecommendationValues:
     
 
 
-class LearningRecommendationActionAst:
-    def __init__(self, tb: type_builder.TypeBuilder):
-        _tb = tb._tb # type: ignore (we know how to use this private attribute)
-        self._bldr = _tb.enum("LearningRecommendationAction")
-        self._values: typing.Set[str] = set([  "REQUEST_NEW_CREATIVE",  "RETEST_CREATIVE",  "WAIT_FOR_MORE_DATA",  "NO_ACTION",  "MANUAL_REVIEW",  ])
-        self._vals = LearningRecommendationActionValues(self._bldr, self._values)
-
-    def type(self) -> baml_py.FieldType:
-        return self._bldr.field()
-
-    @property
-    def values(self) -> "LearningRecommendationActionValues":
-        return self._vals
-
-
-class LearningRecommendationActionViewer(LearningRecommendationActionAst):
-    def __init__(self, tb: type_builder.TypeBuilder):
-        super().__init__(tb)
-
-    
-    def list_values(self) -> typing.List[typing.Tuple[str, type_builder.EnumValueViewer]]:
-        return [(name, type_builder.EnumValueViewer(self._bldr.value(name))) for name in self._values]
-    
-
-class LearningRecommendationActionValues:
-    def __init__(self, enum_bldr: baml_py.EnumBuilder, values: typing.Set[str]):
-        self.__bldr = enum_bldr
-        self.__values = values # type: ignore (we know how to use this private attribute) # noqa: F821
-
-    
-    
-    @property
-    def REQUEST_NEW_CREATIVE(self) -> type_builder.EnumValueViewer:
-        return type_builder.EnumValueViewer(self.__bldr.value("REQUEST_NEW_CREATIVE"))
-    
-    @property
-    def RETEST_CREATIVE(self) -> type_builder.EnumValueViewer:
-        return type_builder.EnumValueViewer(self.__bldr.value("RETEST_CREATIVE"))
-    
-    @property
-    def WAIT_FOR_MORE_DATA(self) -> type_builder.EnumValueViewer:
-        return type_builder.EnumValueViewer(self.__bldr.value("WAIT_FOR_MORE_DATA"))
-    
-    @property
-    def NO_ACTION(self) -> type_builder.EnumValueViewer:
-        return type_builder.EnumValueViewer(self.__bldr.value("NO_ACTION"))
-    
-    @property
-    def MANUAL_REVIEW(self) -> type_builder.EnumValueViewer:
-        return type_builder.EnumValueViewer(self.__bldr.value("MANUAL_REVIEW"))
-    
-    
-
-
-class OpportunityCategoryAst:
-    def __init__(self, tb: type_builder.TypeBuilder):
-        _tb = tb._tb # type: ignore (we know how to use this private attribute)
-        self._bldr = _tb.enum("OpportunityCategory")
-        self._values: typing.Set[str] = set([  "SCALE_WINNER",  "REFRESH_FATIGUE",  "TEST_NEW_ANGLE",  "FILL_CREATIVE_GAP",  "INVESTIGATE_ANOMALY",  "DEFER_INSUFFICIENT_EVIDENCE",  "STOP_OR_DEPRIORITIZE",  "BLOCKED_CONFLICT",  ])
-        self._vals = OpportunityCategoryValues(self._bldr, self._values)
-
-    def type(self) -> baml_py.FieldType:
-        return self._bldr.field()
-
-    @property
-    def values(self) -> "OpportunityCategoryValues":
-        return self._vals
-
-
-class OpportunityCategoryViewer(OpportunityCategoryAst):
-    def __init__(self, tb: type_builder.TypeBuilder):
-        super().__init__(tb)
-
-    
-    def list_values(self) -> typing.List[typing.Tuple[str, type_builder.EnumValueViewer]]:
-        return [(name, type_builder.EnumValueViewer(self._bldr.value(name))) for name in self._values]
-    
-
-class OpportunityCategoryValues:
-    def __init__(self, enum_bldr: baml_py.EnumBuilder, values: typing.Set[str]):
-        self.__bldr = enum_bldr
-        self.__values = values # type: ignore (we know how to use this private attribute) # noqa: F821
-
-    
-    
-    @property
-    def SCALE_WINNER(self) -> type_builder.EnumValueViewer:
-        return type_builder.EnumValueViewer(self.__bldr.value("SCALE_WINNER"))
-    
-    @property
-    def REFRESH_FATIGUE(self) -> type_builder.EnumValueViewer:
-        return type_builder.EnumValueViewer(self.__bldr.value("REFRESH_FATIGUE"))
-    
-    @property
-    def TEST_NEW_ANGLE(self) -> type_builder.EnumValueViewer:
-        return type_builder.EnumValueViewer(self.__bldr.value("TEST_NEW_ANGLE"))
-    
-    @property
-    def FILL_CREATIVE_GAP(self) -> type_builder.EnumValueViewer:
-        return type_builder.EnumValueViewer(self.__bldr.value("FILL_CREATIVE_GAP"))
-    
-    @property
-    def INVESTIGATE_ANOMALY(self) -> type_builder.EnumValueViewer:
-        return type_builder.EnumValueViewer(self.__bldr.value("INVESTIGATE_ANOMALY"))
-    
-    @property
-    def DEFER_INSUFFICIENT_EVIDENCE(self) -> type_builder.EnumValueViewer:
-        return type_builder.EnumValueViewer(self.__bldr.value("DEFER_INSUFFICIENT_EVIDENCE"))
-    
-    @property
-    def STOP_OR_DEPRIORITIZE(self) -> type_builder.EnumValueViewer:
-        return type_builder.EnumValueViewer(self.__bldr.value("STOP_OR_DEPRIORITIZE"))
-    
-    @property
-    def BLOCKED_CONFLICT(self) -> type_builder.EnumValueViewer:
-        return type_builder.EnumValueViewer(self.__bldr.value("BLOCKED_CONFLICT"))
-    
-    
-
-
 class TextAlignmentAst:
     def __init__(self, tb: type_builder.TypeBuilder):
         _tb = tb._tb # type: ignore (we know how to use this private attribute)
@@ -654,63 +510,8 @@ class TextAlignmentValues:
 
 
 # #########################################################################
-# Generated classes 21
+# Generated classes 17
 # #########################################################################
-
-class AdsDiagnosisResultAst:
-    def __init__(self, tb: type_builder.TypeBuilder):
-        _tb = tb._tb # type: ignore (we know how to use this private attribute)
-        self._bldr = _tb.class_("AdsDiagnosisResult")
-        self._properties: typing.Set[str] = set([  "observations",  "hypotheses",  "confounders",  "uncertainty",  "evidence_refs",  ])
-        self._props = AdsDiagnosisResultProperties(self._bldr, self._properties)
-
-    def type(self) -> baml_py.FieldType:
-        return self._bldr.field()
-
-    @property
-    def props(self) -> "AdsDiagnosisResultProperties":
-        return self._props
-
-
-class AdsDiagnosisResultViewer(AdsDiagnosisResultAst):
-    def __init__(self, tb: type_builder.TypeBuilder):
-        super().__init__(tb)
-
-    
-    def list_properties(self) -> typing.List[typing.Tuple[str, type_builder.ClassPropertyViewer]]:
-        return [(name, type_builder.ClassPropertyViewer(self._bldr.property(name))) for name in self._properties]
-    
-
-
-class AdsDiagnosisResultProperties:
-    def __init__(self, bldr: baml_py.ClassBuilder, properties: typing.Set[str]):
-        self.__bldr = bldr
-        self.__properties = properties # type: ignore (we know how to use this private attribute) # noqa: F821
-
-    
-    
-    @property
-    def observations(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("observations"))
-    
-    @property
-    def hypotheses(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("hypotheses"))
-    
-    @property
-    def confounders(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("confounders"))
-    
-    @property
-    def uncertainty(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("uncertainty"))
-    
-    @property
-    def evidence_refs(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("evidence_refs"))
-    
-    
-
 
 class AutomationImagePlanAst:
     def __init__(self, tb: type_builder.TypeBuilder):
@@ -1346,116 +1147,6 @@ class CreativeIdeaDraftProperties:
     
 
 
-class CreativeLessonResultAst:
-    def __init__(self, tb: type_builder.TypeBuilder):
-        _tb = tb._tb # type: ignore (we know how to use this private attribute)
-        self._bldr = _tb.class_("CreativeLessonResult")
-        self._properties: typing.Set[str] = set([  "proposal",  ])
-        self._props = CreativeLessonResultProperties(self._bldr, self._properties)
-
-    def type(self) -> baml_py.FieldType:
-        return self._bldr.field()
-
-    @property
-    def props(self) -> "CreativeLessonResultProperties":
-        return self._props
-
-
-class CreativeLessonResultViewer(CreativeLessonResultAst):
-    def __init__(self, tb: type_builder.TypeBuilder):
-        super().__init__(tb)
-
-    
-    def list_properties(self) -> typing.List[typing.Tuple[str, type_builder.ClassPropertyViewer]]:
-        return [(name, type_builder.ClassPropertyViewer(self._bldr.property(name))) for name in self._properties]
-    
-
-
-class CreativeLessonResultProperties:
-    def __init__(self, bldr: baml_py.ClassBuilder, properties: typing.Set[str]):
-        self.__bldr = bldr
-        self.__properties = properties # type: ignore (we know how to use this private attribute) # noqa: F821
-
-    
-    
-    @property
-    def proposal(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("proposal"))
-    
-    
-
-
-class CreativeOpportunityResultAst:
-    def __init__(self, tb: type_builder.TypeBuilder):
-        _tb = tb._tb # type: ignore (we know how to use this private attribute)
-        self._bldr = _tb.class_("CreativeOpportunityResult")
-        self._properties: typing.Set[str] = set([  "category",  "priority",  "rationale",  "evidence_refs",  "uncertainty",  "counterargument",  "hypothesis",  "experiment",  "success_signal",  ])
-        self._props = CreativeOpportunityResultProperties(self._bldr, self._properties)
-
-    def type(self) -> baml_py.FieldType:
-        return self._bldr.field()
-
-    @property
-    def props(self) -> "CreativeOpportunityResultProperties":
-        return self._props
-
-
-class CreativeOpportunityResultViewer(CreativeOpportunityResultAst):
-    def __init__(self, tb: type_builder.TypeBuilder):
-        super().__init__(tb)
-
-    
-    def list_properties(self) -> typing.List[typing.Tuple[str, type_builder.ClassPropertyViewer]]:
-        return [(name, type_builder.ClassPropertyViewer(self._bldr.property(name))) for name in self._properties]
-    
-
-
-class CreativeOpportunityResultProperties:
-    def __init__(self, bldr: baml_py.ClassBuilder, properties: typing.Set[str]):
-        self.__bldr = bldr
-        self.__properties = properties # type: ignore (we know how to use this private attribute) # noqa: F821
-
-    
-    
-    @property
-    def category(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("category"))
-    
-    @property
-    def priority(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("priority"))
-    
-    @property
-    def rationale(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("rationale"))
-    
-    @property
-    def evidence_refs(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("evidence_refs"))
-    
-    @property
-    def uncertainty(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("uncertainty"))
-    
-    @property
-    def counterargument(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("counterargument"))
-    
-    @property
-    def hypothesis(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("hypothesis"))
-    
-    @property
-    def experiment(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("experiment"))
-    
-    @property
-    def success_signal(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("success_signal"))
-    
-    
-
-
 class CreativePersonaHypothesisAst:
     def __init__(self, tb: type_builder.TypeBuilder):
         _tb = tb._tb # type: ignore (we know how to use this private attribute)
@@ -1629,69 +1320,6 @@ class LabeledReviewImageProperties:
     @property
     def content(self) -> type_builder.ClassPropertyViewer:
         return type_builder.ClassPropertyViewer(self.__bldr.property("content"))
-    
-    
-
-
-class LearningProposalResultAst:
-    def __init__(self, tb: type_builder.TypeBuilder):
-        _tb = tb._tb # type: ignore (we know how to use this private attribute)
-        self._bldr = _tb.class_("LearningProposalResult")
-        self._properties: typing.Set[str] = set([  "priority",  "recommended_action",  "hypothesis",  "experiment",  "success_signal",  "evidence_refs",  "uncertainty",  ])
-        self._props = LearningProposalResultProperties(self._bldr, self._properties)
-
-    def type(self) -> baml_py.FieldType:
-        return self._bldr.field()
-
-    @property
-    def props(self) -> "LearningProposalResultProperties":
-        return self._props
-
-
-class LearningProposalResultViewer(LearningProposalResultAst):
-    def __init__(self, tb: type_builder.TypeBuilder):
-        super().__init__(tb)
-
-    
-    def list_properties(self) -> typing.List[typing.Tuple[str, type_builder.ClassPropertyViewer]]:
-        return [(name, type_builder.ClassPropertyViewer(self._bldr.property(name))) for name in self._properties]
-    
-
-
-class LearningProposalResultProperties:
-    def __init__(self, bldr: baml_py.ClassBuilder, properties: typing.Set[str]):
-        self.__bldr = bldr
-        self.__properties = properties # type: ignore (we know how to use this private attribute) # noqa: F821
-
-    
-    
-    @property
-    def priority(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("priority"))
-    
-    @property
-    def recommended_action(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("recommended_action"))
-    
-    @property
-    def hypothesis(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("hypothesis"))
-    
-    @property
-    def experiment(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("experiment"))
-    
-    @property
-    def success_signal(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("success_signal"))
-    
-    @property
-    def evidence_refs(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("evidence_refs"))
-    
-    @property
-    def uncertainty(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("uncertainty"))
     
     
 

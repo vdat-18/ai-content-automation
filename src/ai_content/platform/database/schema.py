@@ -106,23 +106,12 @@ def _run_table(name: str, *columns: Column[object]) -> Table:
     )
 
 
-creative_loop_runs = _run_table(
-    "creative_loop_runs",
-    Column("source_checksum", Text, nullable=False),
-    Column("state", Text, nullable=False),
-)
 creative_intake_runs = _run_table(
     "creative_intake_runs",
     Column("source_checksum", Text, nullable=False),
     Column("state", Text, nullable=False),
     Column("brand_id", Text, nullable=False),
     Column("sku_id", Text, nullable=False),
-)
-creative_feedback_runs = _run_table(
-    "creative_feedback_runs",
-    Column("source_checksum", Text, nullable=False),
-    Column("creative_version_id", Text, nullable=False),
-    Column("state", Text, nullable=False),
 )
 
 creative_knowledge_versions = Table(
@@ -448,12 +437,6 @@ notifications = Table(
 )
 Index("ix_notifications_scope", notifications.c.scope_type, notifications.c.scope_id)
 Index("ix_notifications_unread", notifications.c.read_at, notifications.c.created_at)
-performance_decision_runs = _run_table(
-    "performance_decision_runs",
-    Column("source_checksum", Text, nullable=False),
-    Column("subject_type", Text, nullable=False),
-    Column("subject_id", Text, nullable=False),
-)
 gmc_ingestion_runs = _run_table(
     "gmc_ingestion_runs",
     Column("source_checksum", Text, nullable=False),
@@ -728,14 +711,12 @@ Index("ix_data_source_sync_runs_source", data_source_sync_runs.c.source_id)
 __all__ = [
     "ai_usage_events",
     "artifacts",
-    "creative_feedback_runs",
     "creative_automation_batches",
     "creative_automation_events",
     "creative_automation_jobs",
     "creative_automation_states",
     "creative_intake_runs",
     "creative_jobs",
-    "creative_loop_runs",
     "creative_versions",
     "data_source_snapshots",
     "data_source_product_catalog",
@@ -746,7 +727,6 @@ __all__ = [
     "marketing_creative_automation_states",
     "metadata",
     "notifications",
-    "performance_decision_runs",
     "research_crawl_jobs",
     "research_records",
     "research_record_versions",

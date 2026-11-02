@@ -11,18 +11,6 @@ client<llm> MarketingLLM {
   }
 }
 
-// Dedicated client for creative_feedback tasks, which need a larger token budget.
-client<llm> CreativeFeedbackLLM {
-  provider "openai-generic"
-  options {
-    base_url env.MARKETING_LLM_BASE_URL
-    model env.MARKETING_LLM_MODEL
-    api_key env.MARKETING_LLM_API_KEY
-    temperature 0
-    max_tokens 2400
-  }
-}
-
 // Provider-neutral semantic orchestration client. Provider and model are runtime values.
 client<llm> OrchestrationModel {
   provider "openai-generic"

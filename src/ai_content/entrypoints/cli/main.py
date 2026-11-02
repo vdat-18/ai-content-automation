@@ -8,7 +8,6 @@ from __future__ import annotations
 import argparse
 import asyncio
 import sys
-from dataclasses import replace
 from pathlib import Path
 
 from loguru import logger
@@ -35,61 +34,14 @@ from ai_content.domains.marketing.creative.ports.videos import (
     VideoGenerationError,
 )
 from ai_content.domains.marketing.creative.preparation_runtime import build_preparation_runtime
-from ai_content.domains.marketing.creative_feedback.bootstrap import (
-    build_fixture_runtime as build_creative_feedback_runtime,
-)
-from ai_content.domains.marketing.creative_feedback.bootstrap import (
-    build_read_runtime as build_creative_feedback_read_runtime,
-)
-from ai_content.domains.marketing.creative_feedback.config.fixtures import (
-    load_creative_feedback_fixture,
-)
-from ai_content.domains.marketing.creative_feedback.config.learning import (
-    PerformanceLearningConfig,
-)
-from ai_content.domains.marketing.creative_feedback.domain.models import FeedbackDecision
-from ai_content.domains.marketing.creative_feedback.ports.interfaces import (
-    CreativeFeedbackInputDriftError,
-)
-from ai_content.domains.marketing.creative_intake.application.projections import (
-    project_feedback_trigger,
-    project_performance_trigger,
-)
 from ai_content.domains.marketing.creative_intake.bootstrap import (
     build_fixture_runtime as build_creative_intake_runtime,
 )
 from ai_content.domains.marketing.creative_intake.config.fixtures import (
-    CreativeIntakeFixture,
-    case_for_trigger,
     load_creative_intake_fixture,
 )
 from ai_content.domains.marketing.creative_intake.ports.interfaces import (
     CreativeIntakeInputDriftError,
-)
-from ai_content.domains.marketing.creative_loop.bootstrap import (
-    build_runtime as build_creative_loop_runtime,
-)
-from ai_content.domains.marketing.creative_loop.ports.interfaces import (
-    CreativeLoopEventDriftError,
-    CreativeLoopInputDriftError,
-)
-from ai_content.domains.marketing.performance_decisions.bootstrap import (
-    build_fixture_runtime as build_performance_decision_runtime,
-)
-from ai_content.domains.marketing.performance_decisions.bootstrap import (
-    build_read_runtime as build_performance_decision_read_runtime,
-)
-from ai_content.domains.marketing.performance_decisions.config.fixtures import (
-    load_performance_decision_fixture,
-)
-from ai_content.domains.marketing.performance_decisions.config.opportunity import (
-    OpportunityConfig,
-)
-from ai_content.domains.marketing.performance_decisions.domain.models import (
-    PerformanceDecision,
-)
-from ai_content.domains.marketing.performance_decisions.ports.interfaces import (
-    PerformanceInputDriftError,
 )
 from ai_content.settings import ApplicationSettings
 
@@ -143,74 +95,17 @@ def build_parser() -> argparse.ArgumentParser:
     reject_p.add_argument("--reviewer", required=True)
     reject_p.add_argument("--reason", required=True)
 
-    performance_decision = sub.add_parser(
-        "run-performance-decision",
-        help="Run synthetic Performance rules and prepare Creative demand previews",
-    )
-    performance_decision.add_argument("--fixture", type=Path, required=True)
-    performance_decision.add_argument(
-        "--enable-opportunity-analysis",
-        action="store_true",
-        help="Run optional BAML Creative Opportunity analysis in shadow mode",
-    )
-    creative_feedback = sub.add_parser(
-        "run-creative-feedback",
-        help="Run synthetic exact-version Creative feedback lineage",
-    )
-    creative_feedback.add_argument("--fixture", type=Path, required=True)
-    creative_feedback.add_argument(
-        "--enable-learning-analysis",
-        action="store_true",
-        help="Run optional Performance Learning analysis in shadow mode",
-    )
     creative_intake = sub.add_parser(
         "run-creative-intake",
         help="Resolve synthetic H2/X1 demand and optionally run the fake Creative pipeline",
     )
     creative_intake.add_argument("--fixture", type=Path, required=True)
-    creative_intake.add_argument("--source", choices=["performance", "feedback"])
-    creative_intake.add_argument("--source-run-id")
-    creative_intake.add_argument("--context-snapshot-id")
     creative_intake.add_argument("--dispatch-m1", action="store_true")
     creative_intake.add_argument(
         "--dispatch-creative",
         action="store_true",
         help="Run M1 and fake M2 through QA/revision to final human approval wait",
     )
-    run_loop = sub.add_parser(
-        "run-creative-loop",
-        help="Start the unified synthetic H2 -> Creative -> X1 closed loop",
-    )
-    run_loop.add_argument("--fixture", type=Path)
-    run_loop.add_argument("--local-loop", type=Path)
-    run_loop.add_argument("--enable-learning-analysis", action="store_true")
-    decide_loop = sub.add_parser(
-        "decide-creative-loop",
-        help="Decide an exact demand, Creative or feedback lesson gate",
-    )
-    decide_loop.add_argument("--fixture", type=Path)
-    decide_loop.add_argument("--local-loop", type=Path)
-    decide_loop.add_argument("--enable-learning-analysis", action="store_true")
-    decide_loop.add_argument("--learning-proposal-id")
-    decide_loop.add_argument("--run-id", required=True)
-    decide_loop.add_argument("--gate", choices=["demand", "creative", "lesson"], required=True)
-    decide_loop.add_argument("--pinned-id")
-    decide_loop.add_argument("--decision", choices=["approve", "reject", "defer"], required=True)
-    decide_loop.add_argument("--reviewer", required=True)
-    decide_loop.add_argument("--reason", required=True)
-    ads_loop = sub.add_parser(
-        "record-creative-loop-ads-outcome",
-        help="Inject the fixture's explicit synthetic Ads outcome",
-    )
-    ads_loop.add_argument("--fixture", type=Path)
-    ads_loop.add_argument("--local-loop", type=Path)
-    ads_loop.add_argument("--run-id", required=True)
-    inspect_loop = sub.add_parser(
-        "inspect-creative-loop", help="Inspect one unified Creative loop run"
-    )
-    inspect_loop.add_argument("--fixture", type=Path)
-    inspect_loop.add_argument("--local-loop", type=Path)
-    inspect_loop.add_argument("--run-id", required=True)
 
     return parser
 
@@ -338,138 +233,8 @@ async def _cmd_decide(
 
 
 async def _async_main(args: argparse.Namespace, settings: ApplicationSettings) -> int:
-    if args.command in {
-        "run-creative-loop",
-        "decide-creative-loop",
-        "record-creative-loop-ads-outcome",
-        "inspect-creative-loop",
-    }:
-        if (args.fixture is None) == (args.local_loop is None):
-            raise ValueError("Use exactly one of --fixture or --local-loop")
-        learning_config = (
-            PerformanceLearningConfig.from_settings(settings)
-            if getattr(args, "enable_learning_analysis", False)
-            else None
-        )
-        preparation_config = PreparationConfig.from_settings(settings)
-        runtime = build_creative_loop_runtime(
-            args.db,
-            args.artifacts,
-            config_dir=args.config,
-            fixture_path=args.fixture,
-            local_loop_path=args.local_loop,
-            preparation_config=preparation_config,
-            preparation_api_key=preparation_config.api_key,
-            learning_config=learning_config,
-            learning_api_key=learning_config.api_key if learning_config else None,
-        )
-        try:
-            if args.command == "run-creative-loop":
-                outcome = await runtime.run()
-                for run in outcome.runs:
-                    _write_line(f"{run.run_id:40} {run.state.value}")
-                _write_line(f"Runs:          {len(outcome.runs)}")
-                _write_line(f"Duplicates:    {outcome.duplicate_count}")
-                _write_line(
-                    "External writes: disabled; model mode: "
-                    + ("configured" if learning_config else "synthetic")
-                )
-                return 0
-            run = await runtime.repository.get(args.run_id)
-            if run is None:
-                raise ValueError("Creative loop run not found")
-            if args.command == "inspect-creative-loop":
-                _write_line(f"Run:           {run.run_id}")
-                _write_line(f"State:         {run.state.value}")
-                _write_line(f"Creative:      {run.approved_creative_version_id or 'pending'}")
-                _write_line(f"Ads event:     {run.ads_event_id or 'pending'}")
-                _write_line(f"Lesson:        {run.lesson_id or 'pending'}")
-                _write_line(f"Next brief:    {run.next_creative_job_id or 'pending'}")
-                return 0
-            if args.command == "record-creative-loop-ads-outcome":
-                if run.approved_creative_version_id is None:
-                    raise ValueError("Creative loop has no approved Creative version")
-                updated = await runtime.record_ads_outcome(
-                    run.run_id,
-                    replace(
-                        runtime.fixture.ads_outcome(run.input_snapshot_id),
-                        creative_version_id=run.approved_creative_version_id,
-                    ),
-                )
-            elif args.gate == "demand":
-                if not args.pinned_id:
-                    raise ValueError("--pinned-id must be the exact H2 evaluation ID")
-                updated = await runtime.decide_demand(
-                    run.run_id,
-                    args.pinned_id,
-                    PerformanceDecision(args.decision),
-                    args.reviewer,
-                    args.reason,
-                )
-            elif args.gate == "creative":
-                if args.decision == "defer":
-                    raise ValueError("Creative gate supports approve or reject")
-                updated = await runtime.decide_creative(
-                    run.run_id,
-                    ApprovalDecision(args.decision),
-                    args.reviewer,
-                    args.reason,
-                )
-            else:
-                if not args.pinned_id:
-                    raise ValueError("--pinned-id must be the exact X1 lesson ID")
-                updated = await runtime.decide_lesson(
-                    run.run_id,
-                    args.pinned_id,
-                    FeedbackDecision(args.decision),
-                    args.reviewer,
-                    args.reason,
-                    args.learning_proposal_id,
-                )
-            _write_line(f"Run:           {updated.run_id}")
-            _write_line(f"State:         {updated.state.value}")
-            return 0
-        finally:
-            runtime.close()
     if args.command == "run-creative-intake":
         fixture = load_creative_intake_fixture(args.fixture)
-        source_options = (args.source, args.source_run_id, args.context_snapshot_id)
-        if any(source_options) and not all(source_options):
-            raise ValueError(
-                "--source, --source-run-id and --context-snapshot-id must be provided together"
-            )
-        if all(source_options):
-            if args.source == "performance":
-                source_runtime = build_performance_decision_read_runtime(args.db, args.artifacts)
-                try:
-                    source_run = await source_runtime.repository.get(args.source_run_id)
-                    if source_run is None:
-                        source_run = await source_runtime.repository.get_by_source_run_id(
-                            args.source_run_id
-                        )
-                    if source_run is None:
-                        raise ValueError("Performance source run not found")
-                    trigger = project_performance_trigger(source_run)
-                finally:
-                    source_runtime.repository.close()
-            else:
-                source_runtime = build_creative_feedback_read_runtime(args.db, args.artifacts)
-                try:
-                    source_run = await source_runtime.repository.get(args.source_run_id)
-                    if source_run is None:
-                        source_run = await source_runtime.repository.get_by_source_run_id(
-                            args.source_run_id
-                        )
-                    if source_run is None:
-                        raise ValueError("Creative feedback source run not found")
-                    trigger = project_feedback_trigger(source_run)
-                finally:
-                    source_runtime.repository.close()
-            if not trigger.source_released:
-                raise ValueError("The selected upstream preview has not been approved and released")
-            fixture = CreativeIntakeFixture(
-                (case_for_trigger(fixture, args.context_snapshot_id, trigger),)
-            )
         runtime = build_creative_intake_runtime(args.db, args.artifacts)
         try:
             outcome = await runtime.run(
@@ -485,65 +250,6 @@ async def _async_main(args: argparse.Namespace, settings: ApplicationSettings) -
                     f"{run.trigger.source.value:20} {run.context.sku_id:20} "
                     f"{run.state.value:18} {handoff}"
                 )
-            _write_line(f"Runs:          {len(outcome.runs)}")
-            _write_line(f"Duplicates:    {outcome.duplicate_count}")
-            _write_line("External write: disabled")
-            return 0
-        finally:
-            runtime.repository.close()
-    if args.command == "run-creative-feedback":
-        fixture = load_creative_feedback_fixture(args.fixture)
-        learning_config = (
-            PerformanceLearningConfig.from_settings(settings)
-            if args.enable_learning_analysis
-            else None
-        )
-        runtime = build_creative_feedback_runtime(
-            args.db,
-            args.artifacts,
-            learning_config=learning_config,
-            learning_api_key=learning_config.api_key if learning_config else None,
-        )
-        try:
-            outcome = await runtime.run(fixture)
-            for run in outcome.runs:
-                _write_line(
-                    f"{run.release.creative_version_id:28} "
-                    f"{run.performance.classification.value:24} {run.state.value}"
-                )
-            _write_line(f"Runs:          {len(outcome.runs)}")
-            _write_line(f"Duplicates:    {outcome.duplicate_count}")
-            _write_line("External write: disabled")
-            return 0
-        finally:
-            runtime.repository.close()
-    if args.command == "run-performance-decision":
-        fixture = load_performance_decision_fixture(args.fixture)
-        opportunity_config = (
-            OpportunityConfig.from_settings(settings) if args.enable_opportunity_analysis else None
-        )
-        runtime = build_performance_decision_runtime(
-            args.db,
-            args.artifacts,
-            opportunity_config=opportunity_config,
-            opportunity_api_key=(
-                opportunity_config.api_key if opportunity_config is not None else None
-            ),
-        )
-        try:
-            outcome = await runtime.run(fixture)
-            for run in outcome.runs:
-                _write_line(
-                    f"{run.snapshot.subject.subject_type.value:10} "
-                    f"{run.snapshot.subject.subject_id:24} "
-                    f"{run.evaluation.classification.value:30} "
-                    f"{run.evaluation.state.value}"
-                )
-                if run.opportunity_analysis is not None:
-                    _write_line(
-                        f"  Agent shadow: {run.opportunity_analysis.category.value} "
-                        f"priority={run.opportunity_analysis.priority}"
-                    )
             _write_line(f"Runs:          {len(outcome.runs)}")
             _write_line(f"Duplicates:    {outcome.duplicate_count}")
             _write_line("External write: disabled")
@@ -611,17 +317,8 @@ def main(argv: list[str] | None = None) -> int:
     except VideoGenerationError as e:
         logger.error("Video pilot error: {}", e)
         return 1
-    except PerformanceInputDriftError as e:
-        logger.error("Performance input drift: {}", e)
-        return 1
-    except CreativeFeedbackInputDriftError as e:
-        logger.error("Creative feedback input drift: {}", e)
-        return 1
     except CreativeIntakeInputDriftError as e:
         logger.error("Creative intake input drift: {}", e)
-        return 1
-    except (CreativeLoopInputDriftError, CreativeLoopEventDriftError) as e:
-        logger.error("Creative loop input/event drift: {}", e)
         return 1
     except OSError as e:
         logger.error("Pilot storage error: {}", e)

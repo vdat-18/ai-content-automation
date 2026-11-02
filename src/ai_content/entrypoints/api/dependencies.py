@@ -50,10 +50,6 @@ from ai_content.domains.marketing.creative.ports.automation_workflow import (
 from ai_content.domains.marketing.creative.ports.media_production import (
     IFrozenProductMediaResolver,
 )
-from ai_content.domains.marketing.creative_feedback.bootstrap import CreativeFeedbackRuntime
-from ai_content.domains.marketing.creative_feedback.bootstrap import (
-    build_read_runtime as build_creative_feedback_read_runtime,
-)
 from ai_content.domains.marketing.creative_intake.bootstrap import CreativeIntakeRuntime
 from ai_content.domains.marketing.creative_intake.bootstrap import (
     build_fixture_runtime as build_creative_intake_write_runtime,
@@ -65,12 +61,6 @@ from ai_content.domains.marketing.creative_knowledge.repositories import (
     SqliteCreativeKnowledgeRepository,
 )
 from ai_content.domains.marketing.creative_knowledge.service import CreativeKnowledgeService
-from ai_content.domains.marketing.creative_loop.bootstrap import (
-    CreativeLoopRuntime,
-)
-from ai_content.domains.marketing.creative_loop.bootstrap import (
-    build_runtime as build_creative_loop_runtime,
-)
 from ai_content.domains.marketing.data_sources.adapters.sqlite_repository import (
     SqliteDataSourceRepository,
 )
@@ -170,10 +160,6 @@ class ApiRuntimeSettings:
     screening_model: str = "gemini-3.8-flash"
     screening_max_concurrency: int = 5
     screening_timeout: float = 60
-    learning_base_url: str = "http://127.0.0.1:1234/v1"
-    learning_api_key: str | None = None
-    learning_model: str = "xai/grok-4-fast-reasoning"
-    learning_timeout: float = 60
     router_api_key: str | None = None
     image_api_key: str | None = None
     video_api_key: str | None = None
@@ -264,10 +250,6 @@ def get_runtime_settings() -> ApiRuntimeSettings:
         screening_model=application.screening_model,
         screening_max_concurrency=application.screening_max_concurrency,
         screening_timeout=application.screening_timeout,
-        learning_base_url=application.learning_base_url,
-        learning_api_key=application.learning_api_key_value,
-        learning_model=application.learning_model,
-        learning_timeout=application.learning_timeout,
         router_api_key=application.credential("ROUTER_API_KEY"),
         image_api_key=application.credential("IMAGE_API_KEY"),
         video_api_key=application.credential("VIDEO_API_KEY"),
@@ -614,16 +596,7 @@ def check_runtime_readiness(settings: ApiRuntimeSettings) -> RuntimeReadiness:
 
 def _check_config_and_storage(settings: ApiRuntimeSettings) -> dict[str, str]:
     """Check filesystem dependencies shared by both database backends."""
-    required_config = (settings.config_dir / "fixtures" / "creative_loop_synthetic.json",)
-    checks: dict[str, str] = {}
-    try:
-        for path in required_config:
-            with path.open("rb") as config_file:
-                config_file.read(1)
-        checks["config"] = "ok"
-    except OSError:
-        checks["config"] = "unavailable"
-
+    checks: dict[str, str] = {"config": "ok"}
     try:
         settings.artifacts_root.mkdir(parents=True, exist_ok=True)
         with tempfile.NamedTemporaryFile(dir=settings.artifacts_root):
@@ -721,26 +694,6 @@ async def get_runtime(request: Request) -> AsyncIterator[CreativeRuntime]:
         yield runtime
     finally:
         runtime.repository.close()
-
-
-async def get_creative_loop_runtime(request: Request) -> AsyncIterator[CreativeLoopRuntime]:
-    """Yield the unified synthetic Creative loop runtime."""
-    settings = get_runtime_settings()
-    postgres = _postgres_runtime(request)
-    if postgres is not None:
-        yield postgres.creative_loop()
-        return
-    runtime = build_creative_loop_runtime(
-        settings.db_path,
-        settings.artifacts_root,
-        config_dir=settings.config_dir,
-        fixture_path=settings.config_dir / "fixtures/creative_loop_synthetic.json",
-        preparation_config=PreparationConfig.from_settings(settings),
-    )
-    try:
-        yield runtime
-    finally:
-        runtime.close()
 
 
 async def get_notification_repository(
@@ -928,22 +881,6 @@ async def get_ai_usage_repository(request: Request) -> AsyncIterator[AIUsageRepo
 
 
 get_execution_queue = get_command_scheduler
-
-
-async def get_creative_feedback_runtime(
-    request: Request,
-) -> AsyncIterator[CreativeFeedbackRuntime]:
-    """Yield the local Creative feedback runtime without external actions."""
-    settings = get_runtime_settings()
-    postgres = _postgres_runtime(request)
-    if postgres is not None:
-        yield postgres.feedback()
-        return
-    runtime = build_creative_feedback_read_runtime(settings.db_path, settings.artifacts_root)
-    try:
-        yield runtime
-    finally:
-        runtime.repository.close()
 
 
 async def get_creative_knowledge_service(

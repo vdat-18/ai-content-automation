@@ -82,36 +82,6 @@ class BamlAsyncClient:
     def parse_stream(self):
       return self.__llm_stream_parser
 
-    async def AnalyzeCreativeOpportunity(self, evidence_json: str,
-        baml_options: BamlCallOptions = {},
-    ) -> types.CreativeOpportunityResult:
-        # Check if on_tick is provided
-        if 'on_tick' in baml_options:
-            # Use streaming internally when on_tick is provided
-            __stream__ = self.stream.AnalyzeCreativeOpportunity(evidence_json=evidence_json,
-                baml_options=baml_options)
-            return await __stream__.get_final_response()
-        else:
-            # Original non-streaming code
-            __result__ = await self.__options.merge_options(baml_options).call_function_async(function_name="AnalyzeCreativeOpportunity", args={
-                "evidence_json": evidence_json,
-            })
-            return typing.cast(types.CreativeOpportunityResult, __result__.cast_to(types, types, stream_types, False, __runtime__))
-    async def DiagnoseAdsOutcome(self, evidence_json: str,
-        baml_options: BamlCallOptions = {},
-    ) -> types.AdsDiagnosisResult:
-        # Check if on_tick is provided
-        if 'on_tick' in baml_options:
-            # Use streaming internally when on_tick is provided
-            __stream__ = self.stream.DiagnoseAdsOutcome(evidence_json=evidence_json,
-                baml_options=baml_options)
-            return await __stream__.get_final_response()
-        else:
-            # Original non-streaming code
-            __result__ = await self.__options.merge_options(baml_options).call_function_async(function_name="DiagnoseAdsOutcome", args={
-                "evidence_json": evidence_json,
-            })
-            return typing.cast(types.AdsDiagnosisResult, __result__.cast_to(types, types, stream_types, False, __runtime__))
     async def GenerateCreativeIdeas(self, input_json: str,max_ideas: int,
         baml_options: BamlCallOptions = {},
     ) -> types.CreativeIdeaCandidates:
@@ -187,21 +157,6 @@ class BamlAsyncClient:
                 "input_json": input_json,"sources": sources,
             })
             return typing.cast(types.ResearchScreeningDraft, __result__.cast_to(types, types, stream_types, False, __runtime__))
-    async def SynthesizeCreativeLesson(self, evidence_json: str,diagnosis_json: str,
-        baml_options: BamlCallOptions = {},
-    ) -> types.CreativeLessonResult:
-        # Check if on_tick is provided
-        if 'on_tick' in baml_options:
-            # Use streaming internally when on_tick is provided
-            __stream__ = self.stream.SynthesizeCreativeLesson(evidence_json=evidence_json,diagnosis_json=diagnosis_json,
-                baml_options=baml_options)
-            return await __stream__.get_final_response()
-        else:
-            # Original non-streaming code
-            __result__ = await self.__options.merge_options(baml_options).call_function_async(function_name="SynthesizeCreativeLesson", args={
-                "evidence_json": evidence_json,"diagnosis_json": diagnosis_json,
-            })
-            return typing.cast(types.CreativeLessonResult, __result__.cast_to(types, types, stream_types, False, __runtime__))
     async def WriteCreativeBrief(self, input_json: str,variation_count: int,
         baml_options: BamlCallOptions = {},
     ) -> types.CreativeBriefDraft:
@@ -226,30 +181,6 @@ class BamlStreamClient:
     def __init__(self, options: DoNotUseDirectlyCallManager):
         self.__options = options
 
-    def AnalyzeCreativeOpportunity(self, evidence_json: str,
-        baml_options: BamlCallOptions = {},
-    ) -> baml_py.BamlStream[stream_types.CreativeOpportunityResult, types.CreativeOpportunityResult]:
-        __ctx__, __result__ = self.__options.merge_options(baml_options).create_async_stream(function_name="AnalyzeCreativeOpportunity", args={
-            "evidence_json": evidence_json,
-        })
-        return baml_py.BamlStream[stream_types.CreativeOpportunityResult, types.CreativeOpportunityResult](
-          __result__,
-          lambda x: typing.cast(stream_types.CreativeOpportunityResult, x.cast_to(types, types, stream_types, True, __runtime__)),
-          lambda x: typing.cast(types.CreativeOpportunityResult, x.cast_to(types, types, stream_types, False, __runtime__)),
-          __ctx__,
-        )
-    def DiagnoseAdsOutcome(self, evidence_json: str,
-        baml_options: BamlCallOptions = {},
-    ) -> baml_py.BamlStream[stream_types.AdsDiagnosisResult, types.AdsDiagnosisResult]:
-        __ctx__, __result__ = self.__options.merge_options(baml_options).create_async_stream(function_name="DiagnoseAdsOutcome", args={
-            "evidence_json": evidence_json,
-        })
-        return baml_py.BamlStream[stream_types.AdsDiagnosisResult, types.AdsDiagnosisResult](
-          __result__,
-          lambda x: typing.cast(stream_types.AdsDiagnosisResult, x.cast_to(types, types, stream_types, True, __runtime__)),
-          lambda x: typing.cast(types.AdsDiagnosisResult, x.cast_to(types, types, stream_types, False, __runtime__)),
-          __ctx__,
-        )
     def GenerateCreativeIdeas(self, input_json: str,max_ideas: int,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.BamlStream[stream_types.CreativeIdeaCandidates, types.CreativeIdeaCandidates]:
@@ -310,18 +241,6 @@ class BamlStreamClient:
           lambda x: typing.cast(types.ResearchScreeningDraft, x.cast_to(types, types, stream_types, False, __runtime__)),
           __ctx__,
         )
-    def SynthesizeCreativeLesson(self, evidence_json: str,diagnosis_json: str,
-        baml_options: BamlCallOptions = {},
-    ) -> baml_py.BamlStream[stream_types.CreativeLessonResult, types.CreativeLessonResult]:
-        __ctx__, __result__ = self.__options.merge_options(baml_options).create_async_stream(function_name="SynthesizeCreativeLesson", args={
-            "evidence_json": evidence_json,"diagnosis_json": diagnosis_json,
-        })
-        return baml_py.BamlStream[stream_types.CreativeLessonResult, types.CreativeLessonResult](
-          __result__,
-          lambda x: typing.cast(stream_types.CreativeLessonResult, x.cast_to(types, types, stream_types, True, __runtime__)),
-          lambda x: typing.cast(types.CreativeLessonResult, x.cast_to(types, types, stream_types, False, __runtime__)),
-          __ctx__,
-        )
     def WriteCreativeBrief(self, input_json: str,variation_count: int,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.BamlStream[stream_types.CreativeBriefDraft, types.CreativeBriefDraft]:
@@ -342,20 +261,6 @@ class BamlHttpRequestClient:
     def __init__(self, options: DoNotUseDirectlyCallManager):
         self.__options = options
 
-    async def AnalyzeCreativeOpportunity(self, evidence_json: str,
-        baml_options: BamlCallOptions = {},
-    ) -> baml_py.baml_py.HTTPRequest:
-        __result__ = await self.__options.merge_options(baml_options).create_http_request_async(function_name="AnalyzeCreativeOpportunity", args={
-            "evidence_json": evidence_json,
-        }, mode="request")
-        return __result__
-    async def DiagnoseAdsOutcome(self, evidence_json: str,
-        baml_options: BamlCallOptions = {},
-    ) -> baml_py.baml_py.HTTPRequest:
-        __result__ = await self.__options.merge_options(baml_options).create_http_request_async(function_name="DiagnoseAdsOutcome", args={
-            "evidence_json": evidence_json,
-        }, mode="request")
-        return __result__
     async def GenerateCreativeIdeas(self, input_json: str,max_ideas: int,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.baml_py.HTTPRequest:
@@ -389,13 +294,6 @@ class BamlHttpRequestClient:
     ) -> baml_py.baml_py.HTTPRequest:
         __result__ = await self.__options.merge_options(baml_options).create_http_request_async(function_name="ScreenResearchReference", args={
             "input_json": input_json,"sources": sources,
-        }, mode="request")
-        return __result__
-    async def SynthesizeCreativeLesson(self, evidence_json: str,diagnosis_json: str,
-        baml_options: BamlCallOptions = {},
-    ) -> baml_py.baml_py.HTTPRequest:
-        __result__ = await self.__options.merge_options(baml_options).create_http_request_async(function_name="SynthesizeCreativeLesson", args={
-            "evidence_json": evidence_json,"diagnosis_json": diagnosis_json,
         }, mode="request")
         return __result__
     async def WriteCreativeBrief(self, input_json: str,variation_count: int,
@@ -413,20 +311,6 @@ class BamlHttpStreamRequestClient:
     def __init__(self, options: DoNotUseDirectlyCallManager):
         self.__options = options
 
-    async def AnalyzeCreativeOpportunity(self, evidence_json: str,
-        baml_options: BamlCallOptions = {},
-    ) -> baml_py.baml_py.HTTPRequest:
-        __result__ = await self.__options.merge_options(baml_options).create_http_request_async(function_name="AnalyzeCreativeOpportunity", args={
-            "evidence_json": evidence_json,
-        }, mode="stream")
-        return __result__
-    async def DiagnoseAdsOutcome(self, evidence_json: str,
-        baml_options: BamlCallOptions = {},
-    ) -> baml_py.baml_py.HTTPRequest:
-        __result__ = await self.__options.merge_options(baml_options).create_http_request_async(function_name="DiagnoseAdsOutcome", args={
-            "evidence_json": evidence_json,
-        }, mode="stream")
-        return __result__
     async def GenerateCreativeIdeas(self, input_json: str,max_ideas: int,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.baml_py.HTTPRequest:
@@ -460,13 +344,6 @@ class BamlHttpStreamRequestClient:
     ) -> baml_py.baml_py.HTTPRequest:
         __result__ = await self.__options.merge_options(baml_options).create_http_request_async(function_name="ScreenResearchReference", args={
             "input_json": input_json,"sources": sources,
-        }, mode="stream")
-        return __result__
-    async def SynthesizeCreativeLesson(self, evidence_json: str,diagnosis_json: str,
-        baml_options: BamlCallOptions = {},
-    ) -> baml_py.baml_py.HTTPRequest:
-        __result__ = await self.__options.merge_options(baml_options).create_http_request_async(function_name="SynthesizeCreativeLesson", args={
-            "evidence_json": evidence_json,"diagnosis_json": diagnosis_json,
         }, mode="stream")
         return __result__
     async def WriteCreativeBrief(self, input_json: str,variation_count: int,

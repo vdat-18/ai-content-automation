@@ -29,10 +29,6 @@ from ai_content.domains.marketing.creative.domain.entities import (
     CreativeJobId,
     CreativeJobStatus,
 )
-from ai_content.domains.marketing.creative_feedback.adapters.serialization import (
-    run_to_dict as creative_feedback_to_dict,
-)
-from ai_content.domains.marketing.creative_feedback.bootstrap import CreativeFeedbackRuntime
 from ai_content.domains.marketing.creative_intake.adapters.artifacts import (
     write_creative_intake_artifacts,
 )
@@ -41,14 +37,6 @@ from ai_content.domains.marketing.creative_intake.adapters.serialization import 
 )
 from ai_content.domains.marketing.creative_intake.bootstrap import CreativeIntakeRuntime
 from ai_content.domains.marketing.creative_intake.domain.models import HandoffState
-from ai_content.domains.marketing.creative_loop.adapters.commands import (
-    CreativeLoopCommandService,
-)
-from ai_content.domains.marketing.creative_loop.bootstrap import CreativeLoopRuntime
-from ai_content.domains.marketing.creative_loop.domain.models import (
-    CreativeLoopRun,
-    CreativeLoopState,
-)
 from ai_content.platform.artifacts import (
     ArtifactRecord,
     ArtifactService,
@@ -57,7 +45,6 @@ from ai_content.platform.artifacts import (
 )
 from ai_content.platform.artifacts.object_storage import iter_download, normalize_object_key
 from ai_content.platform.execution import (
-    CommandPayloadDriftError,
     CommandScheduler,
     CommandStatus,
     CommandStatusStore,
@@ -84,9 +71,7 @@ from .dependencies import (
     check_runtime_readiness_async,
     get_command_scheduler,
     get_command_status_store,
-    get_creative_feedback_runtime,
     get_creative_intake_runtime,
-    get_creative_loop_runtime,
     get_runtime,
     get_runtime_settings,
     lifespan,
@@ -108,32 +93,14 @@ from .schemas.creative import (
     JobVersionResponse,
     LineageResponse,
 )
-from .schemas.creative_feedback import (
-    CreativeFeedbackDecisionRequest,
-    CreativeFeedbackRunListResponse,
-    CreativeFeedbackRunResponse,
-    FeedbackLessonResponse,
-    NextCreativeTaskPreviewResponse,
-)
 from .schemas.creative_intake import (
     CreativeIntakeIssueResponse,
     CreativeIntakeRunListResponse,
     CreativeIntakeRunResponse,
     CreativePipelineResponse,
 )
-from .schemas.creative_loop import (
-    CreativeLoopAdsOutcomeRequest,
-    CreativeLoopCreativeDecisionRequest,
-    CreativeLoopDemandDecisionRequest,
-    CreativeLoopLessonDecisionRequest,
-    CreativeLoopRunListResponse,
-    CreativeLoopRunResponse,
-    CreativeLoopTimelineResponse,
-    CreativeLoopTimelineStepResponse,
-)
 from .schemas.execution import (
     CommandAcceptedResponse,
-    CreativeLoopStartCommandRequest,
     ExecutionCommandListResponse,
     ExecutionCommandResponse,
 )
@@ -556,36 +523,8 @@ async def ready(request: Request) -> HealthResponse | JSONResponse:
     )
 
 
-def _to_creative_feedback_response(run) -> CreativeFeedbackRunResponse:
-    return CreativeFeedbackRunResponse.model_validate(creative_feedback_to_dict(run))
-
-
 def _to_creative_intake_response(run) -> CreativeIntakeRunResponse:
     return CreativeIntakeRunResponse.model_validate(creative_intake_to_dict(run))
-
-
-def _to_creative_loop_response(run: CreativeLoopRun) -> CreativeLoopRunResponse:
-    return CreativeLoopRunResponse(
-        run_id=run.run_id,
-        source_run_id=run.source_run_id,
-        input_snapshot_id=run.input_snapshot_id,
-        context_snapshot_id=run.context_snapshot_id,
-        state=run.state.value,
-        initial_performance_run_id=run.initial_performance_run_id,
-        initial_evaluation_id=run.initial_evaluation_id,
-        initial_intake_run_id=run.initial_intake_run_id,
-        creative_job_id=run.creative_job_id,
-        approved_creative_version_id=run.approved_creative_version_id,
-        ads_event_id=run.ads_event_id,
-        post_ads_performance_run_id=run.post_ads_performance_run_id,
-        feedback_run_id=run.feedback_run_id,
-        lesson_id=run.lesson_id,
-        next_intake_run_id=run.next_intake_run_id,
-        next_creative_job_id=run.next_creative_job_id,
-        created_at=run.created_at.isoformat(),
-        updated_at=run.updated_at.isoformat(),
-        audit_log=list(run.audit_log),
-    )
 
 
 def _to_execution_command_response(command: ExecutionCommand) -> ExecutionCommandResponse:
@@ -624,302 +563,6 @@ def _accepted(command: ExecutionCommand, created: bool) -> CommandAcceptedRespon
         }
     )
     return CommandAcceptedResponse(command=_to_execution_command_response(command), created=created)
-
-
-def _creative_loop_timeline(run: CreativeLoopRun) -> list[CreativeLoopTimelineStepResponse]:
-    audit = " ".join(run.audit_log)
-    return [
-        CreativeLoopTimelineStepResponse(
-            key="performance-demand",
-            label="H2 Performance demand",
-            status="completed",
-            reference=run.initial_performance_run_id,
-            detail=f"Exact evaluation {run.initial_evaluation_id}",
-        ),
-        CreativeLoopTimelineStepResponse(
-            key="demand-approval",
-            label="Demand approval",
-            status=(
-                "awaiting_approval"
-                if run.state.value == "awaiting_demand_approval"
-                else "rejected"
-                if "demand:rejected" in audit
-                else "deferred"
-                if "demand:deferred" in audit
-                else "completed"
-            ),
-            reference=run.initial_evaluation_id,
-            detail="Pins the exact H2 evaluation before Creative production starts.",
-        ),
-        CreativeLoopTimelineStepResponse(
-            key="creative-production",
-            label="M3/M4 context -> M1 brief -> M2 QA",
-            status=(
-                "completed"
-                if run.creative_job_id
-                else "blocked"
-                if run.state.value in {"needs_evidence", "blocked_conflict"}
-                else "pending"
-            ),
-            reference=run.creative_job_id or run.initial_intake_run_id,
-            detail="Versioned context, bounded revision and exact Creative Set lineage.",
-        ),
-        CreativeLoopTimelineStepResponse(
-            key="creative-approval",
-            label="Final Creative approval",
-            status=(
-                "completed"
-                if run.approved_creative_version_id
-                else "awaiting_approval"
-                if run.state.value == "awaiting_creative_approval"
-                else "rejected"
-                if "creative:rejected" in audit
-                else "pending"
-            ),
-            reference=run.approved_creative_version_id,
-            detail="Approval applies only to the pinned QA-passing version.",
-        ),
-        CreativeLoopTimelineStepResponse(
-            key="ads-outcome",
-            label="Ads outcome event",
-            status=(
-                "completed"
-                if run.ads_event_id
-                else "awaiting_event"
-                if run.state.value == "awaiting_ads_outcome"
-                else "pending"
-            ),
-            reference=run.ads_event_id,
-            detail="External evidence event pinned to the approved Creative version.",
-        ),
-        CreativeLoopTimelineStepResponse(
-            key="feedback-lesson",
-            label="H2 evaluation -> X1 lesson",
-            status=(
-                "awaiting_approval"
-                if run.state.value == "awaiting_lesson_approval"
-                else "completed"
-                if run.feedback_run_id
-                else "pending"
-            ),
-            reference=run.lesson_id or run.feedback_run_id,
-            detail="Performance stays attached to the exact tested Creative version.",
-        ),
-        CreativeLoopTimelineStepResponse(
-            key="next-brief",
-            label="Next-cycle brief",
-            status="completed" if run.next_creative_job_id else "pending",
-            reference=run.next_creative_job_id or run.next_intake_run_id,
-            detail="The bounded pilot stops after preparing the next exact brief.",
-        ),
-    ]
-
-
-@app.get("/api/v1/marketing/creative-loops", response_model=CreativeLoopRunListResponse)
-async def list_creative_loops(
-    runtime: CreativeLoopRuntime = Depends(get_creative_loop_runtime),
-) -> CreativeLoopRunListResponse:
-    runs = await runtime.repository.list()
-    return CreativeLoopRunListResponse(
-        items=[_to_creative_loop_response(run) for run in runs], total=len(runs)
-    )
-
-
-@app.get("/api/v1/marketing/creative-loops/{run_id}", response_model=CreativeLoopRunResponse)
-async def get_creative_loop(
-    run_id: str,
-    runtime: CreativeLoopRuntime = Depends(get_creative_loop_runtime),
-) -> CreativeLoopRunResponse:
-    run = await runtime.repository.get(run_id)
-    if run is None:
-        raise HTTPException(status_code=404, detail="Creative loop run not found")
-    return _to_creative_loop_response(run)
-
-
-@app.get(
-    "/api/v1/marketing/creative-loops/{run_id}/timeline",
-    response_model=CreativeLoopTimelineResponse,
-)
-async def get_creative_loop_timeline(
-    run_id: str,
-    runtime: CreativeLoopRuntime = Depends(get_creative_loop_runtime),
-) -> CreativeLoopTimelineResponse:
-    run = await runtime.repository.get(run_id)
-    if run is None:
-        raise HTTPException(status_code=404, detail="Creative loop run not found")
-    return CreativeLoopTimelineResponse(
-        run=_to_creative_loop_response(run), steps=_creative_loop_timeline(run)
-    )
-
-
-@app.post(
-    "/api/v1/marketing/creative-loops/commands/start",
-    response_model=CommandAcceptedResponse,
-    status_code=status.HTTP_202_ACCEPTED,
-)
-async def enqueue_creative_loop_start(
-    payload: CreativeLoopStartCommandRequest,
-    runtime: CreativeLoopRuntime = Depends(get_creative_loop_runtime),
-    queue: CommandScheduler = Depends(get_command_scheduler),
-) -> CommandAcceptedResponse:
-    try:
-        source = runtime.fixture.case(payload.input_snapshot_id)
-        command, created = await resolve_queue_call(
-            CreativeLoopCommandService(queue).enqueue_start(source)
-        )
-    except (ValueError, CommandPayloadDriftError) as error:
-        raise HTTPException(status_code=409, detail=str(error)) from error
-    return _accepted(command, created)
-
-
-@app.post(
-    "/api/v1/marketing/creative-loops/{run_id}/demand-decision",
-    response_model=CommandAcceptedResponse,
-    status_code=status.HTTP_202_ACCEPTED,
-)
-async def decide_creative_loop_demand(
-    run_id: str,
-    payload: CreativeLoopDemandDecisionRequest,
-    runtime: CreativeLoopRuntime = Depends(get_creative_loop_runtime),
-    queue: CommandScheduler = Depends(get_command_scheduler),
-) -> CommandAcceptedResponse:
-    run = await runtime.repository.get(run_id)
-    if run is None:
-        raise HTTPException(status_code=404, detail="Creative loop run not found")
-    dedupe_key = f"creative-loop:demand:{run.run_id}:{payload.evaluation_id}"
-    if (
-        run.state != CreativeLoopState.AWAITING_DEMAND_APPROVAL
-        or run.initial_evaluation_id != payload.evaluation_id
-    ):
-        existing = await resolve_queue_call(queue.get_by_dedupe_key(dedupe_key))
-        if existing is None:
-            raise HTTPException(status_code=409, detail="Creative loop is not awaiting this demand")
-    try:
-        command, created = await resolve_queue_call(
-            CreativeLoopCommandService(queue).enqueue_demand_decision(
-                run,
-                payload.evaluation_id,
-                payload.decision,
-                payload.reviewer_alias,
-                payload.reason,
-            )
-        )
-    except (ValueError, CommandPayloadDriftError) as error:
-        raise HTTPException(status_code=409, detail=str(error)) from error
-    return _accepted(command, created)
-
-
-@app.post(
-    "/api/v1/marketing/creative-loops/{run_id}/creative-decision",
-    response_model=CommandAcceptedResponse,
-    status_code=status.HTTP_202_ACCEPTED,
-)
-async def decide_creative_loop_creative(
-    run_id: str,
-    payload: CreativeLoopCreativeDecisionRequest,
-    runtime: CreativeLoopRuntime = Depends(get_creative_loop_runtime),
-    queue: CommandScheduler = Depends(get_command_scheduler),
-) -> CommandAcceptedResponse:
-    run = await runtime.repository.get(run_id)
-    if run is None:
-        raise HTTPException(status_code=404, detail="Creative loop run not found")
-    dedupe_key = f"creative-loop:creative:{run.run_id}:{run.creative_job_id}"
-    if run.state != CreativeLoopState.AWAITING_CREATIVE_APPROVAL:
-        existing = await resolve_queue_call(queue.get_by_dedupe_key(dedupe_key))
-        if existing is None:
-            raise HTTPException(
-                status_code=409, detail="Creative loop is not awaiting Creative approval"
-            )
-    if run.creative_job_id is None:
-        raise HTTPException(status_code=409, detail="Creative loop has no Creative job")
-    job = await runtime.creative_runtime.repository.get_job(
-        CreativeJobId.from_string(run.creative_job_id)
-    )
-    if job is None or job.card is None:
-        raise HTTPException(status_code=409, detail="Creative approval card not found")
-    creative_version_ids = job.card.final_version_refs or (job.card.final_version_ref,)
-    try:
-        command, created = await resolve_queue_call(
-            CreativeLoopCommandService(queue).enqueue_creative_decision(
-                run,
-                creative_version_ids,
-                payload.decision,
-                payload.reviewer_alias,
-                payload.reason,
-            )
-        )
-    except (ValueError, CommandPayloadDriftError) as error:
-        raise HTTPException(status_code=409, detail=str(error)) from error
-    return _accepted(command, created)
-
-
-@app.post(
-    "/api/v1/marketing/creative-loops/{run_id}/ads-outcome",
-    response_model=CommandAcceptedResponse,
-    status_code=status.HTTP_202_ACCEPTED,
-)
-async def record_creative_loop_ads_outcome(
-    run_id: str,
-    payload: CreativeLoopAdsOutcomeRequest,
-    runtime: CreativeLoopRuntime = Depends(get_creative_loop_runtime),
-    queue: CommandScheduler = Depends(get_command_scheduler),
-) -> CommandAcceptedResponse:
-    run = await runtime.repository.get(run_id)
-    if run is None:
-        raise HTTPException(status_code=404, detail="Creative loop run not found")
-    outcome = payload.to_domain()
-    dedupe_key = f"creative-loop:ads:{run.run_id}:{outcome.event_id}"
-    if run.state != CreativeLoopState.AWAITING_ADS_OUTCOME:
-        existing = await resolve_queue_call(queue.get_by_dedupe_key(dedupe_key))
-        if existing is None:
-            raise HTTPException(
-                status_code=409, detail="Creative loop is not awaiting an Ads event"
-            )
-    try:
-        command, created = await resolve_queue_call(
-            CreativeLoopCommandService(queue).enqueue_ads_outcome(run, outcome)
-        )
-    except (ValueError, CommandPayloadDriftError) as error:
-        raise HTTPException(status_code=409, detail=str(error)) from error
-    return _accepted(command, created)
-
-
-@app.post(
-    "/api/v1/marketing/creative-loops/{run_id}/lesson-decision",
-    response_model=CommandAcceptedResponse,
-    status_code=status.HTTP_202_ACCEPTED,
-)
-async def decide_creative_loop_lesson(
-    run_id: str,
-    payload: CreativeLoopLessonDecisionRequest,
-    runtime: CreativeLoopRuntime = Depends(get_creative_loop_runtime),
-    queue: CommandScheduler = Depends(get_command_scheduler),
-) -> CommandAcceptedResponse:
-    run = await runtime.repository.get(run_id)
-    if run is None:
-        raise HTTPException(status_code=404, detail="Creative loop run not found")
-    dedupe_key = f"creative-loop:lesson:{run.run_id}:{payload.lesson_id}"
-    if (
-        run.state != CreativeLoopState.AWAITING_LESSON_APPROVAL
-        or run.lesson_id != payload.lesson_id
-    ):
-        existing = await resolve_queue_call(queue.get_by_dedupe_key(dedupe_key))
-        if existing is None:
-            raise HTTPException(status_code=409, detail="Creative loop is not awaiting this lesson")
-    try:
-        command, created = await resolve_queue_call(
-            CreativeLoopCommandService(queue).enqueue_lesson_decision(
-                run,
-                payload.lesson_id,
-                payload.decision,
-                payload.reviewer_alias,
-                payload.reason,
-                payload.learning_proposal_id,
-            )
-        )
-    except (ValueError, CommandPayloadDriftError) as error:
-        raise HTTPException(status_code=409, detail=str(error)) from error
-    return _accepted(command, created)
 
 
 @app.get("/api/v1/execution/commands", response_model=ExecutionCommandListResponse)
@@ -1073,104 +716,6 @@ async def get_creative_pipeline(
             else None
         ),
     )
-
-
-@app.get("/api/v1/creative-feedback", response_model=CreativeFeedbackRunListResponse)
-async def list_creative_feedback_runs(
-    runtime: CreativeFeedbackRuntime = Depends(get_creative_feedback_runtime),
-) -> CreativeFeedbackRunListResponse:
-    runs = await runtime.repository.list()
-    return CreativeFeedbackRunListResponse(
-        items=[_to_creative_feedback_response(run) for run in runs], total=len(runs)
-    )
-
-
-@app.get("/api/v1/creative-feedback/{run_id}", response_model=CreativeFeedbackRunResponse)
-async def get_creative_feedback_run(
-    run_id: str,
-    runtime: CreativeFeedbackRuntime = Depends(get_creative_feedback_runtime),
-) -> CreativeFeedbackRunResponse:
-    run = await runtime.repository.get(run_id)
-    if run is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Creative feedback run not found."
-        )
-    return _to_creative_feedback_response(run)
-
-
-@app.get(
-    "/api/v1/creative-feedback/{run_id}/lesson",
-    response_model=FeedbackLessonResponse,
-)
-async def get_creative_feedback_lesson(
-    run_id: str,
-    runtime: CreativeFeedbackRuntime = Depends(get_creative_feedback_runtime),
-) -> FeedbackLessonResponse:
-    run = await runtime.repository.get(run_id)
-    if run is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Creative feedback run not found."
-        )
-    if run.lesson is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="This feedback run has no evidence-ready lesson.",
-        )
-    response = _to_creative_feedback_response(run)
-    assert response.lesson is not None
-    return response.lesson
-
-
-@app.get(
-    "/api/v1/creative-feedback/{run_id}/next-task-preview",
-    response_model=NextCreativeTaskPreviewResponse,
-)
-async def get_creative_feedback_task_preview(
-    run_id: str,
-    runtime: CreativeFeedbackRuntime = Depends(get_creative_feedback_runtime),
-) -> NextCreativeTaskPreviewResponse:
-    run = await runtime.repository.get(run_id)
-    if run is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Creative feedback run not found."
-        )
-    if run.next_task_preview is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="This feedback run has no actionable next-task preview.",
-        )
-    response = _to_creative_feedback_response(run)
-    assert response.next_task_preview is not None
-    return response.next_task_preview
-
-
-@app.post(
-    "/api/v1/creative-feedback/{run_id}/decision",
-    response_model=CreativeFeedbackRunResponse,
-)
-async def decide_creative_feedback_task(
-    run_id: str,
-    payload: CreativeFeedbackDecisionRequest,
-    runtime: CreativeFeedbackRuntime = Depends(get_creative_feedback_runtime),
-) -> CreativeFeedbackRunResponse:
-    try:
-        run = await runtime.decide(
-            run_id,
-            payload.lesson_id,
-            payload.decision,
-            payload.reviewer_alias,
-            payload.reason,
-            payload.learning_proposal_id,
-        )
-    except ValueError as exc:
-        detail = str(exc)
-        code = (
-            status.HTTP_404_NOT_FOUND
-            if detail == "Creative feedback run not found"
-            else status.HTTP_409_CONFLICT
-        )
-        raise HTTPException(status_code=code, detail=detail) from exc
-    return _to_creative_feedback_response(run)
 
 
 @app.get("/api/v1/creative/jobs/{job_id}", response_model=JobDetailResponse)

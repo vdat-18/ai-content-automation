@@ -120,7 +120,6 @@ from ai_content.domains.marketing.creative.ports.preparation_store import (
     CreativeKnowledgeAssignment,
     ProductionReadyCreativePackage,
 )
-from ai_content.domains.marketing.creative_feedback.bootstrap import CreativeFeedbackRuntime
 from ai_content.domains.marketing.creative_intake.bootstrap import CreativeIntakeRuntime
 from ai_content.domains.marketing.creative_knowledge.models import (
     CreativeKnowledge,
@@ -180,7 +179,6 @@ from .dependencies import (
     get_creative_automation_producer,
     get_creative_automation_state_repository,
     get_creative_automation_storage,
-    get_creative_feedback_runtime,
     get_creative_intake_runtime,
     get_creative_intake_write_runtime,
     get_creative_knowledge_service,
@@ -494,7 +492,6 @@ async def create_marketing_creative_automation(
     intake: CreativeIntakeRuntime = Depends(get_creative_intake_write_runtime),
     providers: ManagedMediaProviderRegistry = Depends(get_managed_media_provider_registry),
     jobs: ICreativeAutomationJobRepository = Depends(get_creative_automation_job_repository),
-    feedback: CreativeFeedbackRuntime = Depends(get_creative_feedback_runtime),
     knowledge: CreativeKnowledgeService = Depends(get_creative_knowledge_service),
     notifications: NotificationRepository = Depends(get_notification_repository),
     states: IMarketingCreativeAutomationStateRepository = Depends(
@@ -735,7 +732,6 @@ async def create_marketing_creative_automation(
                     intake=intake,
                     providers=providers,
                     jobs=jobs,
-                    feedback=feedback,
                     knowledge=knowledge,
                     notifications=notifications,
                     states=states,
@@ -769,7 +765,6 @@ async def _process_automation_request(
     intake: CreativeIntakeRuntime,
     providers: ManagedMediaProviderRegistry,
     jobs: ICreativeAutomationJobRepository,
-    feedback: CreativeFeedbackRuntime,
     knowledge: CreativeKnowledgeService,
     notifications: NotificationRepository,
     states: IMarketingCreativeAutomationStateRepository,
@@ -900,22 +895,6 @@ async def _process_automation_request(
                 source_resolver,
                 existing_package=stored_package,
             )
-    async with measure_automation_step(jobs, request.request_id, "approved_memory"):
-        approved_runs = await feedback.repository.list_approved_memory(
-            brand_id=request.brand,
-            sku_id=request.sku_id,
-        )
-    approved_memory = tuple(
-        ApprovedCreativeMemory(
-            memory_id=run.lesson.lesson_id,
-            summary=run.lesson.summary,
-            supported_facts=run.lesson.supported_facts,
-            non_conclusions=run.lesson.non_conclusions,
-            evidence_refs=run.lesson.evidence_refs,
-        )
-        for run in approved_runs
-        if run.lesson is not None
-    )
     family = compilation.package.sku.product_family
     knowledge_scope = KnowledgeScope(
         niche_id=(product_niche(product_type=family.product_type) if family is not None else None),
@@ -992,7 +971,7 @@ async def _process_automation_request(
     )
     base_compilation = register_context_sources(
         compilation,
-        _memory_sources(approved_memory),
+        (),
     )
     persona_compilation = register_context_sources(
         base_compilation,
@@ -1073,7 +1052,6 @@ async def _process_automation_request(
     if prepared is not None:
         async with measure_automation_step(jobs, request.request_id, "orchestration_planning"):
             orchestration_memory = (
-                *approved_memory,
                 *_creative_knowledge_memory(knowledge_by_stage[KnowledgeStage.ORCHESTRATION]),
             )
             plan = await orchestrator.plan(
