@@ -12,9 +12,14 @@ from sqlalchemy import func, select
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from ai_content.platform.database.schema import marketplace_products
+from ai_content.platform.database.schema import (
+    marketplace_products,
+    product_selections,
+    reference_profiles,
+)
 
 from .parsing import SOURCE, is_non_physical, money
+from .references import ReferenceProfile
 
 
 class ProductRepository(Protocol):
@@ -29,6 +34,16 @@ class ProductRepository(Protocol):
     async def list_listing(self) -> list[dict[str, Any]]: ...
 
     async def get_detail(self, product_id: str) -> dict[str, Any] | None: ...
+
+    async def select_product(self, product_id: str, product_type: str | None) -> None: ...
+
+    async def selections(self) -> dict[str, str | None]: ...
+
+    async def add_profile_if_missing(self, profile: ReferenceProfile) -> None: ...
+
+    async def list_profiles(self) -> list[ReferenceProfile]: ...
+
+    async def update_profile(self, profile: ReferenceProfile) -> bool: ...
 
 
 def _sold(value: object) -> int | None:
@@ -67,6 +82,15 @@ class SqliteProductRepository:
                 detail_captured_at TEXT
             )
             """
+        )
+        self._connection.execute(
+            "CREATE TABLE IF NOT EXISTS product_selections ("
+            "product_id TEXT PRIMARY KEY, product_type TEXT)"
+        )
+        self._connection.execute(
+            "CREATE TABLE IF NOT EXISTS reference_profiles ("
+            "product_type TEXT PRIMARY KEY, keywords TEXT NOT NULL, "
+            "exclude_keywords TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'draft')"
         )
         self._connection.commit()
 
@@ -137,6 +161,54 @@ class SqliteProductRepository:
             (product_id,),
         ).fetchone()
         return json.loads(row[0]) if row else None
+
+    async def select_product(self, product_id: str, product_type: str | None) -> None:
+        self._connection.execute(
+            "INSERT INTO product_selections (product_id, product_type) VALUES (?, ?) "
+            "ON CONFLICT(product_id) DO UPDATE SET product_type=excluded.product_type",
+            (product_id, product_type),
+        )
+        self._connection.commit()
+
+    async def selections(self) -> dict[str, str | None]:
+        rows = self._connection.execute(
+            "SELECT product_id, product_type FROM product_selections"
+        ).fetchall()
+        return {row[0]: row[1] for row in rows}
+
+    async def add_profile_if_missing(self, profile: ReferenceProfile) -> None:
+        self._connection.execute(
+            "INSERT OR IGNORE INTO reference_profiles "
+            "(product_type, keywords, exclude_keywords, status) VALUES (?, ?, ?, ?)",
+            (
+                profile.product_type,
+                json.dumps(profile.keywords, ensure_ascii=False),
+                json.dumps(profile.exclude_keywords, ensure_ascii=False),
+                profile.status,
+            ),
+        )
+        self._connection.commit()
+
+    async def list_profiles(self) -> list[ReferenceProfile]:
+        rows = self._connection.execute(
+            "SELECT product_type, keywords, exclude_keywords, status "
+            "FROM reference_profiles ORDER BY product_type"
+        ).fetchall()
+        return [ReferenceProfile(r[0], json.loads(r[1]), json.loads(r[2]), r[3]) for r in rows]
+
+    async def update_profile(self, profile: ReferenceProfile) -> bool:
+        cursor = self._connection.execute(
+            "UPDATE reference_profiles SET keywords=?, exclude_keywords=?, status=? "
+            "WHERE product_type=?",
+            (
+                json.dumps(profile.keywords, ensure_ascii=False),
+                json.dumps(profile.exclude_keywords, ensure_ascii=False),
+                profile.status,
+                profile.product_type,
+            ),
+        )
+        self._connection.commit()
+        return cursor.rowcount > 0
 
 
 class PostgresProductRepository:
@@ -214,3 +286,58 @@ class PostgresProductRepository:
         )
         async with self._engine.connect() as connection:
             return (await connection.execute(statement)).scalar_one_or_none()
+
+    async def select_product(self, product_id: str, product_type: str | None) -> None:
+        statement = insert(product_selections).values(
+            product_id=product_id, product_type=product_type
+        )
+        statement = statement.on_conflict_do_update(
+            index_elements=["product_id"],
+            set_={"product_type": product_type, "updated_at": func.now()},
+        )
+        async with self._engine.begin() as connection:
+            await connection.execute(statement)
+
+    async def selections(self) -> dict[str, str | None]:
+        statement = select(product_selections.c.product_id, product_selections.c.product_type)
+        async with self._engine.connect() as connection:
+            return {row[0]: row[1] for row in (await connection.execute(statement)).all()}
+
+    async def add_profile_if_missing(self, profile: ReferenceProfile) -> None:
+        statement = (
+            insert(reference_profiles)
+            .values(
+                product_type=profile.product_type,
+                keywords=profile.keywords,
+                exclude_keywords=profile.exclude_keywords,
+                status=profile.status,
+            )
+            .on_conflict_do_nothing(index_elements=["product_type"])
+        )
+        async with self._engine.begin() as connection:
+            await connection.execute(statement)
+
+    async def list_profiles(self) -> list[ReferenceProfile]:
+        statement = select(
+            reference_profiles.c.product_type,
+            reference_profiles.c.keywords,
+            reference_profiles.c.exclude_keywords,
+            reference_profiles.c.status,
+        ).order_by(reference_profiles.c.product_type)
+        async with self._engine.connect() as connection:
+            rows = (await connection.execute(statement)).all()
+        return [ReferenceProfile(r[0], list(r[1]), list(r[2]), r[3]) for r in rows]
+
+    async def update_profile(self, profile: ReferenceProfile) -> bool:
+        statement = (
+            reference_profiles.update()
+            .where(reference_profiles.c.product_type == profile.product_type)
+            .values(
+                keywords=profile.keywords,
+                exclude_keywords=profile.exclude_keywords,
+                status=profile.status,
+                updated_at=func.now(),
+            )
+        )
+        async with self._engine.begin() as connection:
+            return (await connection.execute(statement)).rowcount > 0

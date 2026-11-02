@@ -6,7 +6,9 @@ import json
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from pydantic import BaseModel
 
+from ai_content.domains.marketing.products.references import ReferenceProfile
 from ai_content.domains.marketing.products.service import ProductCatalogService
 
 from .dependencies import get_product_catalog_service, get_runtime_settings
@@ -47,6 +49,49 @@ async def download_media(
     """Save images and videos of captured products under <data root>/media."""
     root = get_runtime_settings().db_path.parent / "media"
     return (await service.download_media(root)).as_dict()
+
+
+class ProfileUpdate(BaseModel):
+    keywords: list[str]
+    exclude_keywords: list[str] = []
+    status: str = "draft"
+
+
+@router.get("/selections")
+async def list_selections(
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> dict[str, str | None]:
+    return await service.selections()
+
+
+@router.get("/reference-profiles")
+async def list_reference_profiles(
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> list[dict[str, Any]]:
+    return [profile.as_dict() for profile in await service.profiles()]
+
+
+@router.put("/reference-profiles/{product_type}")
+async def update_reference_profile(
+    product_type: str,
+    body: ProfileUpdate,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> dict[str, Any]:
+    profile = ReferenceProfile(product_type, body.keywords, body.exclude_keywords, body.status)
+    if not await service.update_profile(profile):
+        raise HTTPException(status_code=404, detail="Profile not found")
+    return profile.as_dict()
+
+
+@router.post("/{product_id}/select")
+async def select_product(
+    product_id: str,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> dict[str, Any]:
+    result = await service.select(product_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Product not captured")
+    return result
 
 
 @router.get("/export")

@@ -129,6 +129,26 @@ marketplace_products = Table(
     schema="marketing",
 )
 
+product_selections = Table(
+    "product_selections",
+    metadata,
+    Column("product_id", Text, primary_key=True),
+    Column("product_type", Text),
+    *_timestamps(),
+    schema="marketing",
+)
+
+reference_profiles = Table(
+    "reference_profiles",
+    metadata,
+    Column("product_type", Text, primary_key=True),
+    Column("keywords", JSONB, nullable=False),
+    Column("exclude_keywords", JSONB, nullable=False),
+    Column("status", Text, nullable=False, server_default=sql_text("'draft'")),
+    *_timestamps(),
+    schema="marketing",
+)
+
 creative_knowledge = Table(
     "creative_knowledge",
     metadata,
@@ -699,6 +719,8 @@ Index("ix_data_source_sync_runs_source", data_source_sync_runs.c.source_id)
 
 __all__ = [
     "marketplace_products",
+    "product_selections",
+    "reference_profiles",
     "ai_usage_events",
     "artifacts",
     "creative_automation_batches",

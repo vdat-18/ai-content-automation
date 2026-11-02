@@ -18,12 +18,16 @@ from .parsing import (
     parse_feed_payload,
     parse_product_page,
 )
+from .references import ProfileGenerationError, ReferenceProfile, ReferenceProfileGenerator
 from .repositories import ProductRepository
 
 
 class ProductCatalogService:
-    def __init__(self, repository: ProductRepository) -> None:
+    def __init__(
+        self, repository: ProductRepository, generator: ReferenceProfileGenerator | None = None
+    ) -> None:
         self._repository = repository
+        self._generator = generator
 
     async def ingest(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Store whatever a captured page or feed response contains."""
@@ -56,6 +60,35 @@ class ProductCatalogService:
 
     async def detail(self, product_id: str) -> dict[str, Any] | None:
         return await self._repository.get_detail(product_id)
+
+    async def select(self, product_id: str) -> dict[str, Any] | None:
+        """Mark a product for content; draft its reference search profile when an LLM is set."""
+        detail = await self._repository.get_detail(product_id)
+        if detail is None:
+            return None
+        await self._repository.select_product(product_id, None)
+        result: dict[str, Any] = {"product_id": product_id, "profile": None, "error": None}
+        if self._generator is None:
+            result["error"] = "LLM is not configured (AIC_SCREENING_API_KEY)"
+            return result
+        try:
+            profile = await self._generator.generate(detail)
+        except ProfileGenerationError as error:
+            result["error"] = str(error)
+            return result
+        await self._repository.add_profile_if_missing(profile)
+        await self._repository.select_product(product_id, profile.product_type)
+        result["profile"] = profile.as_dict()
+        return result
+
+    async def selections(self) -> dict[str, str | None]:
+        return await self._repository.selections()
+
+    async def profiles(self) -> list[ReferenceProfile]:
+        return await self._repository.list_profiles()
+
+    async def update_profile(self, profile: ReferenceProfile) -> bool:
+        return await self._repository.update_profile(profile)
 
     async def export_workbook(self) -> bytes:
         return build_workbook(await self.details())

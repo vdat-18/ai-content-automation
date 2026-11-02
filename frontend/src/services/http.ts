@@ -45,3 +45,11 @@ export function postJson<T>(path: string, body?: object, signal?: AbortSignal): 
   });
 }
 
+export function putJson<T>(path: string, body: object, signal?: AbortSignal): Promise<T> {
+  return requestJson<T>(path, {
+    method: "PUT",
+    signal,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}

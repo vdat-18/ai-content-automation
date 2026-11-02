@@ -1,9 +1,9 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download, Film, Package } from "lucide-react";
 import { useMemo, useState } from "react";
 import { EmptyState, PageHeader, Panel, SkeletonPage } from "../components/ui";
 import { useI18n } from "../hooks/useI18n";
-import { getJson, postJson } from "../services/http";
+import { getJson, postJson, putJson } from "../services/http";
 
 type Product = {
   product_id: string;
@@ -18,6 +18,8 @@ type Product = {
 };
 
 type MediaReport = { downloaded: number; duplicates: number; skipped: number; failed: number };
+type SelectResult = { product_id: string; profile: ReferenceProfile | null; error: string | null };
+type ReferenceProfile = { product_type: string; keywords: string[]; exclude_keywords: string[]; status: string };
 
 const API = "/api/v1/products";
 const toNumber = (value: number | string | null | undefined) => Number(String(value ?? 0).replace(/[.,]/g, "")) || 0;
@@ -36,6 +38,15 @@ export function ProductsPage() {
   const [minSold, setMinSold] = useState(0);
   const query = useQuery({ queryKey: ["products"], queryFn: ({ signal }) => getJson<Product[]>(API, signal), refetchInterval: 10000 });
   const media = useMutation({ mutationFn: () => postJson<MediaReport>(`${API}/media/download`) });
+  const client = useQueryClient();
+  const selections = useQuery({ queryKey: ["product-selections"], queryFn: ({ signal }) => getJson<Record<string, string | null>>(`${API}/selections`, signal) });
+  const select = useMutation({
+    mutationFn: (productId: string) => postJson<SelectResult>(`${API}/${productId}/select`),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ["product-selections"] });
+      void client.invalidateQueries({ queryKey: ["reference-profiles"] });
+    },
+  });
 
   const rows = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -70,6 +81,8 @@ export function ProductsPage() {
         <p role="status">{`${t("New")} ${media.data.downloaded} · ${t("duplicates")} ${media.data.duplicates} · ${t("already saved")} ${media.data.skipped} · ${t("failed")} ${media.data.failed}`}</p>
       )}
       {media.error && <p role="alert">{media.error.message}</p>}
+      {select.data?.error && <p role="alert">{select.data.error}</p>}
+      {select.error && <p role="alert">{select.error.message}</p>}
       <Panel>
         <div className="products-filters">
           <input type="search" placeholder={t("Search title or shop")} value={search} onChange={(event) => setSearch(event.target.value)} />
@@ -86,7 +99,7 @@ export function ProductsPage() {
         {rows.length ? (
           <table className="products-table">
             <thead>
-              <tr><th></th><th>{t("Product")}</th><th>{t("Price")}</th><th>{t("Sold")}</th><th>{t("Reviews")}</th><th>{t("Rating")}</th></tr>
+              <tr><th></th><th>{t("Product")}</th><th>{t("Price")}</th><th>{t("Sold")}</th><th>{t("Reviews")}</th><th>{t("Rating")}</th><th></th></tr>
             </thead>
             <tbody>
               {rows.map((product) => (
@@ -97,6 +110,13 @@ export function ProductsPage() {
                     <td>{toNumber(product.sold_count).toLocaleString("vi-VN")}</td>
                     <td>{toNumber(product.review_count).toLocaleString("vi-VN")}</td>
                     <td>{product.rating ?? "-"}</td>
+                    <td>
+                      {product.product_id in (selections.data ?? {}) ? (
+                        <span className="badge badge--success">{selections.data?.[product.product_id] || t("Selected")}</span>
+                      ) : (
+                        <button className="secondary-button" disabled={select.isPending} onClick={() => select.mutate(product.product_id)}>{t("Select for content")}</button>
+                      )}
+                    </td>
                 </tr>
               ))}
             </tbody>
@@ -105,6 +125,45 @@ export function ProductsPage() {
           <EmptyState icon={<Package />} title="No products" text="Run the extension on TikTok Shop to collect products." />
         )}
       </Panel>
+      <ReferenceProfiles />
     </>
+  );
+}
+
+function ReferenceProfiles() {
+  const { t } = useI18n();
+  const client = useQueryClient();
+  const query = useQuery({ queryKey: ["reference-profiles"], queryFn: ({ signal }) => getJson<ReferenceProfile[]>(`${API}/reference-profiles`, signal) });
+  const save = useMutation({
+    mutationFn: (profile: ReferenceProfile) => putJson<ReferenceProfile>(`${API}/reference-profiles/${encodeURIComponent(profile.product_type)}`, profile),
+    onSuccess: () => client.invalidateQueries({ queryKey: ["reference-profiles"] }),
+  });
+  if (!query.data?.length) return null;
+  const lines = (text: string) => text.split("\n").map((line) => line.trim()).filter(Boolean);
+  return (
+    <Panel>
+      <h2>{t("Pinterest search keywords by product type")}</h2>
+      {query.data.map((profile) => (
+        <form
+          key={`${profile.product_type}-${profile.keywords.join("|")}-${profile.status}`}
+          className="reference-profile"
+          onSubmit={(event) => {
+            event.preventDefault();
+            const data = new FormData(event.currentTarget);
+            save.mutate({
+              product_type: profile.product_type,
+              keywords: lines(String(data.get("keywords"))),
+              exclude_keywords: lines(String(data.get("exclude"))),
+              status: "approved",
+            });
+          }}
+        >
+          <strong>{profile.product_type}</strong> <span className="badge">{profile.status}</span>
+          <label>{t("Keywords (one per line)")}<textarea name="keywords" rows={4} defaultValue={profile.keywords.join("\n")} /></label>
+          <label>{t("Exclude words")}<textarea name="exclude" rows={2} defaultValue={profile.exclude_keywords.join("\n")} /></label>
+          <button className="primary-button" type="submit" disabled={save.isPending}>{t("Save and approve")}</button>
+        </form>
+      ))}
+    </Panel>
   );
 }
