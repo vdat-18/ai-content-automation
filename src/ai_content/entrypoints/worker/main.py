@@ -25,14 +25,9 @@ from ai_content.platform.observability import (
 from ai_content.settings import ApplicationSettings
 
 
-def _parser(config_dir: Path = Path("config")) -> argparse.ArgumentParser:
+def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run the local persistent execution pilot")
     parser.add_argument("--data-root", type=Path, default=None)
-    parser.add_argument(
-        "--config",
-        type=Path,
-        default=config_dir,
-    )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     listing = subparsers.add_parser("list", help="List execution commands")
@@ -67,7 +62,6 @@ async def _async_main(args: argparse.Namespace, settings: ApplicationSettings) -
         container = PostgresRuntimeContainer(
             database,
             root / "artifacts",
-            args.config,
             preparation_config=preparation_settings,
             preparation_api_key=preparation_api_key,
             execution_backend=execution_backend,
@@ -107,7 +101,7 @@ async def _async_main(args: argparse.Namespace, settings: ApplicationSettings) -
 
 def main(argv: list[str] | None = None) -> int:
     settings = ApplicationSettings()
-    args = _parser(settings.config_dir).parse_args(argv)
+    args = _parser().parse_args(argv)
     if sys.platform == "win32":
         asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
     return asyncio.run(_async_main(args, settings))

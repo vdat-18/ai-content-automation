@@ -631,7 +631,6 @@ async def get_runtime(request: Request) -> AsyncIterator[CreativeRuntime]:
     runtime = build_runtime(
         db_path=settings.db_path,
         artifacts_root=settings.artifacts_root,
-        config_dir=settings.config_dir,
     )
     try:
         yield runtime
