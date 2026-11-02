@@ -2,6 +2,11 @@ const enabled = document.getElementById("enabled");
 const status = document.getElementById("status");
 const walkerBox = document.getElementById("walker");
 
+const sendToTab = (tabId, message) =>
+  chrome.tabs.sendMessage(tabId, message, () => {
+    if (chrome.runtime.lastError) status.textContent = "Hãy mở trang TikTok/Pinterest rồi tải lại tab (F5).";
+  });
+
 const refresh = () =>
   chrome.storage.local.get({ enabled: false, sent: 0, error: "", walker: null }, (s) => {
     enabled.checked = Boolean(s.enabled);
@@ -15,12 +20,12 @@ const refresh = () =>
 enabled.addEventListener("change", () => chrome.storage.local.set({ enabled: enabled.checked }));
 document.getElementById("capture").addEventListener("click", () => {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    if (tabs[0]?.id) chrome.tabs.sendMessage(tabs[0].id, { type: "capture-now" });
+    if (tabs[0]?.id) sendToTab(tabs[0].id, { type: "capture-now" });
   });
 });
 document.getElementById("harvest").addEventListener("click", () => {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    if (tabs[0]?.id) chrome.tabs.sendMessage(tabs[0].id, { type: "harvest", rounds: 15 });
+    if (tabs[0]?.id) sendToTab(tabs[0].id, { type: "harvest", rounds: 15 });
   });
 });
 document.getElementById("start").addEventListener("click", async () => {
