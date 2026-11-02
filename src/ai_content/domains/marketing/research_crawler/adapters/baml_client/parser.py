@@ -53,6 +53,12 @@ class LlmResponseParser:
         __result__ = self.__options.merge_options(baml_options).parse_response(function_name="ResolveCreativePersona", llm_response=llm_response, mode="request")
         return typing.cast(types.CreativePersonaHypothesis, __result__)
 
+    def ReviewReferenceImage(
+        self, llm_response: str, baml_options: BamlCallOptions = {},
+    ) -> types.ReferenceImageReview:
+        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="ReviewReferenceImage", llm_response=llm_response, mode="request")
+        return typing.cast(types.ReferenceImageReview, __result__)
+
     def ScreenResearchReference(
         self, llm_response: str, baml_options: BamlCallOptions = {},
     ) -> types.ResearchScreeningDraft:
@@ -102,6 +108,12 @@ class LlmStreamParser:
     ) -> stream_types.CreativePersonaHypothesis:
         __result__ = self.__options.merge_options(baml_options).parse_response(function_name="ResolveCreativePersona", llm_response=llm_response, mode="stream")
         return typing.cast(stream_types.CreativePersonaHypothesis, __result__)
+
+    def ReviewReferenceImage(
+        self, llm_response: str, baml_options: BamlCallOptions = {},
+    ) -> stream_types.ReferenceImageReview:
+        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="ReviewReferenceImage", llm_response=llm_response, mode="stream")
+        return typing.cast(stream_types.ReferenceImageReview, __result__)
 
     def ScreenResearchReference(
         self, llm_response: str, baml_options: BamlCallOptions = {},

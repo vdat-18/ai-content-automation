@@ -3,10 +3,12 @@ import { Package } from "lucide-react";
 import { useState } from "react";
 import { EmptyState, PageHeader, Panel } from "../components/ui";
 import { useI18n } from "../hooks/useI18n";
-import { getJson, putJson } from "../services/http";
+import { getJson, postJson, putJson } from "../services/http";
 
 export type ReferenceProfile = { product_type: string; keywords: string[]; status: string };
-type ReferenceImage = { image_id: string; product_type: string; query: string; image_url: string; pin_url: string; title: string; status: string };
+type Screening = { usable: boolean; reason: string; heavy_text: boolean; style: string[]; composition: string; colors: string[]; focal_point: string };
+type ReferenceImage = { image_id: string; product_type: string; query: string; image_url: string; pin_url: string; title: string; status: string; screening: Screening | null };
+type ScreenReport = { reviewed: number; usable: number; rejected: number; failed: number };
 
 const API = "/api/v1/products";
 
@@ -93,6 +95,10 @@ function ReferenceImages() {
     mutationFn: ({ imageId, next }: { imageId: string; next: string }) => putJson(`${API}/reference-images/${imageId}`, { status: next }),
     onSuccess: () => client.invalidateQueries({ queryKey: ["reference-images"] }),
   });
+  const screen = useMutation({
+    mutationFn: () => postJson<ScreenReport>(`${API}/reference-images/screen?limit=30`),
+    onSuccess: () => client.invalidateQueries({ queryKey: ["reference-images"] }),
+  });
   if (!profiles.data?.length) return null;
   return (
     <Panel>
@@ -101,8 +107,15 @@ function ReferenceImages() {
           <h2>{t("Reference images")}</h2>
           <p>{t("Images crawled from Pinterest. Approve the ones worth using as style references.")}</p>
         </div>
-        <span>{images.data?.length ?? 0}</span>
+        <div>
+          <button className="secondary-button" disabled={screen.isPending} onClick={() => screen.mutate()}>
+            {screen.isPending ? t("Screening…") : t("Screen with Gemini")}
+          </button>{" "}
+          <span>{images.data?.length ?? 0}</span>
+        </div>
       </div>
+      {screen.data && <p role="status">{`${t("Reviewed")} ${screen.data.reviewed} · ${t("usable")} ${screen.data.usable} · ${t("rejected")} ${screen.data.rejected} · ${t("failed")} ${screen.data.failed}`}</p>}
+      {screen.error && <p role="alert">{screen.error.message}</p>}
       <div className="products-filters">
         <label>{t("Product type")}{" "}
           <select value={productType} onChange={(event) => setProductType(event.target.value)}>
@@ -128,6 +141,11 @@ function ReferenceImages() {
               </a>
               <figcaption>
                 <small>{image.query}</small>
+                {image.screening && (
+                  <small title={image.screening.reason}>
+                    {image.screening.usable ? image.screening.style.join(", ") : `✕ ${image.screening.reason}`}
+                  </small>
+                )}
                 <div>
                   <button className="secondary-button" disabled={review.isPending || image.status === "approved"} onClick={() => review.mutate({ imageId: image.image_id, next: "approved" })}>{t("Approve")}</button>
                   <button className="secondary-button" disabled={review.isPending || image.status === "rejected"} onClick={() => review.mutate({ imageId: image.image_id, next: "rejected" })}>{t("Reject")}</button>

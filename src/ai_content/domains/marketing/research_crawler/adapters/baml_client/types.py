@@ -81,7 +81,7 @@ class TextAlignment(str, Enum):
     RIGHT = "RIGHT"
 
 # #########################################################################
-# Generated classes (18)
+# Generated classes (19)
 # #########################################################################
 
 class AutomationImagePlan(BaseModel):
@@ -199,6 +199,16 @@ class LabeledReviewImage(BaseModel):
     label: str
     content: baml_py.Image
 
+class ReferenceImageReview(BaseModel):
+    usable: bool
+    reason: str
+    matches_product_type: bool
+    heavy_text: bool
+    style: typing.List[str]
+    composition: str
+    colors: typing.List[str]
+    focal_point: str
+
 class ReferenceSearchProfileDraft(BaseModel):
     product_type: str
     keywords: typing.List[str]
@@ -267,7 +277,7 @@ class StaticCompositionDraft(BaseModel):
 
 
 # #########################################################################
-# Model rebuilds (18)
+# Model rebuilds (19)
 # #########################################################################
 # Resolve string forward references now that every model above is defined so
 # class declaration order never breaks Pydantic construction (issue #793).
@@ -286,6 +296,7 @@ CreativeIdeaDraft.model_rebuild()
 CreativePersonaHypothesis.model_rebuild()
 CreativeVariationDraft.model_rebuild()
 LabeledReviewImage.model_rebuild()
+ReferenceImageReview.model_rebuild()
 ReferenceSearchProfileDraft.model_rebuild()
 ResearchProductMatchDraft.model_rebuild()
 ResearchReferenceProfileDraft.model_rebuild()

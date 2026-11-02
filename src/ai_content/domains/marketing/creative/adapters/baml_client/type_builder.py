@@ -20,7 +20,7 @@ from .globals import DO_NOT_USE_DIRECTLY_UNLESS_YOU_KNOW_WHAT_YOURE_DOING_RUNTIM
 class TypeBuilder(type_builder.TypeBuilder):
     def __init__(self):
         super().__init__(classes=set(
-          ["AutomationImagePlan","AutomationVideoAudioPlan","AutomationVideoPlan","AutomationVideoScenePlan","CompositionRegion","CompositionTextPlacement","CreativeAutomationPlanDraft","CreativeBriefDraft","CreativeIdeaCandidates","CreativeIdeaDraft","CreativePersonaHypothesis","CreativeVariationDraft","LabeledReviewImage","ReferenceSearchProfileDraft","ResearchProductMatchDraft","ResearchReferenceProfileDraft","ResearchScreeningDraft","StaticCompositionDraft",]
+          ["AutomationImagePlan","AutomationVideoAudioPlan","AutomationVideoPlan","AutomationVideoScenePlan","CompositionRegion","CompositionTextPlacement","CreativeAutomationPlanDraft","CreativeBriefDraft","CreativeIdeaCandidates","CreativeIdeaDraft","CreativePersonaHypothesis","CreativeVariationDraft","LabeledReviewImage","ReferenceImageReview","ReferenceSearchProfileDraft","ResearchProductMatchDraft","ResearchReferenceProfileDraft","ResearchScreeningDraft","StaticCompositionDraft",]
         ), enums=set(
           ["AutomationHumanPresence","AutomationVideoGenerationStrategy","AutomationVideoMusicMode","AutomationVideoVoiceMode","BriefReviewOutcome","CreativeAutomationReadiness","IdeaRecommendation","TextAlignment",]
         ), runtime=DO_NOT_USE_DIRECTLY_UNLESS_YOU_KNOW_WHAT_YOURE_DOING_RUNTIME)
@@ -63,7 +63,7 @@ class TypeBuilder(type_builder.TypeBuilder):
 
 
     # #########################################################################
-    # Generated classes 18
+    # Generated classes 19
     # #########################################################################
 
     @property
@@ -117,6 +117,10 @@ class TypeBuilder(type_builder.TypeBuilder):
     @property
     def LabeledReviewImage(self) -> "LabeledReviewImageViewer":
         return LabeledReviewImageViewer(self)
+
+    @property
+    def ReferenceImageReview(self) -> "ReferenceImageReviewViewer":
+        return ReferenceImageReviewViewer(self)
 
     @property
     def ReferenceSearchProfileDraft(self) -> "ReferenceSearchProfileDraftViewer":
@@ -514,7 +518,7 @@ class TextAlignmentValues:
 
 
 # #########################################################################
-# Generated classes 18
+# Generated classes 19
 # #########################################################################
 
 class AutomationImagePlanAst:
@@ -1324,6 +1328,73 @@ class LabeledReviewImageProperties:
     @property
     def content(self) -> type_builder.ClassPropertyViewer:
         return type_builder.ClassPropertyViewer(self.__bldr.property("content"))
+    
+    
+
+
+class ReferenceImageReviewAst:
+    def __init__(self, tb: type_builder.TypeBuilder):
+        _tb = tb._tb # type: ignore (we know how to use this private attribute)
+        self._bldr = _tb.class_("ReferenceImageReview")
+        self._properties: typing.Set[str] = set([  "usable",  "reason",  "matches_product_type",  "heavy_text",  "style",  "composition",  "colors",  "focal_point",  ])
+        self._props = ReferenceImageReviewProperties(self._bldr, self._properties)
+
+    def type(self) -> baml_py.FieldType:
+        return self._bldr.field()
+
+    @property
+    def props(self) -> "ReferenceImageReviewProperties":
+        return self._props
+
+
+class ReferenceImageReviewViewer(ReferenceImageReviewAst):
+    def __init__(self, tb: type_builder.TypeBuilder):
+        super().__init__(tb)
+
+    
+    def list_properties(self) -> typing.List[typing.Tuple[str, type_builder.ClassPropertyViewer]]:
+        return [(name, type_builder.ClassPropertyViewer(self._bldr.property(name))) for name in self._properties]
+    
+
+
+class ReferenceImageReviewProperties:
+    def __init__(self, bldr: baml_py.ClassBuilder, properties: typing.Set[str]):
+        self.__bldr = bldr
+        self.__properties = properties # type: ignore (we know how to use this private attribute) # noqa: F821
+
+    
+    
+    @property
+    def usable(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("usable"))
+    
+    @property
+    def reason(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("reason"))
+    
+    @property
+    def matches_product_type(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("matches_product_type"))
+    
+    @property
+    def heavy_text(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("heavy_text"))
+    
+    @property
+    def style(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("style"))
+    
+    @property
+    def composition(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("composition"))
+    
+    @property
+    def colors(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("colors"))
+    
+    @property
+    def focal_point(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("focal_point"))
     
     
 

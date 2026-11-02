@@ -14,6 +14,7 @@ from openpyxl.styles import Font
 
 from ai_content.domains.marketing.research_crawler.identity import media_source_fingerprint
 
+from .image_review import ReferenceImageReviewer
 from .media import MediaDownloadReport, download_product_media
 from .parsing import (
     is_feed_url,
@@ -53,10 +54,14 @@ def _clean_pins(pins: list[dict[str, Any]]) -> list[dict[str, str]]:
 
 class ProductCatalogService:
     def __init__(
-        self, repository: ProductRepository, generator: ReferenceProfileGenerator | None = None
+        self,
+        repository: ProductRepository,
+        generator: ReferenceProfileGenerator | None = None,
+        reviewer: ReferenceImageReviewer | None = None,
     ) -> None:
         self._repository = repository
         self._generator = generator
+        self._reviewer = reviewer
 
     async def ingest(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Store whatever a captured page or feed response contains."""
@@ -108,6 +113,29 @@ class ProductCatalogService:
         self, status: str | None, product_type: str | None
     ) -> list[dict[str, Any]]:
         return await self._repository.list_reference_images(status, product_type)
+
+    async def screen_images(self, limit: int) -> dict[str, int]:
+        """Review new, unscreened images with the vision model; unusable ones are rejected."""
+        if self._reviewer is None:
+            raise ProfileGenerationError("LLM is not configured (AIC_SCREENING_API_KEY)")
+        pending = [
+            image
+            for image in await self._repository.list_reference_images("new", None)
+            if image["screening"] is None
+        ][:limit]
+        reviews = await self._reviewer.review_all(pending)
+        counts = {"reviewed": 0, "usable": 0, "rejected": 0, "failed": 0}
+        for image_id, review in reviews.items():
+            if review is None:
+                counts["failed"] += 1
+                continue
+            usable = bool(review["usable"])
+            await self._repository.set_image_screening(
+                image_id, review, None if usable else "rejected"
+            )
+            counts["reviewed"] += 1
+            counts["usable" if usable else "rejected"] += 1
+        return counts
 
     async def set_image_status(self, image_id: str, status: str) -> bool:
         return await self._repository.set_image_status(image_id, status)

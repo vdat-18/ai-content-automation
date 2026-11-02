@@ -60,6 +60,10 @@ class ProductRepository(Protocol):
 
     async def set_image_status(self, image_id: str, status: str) -> bool: ...
 
+    async def set_image_screening(
+        self, image_id: str, screening: dict[str, Any], status: str | None
+    ) -> None: ...
+
 
 def _sold(value: object) -> int | None:
     try:
@@ -114,6 +118,8 @@ class SqliteProductRepository:
             "image_id TEXT PRIMARY KEY, product_type TEXT NOT NULL, query TEXT NOT NULL, "
             "image_url TEXT NOT NULL, pin_url TEXT, title TEXT, status TEXT NOT NULL DEFAULT 'new')"
         )
+        with contextlib.suppress(sqlite3.OperationalError):
+            self._connection.execute("ALTER TABLE reference_images ADD COLUMN screening TEXT")
         self._connection.execute(
             "CREATE TABLE IF NOT EXISTS reference_searches ("
             "product_type TEXT NOT NULL, query TEXT NOT NULL, PRIMARY KEY (product_type, query))"
@@ -267,13 +273,28 @@ class SqliteProductRepository:
         self, status: str | None, product_type: str | None
     ) -> list[dict[str, Any]]:
         rows = self._connection.execute(
-            "SELECT image_id, product_type, query, image_url, pin_url, title, status "
+            "SELECT image_id, product_type, query, image_url, pin_url, title, status, screening "
             "FROM reference_images WHERE (? IS NULL OR status=?) AND (? IS NULL OR product_type=?) "
             "ORDER BY rowid",
             (status, status, product_type, product_type),
         ).fetchall()
         keys = ("image_id", "product_type", "query", "image_url", "pin_url", "title", "status")
-        return [dict(zip(keys, row, strict=True)) for row in rows]
+        return [
+            {
+                **dict(zip(keys, row[:7], strict=True)),
+                "screening": json.loads(row[7]) if row[7] else None,
+            }
+            for row in rows
+        ]
+
+    async def set_image_screening(
+        self, image_id: str, screening: dict[str, Any], status: str | None
+    ) -> None:
+        self._connection.execute(
+            "UPDATE reference_images SET screening=?, status=COALESCE(?, status) WHERE image_id=?",
+            (json.dumps(screening, ensure_ascii=False), status, image_id),
+        )
+        self._connection.commit()
 
     async def set_image_status(self, image_id: str, status: str) -> bool:
         cursor = self._connection.execute(
@@ -457,7 +478,16 @@ class PostgresProductRepository:
             statement = statement.where(reference_images.c.product_type == product_type)
         async with self._engine.connect() as connection:
             rows = (await connection.execute(statement)).mappings().all()
-        keys = ("image_id", "product_type", "query", "image_url", "pin_url", "title", "status")
+        keys = (
+            "image_id",
+            "product_type",
+            "query",
+            "image_url",
+            "pin_url",
+            "title",
+            "status",
+            "screening",
+        )
         return [{key: row[key] for key in keys} for row in rows]
 
     async def set_image_status(self, image_id: str, status: str) -> bool:
@@ -468,3 +498,17 @@ class PostgresProductRepository:
         )
         async with self._engine.begin() as connection:
             return (await connection.execute(statement)).rowcount > 0
+
+    async def set_image_screening(
+        self, image_id: str, screening: dict[str, Any], status: str | None
+    ) -> None:
+        values: dict[str, Any] = {"screening": screening, "updated_at": func.now()}
+        if status is not None:
+            values["status"] = status
+        statement = (
+            reference_images.update()
+            .where(reference_images.c.image_id == image_id)
+            .values(**values)
+        )
+        async with self._engine.begin() as connection:
+            await connection.execute(statement)

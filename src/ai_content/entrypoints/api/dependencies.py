@@ -78,6 +78,7 @@ from ai_content.domains.marketing.media_lab.bootstrap import (
     build_media_asset_runtime,
 )
 from ai_content.domains.marketing.media_lab.domain.assets import MediaAssetLimits
+from ai_content.domains.marketing.products.image_review import ReferenceImageReviewer
 from ai_content.domains.marketing.products.references import ReferenceProfileGenerator
 from ai_content.domains.marketing.products.repositories import SqliteProductRepository
 from ai_content.domains.marketing.products.service import ProductCatalogService
@@ -809,6 +810,16 @@ async def get_creative_knowledge_service(
         repository.close()
 
 
+def _image_reviewer(settings: ApiRuntimeSettings) -> ReferenceImageReviewer | None:
+    if not settings.screening_api_key:
+        return None
+    return ReferenceImageReviewer.from_settings(
+        base_url=settings.screening_base_url,
+        api_key=settings.screening_api_key,
+        model=settings.screening_model,
+    )
+
+
 def _profile_generator(settings: ApiRuntimeSettings) -> ReferenceProfileGenerator | None:
     if not settings.screening_api_key:
         return None
@@ -824,11 +835,13 @@ async def get_product_catalog_service(request: Request) -> AsyncIterator[Product
     settings = get_runtime_settings()
     postgres = _postgres_runtime(request)
     if postgres is not None:
-        yield ProductCatalogService(postgres.product_repository, _profile_generator(settings))
+        yield ProductCatalogService(
+            postgres.product_repository, _profile_generator(settings), _image_reviewer(settings)
+        )
         return
     repository = SqliteProductRepository(settings.db_path)
     try:
-        yield ProductCatalogService(repository, _profile_generator(settings))
+        yield ProductCatalogService(repository, _profile_generator(settings), _image_reviewer(settings))
     finally:
         repository.close()
 

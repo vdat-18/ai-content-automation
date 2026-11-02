@@ -8,7 +8,10 @@ from typing import Any, Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel
 
-from ai_content.domains.marketing.products.references import ReferenceProfile
+from ai_content.domains.marketing.products.references import (
+    ProfileGenerationError,
+    ReferenceProfile,
+)
 from ai_content.domains.marketing.products.service import ProductCatalogService
 
 from .dependencies import get_product_catalog_service, get_runtime_settings
@@ -101,6 +104,17 @@ async def list_reference_images(
     service: ProductCatalogService = Depends(get_product_catalog_service),
 ) -> list[dict[str, Any]]:
     return await service.reference_images(status, product_type)
+
+
+@router.post("/reference-images/screen")
+async def screen_reference_images(
+    limit: int = Query(30, ge=1, le=200),
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> dict[str, int]:
+    try:
+        return await service.screen_images(limit)
+    except ProfileGenerationError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
 
 
 @router.put("/reference-images/{image_id}")

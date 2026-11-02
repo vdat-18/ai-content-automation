@@ -23,7 +23,7 @@ class StreamState(BaseModel, typing.Generic[StreamStateValueT]):
     value: StreamStateValueT
     state: typing_extensions.Literal["Pending", "Incomplete", "Complete"]
 # #########################################################################
-# Generated classes (18)
+# Generated classes (19)
 # #########################################################################
 
 class AutomationImagePlan(BaseModel):
@@ -141,6 +141,16 @@ class LabeledReviewImage(BaseModel):
     label: typing.Optional[str] = None
     content: typing.Optional[baml_py.Image] = None
 
+class ReferenceImageReview(BaseModel):
+    usable: typing.Optional[bool] = None
+    reason: typing.Optional[str] = None
+    matches_product_type: typing.Optional[bool] = None
+    heavy_text: typing.Optional[bool] = None
+    style: typing.List[str]
+    composition: typing.Optional[str] = None
+    colors: typing.List[str]
+    focal_point: typing.Optional[str] = None
+
 class ReferenceSearchProfileDraft(BaseModel):
     product_type: typing.Optional[str] = None
     keywords: typing.List[str]
@@ -209,7 +219,7 @@ class StaticCompositionDraft(BaseModel):
 
 
 # #########################################################################
-# Model rebuilds (18)
+# Model rebuilds (19)
 # #########################################################################
 # Resolve string forward references now that every model above is defined so
 # class declaration order never breaks Pydantic construction (issue #793).
@@ -228,6 +238,7 @@ CreativeIdeaDraft.model_rebuild()
 CreativePersonaHypothesis.model_rebuild()
 CreativeVariationDraft.model_rebuild()
 LabeledReviewImage.model_rebuild()
+ReferenceImageReview.model_rebuild()
 ReferenceSearchProfileDraft.model_rebuild()
 ResearchProductMatchDraft.model_rebuild()
 ResearchReferenceProfileDraft.model_rebuild()

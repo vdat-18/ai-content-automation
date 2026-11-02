@@ -90,3 +90,58 @@ async def test_regenerate_replaces_keywords(tmp_path) -> None:
     profile = (await service.profiles())[0]
     assert profile.keywords[0] == "ao thun flat lay"
     repository.close()
+
+
+async def test_screening_rejects_unusable_images(tmp_path) -> None:
+    from ai_content.domains.marketing.products.image_review import ReferenceImageReviewer
+
+    class _FakeReviewClient:
+        async def ReviewReferenceImage(self, product_type, image):
+            usable = image is not None and product_type == "áo thun"
+            return SimpleNamespace(
+                model_dump=lambda: {"usable": usable, "reason": "ok", "style": []}
+            )
+
+    class _Reviewer(ReferenceImageReviewer):
+        async def review_all(self, images, http=None):
+            return {
+                image["image_id"]: (
+                    await self._client.ReviewReferenceImage(image["product_type"], 1)
+                ).model_dump()
+                for image in images
+            }
+
+    repository = SqliteProductRepository(tmp_path / "v.db")
+    service = ProductCatalogService(repository, reviewer=_Reviewer(_FakeReviewClient()))
+    pins = [
+        {"image_url": "https://i.pinimg.com/236x/ab/cd/ef.jpg", "pin_url": "/pin/1/", "title": "a"}
+    ]
+    await service.ingest(
+        {"kind": "pinterest", "product_type": "áo thun", "query": "q", "pins": pins}
+    )
+    await service.ingest(
+        {
+            "kind": "pinterest",
+            "product_type": "cốc",
+            "query": "q",
+            "pins": pins[:0]
+            or [
+                {
+                    "image_url": "https://i.pinimg.com/236x/aa/bb/cc.jpg",
+                    "pin_url": "/pin/2/",
+                    "title": "b",
+                }
+            ],
+        }
+    )
+    counts = await service.screen_images(10)
+    assert counts == {"reviewed": 2, "usable": 1, "rejected": 1, "failed": 0}
+    statuses = {i["product_type"]: i["status"] for i in await service.reference_images(None, None)}
+    assert statuses == {"áo thun": "new", "cốc": "rejected"}
+    assert await service.screen_images(10) == {
+        "reviewed": 0,
+        "usable": 0,
+        "rejected": 0,
+        "failed": 0,
+    }
+    repository.close()

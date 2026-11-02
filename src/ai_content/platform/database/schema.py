@@ -158,6 +158,7 @@ reference_images = Table(
     Column("pin_url", Text),
     Column("title", Text),
     Column("status", Text, nullable=False, server_default=sql_text("'new'")),
+    Column("screening", JSONB),
     *_timestamps(),
     schema="marketing",
 )
