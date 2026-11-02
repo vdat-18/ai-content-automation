@@ -22,7 +22,6 @@ from .adapters import (
     SqliteDataSourceRepository,
 )
 from .application.compile_context import CreativeSourceContextCompiler
-from .application.compile_performance import SourcePerformanceCompiler
 from .application.sync import DataSourceSyncService
 from .domain.models import DataSourceDefinition, SourceSnapshot, SyncRun
 from .ports.interfaces import IDataSourceRepository
@@ -37,7 +36,6 @@ class DataSourceRuntime:
         self.service = service
         self.repository = repository
         self.compiler = CreativeSourceContextCompiler()
-        self.performance_compiler = SourcePerformanceCompiler()
 
     @property
     def definitions(self) -> tuple[DataSourceDefinition, ...]:

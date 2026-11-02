@@ -15,7 +15,7 @@ export function ResearchCrawlerPage() {
   const { brand, notify } = useWorkspace();
   const brands = useQuery({
     queryKey: ["source-brands"],
-    queryFn: ({ signal }) => pilotApi.sourcePerformanceCandidates({ limit: 1 }, signal),
+    queryFn: ({ signal }) => pilotApi.sourceBrands(signal),
     select: (data) => data.brands,
   });
   const [pickedBrand, setBrandId] = useState<string | null>(null);

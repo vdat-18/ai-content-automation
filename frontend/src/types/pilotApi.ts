@@ -229,52 +229,8 @@ export type MediaAsset = {
   original_url: string;
 };
 
-export type ProductPerformanceCandidate = {
-  source_id: string;
-  snapshot_id: string;
-  brand: string | null;
-  product_item_id: string;
-  sku_id: string | null;
-  sku_mapping_status: string;
-  window_start: string | null;
-  window_end: string | null;
-  currency: string | null;
-  record_count: number;
-  impressions: string | null;
-  clicks: string | null;
-  spend: string | null;
-  conversions: string | null;
-  conversion_value: string | null;
-  roas: string | null;
-};
-
-export type CreativePerformanceCandidate = {
-  source_id: string;
-  snapshot_id: string;
-  brand: string | null;
-  ad_id: string;
-  ad_name: string | null;
-  creative_lineage_status: string;
-  window_label: string;
-  currency: string | null;
-  impressions: string | null;
-  clicks: string | null;
-  spend: string | null;
-  purchases: string | null;
-  add_to_cart: string | null;
-  purchase_conversion_value: string | null;
-  roas: string | null;
-  cost_per_atc: string | null;
-};
-
-export type SourcePerformanceCandidates = {
+export type SourceBrands = {
   brands: string[];
-  product_total: number;
-  mapped_sku_total: number;
-  creative_total: number;
-  unlinked_creative_total: number;
-  products: ProductPerformanceCandidate[];
-  creatives: CreativePerformanceCandidate[];
 };
 
 export type CreativeJobSummary = {

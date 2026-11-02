@@ -2,15 +2,10 @@
 
 from __future__ import annotations
 
-import asyncio
 from dataclasses import asdict
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from ai_content.domains.marketing.data_sources.application.compile_performance import (
-    CreativePerformanceCandidate,
-    ProductPerformanceCandidate,
-)
 from ai_content.domains.marketing.data_sources.bootstrap import DataSourceRuntime
 from ai_content.domains.marketing.data_sources.commands import (
     enqueue_data_source_sync,
@@ -35,7 +30,6 @@ from .dependencies import (
     get_runtime_settings,
 )
 from .schemas.data_sources import (
-    CreativePerformanceCandidateResponse,
     CreativeSourceContextResponse,
     DataSourceListResponse,
     DataSourceStatusResponse,
@@ -44,8 +38,7 @@ from .schemas.data_sources import (
     ProductFamilyCatalogResponse,
     ProductFamilyMediaResponse,
     ProductFamilyVariantResponse,
-    ProductPerformanceCandidateResponse,
-    SourcePerformanceCandidatesResponse,
+    SourceBrandsResponse,
 )
 
 router = APIRouter(prefix="/api/v1/data-sources", tags=["data-sources"])
@@ -238,33 +231,17 @@ def _product_family_response(
     )
 
 
-@router.get("/performance-candidates", response_model=SourcePerformanceCandidatesResponse)
-async def list_source_performance_candidates(
-    limit: int = Query(default=20, gt=0, le=100),
-    brand: str | None = Query(default=None, min_length=1),
+@router.get("/brands", response_model=SourceBrandsResponse)
+async def list_source_brands(
     runtime: DataSourceRuntime = Depends(get_data_source_runtime),
-) -> SourcePerformanceCandidatesResponse:
-    """Return current provider evidence without creating a Performance decision."""
-    snapshots = await runtime.repository.list_latest_snapshots()
-    report = await asyncio.to_thread(
-        runtime.performance_compiler.compile, snapshots, runtime.definitions
-    )
-    brands = sorted(
-        {item.brand for item in (*report.products, *report.creatives) if item.brand is not None}
-    )
-    products = tuple(item for item in report.products if brand is None or item.brand == brand)
-    creatives = tuple(item for item in report.creatives if brand is None or item.brand == brand)
-    return SourcePerformanceCandidatesResponse(
-        brands=brands,
-        product_total=len(products),
-        mapped_sku_total=sum(item.sku_id is not None for item in products),
-        creative_total=len(creatives),
-        unlinked_creative_total=sum(
-            item.creative_lineage_status == "unlinked" for item in creatives
-        ),
-        products=[_product_candidate_response(item) for item in products[:limit]],
-        creatives=[_creative_candidate_response(item) for item in creatives[:limit]],
-    )
+) -> SourceBrandsResponse:
+    """Return the brands named by the configured data sources."""
+    brands = {
+        brand.strip()
+        for definition in runtime.definitions
+        if isinstance(brand := definition.metadata.get("brand"), str) and brand.strip()
+    }
+    return SourceBrandsResponse(brands=sorted(brands))
 
 
 @router.get("/creative-context", response_model=CreativeSourceContextResponse)
@@ -288,44 +265,6 @@ async def compile_creative_context(
     except ValueError as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
     return CreativeSourceContextResponse(sku=asdict(sku), context=asdict(context))
-
-
-def _decimal_text(value: object) -> str | None:
-    return str(value) if value is not None else None
-
-
-def _product_candidate_response(
-    item: ProductPerformanceCandidate,
-) -> ProductPerformanceCandidateResponse:
-    payload = asdict(item)
-    for field in (
-        "impressions",
-        "clicks",
-        "spend",
-        "conversions",
-        "conversion_value",
-        "roas",
-    ):
-        payload[field] = _decimal_text(payload[field])
-    return ProductPerformanceCandidateResponse(**payload)
-
-
-def _creative_candidate_response(
-    item: CreativePerformanceCandidate,
-) -> CreativePerformanceCandidateResponse:
-    payload = asdict(item)
-    for field in (
-        "impressions",
-        "clicks",
-        "spend",
-        "purchases",
-        "add_to_cart",
-        "purchase_conversion_value",
-        "roas",
-        "cost_per_atc",
-    ):
-        payload[field] = _decimal_text(payload[field])
-    return CreativePerformanceCandidateResponse(**payload)
 
 
 __all__ = ["router"]

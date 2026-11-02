@@ -28,7 +28,7 @@ import type {
   ResearchRecordPage,
   ShortlistedResearchReference,
   ResearchRecordReviewRequest,
-  SourcePerformanceCandidates,
+  SourceBrands,
   WorkspaceNotification,
   WorkspaceNotificationList,
 } from "../types/pilotApi";
@@ -157,11 +157,7 @@ export const pilotApi = {
     postJson<MarketingCreativeAutomationDetail>(`/api/v1/marketing/creative-automations/${encodeURIComponent(requestId)}/generate-again`, body),
   takeOverMarketingCreativeManually: (requestId: string, body: object) =>
     postJson<MarketingCreativeAutomationDetail>(`/api/v1/marketing/creative-automations/${encodeURIComponent(requestId)}/manual-takeover`, body),
-  sourcePerformanceCandidates: ({ brand, limit = 20 }: { brand?: string; limit?: number } = {}, signal?: AbortSignal) => {
-    const query = new URLSearchParams({ limit: String(limit) });
-    if (brand) query.set("brand", brand);
-    return getJson<SourcePerformanceCandidates>(`/api/v1/data-sources/performance-candidates?${query}`, signal);
-  },
+  sourceBrands: (signal?: AbortSignal) => getJson<SourceBrands>("/api/v1/data-sources/brands", signal),
   syncDataSource: (sourceId: string) => postJson<DataSourceSyncAccepted>(`/api/v1/data-sources/${encodeURIComponent(sourceId)}/sync`),
   syncAllDataSources: () => postJson<DataSourceSyncAccepted>("/api/v1/data-sources/sync-all"),
   creativeIntakes: <T>(signal?: AbortSignal) => getJson<ListResponse<T>>("/api/v1/creative/intakes", signal),
