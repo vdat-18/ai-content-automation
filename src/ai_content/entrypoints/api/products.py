@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 
 from ai_content.domains.marketing.products.service import ProductCatalogService
 
-from .dependencies import get_product_catalog_service
+from .dependencies import get_product_catalog_service, get_runtime_settings
 
 router = APIRouter(prefix="/api/v1/products", tags=["products"])
 
@@ -34,9 +34,19 @@ async def capture_queue(
 
 @router.get("")
 async def list_products(
+    include_junk: bool = False,
     service: ProductCatalogService = Depends(get_product_catalog_service),
 ) -> list[dict[str, Any]]:
-    return await service.details()
+    return await service.details(include_junk)
+
+
+@router.post("/media/download")
+async def download_media(
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> dict[str, int]:
+    """Save images and videos of captured products under <data root>/media."""
+    root = get_runtime_settings().db_path.parent / "media"
+    return (await service.download_media(root)).as_dict()
 
 
 @router.get("/export")

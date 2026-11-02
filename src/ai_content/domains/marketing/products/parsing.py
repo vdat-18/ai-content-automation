@@ -31,6 +31,29 @@ def money(value: object, currency: str | None) -> int | None:
     return int(text) if text.isdigit() else None
 
 
+_NON_PHYSICAL = re.compile(r"voucher|mã giảm|thẻ quà|e-?gift|nạp (thẻ|tiền)|thẻ cào", re.IGNORECASE)
+MIN_REAL_PRICE_VND = 1000
+
+
+def is_non_physical(title: str | None) -> bool:
+    return bool(_NON_PHYSICAL.search(title or ""))
+
+
+def junk_reason(product: dict[str, Any]) -> str | None:
+    """Why a captured product is not worth turning into content, or None."""
+    price = product.get("price") or {}
+    sale = money(price.get("sale"), price.get("currency"))
+    if price.get("currency") != "VND" or sale is None:
+        return "not a VND price"
+    if sale < MIN_REAL_PRICE_VND:
+        return "promo price under 1,000 VND"
+    if is_non_physical(product.get("title")):
+        return "voucher or non-physical item"
+    if not product.get("images"):
+        return "no images"
+    return None
+
+
 def _int(value: object) -> int | None:
     if value in (None, ""):
         return None
@@ -186,7 +209,9 @@ def parse_feed_payload(body: str) -> list[dict[str, Any]]:
 __all__ = [
     "SOURCE",
     "is_feed_url",
+    "is_non_physical",
     "is_product_url",
+    "junk_reason",
     "money",
     "parse_feed_payload",
     "parse_product_page",

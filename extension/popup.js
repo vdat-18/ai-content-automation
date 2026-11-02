@@ -38,5 +38,18 @@ document.getElementById("start").addEventListener("click", async () => {
   }
 });
 document.getElementById("stop").addEventListener("click", () => chrome.runtime.sendMessage({ type: "walker-stop" }));
+const API = "http://127.0.0.1:8000/api/v1/products";
+document.getElementById("xlsx").addEventListener("click", () => chrome.tabs.create({ url: `${API}/export?format=xlsx` }));
+document.getElementById("json").addEventListener("click", () => chrome.tabs.create({ url: `${API}/export?format=json` }));
+document.getElementById("media").addEventListener("click", async () => {
+  const box = document.getElementById("media-status");
+  box.textContent = "Đang tải...";
+  try {
+    const r = await (await fetch(`${API}/media/download`, { method: "POST" })).json();
+    box.textContent = `Mới ${r.downloaded}, trùng ${r.duplicates}, đã có ${r.skipped}, lỗi ${r.failed}`;
+  } catch (error) {
+    box.textContent = `Lỗi: ${error}`;
+  }
+});
 chrome.storage.onChanged.addListener(refresh);
 refresh();

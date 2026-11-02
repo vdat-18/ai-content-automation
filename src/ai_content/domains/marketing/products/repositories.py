@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from ai_content.platform.database.schema import marketplace_products
 
-from .parsing import SOURCE, money
+from .parsing import SOURCE, is_non_physical, money
 
 
 class ProductRepository(Protocol):
@@ -44,7 +44,7 @@ def _queue_candidates(rows: list[dict[str, Any]], limit: int) -> list[str]:
     for item in rows:
         url = item.get("url") or ""
         sale = money(item.get("sale_price"), item.get("currency"))
-        if "/pdp/" not in url or sale is None or sale < 1000:
+        if "/pdp/" not in url or sale is None or sale < 1000 or is_non_physical(item.get("title")):
             continue
         eligible.append((not item.get("has_video"), -(_sold(item.get("sold_count")) or 0), url))
     eligible.sort()

@@ -4,12 +4,20 @@ from __future__ import annotations
 
 import json
 from io import BytesIO
+from pathlib import Path
 from typing import Any
 
 from openpyxl import Workbook
 from openpyxl.styles import Font
 
-from .parsing import is_feed_url, is_product_url, parse_feed_payload, parse_product_page
+from .media import MediaDownloadReport, download_product_media
+from .parsing import (
+    is_feed_url,
+    is_product_url,
+    junk_reason,
+    parse_feed_payload,
+    parse_product_page,
+)
 from .repositories import ProductRepository
 
 
@@ -36,8 +44,12 @@ class ProductCatalogService:
     async def queue(self, limit: int) -> list[str]:
         return await self._repository.queue(limit)
 
-    async def details(self) -> list[dict[str, Any]]:
-        return await self._repository.list_details()
+    async def details(self, include_junk: bool = False) -> list[dict[str, Any]]:
+        products = await self._repository.list_details()
+        return products if include_junk else [p for p in products if junk_reason(p) is None]
+
+    async def download_media(self, media_root: Path) -> MediaDownloadReport:
+        return await download_product_media(await self.details(), media_root)
 
     async def listing(self) -> list[dict[str, Any]]:
         return await self._repository.list_listing()

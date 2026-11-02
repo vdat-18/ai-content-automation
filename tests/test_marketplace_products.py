@@ -78,3 +78,32 @@ async def test_ingest_queue_and_export(tmp_path) -> None:
     assert book.sheetnames == ["products", "variants", "images", "videos", "specifications"]
     assert book["products"].max_row == 2
     repository.close()
+
+
+def test_junk_reason() -> None:
+    from ai_content.domains.marketing.products.parsing import junk_reason
+
+    base = {"price": {"sale": "99000", "currency": "VND"}, "title": "Áo", "images": ["u"]}
+    assert junk_reason(base) is None
+    assert junk_reason({**base, "price": {"sale": "1", "currency": "VND"}})
+    assert junk_reason({**base, "title": "E-voucher giảm 50k"})
+    assert junk_reason({**base, "images": []})
+
+
+async def test_media_download_skips_duplicates(tmp_path) -> None:
+    import httpx
+
+    from ai_content.domains.marketing.products.media import download_product_media
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, content=b"same-bytes", headers={"content-type": "image/jpeg"})
+
+    products = [
+        {"product_id": "1", "images": ["https://x/a", "https://x/b"]},
+        {"product_id": "2", "images": ["https://x/c"]},
+    ]
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+        report = await download_product_media(products, tmp_path, client)
+        again = await download_product_media(products, tmp_path, client)
+    assert (report.downloaded, report.duplicates) == (1, 2)
+    assert again.skipped == 1
