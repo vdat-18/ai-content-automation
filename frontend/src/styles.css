@@ -1333,3 +1333,11 @@ body.column-resizing * { cursor: col-resize !important; user-select: none !impor
 .products-table th, .products-table td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border, #ddd); vertical-align: middle; }
 .products-table small { display: block; opacity: 0.7; }
 .products-table img { object-fit: cover; border-radius: 6px; }
+
+.reference-profile { border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 14px; display: grid; gap: 12px; }
+.reference-profile__head { display: flex; align-items: center; gap: 10px; text-transform: capitalize; }
+.reference-profile__fields { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; }
+.reference-profile__fields label { display: grid; gap: 6px; font-size: var(--text-xs); color: var(--muted); }
+.reference-profile__fields textarea { width: 100%; resize: vertical; font: inherit; color: var(--text, inherit); padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.reference-profile__actions { display: flex; justify-content: flex-end; }
+@media (max-width: 720px) { .reference-profile__fields { grid-template-columns: 1fr; } }

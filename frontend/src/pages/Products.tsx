@@ -142,7 +142,12 @@ function ReferenceProfiles() {
   const lines = (text: string) => text.split("\n").map((line) => line.trim()).filter(Boolean);
   return (
     <Panel>
-      <h2>{t("Pinterest search keywords by product type")}</h2>
+      <div className="panel-header">
+        <div>
+          <h2>{t("Pinterest search keywords")}</h2>
+          <p>{t("Review the keywords for each product type, then approve them to start crawling.")}</p>
+        </div>
+      </div>
       {query.data.map((profile) => (
         <form
           key={`${profile.product_type}-${profile.keywords.join("|")}-${profile.status}`}
@@ -158,10 +163,23 @@ function ReferenceProfiles() {
             });
           }}
         >
-          <strong>{profile.product_type}</strong> <span className="badge">{profile.status}</span>
-          <label>{t("Keywords (one per line)")}<textarea name="keywords" rows={4} defaultValue={profile.keywords.join("\n")} /></label>
-          <label>{t("Exclude words")}<textarea name="exclude" rows={2} defaultValue={profile.exclude_keywords.join("\n")} /></label>
-          <button className="primary-button" type="submit" disabled={save.isPending}>{t("Save and approve")}</button>
+          <div className="reference-profile__head">
+            <strong>{profile.product_type}</strong>
+            <span className={`badge badge--${profile.status === "approved" ? "success" : "warning"}`}>{profile.status}</span>
+          </div>
+          <div className="reference-profile__fields">
+            <label>
+              <span>{t("Keywords (one per line)")}</span>
+              <textarea name="keywords" rows={5} defaultValue={profile.keywords.join("\n")} />
+            </label>
+            <label>
+              <span>{t("Exclude words")}</span>
+              <textarea name="exclude" rows={5} defaultValue={profile.exclude_keywords.join("\n")} />
+            </label>
+          </div>
+          <div className="reference-profile__actions">
+            <button className="primary-button" type="submit" disabled={save.isPending}>{t("Save and approve")}</button>
+          </div>
         </form>
       ))}
     </Panel>
