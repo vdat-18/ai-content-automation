@@ -44,6 +44,14 @@ const allNav: NavItem[] = [
   { to: "/workflows", label: "AI activity", icon: GitBranch, group: "activity" },
 ];
 
+const navGroups: { group: NavGroup; label: string }[] = [
+  { group: "marketing", label: "Marketing" },
+  { group: "creative", label: "Creative workflow" },
+  { group: "research", label: "Research & knowledge" },
+  { group: "activity", label: "Automation" },
+  { group: "system", label: "Operations" },
+];
+
 export function AppShell() {
   const { language, setLanguage, t } = useI18n();
   const { theme, setTheme } = useTheme();
@@ -173,38 +181,20 @@ export function AppShell() {
         </div>
 
         <nav>
-          <p className="nav-label">{t("Marketing")}</p>
-          {nav.filter((item) => item.group === "marketing").map(({ to, label, icon: Icon, count }) => (
-            <NavLink key={to} to={to} end={to === "/"} onClick={closeMobile}>
-              <Icon size={18} /><span>{t(label)}</span>{count && pending > 0 && <em>{pending}</em>}
-            </NavLink>
-          ))}
-          <p className="nav-label nav-label--spaced">{t("Creative workflow")}</p>
-          {nav.filter((item) => item.group === "creative").map(({ to, label, icon: Icon, count }) => (
-            <NavLink key={to} to={to} onClick={closeMobile}>
-              <Icon size={18} /><span>{t(label)}</span>{count && pending > 0 && <em>{pending}</em>}
-            </NavLink>
-          ))}
-          <p className="nav-label nav-label--spaced">{t("Research & knowledge")}</p>
-          {nav.filter((item) => item.group === "research").map(({ to, label, icon: Icon }) => (
-            <NavLink key={to} to={to} onClick={closeMobile}>
-              <Icon size={18} /><span>{t(label)}</span>
-            </NavLink>
-          ))}
-          <p className="nav-label nav-label--spaced">{t("Automation")}</p>
-          {nav.filter((item) => item.group === "activity").map(({ to, label, icon: Icon }) => (
-            <NavLink key={to} to={to} onClick={closeMobile}><Icon size={18} /><span>{t(label)}</span></NavLink>
-          ))}
-          <details className="operator-nav" open={nav.some((item) => item.group === "system" && (location.pathname === item.to || location.pathname.startsWith(`${item.to}/`)))}>
-            <summary><span>{t("Operations")}</span><ChevronDown size={15} /></summary>
-            <div>
-              {nav.filter((item) => item.group === "system").map(({ to, label, icon: Icon, exception }) => (
-                <NavLink key={to} to={to} onClick={closeMobile}>
-                  <Icon size={18} /><span>{t(label)}</span>{exception && issues > 0 && <em className="danger-count">{issues}</em>}
+          {navGroups.map(({ group, label }) => {
+            const items = nav.filter((item) => item.group === group);
+            if (!items.length) return null;
+            return <div key={group} className="nav-group">
+              <p className="nav-label">{t(label)}</p>
+              {items.map(({ to, label: itemLabel, icon: Icon, count, exception }) => (
+                <NavLink key={to} to={to} end={to === "/"} onClick={closeMobile}>
+                  <Icon size={18} /><span>{t(itemLabel)}</span>
+                  {count && pending > 0 && <em>{pending}</em>}
+                  {exception && issues > 0 && <em className="danger-count">{issues}</em>}
                 </NavLink>
               ))}
-            </div>
-          </details>
+            </div>;
+          })}
         </nav>
 
         <div className="automation-card">

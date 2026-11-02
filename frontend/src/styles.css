@@ -341,7 +341,7 @@ body.sidebar-resizing * { cursor: col-resize !important; user-select: none !impo
   margin: 0 10px 5px;
   font-weight: 700;
 }
-.nav-label--spaced { margin-top: 20px; }
+.nav-group + .nav-group { margin-top: 20px; }
 
 /* Nav links */
 .sidebar nav { flex: 1; }
