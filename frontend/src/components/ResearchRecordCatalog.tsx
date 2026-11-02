@@ -1,8 +1,6 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { ExternalLink, ImageOff, Play, Trash2 } from "lucide-react";
 import type { ResearchCrawlRecord, ResearchReviewDecision } from "../types/pilotApi";
-import { pilotApi } from "../services/pilotApi";
 import { Modal } from "./Modal";
 
 type ResearchRecordCatalogProps = {
@@ -70,12 +68,6 @@ export function ResearchRecordCatalog({
   deletePending = false,
 }: ResearchRecordCatalogProps) {
   const [selected, setSelected] = useState<ResearchCrawlRecord | null>(null);
-  const recordKey = typeof selected?.metadata.record_key === "string" ? selected.metadata.record_key : null;
-  const detail = useQuery({
-    queryKey: ["research-record", recordKey],
-    queryFn: ({ signal }) => pilotApi.researchRecord(recordKey!, signal),
-    enabled: recordKey !== null,
-  });
   const selectedKeys = new Set(selectedRecordKeys);
   return <>
     <div className="research-record-grid">
@@ -115,7 +107,6 @@ export function ResearchRecordCatalog({
     </div>
     {selected && <ResearchRecordDialog
       record={selected}
-      versions={detail.data?.versions ?? []}
       onClose={() => setSelected(null)}
       onReview={onReview}
       reviewPending={reviewPending}
@@ -154,7 +145,6 @@ function ResearchCardMedia({ record, profile }: { record: ResearchCrawlRecord; p
 
 function ResearchRecordDialog({
   record,
-  versions,
   onClose,
   onReview,
   reviewPending,
@@ -164,7 +154,6 @@ function ResearchRecordDialog({
   deletePending,
 }: {
   record: ResearchCrawlRecord;
-  versions: { version_id: string; job_id: string; observed_at: string }[];
   onClose: () => void;
   onReview?: ResearchRecordCatalogProps["onReview"];
   reviewPending: boolean;
@@ -253,7 +242,6 @@ function ResearchRecordDialog({
       </section>}
       {record.links.length > 0 && <section><h3>Original links</h3><div className="research-record-links">{record.links.map((link) => <a key={`${link.url}-${link.text}`} href={link.url} target="_blank" rel="noreferrer"><span>{link.text || hostname(link.url)}</span><ExternalLink size={14} /></a>)}</div></section>}
       {metadata.length > 0 && <details className="research-record-metadata"><summary>Technical details ({metadata.length})</summary><dl>{metadata.map(([key, value]) => <div key={key}><dt>{key.replaceAll("_", " ")}</dt><dd>{formatMetadata(value)}</dd></div>)}</dl></details>}
-      {versions.length > 0 && <section><h3>Change history ({versions.length})</h3><div className="research-version-list">{versions.map((version, index) => <div key={version.version_id}><strong>Version {versions.length - index}</strong><span>{new Date(version.observed_at).toLocaleString()}</span><small>Run {version.job_id}</small></div>)}</div></section>}
       {record.source_url && <a className="primary-button research-record-source" href={record.source_url} target="_blank" rel="noreferrer">Open original <ExternalLink size={15} /></a>}
       {recordKey && onDelete && <section className="research-delete-panel">
         <div><h3>Delete reference</h3><p>Remove this reference from Research Library. References already used by Creative are protected.</p></div>

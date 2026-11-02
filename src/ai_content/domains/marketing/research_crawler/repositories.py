@@ -16,7 +16,6 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from ai_content.platform.database.schema import (
     research_crawl_jobs,
-    research_record_versions,
     research_records,
     research_reference_products,
     research_reference_uses,
@@ -36,7 +35,6 @@ from .models import (
     ResearchRecordPage,
     ResearchRecordQuery,
     ResearchRecordUpsertSummary,
-    ResearchRecordVersion,
     ResearchReviewStatus,
     ResearchScreening,
     StoredResearchRecord,
@@ -44,7 +42,6 @@ from .models import (
 
 _JOB_ADAPTER = TypeAdapter(ResearchCrawlJob)
 _RECORD_ADAPTER = TypeAdapter(StoredResearchRecord)
-_VERSION_ADAPTER = TypeAdapter(ResearchRecordVersion)
 _ACTIVE_STATUSES = ("queued", "pending", "running", "retry_wait")
 
 
@@ -89,7 +86,6 @@ class SqliteResearchCrawlRepository:
                 has_videos INTEGER NOT NULL,
                 content_hash TEXT NOT NULL,
                 latest_run_id TEXT NOT NULL,
-                version_count INTEGER NOT NULL,
                 first_seen_at TEXT NOT NULL,
                 last_seen_at TEXT NOT NULL,
                 payload TEXT NOT NULL,
@@ -97,15 +93,6 @@ class SqliteResearchCrawlRepository:
             );
             CREATE INDEX IF NOT EXISTS idx_research_records_scope_seen
                 ON research_records(workspace_id, brand_id, last_seen_at DESC);
-            CREATE TABLE IF NOT EXISTS research_record_versions (
-                version_id TEXT PRIMARY KEY,
-                record_key TEXT NOT NULL,
-                job_id TEXT NOT NULL,
-                content_hash TEXT NOT NULL,
-                observed_at TEXT NOT NULL,
-                payload TEXT NOT NULL,
-                UNIQUE(record_key, content_hash)
-            );
             CREATE TABLE IF NOT EXISTS research_run_records (
                 job_id TEXT NOT NULL,
                 record_key TEXT NOT NULL,
@@ -266,7 +253,7 @@ class SqliteResearchCrawlRepository:
                 )
                 content_hash = research_record_content_hash(record)
                 existing = self._connection.execute(
-                    "SELECT payload, content_hash, version_count FROM research_records WHERE record_key = ?",
+                    "SELECT payload, content_hash FROM research_records WHERE record_key = ?",
                     (key,),
                 ).fetchone()
                 disposition = (
@@ -280,9 +267,6 @@ class SqliteResearchCrawlRepository:
                     if existing is None
                     else _RECORD_ADAPTER.validate_json(existing["payload"]).first_seen_at
                 )
-                version_count = 1 if existing is None else int(existing["version_count"])
-                if disposition == "updated":
-                    version_count += 1
                 stored = _stored_record(
                     job,
                     record,
@@ -290,7 +274,6 @@ class SqliteResearchCrawlRepository:
                     content_hash,
                     first_seen,
                     observed_at,
-                    version_count,
                     _RECORD_ADAPTER.validate_json(existing["payload"])
                     if existing is not None
                     else None,
@@ -303,9 +286,9 @@ class SqliteResearchCrawlRepository:
                         record_key, workspace_id, brand_id, platform, external_id,
                         record_type, title, text, status, advertiser, destination_domain,
                         screening_status, review_status, reviewer_alias, reviewed_at, review_reason,
-                        has_images, has_videos, content_hash, latest_run_id, version_count,
+                        has_images, has_videos, content_hash, latest_run_id,
                         first_seen_at, last_seen_at, payload
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     ON CONFLICT(record_key) DO UPDATE SET
                         record_type=excluded.record_type, title=excluded.title, text=excluded.text,
                         status=excluded.status, advertiser=excluded.advertiser,
@@ -315,28 +298,11 @@ class SqliteResearchCrawlRepository:
                         reviewed_at=excluded.reviewed_at, review_reason=excluded.review_reason,
                         has_images=excluded.has_images, has_videos=excluded.has_videos,
                         content_hash=excluded.content_hash, latest_run_id=excluded.latest_run_id,
-                        version_count=excluded.version_count, last_seen_at=excluded.last_seen_at,
+                        last_seen_at=excluded.last_seen_at,
                         payload=excluded.payload
                     """,
                     _stored_values(stored),
                 )
-                if disposition != "unchanged":
-                    version = _version(stored, job.job_id, record, observed_at)
-                    self._connection.execute(
-                        """
-                        INSERT OR IGNORE INTO research_record_versions(
-                            version_id, record_key, job_id, content_hash, observed_at, payload
-                        ) VALUES (?, ?, ?, ?, ?, ?)
-                        """,
-                        (
-                            version.version_id,
-                            version.record_key,
-                            version.job_id,
-                            version.content_hash,
-                            version.observed_at.isoformat(),
-                            _VERSION_ADAPTER.dump_json(version).decode(),
-                        ),
-                    )
                 self._connection.execute(
                     """
                     INSERT INTO research_run_records(job_id, record_key, disposition, observed_at)
@@ -639,16 +605,6 @@ class SqliteResearchCrawlRepository:
                 return True
         return False
 
-    async def list_record_versions(self, record_key: str) -> list[ResearchRecordVersion]:
-        rows = self._connection.execute(
-            """
-            SELECT payload FROM research_record_versions
-            WHERE record_key = ? ORDER BY observed_at DESC
-            """,
-            (record_key,),
-        ).fetchall()
-        return [_VERSION_ADAPTER.validate_json(row["payload"]) for row in rows]
-
     def close(self) -> None:
         self._connection.close()
 
@@ -774,9 +730,6 @@ class PostgresResearchCrawlRepository:
                     else ("unchanged" if existing.content_hash == content_hash else "updated")
                 )
                 counters[{"new": "created"}.get(disposition, disposition)] += 1
-                version_count = 1 if existing is None else existing.version_count
-                if disposition == "updated":
-                    version_count += 1
                 stored = _stored_record(
                     job,
                     record,
@@ -784,7 +737,6 @@ class PostgresResearchCrawlRepository:
                     content_hash,
                     observed_at if existing is None else existing.first_seen_at,
                     observed_at,
-                    version_count,
                     existing,
                     (classifications or {}).get(record.record_id),
                     (screenings or {}).get(record.record_id),
@@ -798,20 +750,6 @@ class PostgresResearchCrawlRepository:
                         set_={key: value for key, value in values.items() if key != "record_key"},
                     )
                 )
-                if disposition != "unchanged":
-                    version = _version(stored, job.job_id, record, observed_at)
-                    await connection.execute(
-                        insert(research_record_versions)
-                        .values(
-                            version_id=version.version_id,
-                            record_key=version.record_key,
-                            job_id=version.job_id,
-                            content_hash=version.content_hash,
-                            payload=_VERSION_ADAPTER.dump_python(version, mode="json"),
-                            observed_at=version.observed_at,
-                        )
-                        .on_conflict_do_nothing()
-                    )
                 await connection.execute(
                     insert(research_run_records)
                     .values(
@@ -1197,21 +1135,6 @@ class PostgresResearchCrawlRepository:
             )
         return result.rowcount
 
-    async def list_record_versions(self, record_key: str) -> list[ResearchRecordVersion]:
-        async with self._engine.connect() as connection:
-            payloads = (
-                (
-                    await connection.execute(
-                        select(research_record_versions.c.payload)
-                        .where(research_record_versions.c.record_key == record_key)
-                        .order_by(research_record_versions.c.observed_at.desc())
-                    )
-                )
-                .scalars()
-                .all()
-            )
-        return [_VERSION_ADAPTER.validate_python(payload) for payload in payloads]
-
     def close(self) -> None:
         """The composition root owns the shared database engine."""
 
@@ -1239,7 +1162,6 @@ def _stored_record(
     content_hash: str,
     first_seen_at: datetime,
     last_seen_at: datetime,
-    version_count: int,
     existing: StoredResearchRecord | None = None,
     classification: ResearchClassification | None = None,
     screening: ResearchScreening | None = None,
@@ -1331,7 +1253,6 @@ def _stored_record(
         first_seen_at=first_seen_at,
         last_seen_at=last_seen_at,
         latest_run_id=job.job_id,
-        version_count=version_count,
     )
 
 
@@ -1400,22 +1321,6 @@ def _media_content_hash(media_assets: list[ResearchMediaAsset]) -> str:
     return hashlib.sha256("\n".join(values).encode()).hexdigest() if values else ""
 
 
-def _version(
-    stored: StoredResearchRecord,
-    job_id: str,
-    record: ResearchCrawlRecord,
-    observed_at: datetime,
-) -> ResearchRecordVersion:
-    return ResearchRecordVersion(
-        version_id=f"version_{stored.record_key.removeprefix('record_')}_{stored.content_hash[:12]}",
-        record_key=stored.record_key,
-        job_id=job_id,
-        content_hash=stored.content_hash,
-        record=record,
-        observed_at=observed_at,
-    )
-
-
 def _postgres_record_values(record: StoredResearchRecord) -> dict[str, object]:
     return {
         "record_key": record.record_key,
@@ -1438,7 +1343,6 @@ def _postgres_record_values(record: StoredResearchRecord) -> dict[str, object]:
         "has_videos": bool(record.video_urls),
         "content_hash": record.content_hash,
         "latest_run_id": record.latest_run_id,
-        "version_count": record.version_count,
         "first_seen_at": record.first_seen_at,
         "last_seen_at": record.last_seen_at,
         "payload": _RECORD_ADAPTER.dump_python(record, mode="json"),
@@ -1468,7 +1372,6 @@ def _stored_values(record: StoredResearchRecord) -> tuple[object, ...]:
         int(bool(record.video_urls)),
         record.content_hash,
         record.latest_run_id,
-        record.version_count,
         record.first_seen_at.isoformat(),
         record.last_seen_at.isoformat(),
         _RECORD_ADAPTER.dump_json(record).decode(),

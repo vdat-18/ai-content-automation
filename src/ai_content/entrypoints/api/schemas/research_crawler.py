@@ -225,7 +225,6 @@ class StoredResearchRecordResponse(BaseModel):
     first_seen_at: datetime
     last_seen_at: datetime
     latest_run_id: str
-    version_count: int
 
 
 class ResearchRecordReviewRequest(BaseModel):
@@ -297,15 +296,6 @@ class ResearchKeywordSuggestionListResponse(BaseModel):
     items: list[ResearchKeywordSuggestionResponse]
 
 
-class ResearchRecordVersionResponse(BaseModel):
-    version_id: str
-    record_key: str
-    job_id: str
-    content_hash: str
-    record: ResearchCrawlRecordResponse
-    observed_at: datetime
-
-
 class ResearchRecordPageResponse(BaseModel):
     items: list[StoredResearchRecordResponse]
     total: int
@@ -315,7 +305,6 @@ class ResearchRecordPageResponse(BaseModel):
 
 class ResearchRecordDetailResponse(BaseModel):
     record: StoredResearchRecordResponse
-    versions: list[ResearchRecordVersionResponse]
 
 
 __all__ = [
@@ -337,6 +326,5 @@ __all__ = [
     "ResearchReferenceProfileResponse",
     "ResearchRecordReviewRequest",
     "ResearchScreeningResponse",
-    "ResearchRecordVersionResponse",
     "StoredResearchRecordResponse",
 ]

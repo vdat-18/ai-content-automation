@@ -313,7 +313,6 @@ research_records = Table(
     Column(
         "latest_run_id", Text, ForeignKey("marketing.research_crawl_jobs.job_id"), nullable=False
     ),
-    Column("version_count", Integer, nullable=False),
     Column("first_seen_at", DateTime(timezone=True), nullable=False),
     Column("last_seen_at", DateTime(timezone=True), nullable=False),
     Column("payload", JSONB, nullable=False),
@@ -335,29 +334,6 @@ Index("ix_research_records_platform", research_records.c.platform)
 Index("ix_research_records_status", research_records.c.status)
 Index("ix_research_records_review_status", research_records.c.review_status)
 Index("ix_research_records_screening_status", research_records.c.screening_status)
-
-research_record_versions = Table(
-    "research_record_versions",
-    metadata,
-    Column("version_id", Text, primary_key=True),
-    Column(
-        "record_key",
-        Text,
-        ForeignKey("marketing.research_records.record_key", ondelete="CASCADE"),
-        nullable=False,
-    ),
-    Column("job_id", Text, ForeignKey("marketing.research_crawl_jobs.job_id"), nullable=False),
-    Column("content_hash", Text, nullable=False),
-    Column("payload", JSONB, nullable=False),
-    Column("observed_at", DateTime(timezone=True), nullable=False),
-    UniqueConstraint("record_key", "content_hash"),
-    schema="marketing",
-)
-Index(
-    "ix_research_record_versions_record",
-    research_record_versions.c.record_key,
-    research_record_versions.c.observed_at,
-)
 
 research_run_records = Table(
     "research_run_records",
@@ -727,6 +703,5 @@ __all__ = [
     "notifications",
     "research_crawl_jobs",
     "research_records",
-    "research_record_versions",
     "research_run_records",
 ]

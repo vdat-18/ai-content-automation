@@ -15,7 +15,6 @@ from .models import (
     ResearchRecordPage,
     ResearchRecordQuery,
     ResearchRecordUpsertSummary,
-    ResearchRecordVersion,
     ResearchReviewStatus,
     ResearchScreening,
     StoredResearchRecord,
@@ -82,7 +81,7 @@ class ResearchCrawlRepository(Protocol):
 
     async def delete_records(self, record_keys: tuple[str, ...]) -> int: ...
 
-    async def list_record_versions(self, record_key: str) -> list[ResearchRecordVersion]: ...
+
 
     def close(self) -> None: ...
 

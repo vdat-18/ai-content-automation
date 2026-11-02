@@ -120,9 +120,9 @@ def test_known_fingerprints_only_include_screened_originals(tmp_path: Path) -> N
                 repository._connection.execute(
                     "INSERT INTO research_records (record_key, workspace_id, brand_id, platform, "
                     "external_id, record_type, text, screening_status, review_status, has_images, "
-                    "has_videos, content_hash, latest_run_id, version_count, first_seen_at, "
+                    "has_videos, content_hash, latest_run_id, first_seen_at, "
                     "last_seen_at, payload) VALUES (?, 'w', 'AuraSleep', 'meta', ?, 'ad', '', "
-                    "'kept', 'pending_review', 1, 0, 'h', 'r', 1, 't', 't', ?)",
+                    "'kept', 'pending_review', 1, 0, 'h', 'r', 't', 't', ?)",
                     (record.record_key, record.record_key, record.model_dump_json()),
                 )
         found = await repository.known_media_fingerprints("w", "AuraSleep", exclude_record_key="")

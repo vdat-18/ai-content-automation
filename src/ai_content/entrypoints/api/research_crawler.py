@@ -510,10 +510,7 @@ async def get_research_record(
     record = await repository.get_record(record_key)
     if record is None:
         raise HTTPException(status_code=404, detail="Research record not found")
-    versions = await repository.list_record_versions(record_key)
-    return ResearchRecordDetailResponse.model_validate(
-        {"record": record, "versions": versions}, from_attributes=True
-    )
+    return ResearchRecordDetailResponse.model_validate({"record": record}, from_attributes=True)
 
 
 async def _review_records(

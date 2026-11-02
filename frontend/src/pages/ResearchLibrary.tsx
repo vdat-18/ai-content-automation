@@ -156,7 +156,6 @@ export function ResearchLibraryPage() {
       destination_domain: record.destination_domain,
       first_seen_at: record.first_seen_at,
       last_seen_at: record.last_seen_at,
-      version_count: record.version_count,
       latest_run_id: record.latest_run_id,
       media_assets: record.media_assets,
       screening_status: record.screening_status,

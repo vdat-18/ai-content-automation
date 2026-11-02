@@ -906,7 +906,6 @@ export type StoredResearchRecord = Omit<ResearchCrawlRecord, "record_id"> & {
   first_seen_at: string;
   last_seen_at: string;
   latest_run_id: string;
-  version_count: number;
   media_assets: {
     media_id: string;
     media_kind: "image" | "video";
@@ -968,14 +967,6 @@ export type ResearchRecordDeleteResult = {
 
 export type ResearchRecordDetail = {
   record: StoredResearchRecord;
-  versions: {
-    version_id: string;
-    record_key: string;
-    job_id: string;
-    content_hash: string;
-    record: ResearchCrawlRecord;
-    observed_at: string;
-  }[];
 };
 
 export type CreativeKnowledgeStatus =

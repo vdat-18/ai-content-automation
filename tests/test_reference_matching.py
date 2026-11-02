@@ -141,9 +141,9 @@ def test_repository_links_products_and_counts_uses(tmp_path: Path) -> None:
             repository._connection.execute(
                 "INSERT INTO research_records (record_key, workspace_id, brand_id, platform, "
                 "external_id, record_type, text, screening_status, review_status, has_images, "
-                "has_videos, content_hash, latest_run_id, version_count, first_seen_at, "
+                "has_videos, content_hash, latest_run_id, first_seen_at, "
                 "last_seen_at, payload) VALUES (?, 'w', 'AuraSleep', 'meta', 'mask', 'ad', '', "
-                "'kept', 'approved', 1, 0, 'h', 'r', 1, 't', 't', '')",
+                "'kept', 'approved', 1, 0, 'h', 'r', 't', 't', '')",
                 ("mask",),
             )
             repository._connection.execute(

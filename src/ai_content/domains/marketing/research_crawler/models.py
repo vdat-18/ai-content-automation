@@ -293,18 +293,6 @@ class StoredResearchRecord(BaseModel):
     first_seen_at: datetime
     last_seen_at: datetime
     latest_run_id: str
-    version_count: int = 1
-
-
-class ResearchRecordVersion(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    version_id: str
-    record_key: str
-    job_id: str
-    content_hash: str
-    record: ResearchCrawlRecord
-    observed_at: datetime
 
 
 class ResearchRecordQuery(BaseModel):
@@ -368,6 +356,5 @@ __all__ = [
     "ResearchScreeningStatus",
     "ResearchSwapMode",
     "ResearchRecordUpsertSummary",
-    "ResearchRecordVersion",
     "StoredResearchRecord",
 ]
