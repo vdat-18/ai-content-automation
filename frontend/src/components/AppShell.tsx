@@ -6,6 +6,7 @@ import {
   CircleGauge,
   LibraryBig,
   Menu,
+  Package,
   Moon,
   Sun,
   Search,
@@ -29,6 +30,7 @@ const readStoredSidebarWidth = () => {
 };
 
 const nav: NavItem[] = [
+  { to: "/products", label: "Products", icon: Package, group: "research" },
   { to: "/research-crawler", label: "Research crawler", icon: Search, group: "research" },
   { to: "/research-library", label: "Research Library", icon: LibraryBig, group: "research" },
   { to: "/second-brain", label: "SecondBrain", icon: BrainCircuit, group: "research" },

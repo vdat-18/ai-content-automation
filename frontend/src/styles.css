@@ -1326,3 +1326,10 @@ body.column-resizing * { cursor: col-resize !important; user-select: none !impor
 }
 
 .mkt-muted { color: var(--muted); font-size: 13px; line-height: 1.6; }
+
+.products-filters { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 12px; }
+.products-filters input[type="number"] { width: 90px; }
+.products-table { width: 100%; border-collapse: collapse; }
+.products-table th, .products-table td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border, #ddd); vertical-align: middle; }
+.products-table small { display: block; opacity: 0.7; }
+.products-table img { object-fit: cover; border-radius: 6px; }
