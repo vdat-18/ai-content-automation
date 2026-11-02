@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Mapping
 from pathlib import Path
 
 from ai_content.platform.artifacts import ArtifactService, ArtifactStore
@@ -81,8 +80,6 @@ def build_runtime(
     artifacts_root: Path,
     *,
     shopify_token: str | None,
-    shopify_source_tokens: Mapping[str, str | None] | None = None,
-    shopify_source_client_credentials: Mapping[str, tuple[str | None, str | None]] | None = None,
     lark_token: str | None,
     lark_app_id: str | None,
     lark_app_secret: str | None,
@@ -103,8 +100,6 @@ def build_runtime(
         "shopify": ShopifyConnector(
             shopify_token,
             timeout_seconds,
-            source_tokens=shopify_source_tokens,
-            source_client_credentials=shopify_source_client_credentials,
         ),
         "lark": LarkConnector(lark_token, lark_app_id, lark_app_secret, timeout_seconds),
         "google": GoogleConnector(google_token, timeout_seconds),

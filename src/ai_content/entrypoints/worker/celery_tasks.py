@@ -443,8 +443,6 @@ async def _execute_command(
         settings.data_root / "state.db",
         settings.data_root / "artifacts",
         shopify_token=_secret_value(settings.shopify_access_token),
-        shopify_source_tokens={},
-        shopify_source_client_credentials={},
         lark_token=_secret_value(settings.lark_tenant_access_token),
         lark_app_id=settings.lark_app_id,
         lark_app_secret=_secret_value(settings.lark_app_secret),

@@ -908,8 +908,6 @@ def _build_data_source_runtime(
         settings.db_path,
         settings.artifacts_root,
         shopify_token=settings.shopify_access_token,
-        shopify_source_tokens={},
-        shopify_source_client_credentials={},
         lark_token=settings.lark_tenant_access_token,
         lark_app_id=settings.lark_app_id,
         lark_app_secret=settings.lark_app_secret,

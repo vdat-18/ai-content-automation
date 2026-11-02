@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import asyncio
 import re
-import time
 from collections.abc import Mapping
 from typing import Any
 from urllib.parse import quote, urlparse
@@ -18,7 +16,6 @@ _MAX_PAGES = 20
 _SHOPIFY_MAX_PAGES = 100
 _SHOPIFY_API_VERSION = "2026-07"
 _SHOPIFY_METAFIELD_BATCH_SIZE = 50
-_SHOPIFY_TOKEN_REFRESH_SKEW_SECONDS = 300
 _SHOPIFY_METAFIELD_KEYS = (
     "des_group_dimensions.depth",
     "des_group_dimensions.height",
@@ -119,14 +116,8 @@ class ShopifyConnector:
         access_token: str | None,
         timeout_seconds: float = 15,
         transport: httpx.AsyncBaseTransport | None = None,
-        source_tokens: Mapping[str, str | None] | None = None,
-        source_client_credentials: Mapping[str, tuple[str | None, str | None]] | None = None,
     ) -> None:
         self._token = access_token
-        self._source_tokens = dict(source_tokens or {})
-        self._source_client_credentials = dict(source_client_credentials or {})
-        self._cached_tokens: dict[str, tuple[str, float]] = {}
-        self._token_locks: dict[str, asyncio.Lock] = {}
         self._timeout = timeout_seconds
         self._transport = transport
 
@@ -135,19 +126,11 @@ class ShopifyConnector:
     ) -> tuple[tuple[NormalizedRecord, ...], dict[str, Any]]:
         if any(resource.get("kind") != "products" for resource in definition.resources):
             raise SourceReadError("INVALID_CONFIGURATION", "Shopify only supports products")
-        renewable = self._has_client_credentials(definition.source_id)
+        token = self._require_token()
         async with httpx.AsyncClient(
             timeout=self._timeout, follow_redirects=False, transport=self._transport
         ) as client:
-            for attempt in range(2):
-                token = await self._access_token(client, definition)
-                try:
-                    return await self._fetch_products(client, definition, token)
-                except SourceReadError as error:
-                    if not renewable or error.code != "AUTH_FAILED" or attempt == 1:
-                        raise
-                    self._cached_tokens.pop(definition.source_id, None)
-        raise AssertionError("Shopify retry loop exited unexpectedly")
+            return await self._fetch_products(client, definition, token)
 
     async def fetch_product(
         self,
@@ -157,19 +140,11 @@ class ShopifyConnector:
         """Read current truth for one product immediately before Creative compilation."""
         if any(resource.get("kind") != "products" for resource in definition.resources):
             raise SourceReadError("INVALID_CONFIGURATION", "Shopify only supports products")
-        renewable = self._has_client_credentials(definition.source_id)
+        token = self._require_token()
         async with httpx.AsyncClient(
             timeout=self._timeout, follow_redirects=False, transport=self._transport
         ) as client:
-            for attempt in range(2):
-                token = await self._access_token(client, definition)
-                try:
-                    return await self._fetch_product(client, definition, token, product_id)
-                except SourceReadError as error:
-                    if not renewable or error.code != "AUTH_FAILED" or attempt == 1:
-                        raise
-                    self._cached_tokens.pop(definition.source_id, None)
-        raise AssertionError("Shopify retry loop exited unexpectedly")
+            return await self._fetch_product(client, definition, token, product_id)
 
     async def _fetch_product(
         self,
@@ -261,72 +236,10 @@ class ShopifyConnector:
         )
         return records, {"products": products, "metafields": metafields}
 
-    def _has_client_credentials(self, source_id: str) -> bool:
-        credentials = self._source_client_credentials.get(source_id)
-        return bool(credentials and any(credentials))
-
-    async def _access_token(
-        self,
-        client: httpx.AsyncClient,
-        definition: DataSourceDefinition,
-    ) -> str:
-        credentials = self._source_client_credentials.get(definition.source_id)
-        if credentials and any(credentials):
-            client_id, client_secret = credentials
-            if not client_id or not client_secret:
-                raise SourceReadError(
-                    "NOT_CONFIGURED",
-                    "Shopify client ID and client secret must be configured together",
-                )
-            cached = self._cached_tokens.get(definition.source_id)
-            if cached and cached[1] > time.monotonic():
-                return cached[0]
-            lock = self._token_locks.setdefault(definition.source_id, asyncio.Lock())
-            async with lock:
-                cached = self._cached_tokens.get(definition.source_id)
-                if cached and cached[1] > time.monotonic():
-                    return cached[0]
-                response = await client.post(
-                    f"{definition.base_url}/admin/oauth/access_token",
-                    data={
-                        "grant_type": "client_credentials",
-                        "client_id": client_id,
-                        "client_secret": client_secret,
-                    },
-                )
-                payload = await _json(response)
-                token = payload.get("access_token")
-                expires_in = payload.get("expires_in")
-                if not isinstance(token, str) or not token:
-                    raise SourceReadError("AUTH_FAILED", "Shopify did not return an access token")
-                if not isinstance(expires_in, int) or expires_in <= 0:
-                    raise SourceReadError(
-                        "MALFORMED_RESPONSE", "Shopify token expiry is missing or invalid"
-                    )
-                raw_scope = payload.get("scope")
-                if not isinstance(raw_scope, str) or not raw_scope.strip():
-                    raise SourceReadError(
-                        "MALFORMED_RESPONSE", "Shopify token scopes are missing or invalid"
-                    )
-                scopes = (scope.strip() for scope in raw_scope.split(","))
-                if any(
-                    scope.startswith(("write_", "customer_write_", "unauthenticated_write_"))
-                    for scope in scopes
-                ):
-                    raise SourceReadError(
-                        "INVALID_CONFIGURATION",
-                        "Shopify client credentials must be restricted to read-only scopes",
-                    )
-                refresh_after = max(1, expires_in - _SHOPIFY_TOKEN_REFRESH_SKEW_SECONDS)
-                self._cached_tokens[definition.source_id] = (
-                    token,
-                    time.monotonic() + refresh_after,
-                )
-                return token
-        token = self._source_tokens.get(definition.source_id, self._token)
-        if not token:
+    def _require_token(self) -> str:
+        if not self._token:
             raise SourceReadError("NOT_CONFIGURED", "Shopify access token is not configured")
-        return token
+        return self._token
 
     async def _fetch_metafields(
         self,
