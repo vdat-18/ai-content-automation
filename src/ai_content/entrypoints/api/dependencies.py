@@ -37,6 +37,7 @@ from ai_content.domains.marketing.creative.application.provider_registry import 
     ManagedMediaProviderRegistry,
 )
 from ai_content.domains.marketing.creative.bootstrap import CreativeRuntime, build_runtime
+from ai_content.domains.marketing.creative.config.preparation import PreparationConfig
 from ai_content.domains.marketing.creative.managed_media_runtime import (
     build_managed_media_runtime,
 )
@@ -114,7 +115,6 @@ from ai_content.domains.marketing.research_crawler.scrapling_adapter import (
 from ai_content.domains.marketing.research_crawler.screening import (
     NineRouterResearchScreener,
     ResearchScreeningConfig,
-    load_research_screening_config,
 )
 from ai_content.domains.marketing.research_crawler.service import ResearchCrawlService
 from ai_content.entrypoints.postgres_runtime import PostgresRuntimeContainer
@@ -149,8 +149,6 @@ class ApiRuntimeSettings:
     db_path: Path
     artifacts_root: Path
     config_dir: Path
-    preparation_config_path: Path | None = None
-    orchestration_config_path: Path | None = None
     prep_base_url: str = "http://127.0.0.1:1234/v1"
     prep_api_key: str | None = None
     prep_model: str = "xai/grok-4-fast-reasoning"
@@ -195,7 +193,6 @@ class ApiRuntimeSettings:
     data_sources_config_path: Path | None = None
     data_source_timeout_seconds: float = 60
     research_crawl_timeout_seconds: float = 300
-    research_screening_config_path: Path | None = None
     jev_api_url: str | None = None
     research_cookies_file: Path | None = None
     jev_api_key: str | None = None
@@ -246,8 +243,6 @@ def get_runtime_settings() -> ApiRuntimeSettings:
         db_path=application.data_root / "state.db",
         artifacts_root=application.data_root / "artifacts",
         config_dir=application.config_dir,
-        preparation_config_path=application.preparation_config_path,
-        orchestration_config_path=application.orchestration_config_path,
         prep_base_url=application.prep_base_url,
         prep_api_key=application.prep_api_key_value,
         prep_model=application.prep_model,
@@ -308,7 +303,6 @@ def get_runtime_settings() -> ApiRuntimeSettings:
         data_sources_config_path=application.data_sources_config,
         data_source_timeout_seconds=application.data_source_timeout_seconds,
         research_crawl_timeout_seconds=application.research_crawl_timeout_seconds,
-        research_screening_config_path=None,
         jev_api_url=application.jev_api_url,
         research_cookies_file=application.research_cookies_file,
         jev_api_key=application.credential("JEV_API_KEY"),
@@ -449,8 +443,7 @@ async def lifespan(application: FastAPI):
             database,
             settings.artifacts_root,
             settings.config_dir,
-            preparation_config_path=_preparation_config_path(settings),
-            preparation_api_key=settings.router_api_key,
+            preparation_api_key=PreparationConfig.from_settings(settings).api_key,
             execution_backend=settings.execution_backend,
             object_storage=settings.object_storage.build()
             if settings.object_storage.backend == "s3"
@@ -621,10 +614,7 @@ def check_runtime_readiness(settings: ApiRuntimeSettings) -> RuntimeReadiness:
 
 def _check_config_and_storage(settings: ApiRuntimeSettings) -> dict[str, str]:
     """Check filesystem dependencies shared by both database backends."""
-    required_config = (
-        settings.config_dir / "fixtures" / "creative_loop_synthetic.json",
-        _preparation_config_path(settings),
-    )
+    required_config = (settings.config_dir / "fixtures" / "creative_loop_synthetic.json",)
     checks: dict[str, str] = {}
     try:
         for path in required_config:
@@ -642,10 +632,6 @@ def _check_config_and_storage(settings: ApiRuntimeSettings) -> dict[str, str]:
     except OSError:
         checks["storage"] = "unavailable"
     return checks
-
-
-def _preparation_config_path(settings: ApiRuntimeSettings) -> Path:
-    return settings.preparation_config_path or settings.config_dir / "preparation/synthetic.json"
 
 
 async def check_runtime_readiness_async(
@@ -749,7 +735,7 @@ async def get_creative_loop_runtime(request: Request) -> AsyncIterator[CreativeL
         settings.artifacts_root,
         config_dir=settings.config_dir,
         fixture_path=settings.config_dir / "fixtures/creative_loop_synthetic.json",
-        preparation_config=_preparation_config_path(settings),
+        preparation_config=PreparationConfig.from_settings(settings),
     )
     try:
         yield runtime
@@ -918,10 +904,7 @@ def _research_screener(
     api_key = settings.screening_api_key or settings.vilao_api_key
     if not api_key:
         return None
-    if settings.research_screening_config_path is not None:
-        config = load_research_screening_config(settings.research_screening_config_path)
-    else:
-        config = ResearchScreeningConfig.from_settings(settings)
+    config = ResearchScreeningConfig.from_settings(settings)
     return NineRouterResearchScreener(
         config,
         api_key=api_key,

@@ -34,7 +34,7 @@ def test_creative_orchestration_runtime_configuration_is_available_to_api_and_wo
     assert "AIC_PREP_API_KEY=" in environment
 
     settings = ApplicationSettings()
-    preparation = PreparationConfig.from_settings(settings, config_dir=project_root / "config")
+    preparation = PreparationConfig.from_settings(settings)
     assert preparation.backend == "baml"
 
 

@@ -24,7 +24,7 @@ from ai_content.domains.marketing.creative.bootstrap import (
     load_work_item,
 )
 from ai_content.domains.marketing.creative.config.loader import ConfigError
-from ai_content.domains.marketing.creative.config.preparation import load_preparation_config
+from ai_content.domains.marketing.creative.config.preparation import PreparationConfig
 from ai_content.domains.marketing.creative.domain.entities import (
     ApprovalDecision,
     CreativeJob,
@@ -45,7 +45,7 @@ from ai_content.domains.marketing.creative_feedback.config.fixtures import (
     load_creative_feedback_fixture,
 )
 from ai_content.domains.marketing.creative_feedback.config.learning import (
-    load_performance_learning_config,
+    PerformanceLearningConfig,
 )
 from ai_content.domains.marketing.creative_feedback.domain.models import FeedbackDecision
 from ai_content.domains.marketing.creative_feedback.ports.interfaces import (
@@ -83,7 +83,7 @@ from ai_content.domains.marketing.performance_decisions.config.fixtures import (
     load_performance_decision_fixture,
 )
 from ai_content.domains.marketing.performance_decisions.config.opportunity import (
-    load_opportunity_config,
+    OpportunityConfig,
 )
 from ai_content.domains.marketing.performance_decisions.domain.models import (
     PerformanceDecision,
@@ -119,7 +119,6 @@ def build_parser() -> argparse.ArgumentParser:
     )
     prepare.add_argument("--fixture", type=Path)
     prepare.add_argument("--context", type=Path)
-    prepare.add_argument("--preparation-config", type=Path, required=True)
 
     run_p = sub.add_parser("run", help="Run a work item fixture end-to-end")
     run_p.add_argument("--fixture", type=Path, required=True)
@@ -150,8 +149,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     performance_decision.add_argument("--fixture", type=Path, required=True)
     performance_decision.add_argument(
-        "--opportunity-config",
-        type=Path,
+        "--enable-opportunity-analysis",
+        action="store_true",
         help="Run optional BAML Creative Opportunity analysis in shadow mode",
     )
     creative_feedback = sub.add_parser(
@@ -160,8 +159,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
     creative_feedback.add_argument("--fixture", type=Path, required=True)
     creative_feedback.add_argument(
-        "--learning-config",
-        type=Path,
+        "--enable-learning-analysis",
+        action="store_true",
         help="Run optional Performance Learning analysis in shadow mode",
     )
     creative_intake = sub.add_parser(
@@ -178,27 +177,20 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Run M1 and fake M2 through QA/revision to final human approval wait",
     )
-    creative_intake.add_argument(
-        "--preparation-config",
-        type=Path,
-        default=Path("config/preparation/synthetic.json"),
-    )
     run_loop = sub.add_parser(
         "run-creative-loop",
         help="Start the unified synthetic H2 -> Creative -> X1 closed loop",
     )
     run_loop.add_argument("--fixture", type=Path)
     run_loop.add_argument("--local-loop", type=Path)
-    run_loop.add_argument("--preparation-config", type=Path)
-    run_loop.add_argument("--learning-config", type=Path)
+    run_loop.add_argument("--enable-learning-analysis", action="store_true")
     decide_loop = sub.add_parser(
         "decide-creative-loop",
         help="Decide an exact demand, Creative or feedback lesson gate",
     )
     decide_loop.add_argument("--fixture", type=Path)
     decide_loop.add_argument("--local-loop", type=Path)
-    decide_loop.add_argument("--preparation-config", type=Path)
-    decide_loop.add_argument("--learning-config", type=Path)
+    decide_loop.add_argument("--enable-learning-analysis", action="store_true")
     decide_loop.add_argument("--learning-proposal-id")
     decide_loop.add_argument("--run-id", required=True)
     decide_loop.add_argument("--gate", choices=["demand", "creative", "lesson"], required=True)
@@ -354,13 +346,12 @@ async def _async_main(args: argparse.Namespace, settings: ApplicationSettings) -
     }:
         if (args.fixture is None) == (args.local_loop is None):
             raise ValueError("Use exactly one of --fixture or --local-loop")
-        learning_config_path = getattr(args, "learning_config", None)
         learning_config = (
-            load_performance_learning_config(learning_config_path) if learning_config_path else None
+            PerformanceLearningConfig.from_settings(settings)
+            if getattr(args, "enable_learning_analysis", False)
+            else None
         )
-        preparation_config = (
-            getattr(args, "preparation_config", None) or args.config / "preparation/synthetic.json"
-        )
+        preparation_config = PreparationConfig.from_settings(settings)
         runtime = build_creative_loop_runtime(
             args.db,
             args.artifacts,
@@ -368,13 +359,9 @@ async def _async_main(args: argparse.Namespace, settings: ApplicationSettings) -
             fixture_path=args.fixture,
             local_loop_path=args.local_loop,
             preparation_config=preparation_config,
-            preparation_api_key=settings.credential(
-                load_preparation_config(preparation_config).api_key_env
-            ),
+            preparation_api_key=preparation_config.api_key,
             learning_config=learning_config,
-            learning_api_key=(
-                settings.credential(learning_config.api_key_env) if learning_config else None
-            ),
+            learning_api_key=learning_config.api_key if learning_config else None,
         )
         try:
             if args.command == "run-creative-loop":
@@ -489,7 +476,7 @@ async def _async_main(args: argparse.Namespace, settings: ApplicationSettings) -
                 fixture,
                 dispatch_m1=args.dispatch_m1,
                 dispatch_creative=args.dispatch_creative,
-                preparation_config=args.preparation_config,
+                preparation_config=PreparationConfig.from_settings(settings),
                 config_dir=args.config,
             )
             for run in outcome.runs:
@@ -507,17 +494,15 @@ async def _async_main(args: argparse.Namespace, settings: ApplicationSettings) -
     if args.command == "run-creative-feedback":
         fixture = load_creative_feedback_fixture(args.fixture)
         learning_config = (
-            load_performance_learning_config(args.learning_config)
-            if args.learning_config is not None
+            PerformanceLearningConfig.from_settings(settings)
+            if args.enable_learning_analysis
             else None
         )
         runtime = build_creative_feedback_runtime(
             args.db,
             args.artifacts,
             learning_config=learning_config,
-            learning_api_key=(
-                settings.credential(learning_config.api_key_env) if learning_config else None
-            ),
+            learning_api_key=learning_config.api_key if learning_config else None,
         )
         try:
             outcome = await runtime.run(fixture)
@@ -535,18 +520,14 @@ async def _async_main(args: argparse.Namespace, settings: ApplicationSettings) -
     if args.command == "run-performance-decision":
         fixture = load_performance_decision_fixture(args.fixture)
         opportunity_config = (
-            load_opportunity_config(args.opportunity_config)
-            if args.opportunity_config is not None
-            else None
+            OpportunityConfig.from_settings(settings) if args.enable_opportunity_analysis else None
         )
         runtime = build_performance_decision_runtime(
             args.db,
             args.artifacts,
             opportunity_config=opportunity_config,
             opportunity_api_key=(
-                settings.credential(opportunity_config.api_key_env)
-                if opportunity_config is not None
-                else None
+                opportunity_config.api_key if opportunity_config is not None else None
             ),
         )
         try:
@@ -570,7 +551,7 @@ async def _async_main(args: argparse.Namespace, settings: ApplicationSettings) -
         finally:
             runtime.repository.close()
     if args.command == "prepare-brief":
-        config = load_preparation_config(args.preparation_config)
+        config = PreparationConfig.from_settings(settings)
         case = _load_cli_preparation_case(
             args,
             max_context_bytes=config.max_context_bytes,
@@ -580,7 +561,7 @@ async def _async_main(args: argparse.Namespace, settings: ApplicationSettings) -
             args.artifacts,
             config,
             case.context,
-            api_key=settings.credential(config.api_key_env),
+            api_key=config.api_key,
             config_dir=args.config,
         )
         try:

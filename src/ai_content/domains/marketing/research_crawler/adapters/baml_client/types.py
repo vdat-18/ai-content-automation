@@ -37,7 +37,7 @@ def get_checks(checks: typing.Dict[CheckName, Check]) -> typing.List[Check]:
 def all_succeeded(checks: typing.Dict[CheckName, Check]) -> bool:
     return all(check.status == "succeeded" for check in get_checks(checks))
 # #########################################################################
-# Generated enums (13)
+# Generated enums (10)
 # #########################################################################
 
 class AutomationHumanPresence(str, Enum):
@@ -92,30 +92,13 @@ class OpportunityCategory(str, Enum):
     STOP_OR_DEPRIORITIZE = "STOP_OR_DEPRIORITIZE"
     BLOCKED_CONFLICT = "BLOCKED_CONFLICT"
 
-class SemanticCriterionStatus(str, Enum):
-    PASS = "PASS"
-    FAIL = "FAIL"
-    UNKNOWN = "UNKNOWN"
-
-class SemanticIssueSeverity(str, Enum):
-    MINOR = "MINOR"
-    MAJOR = "MAJOR"
-    CRITICAL = "CRITICAL"
-
-class SemanticRepairAction(str, Enum):
-    REGENERATE_FULL = "REGENERATE_FULL"
-    REGENERATE_WITH_CONSTRAINTS = "REGENERATE_WITH_CONSTRAINTS"
-    EDIT_REGION = "EDIT_REGION"
-    MANUAL_REVIEW = "MANUAL_REVIEW"
-    REJECT_POLICY = "REJECT_POLICY"
-
 class TextAlignment(str, Enum):
     LEFT = "LEFT"
     CENTER = "CENTER"
     RIGHT = "RIGHT"
 
 # #########################################################################
-# Generated classes (25)
+# Generated classes (21)
 # #########################################################################
 
 class AdsDiagnosisResult(BaseModel):
@@ -310,26 +293,6 @@ class ResearchScreeningDraft(BaseModel):
     confidence: float
     profile: typing.Optional["ResearchReferenceProfileDraft"] = None
 
-class SemanticCriterionReview(BaseModel):
-    criterion_id: str
-    status: SemanticCriterionStatus
-    reason: str
-    score: typing.Optional[float] = None
-    confidence: typing.Optional[float] = None
-    evidence: typing.List["SemanticReviewEvidence"]
-    issue: typing.Optional["SemanticReviewIssue"] = None
-
-class SemanticReviewEvidence(BaseModel):
-    description: str
-    source_ref: str
-    region: typing.Optional[typing.List[float]] = None
-
-class SemanticReviewIssue(BaseModel):
-    code: str
-    severity: SemanticIssueSeverity
-    repair_action: SemanticRepairAction
-    description: str
-
 class StaticCompositionDraft(BaseModel):
     visual_prompt: str
     product_source_index: int
@@ -341,18 +304,13 @@ class StaticCompositionDraft(BaseModel):
     rationale: str
     evidence_refs: typing.List[str]
 
-class StaticCreativeReview(BaseModel):
-    criteria: typing.List["SemanticCriterionReview"]
-    summary: str
-    warnings: typing.List[str]
-
 # #########################################################################
 # Generated type aliases (0)
 # #########################################################################
 
 
 # #########################################################################
-# Model rebuilds (25)
+# Model rebuilds (21)
 # #########################################################################
 # Resolve string forward references now that every model above is defined so
 # class declaration order never breaks Pydantic construction (issue #793).
@@ -378,8 +336,4 @@ LearningProposalResult.model_rebuild()
 ResearchProductMatchDraft.model_rebuild()
 ResearchReferenceProfileDraft.model_rebuild()
 ResearchScreeningDraft.model_rebuild()
-SemanticCriterionReview.model_rebuild()
-SemanticReviewEvidence.model_rebuild()
-SemanticReviewIssue.model_rebuild()
 StaticCompositionDraft.model_rebuild()
-StaticCreativeReview.model_rebuild()

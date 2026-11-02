@@ -12,6 +12,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from ai_content.domains.marketing.creative.config.preparation import PreparationConfig
 from ai_content.domains.marketing.creative.domain.entities import (
     ApprovalDecision,
     CreativeJobId,
@@ -231,7 +232,7 @@ class CreativeLoopCommandDispatcher:
         artifacts_root: Path,
         config_dir: Path,
         fixture_path: Path,
-        preparation_config: Path,
+        preparation_config: PreparationConfig | None,
         preparation_api_key: str | None = None,
         runtime_factory: Callable[[], CreativeLoopRuntime] | None = None,
     ) -> None:

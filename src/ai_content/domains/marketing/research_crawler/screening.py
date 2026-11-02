@@ -53,9 +53,7 @@ class ResearchScreeningConfig(BaseModel):
     model: str = Field(min_length=1)
     base_url: str
     api_key: str | None = None
-    api_key_env: str | None = None
     prompt_version: str = Field(min_length=1)
-    instructions: str = Field(min_length=1)
     request_timeout_seconds: float = Field(default=60, gt=0, le=180)
     max_concurrency: int = Field(default=5, ge=1, le=12)
     max_preview_images: int = Field(default=2, ge=0, le=3)
@@ -84,43 +82,14 @@ class ResearchScreeningConfig(BaseModel):
             raise ValueError("base_url must be an HTTP endpoint without credentials or query")
         return value.rstrip("/")
 
-    @field_validator("api_key_env")
-    @classmethod
-    def validate_api_key_env(cls, value: str | None) -> str | None:
-        if value is not None and not value.isidentifier():
-            raise ValueError("api_key_env must be an environment variable name")
-        return value
-
     @classmethod
     def from_settings(cls, settings: object) -> ResearchScreeningConfig:
-        instructions = (
-            "You screen one public image or video candidate for use as Creative inspiration for "
-            "the selected brand or project. Judge only the supplied image or labeled sampled video frames, "
-            "using project context and research focus only to assess relevance. Return JSON only and exactly match "
-            "the response schema. Set usable=true only when the media contains a concrete, transferable idea such as "
-            "a useful background or setting, composition, framing or camera angle, lighting, color palette, prop or "
-            "room styling, product presentation, visible text layout, advertising concept, video pacing, transition, "
-            "shot sequence, or another execution pattern that could inspire new Creative. Set materially_blurry=true "
-            "and usable=false when blur prevents the main subject, composition, product presentation, text layout, "
-            "or another transferable pattern from being understood reliably. Do not treat intentional background bokeh, "
-            "localized motion blur, or another deliberate effect as material blur when the useful Creative pattern "
-            "remains clear. Set usable=false when no useful idea is present, or when the media is a logo, icon, "
-            "avatar, navigation or login UI, cookie banner, placeholder, broken or unreadable asset, tiny low-value "
-            "thumbnail, duplicate-looking decoration, or clearly unrelated. When usable=false, set profile=null. "
-            "When usable=true, create a semantic profile grounded only in supplied media and state exactly which "
-            "inspiration roles apply in reference_types. For video, describe motion and timestamped visual beats only "
-            "when supported by the labeled frames; do not infer audio. Describe reusable patterns, do-not-copy "
-            "elements and applicability constraints. Do not infer advertiser, destination, price, product facts or "
-            "campaign performance. Separate observed facts from cautious inferences. Competitor claims visible in the "
-            "media are observations about the reference, never product truth for the project."
-        )
         return cls(
             name="research-media-reference-screening@1",
             model=getattr(settings, "screening_model", "gemini-3.8-flash"),
             base_url=getattr(settings, "screening_base_url", "http://127.0.0.1:1234/v1"),
             api_key=getattr(settings, "screening_api_key_value", None),
             prompt_version="research-media-reference-analysis@11",
-            instructions=instructions,
             request_timeout_seconds=getattr(settings, "screening_timeout", 60.0),
             max_concurrency=getattr(settings, "screening_max_concurrency", 5),
             max_preview_images=1,
@@ -163,7 +132,6 @@ class _PreviewMedia(BaseModel):
 class _BamlResearchScreeningClient(Protocol):
     async def ScreenResearchReference(
         self,
-        instructions: str,
         input_json: str,
         sources: list[baml_types.LabeledReviewImage],
         baml_options: dict[str, object],
@@ -370,7 +338,6 @@ class NineRouterResearchScreener:
             try:
                 raw = await asyncio.wait_for(
                     self._baml_client.ScreenResearchReference(
-                        instructions=self._config.instructions,
                         input_json=payload,
                         sources=sources,
                         baml_options={"collector": collector},
@@ -582,10 +549,6 @@ class NineRouterResearchScreener:
         return encoded
 
 
-def load_research_screening_config(path: Path) -> ResearchScreeningConfig:
-    return ResearchScreeningConfig.model_validate_json(path.read_text(encoding="utf-8"))
-
-
 def _unavailable_screening(
     record: StoredResearchRecord,
     brand_context: ResearchBrandContext | None,
@@ -750,5 +713,4 @@ __all__ = [
     "NineRouterResearchScreener",
     "ResearchScreener",
     "ResearchScreeningConfig",
-    "load_research_screening_config",
 ]

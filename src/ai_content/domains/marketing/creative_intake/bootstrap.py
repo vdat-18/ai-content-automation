@@ -9,10 +9,7 @@ from pathlib import Path
 from ai_content.domains.marketing.creative.bootstrap import (
     build_runtime as build_creative_runtime,
 )
-from ai_content.domains.marketing.creative.config.preparation import (
-    PreparationConfig,
-    load_preparation_config,
-)
+from ai_content.domains.marketing.creative.config.preparation import PreparationConfig
 from ai_content.domains.marketing.creative.domain.entities import CreativeJobStatus
 from ai_content.domains.marketing.creative.ports.interfaces import ICreativeRepository
 from ai_content.domains.marketing.creative.ports.preparation_store import PreparedBrief
@@ -66,7 +63,7 @@ class CreativeIntakeRuntime:
         *,
         dispatch_m1: bool = False,
         dispatch_creative: bool = False,
-        preparation_config: Path | PreparationConfig = Path("config/preparation/synthetic.json"),
+        preparation_config: PreparationConfig | None = None,
         config_dir: Path = Path("config"),
         image_reader: Callable[[str], bytes] | None = None,
     ) -> CreativeIntakeRuntimeResult:
@@ -77,15 +74,7 @@ class CreativeIntakeRuntime:
         prepared_briefs: list[PreparedBrief | None] = []
         duplicates = 0
         dispatch_preparation = dispatch_m1 or dispatch_creative
-        config = (
-            (
-                preparation_config
-                if isinstance(preparation_config, PreparationConfig)
-                else load_preparation_config(preparation_config)
-            )
-            if dispatch_preparation
-            else None
-        )
+        config = preparation_config if dispatch_preparation else None
         for case in fixture.cases:
             prepared_brief: PreparedBrief | None = None
             result = await self._use_case.execute(case.request)

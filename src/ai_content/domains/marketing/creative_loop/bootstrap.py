@@ -9,6 +9,7 @@ from pathlib import Path
 from ai_content.domains.marketing.creative.bootstrap import (
     build_runtime as build_creative_runtime,
 )
+from ai_content.domains.marketing.creative.config.preparation import PreparationConfig
 from ai_content.domains.marketing.creative.domain.entities import ApprovalDecision
 from ai_content.domains.marketing.creative_feedback.bootstrap import (
     build_fixture_runtime as build_feedback_runtime,
@@ -216,7 +217,7 @@ def build_runtime(
     artifacts_root: Path,
     config_dir: Path = Path("config"),
     fixture_path: Path = Path("config/fixtures/creative_loop_synthetic.json"),
-    preparation_config: Path = Path("config/preparation/synthetic.json"),
+    preparation_config: PreparationConfig | None = None,
     preparation_api_key: str | None = None,
     learning_config: PerformanceLearningConfig | None = None,
     learning_api_key: str | None = None,

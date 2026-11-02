@@ -17,11 +17,8 @@ from loguru import logger
 from ai_content.domains.marketing.creative.adapters.model_readiness import (
     probe_preparation_model,
 )
-from ai_content.domains.marketing.creative.config.preparation import load_preparation_config
-from ai_content.domains.marketing.creative_feedback.config.learning import (
-    PerformanceLearningConfig,
-    load_performance_learning_config,
-)
+from ai_content.domains.marketing.creative.config.preparation import PreparationConfig
+from ai_content.domains.marketing.creative_feedback.config.learning import PerformanceLearningConfig
 from ai_content.domains.marketing.creative_loop.adapters.commands import (
     CreativeLoopCommandDispatcher,
     CreativeLoopCommandService,
@@ -116,7 +113,7 @@ async def _run_worker(
         root / "artifacts",
         args.config,
         args.config / "fixtures/creative_loop_synthetic.json",
-        settings.preparation_config_path,
+        PreparationConfig.from_settings(settings),
         preparation_api_key,
         runtime_factory=runtime_factory,
     )
@@ -147,8 +144,8 @@ async def _async_main(args: argparse.Namespace, settings: ApplicationSettings) -
     backend = settings.database_backend
     database = None
     runtime_factory = None
-    preparation_settings = load_preparation_config(settings.preparation_config_path)
-    preparation_api_key = settings.credential(preparation_settings.api_key_env)
+    preparation_settings = PreparationConfig.from_settings(settings)
+    preparation_api_key = preparation_settings.api_key
     if args.command == "run":
         await probe_preparation_model(preparation_settings, preparation_api_key)
         if preparation_settings.backend == "baml" and preparation_settings.probe_on_startup:
@@ -165,29 +162,18 @@ async def _async_main(args: argparse.Namespace, settings: ApplicationSettings) -
         execution_backend = settings.execution_backend
         storage_settings = settings.object_storage()
         learning_settings = (
-            load_performance_learning_config(settings.learning_config)
-            if settings.learning_config
-            else (
-                PerformanceLearningConfig.from_settings(settings)
-                if settings.learning_api_key_value
-                else None
-            )
+            PerformanceLearningConfig.from_settings(settings)
+            if settings.learning_api_key_value
+            else None
         )
         container = PostgresRuntimeContainer(
             database,
             root / "artifacts",
             args.config,
-            preparation_config_path=settings.preparation_config_path,
+            preparation_config=preparation_settings,
             preparation_api_key=preparation_api_key,
-            learning_config_path=settings.learning_config,
-            learning_api_key=(
-                settings.learning_api_key_value
-                or (
-                    settings.credential(learning_settings.api_key_env)
-                    if learning_settings is not None
-                    else None
-                )
-            ),
+            learning_config=learning_settings,
+            learning_api_key=learning_settings.api_key if learning_settings else None,
             execution_backend=execution_backend,
             object_storage=storage_settings.build() if storage_settings.backend == "s3" else None,
             object_storage_bucket=storage_settings.bucket,

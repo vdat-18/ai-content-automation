@@ -32,11 +32,6 @@ async def probe_preparation_model(
     """Verify that the configured endpoint exposes the selected model route."""
     if config.backend != "baml" or not config.probe_on_startup:
         return
-    if config.api_key_env and not api_key:
-        raise PreparationError(
-            "Configured model credential environment variable is missing",
-            "model_credentials_missing",
-        )
 
     headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
     endpoint = urljoin(config.base_url.rstrip("/") + "/", "models")

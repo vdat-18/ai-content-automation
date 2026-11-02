@@ -20,13 +20,13 @@ from .globals import DO_NOT_USE_DIRECTLY_UNLESS_YOU_KNOW_WHAT_YOURE_DOING_RUNTIM
 class TypeBuilder(type_builder.TypeBuilder):
     def __init__(self):
         super().__init__(classes=set(
-          ["AdsDiagnosisResult","AutomationImagePlan","AutomationVideoAudioPlan","AutomationVideoPlan","AutomationVideoScenePlan","CompositionRegion","CompositionTextPlacement","CreativeAutomationPlanDraft","CreativeBriefDraft","CreativeIdeaCandidates","CreativeIdeaDraft","CreativeLessonResult","CreativeOpportunityResult","CreativePersonaHypothesis","CreativeVariationDraft","LabeledReviewImage","LearningProposalResult","ResearchProductMatchDraft","ResearchReferenceProfileDraft","ResearchScreeningDraft","SemanticCriterionReview","SemanticReviewEvidence","SemanticReviewIssue","StaticCompositionDraft","StaticCreativeReview",]
+          ["AdsDiagnosisResult","AutomationImagePlan","AutomationVideoAudioPlan","AutomationVideoPlan","AutomationVideoScenePlan","CompositionRegion","CompositionTextPlacement","CreativeAutomationPlanDraft","CreativeBriefDraft","CreativeIdeaCandidates","CreativeIdeaDraft","CreativeLessonResult","CreativeOpportunityResult","CreativePersonaHypothesis","CreativeVariationDraft","LabeledReviewImage","LearningProposalResult","ResearchProductMatchDraft","ResearchReferenceProfileDraft","ResearchScreeningDraft","StaticCompositionDraft",]
         ), enums=set(
-          ["AutomationHumanPresence","AutomationVideoGenerationStrategy","AutomationVideoMusicMode","AutomationVideoVoiceMode","BriefReviewOutcome","CreativeAutomationReadiness","IdeaRecommendation","LearningRecommendationAction","OpportunityCategory","SemanticCriterionStatus","SemanticIssueSeverity","SemanticRepairAction","TextAlignment",]
+          ["AutomationHumanPresence","AutomationVideoGenerationStrategy","AutomationVideoMusicMode","AutomationVideoVoiceMode","BriefReviewOutcome","CreativeAutomationReadiness","IdeaRecommendation","LearningRecommendationAction","OpportunityCategory","TextAlignment",]
         ), runtime=DO_NOT_USE_DIRECTLY_UNLESS_YOU_KNOW_WHAT_YOURE_DOING_RUNTIME)
 
     # #########################################################################
-    # Generated enums 13
+    # Generated enums 10
     # #########################################################################
 
     @property
@@ -66,24 +66,12 @@ class TypeBuilder(type_builder.TypeBuilder):
         return OpportunityCategoryViewer(self)
 
     @property
-    def SemanticCriterionStatus(self) -> "SemanticCriterionStatusViewer":
-        return SemanticCriterionStatusViewer(self)
-
-    @property
-    def SemanticIssueSeverity(self) -> "SemanticIssueSeverityViewer":
-        return SemanticIssueSeverityViewer(self)
-
-    @property
-    def SemanticRepairAction(self) -> "SemanticRepairActionViewer":
-        return SemanticRepairActionViewer(self)
-
-    @property
     def TextAlignment(self) -> "TextAlignmentViewer":
         return TextAlignmentViewer(self)
 
 
     # #########################################################################
-    # Generated classes 25
+    # Generated classes 21
     # #########################################################################
 
     @property
@@ -167,29 +155,13 @@ class TypeBuilder(type_builder.TypeBuilder):
         return ResearchScreeningDraftViewer(self)
 
     @property
-    def SemanticCriterionReview(self) -> "SemanticCriterionReviewViewer":
-        return SemanticCriterionReviewViewer(self)
-
-    @property
-    def SemanticReviewEvidence(self) -> "SemanticReviewEvidenceViewer":
-        return SemanticReviewEvidenceViewer(self)
-
-    @property
-    def SemanticReviewIssue(self) -> "SemanticReviewIssueViewer":
-        return SemanticReviewIssueViewer(self)
-
-    @property
     def StaticCompositionDraft(self) -> "StaticCompositionDraftViewer":
         return StaticCompositionDraftViewer(self)
-
-    @property
-    def StaticCreativeReview(self) -> "StaticCreativeReviewViewer":
-        return StaticCreativeReviewViewer(self)
 
 
 
 # #########################################################################
-# Generated enums 13
+# Generated enums 10
 # #########################################################################
 
 class AutomationHumanPresenceAst:
@@ -634,152 +606,6 @@ class OpportunityCategoryValues:
     
 
 
-class SemanticCriterionStatusAst:
-    def __init__(self, tb: type_builder.TypeBuilder):
-        _tb = tb._tb # type: ignore (we know how to use this private attribute)
-        self._bldr = _tb.enum("SemanticCriterionStatus")
-        self._values: typing.Set[str] = set([  "PASS",  "FAIL",  "UNKNOWN",  ])
-        self._vals = SemanticCriterionStatusValues(self._bldr, self._values)
-
-    def type(self) -> baml_py.FieldType:
-        return self._bldr.field()
-
-    @property
-    def values(self) -> "SemanticCriterionStatusValues":
-        return self._vals
-
-
-class SemanticCriterionStatusViewer(SemanticCriterionStatusAst):
-    def __init__(self, tb: type_builder.TypeBuilder):
-        super().__init__(tb)
-
-    
-    def list_values(self) -> typing.List[typing.Tuple[str, type_builder.EnumValueViewer]]:
-        return [(name, type_builder.EnumValueViewer(self._bldr.value(name))) for name in self._values]
-    
-
-class SemanticCriterionStatusValues:
-    def __init__(self, enum_bldr: baml_py.EnumBuilder, values: typing.Set[str]):
-        self.__bldr = enum_bldr
-        self.__values = values # type: ignore (we know how to use this private attribute) # noqa: F821
-
-    
-    
-    @property
-    def PASS(self) -> type_builder.EnumValueViewer:
-        return type_builder.EnumValueViewer(self.__bldr.value("PASS"))
-    
-    @property
-    def FAIL(self) -> type_builder.EnumValueViewer:
-        return type_builder.EnumValueViewer(self.__bldr.value("FAIL"))
-    
-    @property
-    def UNKNOWN(self) -> type_builder.EnumValueViewer:
-        return type_builder.EnumValueViewer(self.__bldr.value("UNKNOWN"))
-    
-    
-
-
-class SemanticIssueSeverityAst:
-    def __init__(self, tb: type_builder.TypeBuilder):
-        _tb = tb._tb # type: ignore (we know how to use this private attribute)
-        self._bldr = _tb.enum("SemanticIssueSeverity")
-        self._values: typing.Set[str] = set([  "MINOR",  "MAJOR",  "CRITICAL",  ])
-        self._vals = SemanticIssueSeverityValues(self._bldr, self._values)
-
-    def type(self) -> baml_py.FieldType:
-        return self._bldr.field()
-
-    @property
-    def values(self) -> "SemanticIssueSeverityValues":
-        return self._vals
-
-
-class SemanticIssueSeverityViewer(SemanticIssueSeverityAst):
-    def __init__(self, tb: type_builder.TypeBuilder):
-        super().__init__(tb)
-
-    
-    def list_values(self) -> typing.List[typing.Tuple[str, type_builder.EnumValueViewer]]:
-        return [(name, type_builder.EnumValueViewer(self._bldr.value(name))) for name in self._values]
-    
-
-class SemanticIssueSeverityValues:
-    def __init__(self, enum_bldr: baml_py.EnumBuilder, values: typing.Set[str]):
-        self.__bldr = enum_bldr
-        self.__values = values # type: ignore (we know how to use this private attribute) # noqa: F821
-
-    
-    
-    @property
-    def MINOR(self) -> type_builder.EnumValueViewer:
-        return type_builder.EnumValueViewer(self.__bldr.value("MINOR"))
-    
-    @property
-    def MAJOR(self) -> type_builder.EnumValueViewer:
-        return type_builder.EnumValueViewer(self.__bldr.value("MAJOR"))
-    
-    @property
-    def CRITICAL(self) -> type_builder.EnumValueViewer:
-        return type_builder.EnumValueViewer(self.__bldr.value("CRITICAL"))
-    
-    
-
-
-class SemanticRepairActionAst:
-    def __init__(self, tb: type_builder.TypeBuilder):
-        _tb = tb._tb # type: ignore (we know how to use this private attribute)
-        self._bldr = _tb.enum("SemanticRepairAction")
-        self._values: typing.Set[str] = set([  "REGENERATE_FULL",  "REGENERATE_WITH_CONSTRAINTS",  "EDIT_REGION",  "MANUAL_REVIEW",  "REJECT_POLICY",  ])
-        self._vals = SemanticRepairActionValues(self._bldr, self._values)
-
-    def type(self) -> baml_py.FieldType:
-        return self._bldr.field()
-
-    @property
-    def values(self) -> "SemanticRepairActionValues":
-        return self._vals
-
-
-class SemanticRepairActionViewer(SemanticRepairActionAst):
-    def __init__(self, tb: type_builder.TypeBuilder):
-        super().__init__(tb)
-
-    
-    def list_values(self) -> typing.List[typing.Tuple[str, type_builder.EnumValueViewer]]:
-        return [(name, type_builder.EnumValueViewer(self._bldr.value(name))) for name in self._values]
-    
-
-class SemanticRepairActionValues:
-    def __init__(self, enum_bldr: baml_py.EnumBuilder, values: typing.Set[str]):
-        self.__bldr = enum_bldr
-        self.__values = values # type: ignore (we know how to use this private attribute) # noqa: F821
-
-    
-    
-    @property
-    def REGENERATE_FULL(self) -> type_builder.EnumValueViewer:
-        return type_builder.EnumValueViewer(self.__bldr.value("REGENERATE_FULL"))
-    
-    @property
-    def REGENERATE_WITH_CONSTRAINTS(self) -> type_builder.EnumValueViewer:
-        return type_builder.EnumValueViewer(self.__bldr.value("REGENERATE_WITH_CONSTRAINTS"))
-    
-    @property
-    def EDIT_REGION(self) -> type_builder.EnumValueViewer:
-        return type_builder.EnumValueViewer(self.__bldr.value("EDIT_REGION"))
-    
-    @property
-    def MANUAL_REVIEW(self) -> type_builder.EnumValueViewer:
-        return type_builder.EnumValueViewer(self.__bldr.value("MANUAL_REVIEW"))
-    
-    @property
-    def REJECT_POLICY(self) -> type_builder.EnumValueViewer:
-        return type_builder.EnumValueViewer(self.__bldr.value("REJECT_POLICY"))
-    
-    
-
-
 class TextAlignmentAst:
     def __init__(self, tb: type_builder.TypeBuilder):
         _tb = tb._tb # type: ignore (we know how to use this private attribute)
@@ -828,7 +654,7 @@ class TextAlignmentValues:
 
 
 # #########################################################################
-# Generated classes 25
+# Generated classes 21
 # #########################################################################
 
 class AdsDiagnosisResultAst:
@@ -2139,167 +1965,6 @@ class ResearchScreeningDraftProperties:
     
 
 
-class SemanticCriterionReviewAst:
-    def __init__(self, tb: type_builder.TypeBuilder):
-        _tb = tb._tb # type: ignore (we know how to use this private attribute)
-        self._bldr = _tb.class_("SemanticCriterionReview")
-        self._properties: typing.Set[str] = set([  "criterion_id",  "status",  "reason",  "score",  "confidence",  "evidence",  "issue",  ])
-        self._props = SemanticCriterionReviewProperties(self._bldr, self._properties)
-
-    def type(self) -> baml_py.FieldType:
-        return self._bldr.field()
-
-    @property
-    def props(self) -> "SemanticCriterionReviewProperties":
-        return self._props
-
-
-class SemanticCriterionReviewViewer(SemanticCriterionReviewAst):
-    def __init__(self, tb: type_builder.TypeBuilder):
-        super().__init__(tb)
-
-    
-    def list_properties(self) -> typing.List[typing.Tuple[str, type_builder.ClassPropertyViewer]]:
-        return [(name, type_builder.ClassPropertyViewer(self._bldr.property(name))) for name in self._properties]
-    
-
-
-class SemanticCriterionReviewProperties:
-    def __init__(self, bldr: baml_py.ClassBuilder, properties: typing.Set[str]):
-        self.__bldr = bldr
-        self.__properties = properties # type: ignore (we know how to use this private attribute) # noqa: F821
-
-    
-    
-    @property
-    def criterion_id(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("criterion_id"))
-    
-    @property
-    def status(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("status"))
-    
-    @property
-    def reason(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("reason"))
-    
-    @property
-    def score(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("score"))
-    
-    @property
-    def confidence(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("confidence"))
-    
-    @property
-    def evidence(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("evidence"))
-    
-    @property
-    def issue(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("issue"))
-    
-    
-
-
-class SemanticReviewEvidenceAst:
-    def __init__(self, tb: type_builder.TypeBuilder):
-        _tb = tb._tb # type: ignore (we know how to use this private attribute)
-        self._bldr = _tb.class_("SemanticReviewEvidence")
-        self._properties: typing.Set[str] = set([  "description",  "source_ref",  "region",  ])
-        self._props = SemanticReviewEvidenceProperties(self._bldr, self._properties)
-
-    def type(self) -> baml_py.FieldType:
-        return self._bldr.field()
-
-    @property
-    def props(self) -> "SemanticReviewEvidenceProperties":
-        return self._props
-
-
-class SemanticReviewEvidenceViewer(SemanticReviewEvidenceAst):
-    def __init__(self, tb: type_builder.TypeBuilder):
-        super().__init__(tb)
-
-    
-    def list_properties(self) -> typing.List[typing.Tuple[str, type_builder.ClassPropertyViewer]]:
-        return [(name, type_builder.ClassPropertyViewer(self._bldr.property(name))) for name in self._properties]
-    
-
-
-class SemanticReviewEvidenceProperties:
-    def __init__(self, bldr: baml_py.ClassBuilder, properties: typing.Set[str]):
-        self.__bldr = bldr
-        self.__properties = properties # type: ignore (we know how to use this private attribute) # noqa: F821
-
-    
-    
-    @property
-    def description(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("description"))
-    
-    @property
-    def source_ref(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("source_ref"))
-    
-    @property
-    def region(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("region"))
-    
-    
-
-
-class SemanticReviewIssueAst:
-    def __init__(self, tb: type_builder.TypeBuilder):
-        _tb = tb._tb # type: ignore (we know how to use this private attribute)
-        self._bldr = _tb.class_("SemanticReviewIssue")
-        self._properties: typing.Set[str] = set([  "code",  "severity",  "repair_action",  "description",  ])
-        self._props = SemanticReviewIssueProperties(self._bldr, self._properties)
-
-    def type(self) -> baml_py.FieldType:
-        return self._bldr.field()
-
-    @property
-    def props(self) -> "SemanticReviewIssueProperties":
-        return self._props
-
-
-class SemanticReviewIssueViewer(SemanticReviewIssueAst):
-    def __init__(self, tb: type_builder.TypeBuilder):
-        super().__init__(tb)
-
-    
-    def list_properties(self) -> typing.List[typing.Tuple[str, type_builder.ClassPropertyViewer]]:
-        return [(name, type_builder.ClassPropertyViewer(self._bldr.property(name))) for name in self._properties]
-    
-
-
-class SemanticReviewIssueProperties:
-    def __init__(self, bldr: baml_py.ClassBuilder, properties: typing.Set[str]):
-        self.__bldr = bldr
-        self.__properties = properties # type: ignore (we know how to use this private attribute) # noqa: F821
-
-    
-    
-    @property
-    def code(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("code"))
-    
-    @property
-    def severity(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("severity"))
-    
-    @property
-    def repair_action(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("repair_action"))
-    
-    @property
-    def description(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("description"))
-    
-    
-
-
 class StaticCompositionDraftAst:
     def __init__(self, tb: type_builder.TypeBuilder):
         _tb = tb._tb # type: ignore (we know how to use this private attribute)
@@ -2367,53 +2032,6 @@ class StaticCompositionDraftProperties:
     @property
     def evidence_refs(self) -> type_builder.ClassPropertyViewer:
         return type_builder.ClassPropertyViewer(self.__bldr.property("evidence_refs"))
-    
-    
-
-
-class StaticCreativeReviewAst:
-    def __init__(self, tb: type_builder.TypeBuilder):
-        _tb = tb._tb # type: ignore (we know how to use this private attribute)
-        self._bldr = _tb.class_("StaticCreativeReview")
-        self._properties: typing.Set[str] = set([  "criteria",  "summary",  "warnings",  ])
-        self._props = StaticCreativeReviewProperties(self._bldr, self._properties)
-
-    def type(self) -> baml_py.FieldType:
-        return self._bldr.field()
-
-    @property
-    def props(self) -> "StaticCreativeReviewProperties":
-        return self._props
-
-
-class StaticCreativeReviewViewer(StaticCreativeReviewAst):
-    def __init__(self, tb: type_builder.TypeBuilder):
-        super().__init__(tb)
-
-    
-    def list_properties(self) -> typing.List[typing.Tuple[str, type_builder.ClassPropertyViewer]]:
-        return [(name, type_builder.ClassPropertyViewer(self._bldr.property(name))) for name in self._properties]
-    
-
-
-class StaticCreativeReviewProperties:
-    def __init__(self, bldr: baml_py.ClassBuilder, properties: typing.Set[str]):
-        self.__bldr = bldr
-        self.__properties = properties # type: ignore (we know how to use this private attribute) # noqa: F821
-
-    
-    
-    @property
-    def criteria(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("criteria"))
-    
-    @property
-    def summary(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("summary"))
-    
-    @property
-    def warnings(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("warnings"))
     
     
 

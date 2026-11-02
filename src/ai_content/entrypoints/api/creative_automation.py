@@ -69,10 +69,10 @@ from ai_content.domains.marketing.creative.application.routing import (
     decide_production_route,
 )
 from ai_content.domains.marketing.creative.config.orchestration import (
-    load_orchestration_config,
+    OrchestrationConfig,
 )
 from ai_content.domains.marketing.creative.config.preparation import (
-    load_preparation_config,
+    PreparationConfig,
 )
 from ai_content.domains.marketing.creative.ports.ads_activation import (
     AdsActivationDisabledError,
@@ -707,16 +707,13 @@ async def create_marketing_creative_automation(
 
     await jobs.create_batch(batch, initial_jobs)
 
-    orchestration_config = load_orchestration_config(settings.orchestration_config_path)
+    orchestration_config = OrchestrationConfig.from_settings(settings)
     orchestrator = (
         FakeCreativeAutomationOrchestrator(orchestration_config)
         if orchestration_config.backend == "fake"
         else BamlCreativeAutomationOrchestrator(
             orchestration_config,
-            api_key=_configured_model_api_key(
-                settings,
-                orchestration_config.api_key_env,
-            ),
+            api_key=orchestration_config.api_key,
             usage_tracker=AIUsageTracker(usage_repository),
             image_provider_descriptor=providers.image_descriptor(payload.image_provider_id),
             video_provider_descriptor=providers.video_descriptor(),
@@ -1001,40 +998,30 @@ async def _process_automation_request(
         base_compilation,
         _memory_sources(_creative_knowledge_memory(knowledge_by_stage[KnowledgeStage.PERSONA])),
     )
-    preparation_config = load_preparation_config(
-        settings.preparation_config_path or settings.config_dir / "preparation/synthetic.json"
+    preparation_config = PreparationConfig.from_settings(settings)
+    preparation_config = preparation_config.model_copy(
+        update={
+            "model": (
+                route_approved_agent_model(
+                    request.agent_model_id,
+                    configured_model=preparation_config.model,
+                )
+                if request.agent_model_id
+                else preparation_config.model
+            ),
+            "reasoning_effort": (
+                None
+                if request.agent_reasoning_effort in {None, "auto"}
+                else request.agent_reasoning_effort
+            ),
+        }
     )
-    if preparation_config.backend == "baml":
-        preparation_config = preparation_config.model_copy(
-            update={
-                "model": (
-                    route_approved_agent_model(
-                        request.agent_model_id,
-                        configured_model=preparation_config.model,
-                    )
-                    if request.agent_model_id
-                    else preparation_config.model
-                ),
-                "reasoning_effort": (
-                    None
-                    if request.agent_reasoning_effort in {None, "auto"}
-                    else request.agent_reasoning_effort
-                ),
-            }
-        )
-    persona_resolver = None
-    if preparation_config.backend == "baml":
-        persona_resolver = BamlPreparationModel(
-            preparation_config,
-            api_key=_configured_model_api_key(
-                settings,
-                preparation_config.api_key_env,
-            ),
-            usage_tracker=usage_tracker,
-            image_reader=(
-                source_resolver.read_frozen_source if source_resolver is not None else None
-            ),
-        )
+    persona_resolver = BamlPreparationModel(
+        preparation_config,
+        api_key=preparation_config.api_key,
+        usage_tracker=usage_tracker,
+        image_reader=(source_resolver.read_frozen_source if source_resolver is not None else None),
+    )
     if (
         not persona_compilation.intake.cases[0].context_template.personas
         and persona_resolver is not None
@@ -3996,26 +3983,6 @@ def _latency_response(
         is_final=total_duration_ms is not None,
         steps=steps,
     )
-
-
-def _configured_model_api_key(settings, api_key_env: str | None) -> str | None:
-    if hasattr(settings, "orch_api_key") and settings.orch_api_key:
-        return settings.orch_api_key
-    credential = getattr(settings, "credential", None)
-    if callable(credential):
-        try:
-            return credential(api_key_env)
-        except ValueError:
-            pass
-    if api_key_env in {"ROUTER_API_KEY", "AIC_ORCH_API_KEY", "AIC_PREP_API_KEY"}:
-        return (
-            getattr(settings, "orch_api_key", None)
-            or getattr(settings, "prep_api_key", None)
-            or getattr(settings, "router_api_key", None)
-        )
-    if api_key_env is None:
-        return None
-    return getattr(settings, "orch_api_key", None) or getattr(settings, "router_api_key", None)
 
 
 async def _existing_or_initialize_state(

@@ -62,7 +62,7 @@ from .image_files import inspect_image, read_local_image
 class _BamlOrchestrationClient(Protocol):
     async def OrchestrateCreativeAutomation(
         self,
-        instructions: str,
+        retry_hint: str,
         input_json: str,
         product_images: list[baml_types.LabeledReviewImage],
         image_count: int,
@@ -89,7 +89,7 @@ class BamlCreativeAutomationOrchestrator:
         if config.backend != "baml":
             raise ValueError("BAML orchestrator requires a baml configuration")
         resolved_key = api_key or config.api_key
-        if config.api_key_env is not None and not resolved_key:
+        if not resolved_key:
             raise ValueError("Configured orchestration model credential is missing")
         set_log_level("OFF")
         self._config = config
@@ -195,7 +195,7 @@ class BamlCreativeAutomationOrchestrator:
                 try:
                     output = await asyncio.wait_for(
                         client.OrchestrateCreativeAutomation(
-                            instructions=_retry_instructions(config.instructions, request, attempt),
+                            retry_hint=_retry_hint(request, attempt),
                             input_json=payload,
                             product_images=product_images,
                             image_count=request.output.image_output_count,
@@ -286,13 +286,12 @@ class BamlCreativeAutomationOrchestrator:
         return plan
 
 
-def _retry_instructions(
-    instructions: str,
+def _retry_hint(
     request: MarketingCreativeAutomationRequest,
     attempt: int,
 ) -> str:
     if attempt == 0:
-        return instructions
+        return ""
     audio_requirement = ""
     if request.video_generate_audio is False:
         audio_requirement = (
@@ -305,7 +304,6 @@ def _retry_instructions(
             "and provide the required audio directions."
         )
     return (
-        f"{instructions}\n\n"
         "Validation retry: return a complete, internally consistent plan. "
         f"For readiness READY, return exactly {request.output.image_output_count} image "
         f"plan(s) and exactly {request.output.video_output_count} video plan(s). "

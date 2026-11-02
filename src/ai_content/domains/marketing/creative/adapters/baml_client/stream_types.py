@@ -23,7 +23,7 @@ class StreamState(BaseModel, typing.Generic[StreamStateValueT]):
     value: StreamStateValueT
     state: typing_extensions.Literal["Pending", "Incomplete", "Complete"]
 # #########################################################################
-# Generated classes (25)
+# Generated classes (21)
 # #########################################################################
 
 class AdsDiagnosisResult(BaseModel):
@@ -218,26 +218,6 @@ class ResearchScreeningDraft(BaseModel):
     confidence: typing.Optional[float] = None
     profile: typing.Optional["ResearchReferenceProfileDraft"] = None
 
-class SemanticCriterionReview(BaseModel):
-    criterion_id: typing.Optional[str] = None
-    status: typing.Optional[types.SemanticCriterionStatus] = None
-    reason: typing.Optional[str] = None
-    score: typing.Optional[float] = None
-    confidence: typing.Optional[float] = None
-    evidence: typing.List["SemanticReviewEvidence"]
-    issue: typing.Optional["SemanticReviewIssue"] = None
-
-class SemanticReviewEvidence(BaseModel):
-    description: typing.Optional[str] = None
-    source_ref: typing.Optional[str] = None
-    region: typing.Optional[typing.List[float]] = None
-
-class SemanticReviewIssue(BaseModel):
-    code: typing.Optional[str] = None
-    severity: typing.Optional[types.SemanticIssueSeverity] = None
-    repair_action: typing.Optional[types.SemanticRepairAction] = None
-    description: typing.Optional[str] = None
-
 class StaticCompositionDraft(BaseModel):
     visual_prompt: typing.Optional[str] = None
     product_source_index: typing.Optional[int] = None
@@ -249,18 +229,13 @@ class StaticCompositionDraft(BaseModel):
     rationale: typing.Optional[str] = None
     evidence_refs: typing.List[str]
 
-class StaticCreativeReview(BaseModel):
-    criteria: typing.List["SemanticCriterionReview"]
-    summary: typing.Optional[str] = None
-    warnings: typing.List[str]
-
 # #########################################################################
 # Generated type aliases (0)
 # #########################################################################
 
 
 # #########################################################################
-# Model rebuilds (25)
+# Model rebuilds (21)
 # #########################################################################
 # Resolve string forward references now that every model above is defined so
 # class declaration order never breaks Pydantic construction (issue #793).
@@ -286,8 +261,4 @@ LearningProposalResult.model_rebuild()
 ResearchProductMatchDraft.model_rebuild()
 ResearchReferenceProfileDraft.model_rebuild()
 ResearchScreeningDraft.model_rebuild()
-SemanticCriterionReview.model_rebuild()
-SemanticReviewEvidence.model_rebuild()
-SemanticReviewIssue.model_rebuild()
 StaticCompositionDraft.model_rebuild()
-StaticCreativeReview.model_rebuild()

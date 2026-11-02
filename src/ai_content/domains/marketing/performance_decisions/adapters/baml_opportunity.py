@@ -1,7 +1,6 @@
 """BAML boundary for read-only Creative Opportunity shadow analysis."""
 
 import asyncio
-import hashlib
 import json
 from dataclasses import asdict
 from datetime import UTC, datetime
@@ -21,13 +20,13 @@ from ..domain.models import (
 from ..ports.interfaces import OpportunityAnalysisError
 from .baml_client import types as baml_types
 from .baml_client.async_client import b
-from .baml_client.inlinedbaml import get_baml_files
+
+_PROMPT_VERSION = "performance-opportunity@3-baml"
 
 
 class _BamlOpportunityClient(Protocol):
     async def AnalyzeCreativeOpportunity(
         self,
-        instructions: str,
         evidence_json: str,
         baml_options: dict[str, object],
     ) -> baml_types.CreativeOpportunityResult: ...
@@ -42,8 +41,6 @@ class BamlCreativeOpportunityAnalyzer:
         client: _BamlOpportunityClient | None = None,
     ) -> None:
         self._config = config
-        if config.api_key_env and not api_key:
-            raise OpportunityAnalysisError("Opportunity model credential is missing")
         set_log_level("OFF")
         self._client = client or b.with_options(
             env={
@@ -51,11 +48,6 @@ class BamlCreativeOpportunityAnalyzer:
                 "MARKETING_LLM_MODEL": config.model,
                 "MARKETING_LLM_API_KEY": api_key or "local-no-auth",
             }
-        )
-        self._template_fingerprint = _template_fingerprint(
-            get_baml_files()["performance_opportunity.baml"],
-            "AnalyzeCreativeOpportunity",
-            config.prompt.text,
         )
 
     async def analyze(
@@ -66,7 +58,6 @@ class BamlCreativeOpportunityAnalyzer:
         try:
             async with asyncio.timeout(self._config.timeout_seconds):
                 result = await self._client.AnalyzeCreativeOpportunity(
-                    instructions=self._config.prompt.text,
                     evidence_json=payload,
                     baml_options={},
                 )
@@ -75,11 +66,10 @@ class BamlCreativeOpportunityAnalyzer:
 
         try:
             category = OpportunityCategory(result.category.value.lower())
-            prompt_version = f"{self._config.prompt.version}+baml:{self._template_fingerprint[:12]}"
             analysis_id = str(
                 uuid5(
                     NAMESPACE_URL,
-                    f"opportunity-analysis:{evidence.pack_id}:{prompt_version}:"
+                    f"opportunity-analysis:{evidence.pack_id}:{_PROMPT_VERSION}:"
                     f"{self._config.model}",
                 )
             )
@@ -106,21 +96,13 @@ class BamlCreativeOpportunityAnalyzer:
                 uncertainty=result.uncertainty,
                 counterargument=result.counterargument,
                 proposal=proposal,
-                prompt_version=prompt_version,
+                prompt_version=_PROMPT_VERSION,
                 model=self._config.model,
                 rubric_version=self._config.rubric_version,
                 created_at=datetime.now(UTC),
             )
         except ValueError as exc:
             raise OpportunityAnalysisError("Opportunity model returned invalid output") from exc
-
-
-def _template_fingerprint(source: str, function: str, instructions: str) -> str:
-    payload = json.dumps(
-        {"baml": source, "function": function, "instructions": instructions},
-        sort_keys=True,
-    )
-    return hashlib.sha256(payload.encode()).hexdigest()
 
 
 __all__ = ["BamlCreativeOpportunityAnalyzer"]

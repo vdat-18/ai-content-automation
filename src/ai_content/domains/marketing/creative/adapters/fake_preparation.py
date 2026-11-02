@@ -21,6 +21,12 @@ from ..ports.preparation import (
     VariationBriefDraft,
 )
 
+_PROMPT_VERSIONS = {
+    "ideas": "m1-ideas@7-baml",
+    "brief": "m1-brief@5-baml",
+    "composition": "m2-static-composition@4-baml",
+}
+
 
 class FakePreparationModel:
     def __init__(self, config: PreparationConfig) -> None:
@@ -33,15 +39,8 @@ class FakePreparationModel:
         work_item: CreativeWorkItemInput,
         selected: IdeaDraft | None = None,
     ) -> ModelCallTrace:
-        prompts = {
-            "ideas": self._config.idea_prompt,
-            "brief": self._config.brief_prompt,
-            "composition": self._config.composition_prompt,
-        }
-        prompt = prompts[step]
         prompt_text = json.dumps(
             {
-                "instructions": prompt.text,
                 "context": TypeAdapter(PreparationContext).dump_python(context, mode="json"),
                 "work_item": TypeAdapter(CreativeWorkItemInput).dump_python(work_item, mode="json"),
                 "selected": TypeAdapter(IdeaDraft | None).dump_python(selected, mode="json"),
@@ -53,7 +52,7 @@ class FakePreparationModel:
             step=step,
             backend="fake",
             model="synthetic-preparation",
-            prompt_version=prompt.version,
+            prompt_version=_PROMPT_VERSIONS[step],
             prompt_hash=hashlib.sha256(prompt_text.encode("utf-8")).hexdigest(),
             config_hash=self._config.config_hash,
             elapsed_seconds=0,

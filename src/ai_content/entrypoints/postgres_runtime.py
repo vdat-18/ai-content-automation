@@ -19,6 +19,7 @@ from ai_content.domains.marketing.creative.adapters.postgres_repository import (
 )
 from ai_content.domains.marketing.creative.bootstrap import CreativeRuntime
 from ai_content.domains.marketing.creative.bootstrap import build_runtime as build_creative
+from ai_content.domains.marketing.creative.config.preparation import PreparationConfig
 from ai_content.domains.marketing.creative_feedback.adapters.baml_learning import (
     BamlPerformanceLearningAnalyzer,
 )
@@ -29,10 +30,7 @@ from ai_content.domains.marketing.creative_feedback.application.evaluation impor
     RunCreativeFeedback,
 )
 from ai_content.domains.marketing.creative_feedback.bootstrap import CreativeFeedbackRuntime
-from ai_content.domains.marketing.creative_feedback.config.learning import (
-    PerformanceLearningConfig,
-    load_performance_learning_config,
-)
+from ai_content.domains.marketing.creative_feedback.config.learning import PerformanceLearningConfig
 from ai_content.domains.marketing.creative_intake.adapters.postgres_repository import (
     PostgresCreativeIntakeRepository,
 )
@@ -90,9 +88,9 @@ class PostgresRuntimeContainer:
         database: Database,
         artifacts_root: Path,
         config_dir: Path,
-        preparation_config_path: Path | None = None,
+        preparation_config: PreparationConfig | None = None,
         preparation_api_key: str | None = None,
-        learning_config_path: Path | None = None,
+        learning_config: PerformanceLearningConfig | None = None,
         learning_api_key: str | None = None,
         execution_backend: str = "lease_worker",
         object_storage: ObjectStorage | None = None,
@@ -101,15 +99,9 @@ class PostgresRuntimeContainer:
         self.database = database
         self.artifacts_root = artifacts_root
         self.config_dir = config_dir
-        self.preparation_config_path = (
-            preparation_config_path or config_dir / "preparation/synthetic.json"
-        )
+        self.preparation_config = preparation_config
         self.preparation_api_key = preparation_api_key
-        self.learning_config: PerformanceLearningConfig | None = (
-            load_performance_learning_config(learning_config_path)
-            if learning_config_path is not None
-            else None
-        )
+        self.learning_config = learning_config
         self.learning_api_key = learning_api_key
         self.artifacts = ArtifactStore(artifacts_root)
         engine = database.engine
@@ -211,7 +203,7 @@ class PostgresRuntimeContainer:
         creative = self.creative()
         feedback = self.feedback()
         fixture_path = self.config_dir / "fixtures/creative_loop_synthetic.json"
-        preparation_config = self.preparation_config_path
+        preparation_config = self.preparation_config
         fixture = load_creative_loop_fixture(fixture_path)
         workflow = RunCreativeLoop(
             self.creative_loop_repository,

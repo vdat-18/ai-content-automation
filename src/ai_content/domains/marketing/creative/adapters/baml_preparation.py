@@ -24,7 +24,7 @@ from ai_content.platform.ai_usage import (
 from ai_content.platform.observability import observe_ai_call
 
 from ..application.model_context import preparation_context_for_model
-from ..config.preparation import PreparationConfig, PreparationPrompt
+from ..config.preparation import PreparationConfig
 from ..ports.contracts import CreativeWorkItemInput, ExperimentContext
 from ..ports.preparation import (
     BriefDraft,
@@ -52,18 +52,23 @@ _BAML_FUNCTIONS = {
     "composition": "PlanStaticComposition",
 }
 
+_PROMPT_VERSIONS = {
+    "persona": "creative-persona-resolution@3-baml",
+    "ideas": "m1-ideas@7-baml",
+    "brief": "m1-brief@5-baml",
+    "composition": "m2-static-composition@4-baml",
+}
+
 
 class _BamlPreparationClient(Protocol):
     async def ResolveCreativePersona(
         self,
-        instructions: str,
         input_json: str,
         baml_options: dict[str, object],
     ) -> baml_types.CreativePersonaHypothesis: ...
 
     async def GenerateCreativeIdeas(
         self,
-        instructions: str,
         input_json: str,
         max_ideas: int,
         baml_options: dict[str, object],
@@ -71,7 +76,6 @@ class _BamlPreparationClient(Protocol):
 
     async def WriteCreativeBrief(
         self,
-        instructions: str,
         input_json: str,
         variation_count: int,
         baml_options: dict[str, object],
@@ -79,7 +83,6 @@ class _BamlPreparationClient(Protocol):
 
     async def PlanStaticComposition(
         self,
-        instructions: str,
         input_json: str,
         product_images: list[baml_types.LabeledReviewImage],
         baml_options: dict[str, object],
@@ -101,13 +104,7 @@ class BamlPreparationModel:
         self._image_reader = image_reader or read_local_image
         # BAML INFO logs include full prompts; application telemetry records metadata only.
         set_log_level("OFF")
-        resolved_key = api_key or config.api_key
-        if config.api_key_env and not resolved_key:
-            raise PreparationError(
-                "Configured model credential environment variable is missing",
-                "model_credentials_missing",
-            )
-        api_key = resolved_key or "local-no-auth"
+        api_key = api_key or config.api_key or "local-no-auth"
 
         if client is not None:
             self._client = client
@@ -128,19 +125,11 @@ class BamlPreparationModel:
     async def resolve_persona(
         self, context: PreparationContext, work_item: CreativeWorkItemInput
     ) -> ModelStepResult[PersonaHypothesis]:
-        prompt = self._config.persona_prompt
-        if prompt is None:
-            raise PreparationError(
-                "Persona resolution prompt is not configured",
-                "persona_resolution_not_configured",
-            )
         payload = self._payload(context, work_item)
         output, trace = await self._call(
             "persona",
-            prompt,
             payload,
-            lambda collector, instructions: self._client.ResolveCreativePersona(
-                instructions=instructions,
+            lambda collector: self._client.ResolveCreativePersona(
                 input_json=payload,
                 baml_options={"collector": collector},
             ),
@@ -167,10 +156,8 @@ class BamlPreparationModel:
         payload = self._payload(context, work_item)
         output, trace = await self._call(
             "ideas",
-            self._config.idea_prompt,
             payload,
-            lambda collector, instructions: self._client.GenerateCreativeIdeas(
-                instructions=instructions,
+            lambda collector: self._client.GenerateCreativeIdeas(
                 input_json=payload,
                 max_ideas=self._config.max_ideas,
                 baml_options={"collector": collector},
@@ -203,10 +190,8 @@ class BamlPreparationModel:
         payload = self._payload(context, work_item, selected)
         output, trace = await self._call(
             "brief",
-            self._config.brief_prompt,
             payload,
-            lambda collector, instructions: self._client.WriteCreativeBrief(
-                instructions=instructions,
+            lambda collector: self._client.WriteCreativeBrief(
                 input_json=payload,
                 variation_count=work_item.variation_count,
                 baml_options={"collector": collector},
@@ -229,10 +214,8 @@ class BamlPreparationModel:
         product_images = self._product_images(context)
         output, trace = await self._call(
             "composition",
-            self._config.composition_prompt,
             payload,
-            lambda collector, instructions: self._client.PlanStaticComposition(
-                instructions=instructions,
+            lambda collector: self._client.PlanStaticComposition(
                 input_json=payload,
                 product_images=product_images,
                 baml_options={"collector": collector},
@@ -367,16 +350,14 @@ class BamlPreparationModel:
     async def _call(
         self,
         step: Literal["persona", "ideas", "brief", "composition"],
-        prompt: PreparationPrompt,
         payload: str,
-        operation: Callable[[Collector, str], Awaitable[Any]],
+        operation: Callable[[Collector], Awaitable[Any]],
         work_item: CreativeWorkItemInput,
     ) -> tuple[Any, ModelCallTrace]:
         prompt_text = json.dumps(
             {
                 "baml": self._baml_source,
                 "function": _BAML_FUNCTIONS[step],
-                "instructions": prompt.text,
                 "input": payload,
             },
             ensure_ascii=False,
@@ -403,7 +384,7 @@ class BamlPreparationModel:
                 step=step,
                 backend="baml",
                 model=model,
-                prompt_version=prompt.version,
+                prompt_version=_PROMPT_VERSIONS[step],
                 prompt_hash=prompt_hash,
                 prompt_text=None,
                 config_hash=self._config.config_hash,
@@ -419,7 +400,7 @@ class BamlPreparationModel:
             f"preparation.{step}",
             "baml",
             self._config.model,
-            prompt_version=prompt.version,
+            prompt_version=_PROMPT_VERSIONS[step],
             prompt_hash=prompt_hash,
             config_hash=self._config.config_hash,
         ) as observation:
@@ -457,9 +438,7 @@ class BamlPreparationModel:
                     )
                 try:
                     async with asyncio.timeout(self._config.step_timeout_seconds):
-                        output = await operation(
-                            collector, _retry_instructions(prompt.text, step, attempt)
-                        )
+                        output = await operation(collector)
                 except TimeoutError:
                     code = "model_timeout"
                 except BamlError as error:
@@ -521,17 +500,6 @@ class BamlPreparationModel:
             raise PreparationError(
                 "Preparation model step failed", code, trace=call_trace
             ) from None
-
-
-def _retry_instructions(instructions: str, step: str, attempt: int) -> str:
-    if attempt == 0:
-        return instructions
-    return (
-        f"{instructions}\n\n"
-        "Validation retry: return only a complete response that conforms exactly to the "
-        f"declared BAML schema for {step}. Include every required field with valid enum "
-        "values and no extra commentary."
-    )
 
 
 def _provider_retry_delay_seconds(error: BaseException, default: float) -> float:

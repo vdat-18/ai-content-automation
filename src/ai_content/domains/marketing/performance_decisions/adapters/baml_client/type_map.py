@@ -76,20 +76,8 @@ type_map = {
     "types.ResearchScreeningDraft": types.ResearchScreeningDraft,
     "stream_types.ResearchScreeningDraft": stream_types.ResearchScreeningDraft,
 
-    "types.SemanticCriterionReview": types.SemanticCriterionReview,
-    "stream_types.SemanticCriterionReview": stream_types.SemanticCriterionReview,
-
-    "types.SemanticReviewEvidence": types.SemanticReviewEvidence,
-    "stream_types.SemanticReviewEvidence": stream_types.SemanticReviewEvidence,
-
-    "types.SemanticReviewIssue": types.SemanticReviewIssue,
-    "stream_types.SemanticReviewIssue": stream_types.SemanticReviewIssue,
-
     "types.StaticCompositionDraft": types.StaticCompositionDraft,
     "stream_types.StaticCompositionDraft": stream_types.StaticCompositionDraft,
-
-    "types.StaticCreativeReview": types.StaticCreativeReview,
-    "stream_types.StaticCreativeReview": stream_types.StaticCreativeReview,
 
 
     "types.AutomationHumanPresence": types.AutomationHumanPresence,
@@ -109,12 +97,6 @@ type_map = {
     "types.LearningRecommendationAction": types.LearningRecommendationAction,
 
     "types.OpportunityCategory": types.OpportunityCategory,
-
-    "types.SemanticCriterionStatus": types.SemanticCriterionStatus,
-
-    "types.SemanticIssueSeverity": types.SemanticIssueSeverity,
-
-    "types.SemanticRepairAction": types.SemanticRepairAction,
 
     "types.TextAlignment": types.TextAlignment,
 

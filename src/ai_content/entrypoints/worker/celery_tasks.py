@@ -26,9 +26,9 @@ from ai_content.domains.marketing.creative.application.automation_workflow impor
     record_production_outcome,
 )
 from ai_content.domains.marketing.creative.config.orchestration import (
-    load_orchestration_config,
+    OrchestrationConfig,
 )
-from ai_content.domains.marketing.creative.config.preparation import load_preparation_config
+from ai_content.domains.marketing.creative.config.preparation import PreparationConfig
 from ai_content.domains.marketing.creative.managed_media_runtime import (
     build_managed_media_runtime,
 )
@@ -44,10 +44,7 @@ from ai_content.domains.marketing.creative.ports.automation_workflow import (
 from ai_content.domains.marketing.creative.ports.contracts import (
     MarketingCreativeAutomationRequest,
 )
-from ai_content.domains.marketing.creative_feedback.config.learning import (
-    PerformanceLearningConfig,
-    load_performance_learning_config,
-)
+from ai_content.domains.marketing.creative_feedback.config.learning import PerformanceLearningConfig
 from ai_content.domains.marketing.creative_loop.adapters.commands import (
     CreativeLoopCommandDispatcher,
 )
@@ -88,7 +85,6 @@ from ai_content.domains.marketing.research_crawler.scrapling_adapter import (
 from ai_content.domains.marketing.research_crawler.screening import (
     NineRouterResearchScreener,
     ResearchScreeningConfig,
-    load_research_screening_config,
 )
 from ai_content.domains.marketing.research_crawler.service import ResearchCrawlService
 from ai_content.entrypoints.api.creative_automation import (
@@ -159,28 +155,20 @@ async def _execute_command(
     observability = settings.observability("aicontent-worker")
     instrument_sqlalchemy(database.engine, observability)
     storage_settings = settings.object_storage()
-    preparation_settings = load_preparation_config(settings.preparation_config_path)
+    preparation_settings = PreparationConfig.from_settings(settings)
     learning_settings = (
-        load_performance_learning_config(settings.learning_config)
-        if settings.learning_config
-        else (
-            PerformanceLearningConfig.from_settings(settings)
-            if settings.learning_api_key_value
-            else None
-        )
+        PerformanceLearningConfig.from_settings(settings)
+        if settings.learning_api_key_value
+        else None
     )
     container = PostgresRuntimeContainer(
         database,
         settings.data_root / "artifacts",
         settings.config_dir,
-        preparation_config_path=settings.preparation_config_path,
-        preparation_api_key=settings.prep_api_key_value
-        or settings.credential(preparation_settings.api_key_env),
-        learning_config_path=settings.learning_config,
-        learning_api_key=(
-            settings.learning_api_key_value
-            or (settings.credential(learning_settings.api_key_env) if learning_settings else None)
-        ),
+        preparation_config=preparation_settings,
+        preparation_api_key=preparation_settings.api_key,
+        learning_config=learning_settings,
+        learning_api_key=learning_settings.api_key if learning_settings else None,
         execution_backend="celery",
         object_storage=storage_settings.build() if storage_settings.backend == "s3" else None,
         object_storage_bucket=storage_settings.bucket,
@@ -200,7 +188,7 @@ async def _execute_command(
         settings.data_root / "artifacts",
         settings.config_dir,
         settings.config_dir / "fixtures/creative_loop_synthetic.json",
-        settings.preparation_config_path,
+        preparation_settings,
         runtime_factory=container.creative_loop,
     )
 
@@ -260,13 +248,13 @@ async def _execute_command(
                     if snapshot is None:
                         raise ValueError("Pinned Creative source snapshots are unavailable")
                     snapshots.append(snapshot)
-            orchestration_config = load_orchestration_config(settings.orchestration_config_path)
+            orchestration_config = OrchestrationConfig.from_settings(settings)
             orchestrator = (
                 FakeCreativeAutomationOrchestrator(orchestration_config)
                 if orchestration_config.backend == "fake"
                 else BamlCreativeAutomationOrchestrator(
                     orchestration_config,
-                    api_key=settings.credential(orchestration_config.api_key_env),
+                    api_key=orchestration_config.api_key,
                     usage_tracker=container.ai_usage_tracker,
                     image_provider_descriptor=managed_media.providers.image_descriptor(
                         request.image_provider_id
@@ -566,10 +554,7 @@ def _build_research_screener(
     api_key = settings.screening_api_key_value or settings.credential("VILAO_API_KEY")
     if not api_key:
         return None
-    if settings.research_screening_config is not None:
-        config = load_research_screening_config(settings.research_screening_config)
-    else:
-        config = ResearchScreeningConfig.from_settings(settings)
+    config = ResearchScreeningConfig.from_settings(settings)
     return NineRouterResearchScreener(
         config,
         api_key=api_key,
