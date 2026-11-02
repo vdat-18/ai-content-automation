@@ -230,8 +230,6 @@ class QASession:
 
     asset: AssetVersion
     input_contract: Any  # StaticCreativeInput - avoid circular import
-    rubric_version: str
-    policy_version: str
 
 
 @dataclass(frozen=True)
@@ -287,10 +285,6 @@ class AssetVersion:
     artifact_path: str | None = None
     cost: Cost | None = None
     input_hash: str | None = None
-    prompt_version: str | None = None
-    rubric_version: str | None = None
-    policy_version: str | None = None
-    workflow_version: str | None = None
     generator_version: str | None = None
     seed: int | None = None
     qa_passed: bool | None = None
@@ -316,23 +310,9 @@ class AssetVersion:
         """Return new version with artifact attached."""
         return replace(self, artifact_url=url, artifact_path=path, cost=cost)
 
-    def with_version_metadata(
-        self,
-        input_hash: str,
-        prompt_version: str,
-        rubric_version: str,
-        policy_version: str,
-        workflow_version: str,
-    ) -> AssetVersion:
-        """Return new version with provenance metadata attached."""
-        return replace(
-            self,
-            input_hash=input_hash,
-            prompt_version=prompt_version,
-            rubric_version=rubric_version,
-            policy_version=policy_version,
-            workflow_version=workflow_version,
-        )
+    def with_version_metadata(self, input_hash: str) -> AssetVersion:
+        """Return new version with the input hash attached."""
+        return replace(self, input_hash=input_hash)
 
     def with_qa_result(
         self,

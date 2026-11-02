@@ -548,52 +548,6 @@ class ProductionRoutingDecision:
 
 
 @dataclass(frozen=True)
-class PromptVersion:
-    prompt_id: str
-    version: str
-
-    def __str__(self) -> str:
-        return f"{self.prompt_id}@{self.version}"
-
-
-@dataclass(frozen=True)
-class RubricVersion:
-    rubric_id: str
-    version: str
-    is_draft: bool = True
-
-    def __str__(self) -> str:
-        return f"{self.rubric_id}@{self.version}"
-
-
-@dataclass(frozen=True)
-class PolicyVersion:
-    policy_id: str
-    version: str
-
-    def __str__(self) -> str:
-        return f"{self.policy_id}@{self.version}"
-
-
-@dataclass(frozen=True)
-class RuleVersion:
-    rule_id: str
-    version: str
-
-    def __str__(self) -> str:
-        return f"{self.rule_id}@{self.version}"
-
-
-@dataclass(frozen=True)
-class WorkflowVersionRef:
-    workflow_id: str
-    version: str
-
-    def __str__(self) -> str:
-        return f"{self.workflow_id}@{self.version}"
-
-
-@dataclass(frozen=True)
 class MarketingScope:
     brand: str
     market: str
@@ -911,9 +865,6 @@ class StaticCreativeInput:
     visual_direction: str
     product_assets: tuple[ProductAsset, ...]
     output_spec: OutputSpec
-    prompt_version: PromptVersion
-    rubric_version: RubricVersion
-    policy_version: PolicyVersion
     subtext: str | None = None
     reference_assets: tuple[AssetReference, ...] = field(default_factory=tuple)
     proof_references: tuple[ProofReference, ...] = field(default_factory=tuple)
@@ -962,11 +913,6 @@ class CreativeWorkItemInput:
     channel: str
     time_window: str
     target_sku_set: tuple[SkuInput, ...]
-    rubric_version: RubricVersion
-    rule_version: RuleVersion
-    prompt_version: PromptVersion
-    policy_version: PolicyVersion
-    workflow_version: WorkflowVersionRef
     persona_override: str | None = None
     creative_direction_override: str | None = None
     campaign_notes: str | None = None
@@ -1026,11 +972,6 @@ __all__ = [
     "ProductFact",
     "ProductFamilyContext",
     "ProductionRoutingDecision",
-    "PromptVersion",
-    "RubricVersion",
-    "PolicyVersion",
-    "RuleVersion",
-    "WorkflowVersionRef",
     "MarketingScope",
     "ProductMetadata",
     "CreativeConstraints",

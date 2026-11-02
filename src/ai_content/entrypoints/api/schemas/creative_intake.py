@@ -53,7 +53,6 @@ class CreativeContextSnapshotResponse(BaseModel):
     production_route: str
     routing_reasons: list[str]
     routing_requires_override: bool
-    version_refs: list[str]
     resolved_context_refs: list[str]
     components: list[CreativeContextComponentResponse]
     evidence_refs: list[str]

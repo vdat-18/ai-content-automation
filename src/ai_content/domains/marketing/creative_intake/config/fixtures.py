@@ -52,7 +52,6 @@ class ContextFixture(BaseModel):
     persona_count: int | None = Field(default=None, ge=0)
     output_width: int | None = Field(default=None, ge=0)
     output_height: int | None = Field(default=None, ge=0)
-    version_ref_count: int | None = Field(default=None, ge=0, le=5)
     resolved_context_refs: tuple[str, ...] = ()
 
     @model_validator(mode="after")
@@ -131,13 +130,6 @@ def load_creative_intake_fixture(path: Path) -> CreativeIntakeFixture:
         if not supplied_context_refs.issubset(available_context_refs):
             raise ValueError("Context component references must exist in the preparation pack")
         sku = work_item.target_sku_set[0]
-        version_refs = (
-            str(work_item.prompt_version),
-            str(work_item.rubric_version),
-            str(work_item.policy_version),
-            str(work_item.rule_version),
-            str(work_item.workflow_version),
-        )
         evidence_refs = tuple(source.source_id for source in preparation.sources)
         snapshot = CreativeContextSnapshot(
             snapshot_id=item.snapshot_id,
@@ -164,11 +156,6 @@ def load_creative_intake_fixture(path: Path) -> CreativeIntakeFixture:
                 item.output_height
                 if item.output_height is not None
                 else sku.creative_constraints.format_spec.height
-            ),
-            version_refs=(
-                version_refs[: item.version_ref_count]
-                if item.version_ref_count is not None
-                else version_refs
             ),
             resolved_context_refs=item.resolved_context_refs,
             components=tuple(

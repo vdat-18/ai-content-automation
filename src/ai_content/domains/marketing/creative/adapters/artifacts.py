@@ -119,27 +119,6 @@ def _work_item_dict(work_item: CreativeWorkItemInput) -> dict[str, Any]:
             }
             for sku in work_item.target_sku_set
         ],
-        "rubric_version": {
-            "id": work_item.rubric_version.rubric_id,
-            "version": work_item.rubric_version.version,
-            "is_draft": work_item.rubric_version.is_draft,
-        },
-        "rule_version": {
-            "id": work_item.rule_version.rule_id,
-            "version": work_item.rule_version.version,
-        },
-        "prompt_version": {
-            "id": work_item.prompt_version.prompt_id,
-            "version": work_item.prompt_version.version,
-        },
-        "policy_version": {
-            "id": work_item.policy_version.policy_id,
-            "version": work_item.policy_version.version,
-        },
-        "workflow_version": {
-            "id": work_item.workflow_version.workflow_id,
-            "version": work_item.workflow_version.version,
-        },
         "persona_override": work_item.persona_override,
         "creative_direction_override": work_item.creative_direction_override,
         "campaign_notes": work_item.campaign_notes,
@@ -239,10 +218,6 @@ def _version_dict(version: AssetVersion) -> dict[str, Any]:
         if version.cost is not None
         else None,
         "input_hash": version.input_hash,
-        "prompt_version": version.prompt_version,
-        "rubric_version": version.rubric_version,
-        "policy_version": version.policy_version,
-        "workflow_version": version.workflow_version,
         "generator_version": version.generator_version,
         "seed": version.seed,
         "qa": {

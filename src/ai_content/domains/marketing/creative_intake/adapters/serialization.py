@@ -81,7 +81,6 @@ def run_to_dict(run: CreativeIntakeRun) -> dict[str, object]:
             "production_route": context.production_route,
             "routing_reasons": list(context.routing_reasons),
             "routing_requires_override": context.routing_requires_override,
-            "version_refs": list(context.version_refs),
             "resolved_context_refs": list(context.resolved_context_refs),
             "components": [
                 {
@@ -202,7 +201,6 @@ def run_from_dict(data: dict[str, object]) -> CreativeIntakeRun:
         production_route=str(context_data.get("production_route", "manual")),
         routing_reasons=tuple(context_data.get("routing_reasons", [])),
         routing_requires_override=bool(context_data.get("routing_requires_override", False)),
-        version_refs=tuple(context_data["version_refs"]),
         resolved_context_refs=tuple(context_data.get("resolved_context_refs", [])),
         components=tuple(
             ContextEvidence(

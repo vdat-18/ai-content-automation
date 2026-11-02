@@ -45,14 +45,9 @@ from .ports.contracts import (
     LeadFeedbackContext,
     MarketingScope,
     OutputSpec,
-    PolicyVersion,
     ProductMetadata,
-    PromptVersion,
-    RubricVersion,
-    RuleVersion,
     SkuInput,
     StaticVariationPlan,
-    WorkflowVersionRef,
 )
 from .ports.interfaces import ICreativeRepository
 from .ports.preparation import PreparationContext
@@ -70,12 +65,6 @@ def _require(data: dict[str, Any], key: str, context: str) -> Any:
     if key not in data or data[key] in (None, ""):
         raise FixtureError(f"Missing required field '{key}' in {context}")
     return data[key]
-
-
-def _version_pair(data: Any, context: str) -> tuple[str, str]:
-    if not isinstance(data, dict) or not data.get("id") or not data.get("version"):
-        raise FixtureError(f"Expected {{id, version}} object for {context}")
-    return str(data["id"]), str(data["version"])
 
 
 def _sku_from_dict(data: dict[str, Any]) -> SkuInput:
@@ -146,19 +135,6 @@ def work_item_from_dict(data: dict[str, Any]) -> CreativeWorkItemInput:
         market=str(_require(scope_data, "market", "marketing_scope")),
     )
 
-    rubric_data = _require(data, "rubric_version", "work item")
-    rubric_id, rubric_ver = _version_pair(rubric_data, "rubric_version")
-    rule_id, rule_ver = _version_pair(_require(data, "rule_version", "work item"), "rule_version")
-    prompt_id, prompt_ver = _version_pair(
-        _require(data, "prompt_version", "work item"), "prompt_version"
-    )
-    policy_id, policy_ver = _version_pair(
-        _require(data, "policy_version", "work item"), "policy_version"
-    )
-    workflow_id, workflow_ver = _version_pair(
-        _require(data, "workflow_version", "work item"), "workflow_version"
-    )
-
     sku_list = _require(data, "target_sku_set", "work item")
     if not isinstance(sku_list, list) or len(sku_list) == 0:
         raise FixtureError("target_sku_set must be a non-empty list")
@@ -199,18 +175,6 @@ def work_item_from_dict(data: dict[str, Any]) -> CreativeWorkItemInput:
         channel=str(_require(data, "channel", "work item")),
         time_window=str(_require(data, "time_window", "work item")),
         target_sku_set=skus,
-        rubric_version=RubricVersion(
-            rubric_id=rubric_id,
-            version=rubric_ver,
-            is_draft=bool(rubric_data.get("is_draft", True)),
-        ),
-        rule_version=RuleVersion(rule_id=rule_id, version=rule_ver),
-        prompt_version=PromptVersion(prompt_id=prompt_id, version=prompt_ver),
-        policy_version=PolicyVersion(policy_id=policy_id, version=policy_ver),
-        workflow_version=WorkflowVersionRef(
-            workflow_id=workflow_id,
-            version=workflow_ver,
-        ),
         persona_override=data.get("persona_override"),
         creative_direction_override=data.get("creative_direction_override"),
         campaign_notes=data.get("campaign_notes"),

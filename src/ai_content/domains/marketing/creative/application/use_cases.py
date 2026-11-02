@@ -96,9 +96,6 @@ def build_generation_input(
             for ref in sku.product_metadata.image_refs
         ),
         output_spec=sku.creative_constraints.format_spec,
-        prompt_version=work_item.prompt_version,
-        rubric_version=work_item.rubric_version,
-        policy_version=work_item.policy_version,
         created_by=work_item.created_by,
         brand_guideline_ref=sku.creative_constraints.brand_guideline_ref,
         banned_claims=sku.creative_constraints.banned_claims,
@@ -197,9 +194,6 @@ def compute_input_hash(
             "file_format": input_data.output_spec.file_format,
             "aspect_ratio": input_data.output_spec.aspect_ratio,
         },
-        "prompt_version": str(input_data.prompt_version),
-        "rubric_version": str(input_data.rubric_version),
-        "policy_version": str(input_data.policy_version),
         "brand_guideline_ref": input_data.brand_guideline_ref,
         "banned_claims": list(input_data.banned_claims),
         "creative_set_id": input_data.creative_set_id,
@@ -590,13 +584,7 @@ class RunCreativeWorkflow:
                     )
                 input_hash = compute_input_hash(input_data, revision)
                 version = replace(
-                    version.with_version_metadata(
-                        input_hash=input_hash,
-                        prompt_version=str(input_data.prompt_version),
-                        rubric_version=str(input_data.rubric_version),
-                        policy_version=str(input_data.policy_version),
-                        workflow_version=str(work_item.workflow_version),
-                    ),
+                    version.with_version_metadata(input_hash=input_hash),
                     creative_set_id=creative_set_id,
                     variation_id=variation_id,
                     variation_attempt_number=retry_counts[variation_id] + 1,
@@ -645,8 +633,6 @@ class RunCreativeWorkflow:
                 qa_session = QASession(
                     asset=version,
                     input_contract=input_data,
-                    rubric_version=str(input_data.rubric_version),
-                    policy_version=str(input_data.policy_version),
                 )
                 try:
                     qa_result = await self._qa_checker.check(qa_session)
@@ -677,13 +663,12 @@ class RunCreativeWorkflow:
                 generated[variation_id] = version
                 job.record_lineage(
                     "qa",
-                    f"{version.version_id.value}:qa:{input_data.rubric_version}",
+                    f"{version.version_id.value}:qa",
                     version.version_id.value,
                     {
                         "passed": qa_result.passed,
                         "score": str(qa_result.score),
                         "variation_id": variation_id,
-                        "rubric_version": str(input_data.rubric_version),
                         "policy_violations": list(qa_result.policy_violations),
                         "outcome": qa_result.outcome.value if qa_result.outcome else None,
                         "retryable": qa_result.retryable,

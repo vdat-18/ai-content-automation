@@ -30,10 +30,6 @@ class JobVersionResponse(BaseModel):
     cost: str | None
     input_ref: str
     input_hash: str | None
-    prompt_version: str | None
-    rubric_version: str | None
-    policy_version: str | None
-    workflow_version: str | None
     generator_version: str | None
     qa_passed: bool | None
     qa_score: str | None

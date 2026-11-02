@@ -22,16 +22,11 @@ from ai_content.domains.marketing.creative.ports.contracts import (
     MarketingCreativeAutomationRequest,
     MarketingScope,
     OutputSpec,
-    PolicyVersion,
     ProductMetadata,
-    PromptVersion,
     ProofReference,
     ProofType,
     ProvenanceSource,
-    RubricVersion,
-    RuleVersion,
     SkuInput,
-    WorkflowVersionRef,
 )
 from ai_content.domains.marketing.creative.ports.media_production import (
     IFrozenProductMediaResolver,
@@ -650,11 +645,6 @@ def _work_item(
         channel=request.platform,
         time_window="latest-synchronized-context",
         target_sku_set=(sku,),
-        rubric_version=RubricVersion("rubric-static-creative-qa", "1.0-draft", is_draft=True),
-        rule_version=RuleVersion("rule-static-creative", "1.0-draft"),
-        prompt_version=PromptVersion("prompt-static-creative-generation", "1.0-draft"),
-        policy_version=PolicyVersion("policy-static-creative", "1.0-draft"),
-        workflow_version=WorkflowVersionRef("workflow-static-creative-generation", "1.0-draft"),
         campaign_notes=_campaign_notes(request),
         variation_count=max(
             1,
@@ -1259,13 +1249,6 @@ def _context_snapshot(
         )
         for component, status, detail in component_specs
     )
-    versions = (
-        "prompt-static-creative-generation@1.0-draft",
-        "rubric-static-creative-qa@1.0-draft",
-        "policy-static-creative@1.0-draft",
-        "rule-static-creative@1.0-draft",
-        "workflow-static-creative-generation@1.0-draft",
-    )
     return CreativeContextSnapshot(
         snapshot_id=f"marketing-context:{request.request_id}",
         version="marketing-automation-context@1",
@@ -1278,7 +1261,6 @@ def _context_snapshot(
         persona_count=len(personas),
         output_width=sku.creative_constraints.format_spec.width,
         output_height=sku.creative_constraints.format_spec.height,
-        version_refs=versions,
         resolved_context_refs=tuple(
             f"{item.source_id}:{item.data_version}" for item in context.evidence
         ),
@@ -1338,13 +1320,6 @@ def _unavailable_context_snapshot(
             observed_at=now,
         ),
     )
-    versions = (
-        "prompt-static-creative-generation@1.0-draft",
-        "rubric-static-creative-qa@1.0-draft",
-        "policy-static-creative@1.0-draft",
-        "rule-static-creative@1.0-draft",
-        "workflow-static-creative-generation@1.0-draft",
-    )
     return CreativeContextSnapshot(
         snapshot_id=f"marketing-context:{request.request_id}",
         version="marketing-automation-context@1",
@@ -1357,7 +1332,6 @@ def _unavailable_context_snapshot(
         persona_count=0,
         output_width=width,
         output_height=height,
-        version_refs=versions,
         resolved_context_refs=(),
         components=components,
         evidence_refs=(request_ref,),

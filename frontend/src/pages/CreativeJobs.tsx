@@ -270,10 +270,6 @@ function CreativeVersionReview({ version, number, total }: { version: CreativeJo
         <div><dt>Variation attempt</dt><dd>{version.variation_attempt_number ?? version.attempt_number}</dd></div>
         <div><dt>Version ID</dt><dd><code>{version.version_id}</code></dd></div>
         <div><dt>Input hash</dt><dd><code>{version.input_hash ?? "Unknown"}</code></dd></div>
-        <div><dt>Prompt</dt><dd>{version.prompt_version ?? "Unknown"}</dd></div>
-        <div><dt>Rubric</dt><dd>{version.rubric_version ?? "Unknown"}</dd></div>
-        <div><dt>Policy</dt><dd>{version.policy_version ?? "Unknown"}</dd></div>
-        <div><dt>Workflow</dt><dd>{version.workflow_version ?? "Unknown"}</dd></div>
         <div><dt>Generator</dt><dd>{version.generator_version ?? "Unknown"}</dd></div>
       </dl>
     </details>

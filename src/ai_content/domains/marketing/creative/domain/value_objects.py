@@ -49,7 +49,6 @@ class QAResult:
     issues: tuple[str, ...] = ()
     warnings: tuple[str, ...] = ()
     feedback: str | None = None
-    rubric_version: str | None = None
 
     def __post_init__(self) -> None:
         if self.score < 0 or self.score > 100:
@@ -60,9 +59,8 @@ class QAResult:
         cls,
         score: Decimal,
         warnings: tuple[str, ...] = (),
-        rubric_version: str | None = None,
     ) -> QAResult:
-        return cls(passed=True, score=score, warnings=warnings, rubric_version=rubric_version)
+        return cls(passed=True, score=score, warnings=warnings)
 
     @classmethod
     def fail_result(
@@ -71,7 +69,6 @@ class QAResult:
         issues: tuple[str, ...],
         feedback: str | None = None,
         warnings: tuple[str, ...] = (),
-        rubric_version: str | None = None,
     ) -> QAResult:
         return cls(
             passed=False,
@@ -79,7 +76,6 @@ class QAResult:
             issues=issues,
             feedback=feedback,
             warnings=warnings,
-            rubric_version=rubric_version,
         )
 
 

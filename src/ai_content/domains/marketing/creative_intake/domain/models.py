@@ -172,7 +172,6 @@ class CreativeContextSnapshot:
     persona_count: int
     output_width: int
     output_height: int
-    version_refs: tuple[str, ...]
     resolved_context_refs: tuple[str, ...]
     components: tuple[ContextEvidence, ...]
     evidence_refs: tuple[str, ...]

@@ -261,10 +261,6 @@ export type CreativeJobVersion = {
   cost: string | null;
   input_ref: string;
   input_hash: string | null;
-  prompt_version: string | null;
-  rubric_version: string | null;
-  policy_version: string | null;
-  workflow_version: string | null;
   generator_version: string | null;
   qa_passed: boolean | null;
   qa_score: string | null;
