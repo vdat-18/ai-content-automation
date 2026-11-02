@@ -49,7 +49,6 @@ type ReferenceProfile = {
 
 type ScreeningMetadata = {
   status?: "completed" | "failed";
-  prompt_version?: string;
   model?: string;
   usable?: boolean;
   reason_code?: string;

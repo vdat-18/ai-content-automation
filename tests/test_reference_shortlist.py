@@ -29,7 +29,6 @@ def _record(
     )
     screening = ResearchScreening(
         status="completed",
-        prompt_version="v1",
         model="grok",
         content_hash="h",
         usable=True,

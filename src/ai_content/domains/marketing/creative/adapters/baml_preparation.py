@@ -52,14 +52,6 @@ _BAML_FUNCTIONS = {
     "composition": "PlanStaticComposition",
 }
 
-_PROMPT_VERSIONS = {
-    "persona": "creative-persona-resolution@3-baml",
-    "ideas": "m1-ideas@7-baml",
-    "brief": "m1-brief@5-baml",
-    "composition": "m2-static-composition@4-baml",
-}
-
-
 class _BamlPreparationClient(Protocol):
     async def ResolveCreativePersona(
         self,
@@ -384,7 +376,6 @@ class BamlPreparationModel:
                 step=step,
                 backend="baml",
                 model=model,
-                prompt_version=_PROMPT_VERSIONS[step],
                 prompt_hash=prompt_hash,
                 prompt_text=None,
                 config_hash=self._config.config_hash,
@@ -400,7 +391,6 @@ class BamlPreparationModel:
             f"preparation.{step}",
             "baml",
             self._config.model,
-            prompt_version=_PROMPT_VERSIONS[step],
             prompt_hash=prompt_hash,
             config_hash=self._config.config_hash,
         ) as observation:

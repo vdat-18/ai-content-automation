@@ -804,7 +804,6 @@ class StaticCompositionSpec:
     """Versioned plan used by the image backend and deterministic renderer."""
 
     composition_id: str
-    version: str
     visual_prompt: str
     product_region: NormalizedRegion
     heading: TextPlacement
@@ -817,7 +816,7 @@ class StaticCompositionSpec:
     def __post_init__(self) -> None:
         if not all(
             value.strip()
-            for value in (self.composition_id, self.version, self.visual_prompt, self.rationale)
+            for value in (self.composition_id, self.visual_prompt, self.rationale)
         ):
             raise ValueError("Composition identity, prompt and rationale are required")
         if not self.evidence_refs:

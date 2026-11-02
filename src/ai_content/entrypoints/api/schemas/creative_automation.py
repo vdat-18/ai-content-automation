@@ -370,7 +370,6 @@ class MarketingCreativeOutputProfileResponse(BaseModel):
 class MarketingCreativeMediaCapabilityResponse(BaseModel):
     status: str
     provider_id: str | None
-    configuration_version: str | None
     fidelity_mode: Literal["generative", "exact_source_transform"] | None = None
     supported_aspect_ratios: list[str]
     supported_formats: list[str]
@@ -599,7 +598,6 @@ class MarketingCreativeAutomationPlanResponse(BaseModel):
     uncertainties: list[str]
     memory_refs: list[str]
     model_profile: str
-    prompt_version: str
 
 
 class MarketingCreativeAutomationTraceResponse(BaseModel):

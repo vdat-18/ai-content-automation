@@ -18,7 +18,6 @@ class OrchestrationConfig(BaseModel):
     model: str = Field(min_length=1)
     base_url: str = "http://127.0.0.1:1234/v1"
     api_key: str | None = None
-    prompt_version: str = Field(min_length=1)
     timeout_seconds: float = Field(default=120, gt=0, le=900)
     max_attempts: int = Field(default=3, ge=1, le=5)
     retry_delay_seconds: float = Field(default=1, ge=0, le=60)
@@ -54,7 +53,6 @@ class OrchestrationConfig(BaseModel):
             model=getattr(settings, "orch_model", "xai/grok-4-fast-reasoning"),
             base_url=getattr(settings, "orch_base_url", "http://127.0.0.1:1234/v1"),
             api_key=getattr(settings, "orch_api_key_value", None),
-            prompt_version="creative-automation-orchestration@6",
             timeout_seconds=getattr(settings, "orch_timeout", 180.0),
             max_attempts=getattr(settings, "orch_max_attempts", 3),
             reasoning_effort=getattr(settings, "orch_reasoning_effort", "medium"),

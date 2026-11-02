@@ -301,7 +301,6 @@ class ImmutableProductSourceResolver:
 _SOURCE_PRESERVING_PROVIDER_ID = "shopify-source-preserving@1"
 _SOURCE_PRESERVING_IMAGE_MODEL = "shopify-source-transform-image-v1"
 _SOURCE_PRESERVING_VIDEO_MODEL = "shopify-source-transform-video-v1"
-_SOURCE_PRESERVING_CONFIGURATION_VERSION = "shopify-source-preserving@1"
 
 
 class SourcePreservingImageProvider:
@@ -313,7 +312,6 @@ class SourcePreservingImageProvider:
             provider_id=_SOURCE_PRESERVING_PROVIDER_ID,
             media_kind="image",
             approved=True,
-            configuration_version=_SOURCE_PRESERVING_CONFIGURATION_VERSION,
             supported_aspect_ratios=("1:1", "4:5", "9:16", "16:9", "4:3", "3:4", "3:2", "2:3"),
             supported_image_formats=("png", "jpeg", "webp"),
             max_reference_images=1,
@@ -371,12 +369,11 @@ class SourcePreservingImageProvider:
             provider_id=self.descriptor.provider_id,
             provider_job_id=_source_transform_job_id(request.request_id, source.checksum_sha256),
             model=_SOURCE_PRESERVING_IMAGE_MODEL,
-            model_revision=_SOURCE_PRESERVING_CONFIGURATION_VERSION,
+            model_revision=_SOURCE_PRESERVING_PROVIDER_ID,
             elapsed_seconds=monotonic() - started,
             cost=Decimal("0"),
             width=request.width,
             height=request.height,
-            configuration_version=_SOURCE_PRESERVING_CONFIGURATION_VERSION,
             requested_model=_SOURCE_PRESERVING_IMAGE_MODEL,
             fidelity_mode="exact_source_transform",
             product_source_checksum_sha256=source.checksum_sha256,
@@ -393,7 +390,6 @@ class SourcePreservingVideoProvider:
             provider_id=_SOURCE_PRESERVING_PROVIDER_ID,
             media_kind="video",
             approved=True,
-            configuration_version=_SOURCE_PRESERVING_CONFIGURATION_VERSION,
             supported_aspect_ratios=("1:1", "4:5", "9:16", "16:9", "4:3", "3:4", "3:2", "2:3"),
             duration_min_seconds=min(durations),
             duration_max_seconds=max(durations),
@@ -458,14 +454,13 @@ class SourcePreservingVideoProvider:
             provider_id=self.descriptor.provider_id,
             provider_job_id=_source_transform_job_id(request.request_id, source.checksum_sha256),
             model=_SOURCE_PRESERVING_VIDEO_MODEL,
-            model_revision=_SOURCE_PRESERVING_CONFIGURATION_VERSION,
+            model_revision=_SOURCE_PRESERVING_PROVIDER_ID,
             elapsed_seconds=monotonic() - started,
             cost=Decimal("0"),
             width=metadata["width"],
             height=metadata["height"],
             duration_seconds=round(metadata["duration_seconds"]),
             has_audio_stream=metadata["has_audio_stream"],
-            configuration_version=_SOURCE_PRESERVING_CONFIGURATION_VERSION,
             requested_model=_SOURCE_PRESERVING_VIDEO_MODEL,
             fidelity_mode="exact_source_transform",
             product_source_checksum_sha256=source.checksum_sha256,
@@ -510,7 +505,6 @@ class NineRouterImageProvider:
             provider_id=config.profile_id,
             media_kind="image",
             approved=config.approved,
-            configuration_version=config.configuration_version,
             supported_aspect_ratios=ratios,
             supported_image_formats=formats,
             max_reference_images=max(item.max_reference_images for item in self._models),
@@ -623,7 +617,6 @@ class NineRouterImageProvider:
             cost=cost_per_output,
             width=request.width,
             height=request.height,
-            configuration_version=self._config.configuration_version,
             requested_model=model.model,
             connection_id=response.headers.get("x-9router-connection-id"),
         )
@@ -747,7 +740,6 @@ class NineRouterVideoProvider:
             provider_id=config.profile_id,
             media_kind="video",
             approved=config.approved,
-            configuration_version=config.configuration_version,
             supported_aspect_ratios=ratios,
             duration_min_seconds=min(durations),
             duration_max_seconds=max(durations),
@@ -905,7 +897,6 @@ class NineRouterVideoProvider:
             duration_seconds=round(metadata["duration_seconds"]),
             has_audio_stream=metadata["has_audio_stream"],
             connection_id=connection_id,
-            configuration_version=self._config.configuration_version,
             requested_model=model.model,
         )
 
@@ -948,7 +939,6 @@ class NineRouterVideoProvider:
             height=metadata["height"],
             duration_seconds=round(metadata["duration_seconds"]),
             has_audio_stream=metadata["has_audio_stream"],
-            configuration_version=self._config.configuration_version,
             requested_model=self._model.model,
         )
 

@@ -97,7 +97,6 @@ def build_preparation_runtime(
         model,
         max_ideas=config.max_ideas,
         max_composition_attempts=config.max_attempts,
-        selection_rule_version=config.selection_rule_version,
         configuration=config.model_dump(mode="json"),
     )
     return PreparationRuntime(

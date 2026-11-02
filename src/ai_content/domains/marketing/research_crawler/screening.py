@@ -53,7 +53,6 @@ class ResearchScreeningConfig(BaseModel):
     model: str = Field(min_length=1)
     base_url: str
     api_key: str | None = None
-    prompt_version: str = Field(min_length=1)
     request_timeout_seconds: float = Field(default=60, gt=0, le=180)
     max_concurrency: int = Field(default=5, ge=1, le=12)
     max_preview_images: int = Field(default=2, ge=0, le=3)
@@ -89,7 +88,6 @@ class ResearchScreeningConfig(BaseModel):
             model=getattr(settings, "screening_model", "gemini-3.8-flash"),
             base_url=getattr(settings, "screening_base_url", "http://127.0.0.1:1234/v1"),
             api_key=getattr(settings, "screening_api_key_value", None),
-            prompt_version="research-media-reference-analysis@11",
             request_timeout_seconds=getattr(settings, "screening_timeout", 60.0),
             max_concurrency=getattr(settings, "screening_max_concurrency", 5),
             max_preview_images=1,
@@ -192,7 +190,6 @@ class NineRouterResearchScreener:
 
         return ResearchScreening(
             status="completed",
-            prompt_version=self._config.prompt_version,
             model=self._config.model,
             content_hash=_analysis_content_hash(record),
             config_hash=self._config.config_hash,
@@ -228,7 +225,6 @@ class NineRouterResearchScreener:
             "research_screening",
             "baml",
             self._config.model,
-            prompt_version=self._config.prompt_version,
             config_hash=self._config.config_hash,
             job_id=record.latest_run_id,
             version_id=record.content_hash,
@@ -285,7 +281,6 @@ class NineRouterResearchScreener:
             )
         return ResearchScreening(
             status="completed",
-            prompt_version=self._config.prompt_version,
             model=self._config.model,
             content_hash=_analysis_content_hash(record),
             config_hash=self._config.config_hash,
@@ -557,7 +552,6 @@ def _unavailable_screening(
 ) -> ResearchScreening:
     return ResearchScreening(
         status="failed",
-        prompt_version=config.prompt_version,
         model=config.model,
         content_hash=_analysis_content_hash(record),
         config_hash=config.config_hash,

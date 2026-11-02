@@ -479,7 +479,6 @@ def _to_plan(
         uncertainties=tuple(output.uncertainties),
         memory_refs=tuple(item.memory_id for item in memory),
         model_profile=config.profile_id,
-        prompt_version=config.prompt_version,
         request_count=request_count,
         input_tokens=input_tokens,
         output_tokens=output_tokens,

@@ -147,10 +147,9 @@ class ResearchReferenceProfile(BaseModel):
 class ResearchScreening(BaseModel):
     """Provider-neutral usability decision plus a semantic reference brief."""
 
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    model_config = ConfigDict(extra="ignore", frozen=True)
 
     status: Literal["completed", "failed"]
-    prompt_version: str
     model: str
     content_hash: str
     config_hash: str = ""

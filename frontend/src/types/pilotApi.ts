@@ -371,7 +371,6 @@ export type WorkspaceNotificationList = {
 export type MarketingCreativeMediaCapability = {
   status: string;
   provider_id: string | null;
-  configuration_version: string | null;
   fidelity_mode: "generative" | "exact_source_transform" | null;
   supported_aspect_ratios: ("1:1" | "4:5" | "9:16" | "16:9" | "4:3" | "3:4" | "3:2" | "2:3")[];
   supported_formats: string[];
@@ -713,7 +712,6 @@ export type MarketingCreativeAutomationDetail = {
       uncertainties: string[];
       memory_refs: string[];
       model_profile: string;
-      prompt_version: string;
     } | null;
     events: { event_id: string; event_type: string; payload: Record<string, unknown>; created_at: string }[];
     input_tokens: number | null;
@@ -881,7 +879,6 @@ export type ResearchReferenceProfile = {
 
 export type ResearchScreening = {
   status: "completed" | "failed";
-  prompt_version: string;
   model: string;
   content_hash: string;
   config_hash: string;

@@ -3,7 +3,6 @@
   "backend": "nine_router",
   "approved": true,
   "selected_sku_enabled": true,
-  "configuration_version": "xai-images-videos-nine-router@5",
   "base_url": "http://router.example.com:20128/v1",
   "api_key_env": "ROUTER_API_KEY",
   "allow_insecure_http": true,

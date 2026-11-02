@@ -177,7 +177,6 @@ class ModelCallTrace:
     step: Literal["persona", "ideas", "brief", "composition"]
     backend: str
     model: str
-    prompt_version: str
     prompt_hash: str
     config_hash: str
     elapsed_seconds: float

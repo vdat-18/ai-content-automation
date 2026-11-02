@@ -219,7 +219,6 @@ function LibraryCard({ item, selected, onSelect, onDelete, dateLocale }: {
 function LibraryDetail({ item, dateLocale }: { item: LibraryItem; dateLocale: string }) {
   const { t } = useI18n();
   const source = outputUrl(item);
-  const promptVersion = plannerPromptVersion(item);
   return <aside className="panel media-library-detail" aria-label={t("Selected media details")}>
     <div className="media-library-detail-heading">
       <div><p className="eyebrow">{t(kindLabel(item.kind))}</p><h2>{itemTitle(item)}</h2></div>
@@ -255,7 +254,6 @@ function LibraryDetail({ item, dateLocale }: { item: LibraryItem; dateLocale: st
     <details className="audit-details media-library-audit">
       <summary>{t("Prompt and audit details")}</summary>
       <dl className="detail-list">
-        <div><dt>{t("Prompt version")}</dt><dd><code>{promptVersion ?? t("Not available")}</code></dd></div>
         <div><dt>{t("Saved record")}</dt><dd><code>{recordId(item)}</code></dd></div>
         <div><dt>{t("Output checksum")}</dt><dd><code>{outputChecksum(item) ?? t("Not available")}</code></dd></div>
       </dl>
@@ -276,10 +274,6 @@ function originalRequest(item: LibraryItem): string {
   return typeof direction === "string" && direction.trim()
     ? direction
     : `${item.request.sku_id} · ${item.version.variation_key}`;
-}
-
-function plannerPromptVersion(item: LibraryItem): string | null {
-  return item.detail.trace?.plan?.prompt_version ?? null;
 }
 
 function itemTitle(item: LibraryItem): string {

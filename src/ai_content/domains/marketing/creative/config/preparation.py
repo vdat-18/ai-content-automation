@@ -27,9 +27,6 @@ class PreparationConfig(BaseModel):
     reasoning_effort: Literal["none", "minimal", "low", "medium", "high"] | None = "high"
     temperature: float | None = Field(default=None, ge=0, le=2)
     max_output_tokens: int = Field(default=12000, gt=0, le=65536)
-    selection_rule_version: Literal[
-        "m1-first-eligible@1-draft", "m1-strategy-selection@1-draft"
-    ] = "m1-strategy-selection@1-draft"
 
     @property
     def config_hash(self) -> str:

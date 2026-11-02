@@ -37,7 +37,6 @@ class StrategyPackage:
     strategy_id: str
     selected_idea_id: str
     evidence_refs: tuple[str, ...]
-    prompt_versions: tuple[str, ...]
     composition: StaticCompositionSpec | None = None
     compositions: tuple[StaticCompositionSpec, ...] = ()
     schema_version: str = "strategy-package@4"
@@ -78,7 +77,6 @@ class PreparedBrief:
     traces: tuple[ModelCallTrace, ...]
     warnings: tuple[str, ...]
     preparation_hash: str
-    selection_rule_version: str
     strategy: StrategyPackage | None = None
     schema_version: str = "3"
 

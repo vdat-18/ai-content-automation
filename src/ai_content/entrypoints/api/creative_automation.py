@@ -337,9 +337,6 @@ async def get_marketing_creative_automation_capabilities(
         return MarketingCreativeMediaCapabilityResponse(
             status=status_value,
             provider_id=descriptor.provider_id if descriptor is not None else None,
-            configuration_version=(
-                descriptor.configuration_version if descriptor is not None else None
-            ),
             fidelity_mode=(descriptor.fidelity_mode if descriptor is not None else None),
             supported_aspect_ratios=(
                 list(descriptor.supported_aspect_ratios) if descriptor is not None else []
@@ -3639,7 +3636,6 @@ def _trace_response(
                 uncertainties=list(plan.uncertainties),
                 memory_refs=list(plan.memory_refs),
                 model_profile=plan.model_profile,
-                prompt_version=plan.prompt_version,
             )
             if plan is not None
             else None

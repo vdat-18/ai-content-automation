@@ -155,12 +155,11 @@ class ManagedVideoModelConfig(BaseModel):
 
 
 class ManagedMediaConfig(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    model_config = ConfigDict(extra="ignore", frozen=True)
 
     profile_id: str = Field(min_length=1)
     backend: Literal["nine_router", "direct_api"] = "nine_router"
     approved: bool = False
-    configuration_version: str = Field(min_length=1)
     base_url: str
     api_key: str | None = None
     api_key_env: str | None = None

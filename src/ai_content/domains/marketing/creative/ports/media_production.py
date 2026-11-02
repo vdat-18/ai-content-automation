@@ -256,7 +256,6 @@ class PaidMediaArtifact:
     duration_seconds: int | None = None
     has_audio_stream: bool | None = None
     connection_id: str | None = None
-    configuration_version: str | None = None
     requested_model: str | None = None
     fidelity_mode: MediaFidelityMode = "generative"
     product_source_checksum_sha256: str | None = None
@@ -377,7 +376,6 @@ class PaidMediaProviderDescriptor:
     provider_id: str
     media_kind: MediaKind
     approved: bool
-    configuration_version: str
     supported_aspect_ratios: tuple[str, ...] = ("1:1", "4:5", "9:16", "16:9")
     duration_min_seconds: int | None = None
     duration_max_seconds: int | None = None
@@ -392,8 +390,8 @@ class PaidMediaProviderDescriptor:
     selected_sku_enabled: bool = True
 
     def __post_init__(self) -> None:
-        if not self.provider_id.strip() or not self.configuration_version.strip():
-            raise ValueError("Provider identity and configuration version are required")
+        if not self.provider_id.strip():
+            raise ValueError("Provider identity is required")
         if not self.supported_aspect_ratios:
             raise ValueError("Provider must declare at least one supported aspect ratio")
         if self.media_kind == "image" and not self.supported_image_formats:

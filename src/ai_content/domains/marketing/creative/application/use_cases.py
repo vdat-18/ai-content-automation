@@ -232,7 +232,6 @@ def compute_input_hash(
         "composition": (
             {
                 "composition_id": input_data.composition.composition_id,
-                "version": input_data.composition.version,
                 "visual_prompt": input_data.composition.visual_prompt,
                 "product_region": vars(input_data.composition.product_region),
                 "heading": {

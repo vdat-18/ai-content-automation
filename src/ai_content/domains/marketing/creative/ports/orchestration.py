@@ -192,7 +192,6 @@ class CreativeAutomationPlan:
     uncertainties: tuple[str, ...] = ()
     memory_refs: tuple[str, ...] = ()
     model_profile: str = "unconfigured"
-    prompt_version: str = "creative-automation-orchestration@4"
     request_count: int = 0
     input_tokens: int | None = None
     output_tokens: int | None = None

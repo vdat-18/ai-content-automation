@@ -55,7 +55,6 @@ def render_preparation_summary(output: PreparedBrief) -> str:
         "",
         f"Brand/SKU: {brief.brand} / {brief.sku}",
         f"Idea: {brief.idea_id}",
-        f"Selection rule: {output.selection_rule_version}",
         f"Strategy package: {output.strategy.strategy_id if output.strategy else '(legacy)'}",
         "",
         "## Brief",

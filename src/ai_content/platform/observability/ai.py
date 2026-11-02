@@ -48,7 +48,6 @@ _ALLOWED_ATTRIBUTES = {
     "output_width",
     "policy_ref",
     "prompt_hash",
-    "prompt_version",
     "provider_elapsed_seconds",
     "provider_request_id",
     "reason_present",
@@ -125,9 +124,6 @@ class AIObservation:
             job_id = self._attributes.get("job_id")
             if isinstance(job_id, str):
                 self._span.set_attribute("session.id", job_id)
-            prompt_version = self._attributes.get("prompt_version")
-            if isinstance(prompt_version, str):
-                self._span.set_attribute("langfuse.observation.prompt.version", prompt_version)
         except Exception:
             self._active = False
             if self._span_context is not None:

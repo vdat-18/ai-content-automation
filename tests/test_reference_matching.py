@@ -63,7 +63,6 @@ def _record(
         screening_status="kept",
         screening=ResearchScreening(
             status="completed",
-            prompt_version="v1",
             model="gemini",
             content_hash="h",
             usable=True,

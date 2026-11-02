@@ -90,7 +90,6 @@ def _stored(key: str, phash: str, *, screened: bool, reason: str = "ok") -> Stor
         ],
         screening=ResearchScreening(
             status="completed",
-            prompt_version="v",
             model="m",
             content_hash="h",
             usable=reason == "ok",

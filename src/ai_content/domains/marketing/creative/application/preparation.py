@@ -114,7 +114,6 @@ class PrepareCreativeBrief:
         *,
         max_ideas: int,
         max_composition_attempts: int = 1,
-        selection_rule_version: str,
         configuration: object,
     ) -> None:
         self.repository = repository
@@ -123,7 +122,6 @@ class PrepareCreativeBrief:
         self.model = model
         self.max_ideas = max_ideas
         self.max_composition_attempts = max_composition_attempts
-        self.selection_rule_version = selection_rule_version
         self.configuration = configuration
 
     async def execute(
@@ -271,7 +269,6 @@ class PrepareCreativeBrief:
                 "idea_selected",
                 selected.idea_id,
                 job.context_ref,
-                {"selection_rule_version": self.selection_rule_version},
             )
             await self.repository.save_job(job)
 
@@ -324,7 +321,6 @@ class PrepareCreativeBrief:
                 strategy_id=strategy_id,
                 selected_idea_id=selected.idea_id,
                 evidence_refs=draft.evidence_refs,
-                prompt_versions=tuple(dict.fromkeys(trace.prompt_version for trace in traces)),
                 composition=compositions[0] if compositions else None,
                 compositions=tuple(compositions),
             )
@@ -344,7 +340,6 @@ class PrepareCreativeBrief:
                     )
                 ),
                 preparation_hash=preparation_hash,
-                selection_rule_version=self.selection_rule_version,
                 strategy=strategy,
             )
             self.store.write_snapshot(work_item.source_run_id, "brief", brief)
@@ -362,7 +357,6 @@ class PrepareCreativeBrief:
                     "composition",
                     composition.composition_id,
                     strategy_id,
-                    {"version": composition.version},
                 )
             job.record_lineage(
                 "brief", reference, strategy_id, {"preparation_hash": preparation_hash}
@@ -410,7 +404,6 @@ class PrepareCreativeBrief:
                     brief,
                     work_item,
                     job,
-                    composition_response.trace.prompt_version,
                     variation_index,
                 )
             except PreparationError as error:
@@ -424,7 +417,6 @@ class PrepareCreativeBrief:
         brief: BriefDraft,
         work_item: CreativeWorkItemInput,
         job: CreativeJob,
-        version: str,
         variation_index: int,
     ) -> StaticCompositionSpec:
         issues = check_references(
@@ -470,7 +462,6 @@ class PrepareCreativeBrief:
         try:
             return StaticCompositionSpec(
                 composition_id=f"{job.job_id.value}:composition-{variation_index}",
-                version=version,
                 visual_prompt=visual_prompt,
                 product_region=self._region(draft.product_region),
                 heading=self._text_placement(draft.heading),

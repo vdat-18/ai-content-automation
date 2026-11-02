@@ -98,7 +98,6 @@ class ResearchReferenceProfileResponse(BaseModel):
 
 class ResearchScreeningResponse(BaseModel):
     status: Literal["completed", "failed"]
-    prompt_version: str
     model: str
     content_hash: str
     config_hash: str

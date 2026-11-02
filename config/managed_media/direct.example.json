@@ -3,7 +3,6 @@
   "backend": "direct_api",
   "approved": true,
   "selected_sku_enabled": true,
-  "configuration_version": "openai-images-xai-videos-direct@1",
   "base_url": "https://api.openai.com/v1",
   "api_key_env": "IMAGE_API_KEY",
   "image_base_url": "https://api.openai.com/v1",
