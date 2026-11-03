@@ -1,4 +1,4 @@
-"""Drop tables of the removed Shopify creative, data source and research workflows.
+"""Drop tables of the removed Shopify creative, data source, research and execution workflows.
 
 Revision ID: b28d9ea5b6c6
 Revises: b17c8d9ea5b5
@@ -36,9 +36,14 @@ REMOVED_TABLES = (
 )
 
 
+REMOVED_PLATFORM_TABLES = ("execution_outbox", "execution_commands")
+
+
 def upgrade() -> None:
     for table in REMOVED_TABLES:
         op.execute(f"DROP TABLE IF EXISTS marketing.{table} CASCADE")
+    for table in REMOVED_PLATFORM_TABLES:
+        op.execute(f"DROP TABLE IF EXISTS platform.{table} CASCADE")
 
 
 def downgrade() -> None:

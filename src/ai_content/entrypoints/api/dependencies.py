@@ -35,6 +35,7 @@ class ApiRuntimeSettings:
     """Runtime settings used by the dashboard API."""
 
     db_path: Path
+    config_dir: Path
     screening_base_url: str = "http://127.0.0.1:1234/v1"
     screening_api_key: str | None = None
     screening_model: str = "gemini-3.8-flash"
@@ -55,6 +56,7 @@ def get_runtime_settings() -> ApiRuntimeSettings:
     application = ApplicationSettings()
     return ApiRuntimeSettings(
         db_path=application.data_root / "state.db",
+        config_dir=application.config_dir,
         screening_base_url=application.screening_base_url,
         screening_api_key=application.screening_api_key_value,
         screening_model=application.screening_model,

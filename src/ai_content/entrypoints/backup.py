@@ -19,7 +19,6 @@ from ai_content.platform.backups import (
     OffsiteBackupService,
 )
 from ai_content.platform.database import Database
-from ai_content.platform.execution import PostgresExecutionOutbox
 from ai_content.settings import ApplicationSettings
 
 _SAFE_BACKUP_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
@@ -56,12 +55,6 @@ def _parser() -> argparse.ArgumentParser:
     )
     download.add_argument("--backup-id", required=True)
     download.add_argument("--destination", type=Path, default=Path("/backups"))
-
-    recover = subcommands.add_parser(
-        "recover-execution",
-        help="Requeue active Celery commands after restoring into a fresh broker",
-    )
-    recover.add_argument("--backup-set", type=Path, required=True)
 
     http = subcommands.add_parser(
         "verify-http", help="Verify health and exact artifact bytes through the restored API"
@@ -102,7 +95,6 @@ async def _run(args: argparse.Namespace) -> None:
         database,
         database_url,
         settings.object_storage(),
-        execution_backend=settings.execution_backend,
     )
     try:
         if args.command == "create":
@@ -123,14 +115,6 @@ async def _run(args: argparse.Namespace) -> None:
         elif args.command == "verify-restored":
             manifest = service.verify_files(args.backup_set)
             await service.verify_restored(manifest)
-        elif args.command == "recover-execution":
-            manifest = service.verify_files(args.backup_set)
-            recovered = 0
-            if manifest.execution_backend == "celery":
-                recovered = await PostgresExecutionOutbox(
-                    database.engine
-                ).requeue_active_commands_after_restore()
-            logger.info("Requeued {} active Celery commands after restore", recovered)
         else:
             manifest = service.verify_files(args.backup_set)
             await _verify_http(database, manifest, args.base_url)

@@ -23,8 +23,7 @@ class Database:
             await connection.execute(text("SET LOCAL statement_timeout = '3s'"))
             result = await connection.execute(
                 text(
-                    "SELECT to_regclass('platform.execution_commands'), "
-                    "to_regclass('platform.artifacts'), "
+                    "SELECT to_regclass('platform.artifacts'), "
                     "to_regclass('platform.ai_usage_events'), "
                     "to_regclass('marketing.marketplace_products'), "
                     "to_regclass('marketing.reference_images')"

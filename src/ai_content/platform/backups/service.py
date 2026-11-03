@@ -42,15 +42,12 @@ class BackupService:
         database: Database,
         database_url: str,
         object_storage: ObjectStorageSettings,
-        *,
-        execution_backend: str | None = None,
     ) -> None:
         if object_storage.backend != "s3":
             raise ValueError("Backup requires the S3 object storage backend")
         self._database = database
         self._database_url = database_url
         self._storage = object_storage
-        self._execution_backend = execution_backend
         self._s3 = boto3.client(
             "s3",
             endpoint_url=object_storage.endpoint_url,
@@ -94,7 +91,6 @@ class BackupService:
                 source_revision=source_revision,
                 source_dirty=source_dirty,
                 alembic_revision=await self._alembic_revision(),
-                execution_backend=self._execution_backend,
                 database_dump_size_bytes=dump_size,
                 database_dump_sha256=dump_sha256,
                 database_tables=after,

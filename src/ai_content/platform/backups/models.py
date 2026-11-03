@@ -32,7 +32,7 @@ class BackupManifest(BaseModel):
     source_revision: str | None = None
     source_dirty: bool | None = None
     alembic_revision: str | None = None
-    execution_backend: str | None = None
+    execution_backend: str | None = None  # legacy: kept so old backup sets still load
     dbos_application_version: str | None = None
     database_dump_file: str = "postgres.dump"
     database_dump_size_bytes: int = Field(ge=0)

@@ -18,7 +18,6 @@ class ObservabilitySettings:
     trace_sample_ratio: float = 1.0
     metrics_enabled: bool = True
     metrics_port: int = 9464
-    command_metrics_interval_seconds: float = 15.0
     log_format: Literal["text", "json"] = "text"
     ai_telemetry_enabled: bool = False
     langfuse_otlp_endpoint: str | None = None
@@ -34,8 +33,6 @@ class ObservabilitySettings:
             raise ValueError("Trace sample ratio must be between zero and one")
         if not 1 <= self.metrics_port <= 65535:
             raise ValueError("Metrics port must be between 1 and 65535")
-        if self.command_metrics_interval_seconds <= 0:
-            raise ValueError("Command metrics interval must be positive")
         if self.enabled:
             if not self.otlp_traces_endpoint:
                 raise ValueError("OTLP traces endpoint is required when tracing is enabled")

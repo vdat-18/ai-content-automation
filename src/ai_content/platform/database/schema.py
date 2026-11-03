@@ -8,14 +8,12 @@ from sqlalchemy import (
     CheckConstraint,
     Column,
     DateTime,
-    ForeignKey,
     Index,
     Integer,
     MetaData,
     Numeric,
     Table,
     Text,
-    UniqueConstraint,
     func,
 )
 from sqlalchemy import (
@@ -168,80 +166,6 @@ notifications = Table(
 )
 Index("ix_notifications_scope", notifications.c.scope_type, notifications.c.scope_id)
 Index("ix_notifications_unread", notifications.c.read_at, notifications.c.created_at)
-execution_commands = Table(
-    "execution_commands",
-    metadata,
-    Column("command_id", Text, primary_key=True),
-    Column("name", Text, nullable=False),
-    Column("dedupe_key", Text, nullable=False, unique=True),
-    Column("payload_checksum", Text, nullable=False),
-    Column("payload", JSONB, nullable=False),
-    Column("workflow_run_id", Text),
-    Column("status", Text, nullable=False),
-    Column("attempts", Integer, nullable=False),
-    Column("max_attempts", Integer, nullable=False),
-    Column("available_at", DateTime(timezone=True), nullable=False),
-    Column("lease_owner", Text),
-    Column("lease_expires_at", DateTime(timezone=True)),
-    Column("last_error_code", Text),
-    Column("last_error_message", Text),
-    Column("completed_at", DateTime(timezone=True)),
-    Column("execution_backend", Text, nullable=False, server_default="lease_worker"),
-    Column("queue_name", Text, nullable=False, server_default="control"),
-    Column("dispatch_generation", Integer, nullable=False, server_default="0"),
-    Column("execution_id", Text),
-    Column("started_at", DateTime(timezone=True)),
-    Column("cancel_requested_at", DateTime(timezone=True)),
-    Column("cancelled_at", DateTime(timezone=True)),
-    Column("audit_log", JSONB, nullable=False),
-    *_timestamps(),
-    CheckConstraint("attempts >= 0", name="nonnegative_attempts"),
-    CheckConstraint("max_attempts > 0", name="positive_max_attempts"),
-    CheckConstraint("dispatch_generation >= 0", name="nonnegative_dispatch_generation"),
-    schema="platform",
-)
-Index(
-    "ix_execution_commands_ready",
-    execution_commands.c.status,
-    execution_commands.c.available_at,
-)
-
-execution_outbox = Table(
-    "execution_outbox",
-    metadata,
-    Column("outbox_id", Text, primary_key=True),
-    Column(
-        "command_id",
-        Text,
-        ForeignKey("platform.execution_commands.command_id", ondelete="CASCADE"),
-        nullable=False,
-    ),
-    Column("dispatch_generation", Integer, nullable=False),
-    Column("task_name", Text, nullable=False),
-    Column("queue_name", Text, nullable=False),
-    Column("status", Text, nullable=False),
-    Column("attempts", Integer, nullable=False, server_default="0"),
-    Column("available_at", DateTime(timezone=True), nullable=False),
-    Column("lease_owner", Text),
-    Column("lease_expires_at", DateTime(timezone=True)),
-    Column("published_at", DateTime(timezone=True)),
-    Column("last_error_message", Text),
-    *_timestamps(),
-    UniqueConstraint("command_id", "dispatch_generation"),
-    CheckConstraint("dispatch_generation >= 0", name="nonnegative_dispatch_generation"),
-    CheckConstraint("attempts >= 0", name="nonnegative_attempts"),
-    CheckConstraint(
-        "status IN ('pending', 'publishing', 'published')",
-        name="valid_status",
-    ),
-    schema="platform",
-)
-Index(
-    "ix_execution_outbox_ready",
-    execution_outbox.c.status,
-    execution_outbox.c.available_at,
-)
-
 artifacts = Table(
     "artifacts",
     metadata,
@@ -276,12 +200,6 @@ artifacts = Table(
 )
 Index("ix_artifacts_source_path", artifacts.c.source_path, artifacts.c.updated_at)
 Index("ix_artifacts_status", artifacts.c.status)
-Index(
-    "ix_execution_commands_workflow",
-    execution_commands.c.workflow_run_id,
-    execution_commands.c.created_at,
-)
-
 ai_usage_events = Table(
     "ai_usage_events",
     metadata,
@@ -356,7 +274,6 @@ __all__ = [
     "reference_searches",
     "ai_usage_events",
     "artifacts",
-    "execution_commands",
     "metadata",
     "notifications",
 ]
