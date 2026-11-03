@@ -4,6 +4,16 @@ class LabeledReferenceImage {
   content image
 }
 
+class StoryboardShot {
+  role "hook" | "problem" | "demo" | "benefit" | "call_to_action"
+  description string
+  keyframe_prompt string
+  motion_prompt string
+  duration_seconds int
+  on_screen_text string
+  voiceover string
+}
+
 class ContentBrief {
   title string
   selected_reference_labels string[]
@@ -12,11 +22,9 @@ class ContentBrief {
   product_placement string
   selling_angle string
   target_audience string
-  composition string
   style string[]
   colors string[]
-  on_image_text string
-  image_prompt string
+  shots StoryboardShot[]
 }
 
 function DraftContentBrief(
@@ -38,16 +46,29 @@ function DraftContentBrief(
     recreate in scene and say exactly where and how the product sits in product_placement. Never
     copy a reference literally and never reuse another brand's product, logo or text from it.
 
+    The brief is a storyboard for one short vertical ad video made of 4 to 6 shots. Every shot is
+    first made as a still keyframe image and later animated, so all shots must happen in the
+    same scene (same place, light and color) and show the same real product. Do not show human
+    faces; hands, the product and the space are enough.
+
+    Every number, percentage, price, material or feature in the text must come from the product
+    facts; never invent figures or claims.
+
     Ground every claim in the product facts and the product photos. Take the product's real
     color, shape and details from the product photos, never from the references. Do not invent
     features, certifications or prices.
     selling_angle: the single strongest reason to buy, in Vietnamese. target_audience: who buys it
-    and why, in Vietnamese. composition: framing, camera angle, lighting. style: up to 4 short
-    words. colors: up to 4 color names. on_image_text: a short Vietnamese headline for the image,
-    or an empty string when the image should have no text. title: a short Vietnamese name for the
-    brief. image_prompt: a complete English prompt for an image model that includes the product as
-    the clear hero, the scene, placement, composition, lighting, style and colors, and states that
-    the product must keep its real shape, color and details.
+    and why, in Vietnamese. style: up to 4 short words. colors: up to 4 color names. title: a
+    short Vietnamese name for the brief.
+
+    shots: 4 to 6 shots in story order, the first a hook and the last a call_to_action, 3 to 8
+    seconds each. For every shot: description (Vietnamese, what the viewer sees), keyframe_prompt
+    (a complete, self-contained English prompt for an image model: the real product as the clear
+    hero, the shared scene, camera angle, lighting, style and colors, and an explicit instruction
+    that the product keeps its real shape, color, proportions and label), motion_prompt (English,
+    one short sentence of camera or object movement for animating the keyframe),
+    duration_seconds, on_screen_text (a short Vietnamese caption, or an empty string) and
+    voiceover (one Vietnamese sentence).
 
     If the user gave an idea, treat it as the creative direction: keep its intent, make it
     concrete, fix weak points and enrich it with the best references and product facts. If the

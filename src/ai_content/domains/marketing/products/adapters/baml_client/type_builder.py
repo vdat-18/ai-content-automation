@@ -20,7 +20,7 @@ from .globals import DO_NOT_USE_DIRECTLY_UNLESS_YOU_KNOW_WHAT_YOURE_DOING_RUNTIM
 class TypeBuilder(type_builder.TypeBuilder):
     def __init__(self):
         super().__init__(classes=set(
-          ["ContentBrief","LabeledReferenceImage","ReferenceImageReview","ReferenceSearchProfileDraft",]
+          ["ContentBrief","LabeledReferenceImage","ReferenceImageReview","ReferenceSearchProfileDraft","StoryboardShot",]
         ), enums=set(
           []
         ), runtime=DO_NOT_USE_DIRECTLY_UNLESS_YOU_KNOW_WHAT_YOURE_DOING_RUNTIME)
@@ -31,7 +31,7 @@ class TypeBuilder(type_builder.TypeBuilder):
 
 
     # #########################################################################
-    # Generated classes 4
+    # Generated classes 5
     # #########################################################################
 
     @property
@@ -50,6 +50,10 @@ class TypeBuilder(type_builder.TypeBuilder):
     def ReferenceSearchProfileDraft(self) -> "ReferenceSearchProfileDraftViewer":
         return ReferenceSearchProfileDraftViewer(self)
 
+    @property
+    def StoryboardShot(self) -> "StoryboardShotViewer":
+        return StoryboardShotViewer(self)
+
 
 
 # #########################################################################
@@ -58,14 +62,14 @@ class TypeBuilder(type_builder.TypeBuilder):
 
 
 # #########################################################################
-# Generated classes 4
+# Generated classes 5
 # #########################################################################
 
 class ContentBriefAst:
     def __init__(self, tb: type_builder.TypeBuilder):
         _tb = tb._tb # type: ignore (we know how to use this private attribute)
         self._bldr = _tb.class_("ContentBrief")
-        self._properties: typing.Set[str] = set([  "title",  "selected_reference_labels",  "reference_rationale",  "scene",  "product_placement",  "selling_angle",  "target_audience",  "composition",  "style",  "colors",  "on_image_text",  "image_prompt",  ])
+        self._properties: typing.Set[str] = set([  "title",  "selected_reference_labels",  "reference_rationale",  "scene",  "product_placement",  "selling_angle",  "target_audience",  "style",  "colors",  "shots",  ])
         self._props = ContentBriefProperties(self._bldr, self._properties)
 
     def type(self) -> baml_py.FieldType:
@@ -122,10 +126,6 @@ class ContentBriefProperties:
         return type_builder.ClassPropertyViewer(self.__bldr.property("target_audience"))
     
     @property
-    def composition(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("composition"))
-    
-    @property
     def style(self) -> type_builder.ClassPropertyViewer:
         return type_builder.ClassPropertyViewer(self.__bldr.property("style"))
     
@@ -134,12 +134,8 @@ class ContentBriefProperties:
         return type_builder.ClassPropertyViewer(self.__bldr.property("colors"))
     
     @property
-    def on_image_text(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("on_image_text"))
-    
-    @property
-    def image_prompt(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("image_prompt"))
+    def shots(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("shots"))
     
     
 
@@ -273,6 +269,69 @@ class ReferenceSearchProfileDraftProperties:
     @property
     def keywords(self) -> type_builder.ClassPropertyViewer:
         return type_builder.ClassPropertyViewer(self.__bldr.property("keywords"))
+    
+    
+
+
+class StoryboardShotAst:
+    def __init__(self, tb: type_builder.TypeBuilder):
+        _tb = tb._tb # type: ignore (we know how to use this private attribute)
+        self._bldr = _tb.class_("StoryboardShot")
+        self._properties: typing.Set[str] = set([  "role",  "description",  "keyframe_prompt",  "motion_prompt",  "duration_seconds",  "on_screen_text",  "voiceover",  ])
+        self._props = StoryboardShotProperties(self._bldr, self._properties)
+
+    def type(self) -> baml_py.FieldType:
+        return self._bldr.field()
+
+    @property
+    def props(self) -> "StoryboardShotProperties":
+        return self._props
+
+
+class StoryboardShotViewer(StoryboardShotAst):
+    def __init__(self, tb: type_builder.TypeBuilder):
+        super().__init__(tb)
+
+    
+    def list_properties(self) -> typing.List[typing.Tuple[str, type_builder.ClassPropertyViewer]]:
+        return [(name, type_builder.ClassPropertyViewer(self._bldr.property(name))) for name in self._properties]
+    
+
+
+class StoryboardShotProperties:
+    def __init__(self, bldr: baml_py.ClassBuilder, properties: typing.Set[str]):
+        self.__bldr = bldr
+        self.__properties = properties # type: ignore (we know how to use this private attribute) # noqa: F821
+
+    
+    
+    @property
+    def role(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("role"))
+    
+    @property
+    def description(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("description"))
+    
+    @property
+    def keyframe_prompt(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("keyframe_prompt"))
+    
+    @property
+    def motion_prompt(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("motion_prompt"))
+    
+    @property
+    def duration_seconds(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("duration_seconds"))
+    
+    @property
+    def on_screen_text(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("on_screen_text"))
+    
+    @property
+    def voiceover(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("voiceover"))
     
     
 

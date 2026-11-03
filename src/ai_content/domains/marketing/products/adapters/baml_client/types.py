@@ -41,7 +41,7 @@ def all_succeeded(checks: typing.Dict[CheckName, Check]) -> bool:
 # #########################################################################
 
 # #########################################################################
-# Generated classes (4)
+# Generated classes (5)
 # #########################################################################
 
 class ContentBrief(BaseModel):
@@ -52,11 +52,9 @@ class ContentBrief(BaseModel):
     product_placement: str
     selling_angle: str
     target_audience: str
-    composition: str
     style: typing.List[str]
     colors: typing.List[str]
-    on_image_text: str
-    image_prompt: str
+    shots: typing.List["StoryboardShot"]
 
 class LabeledReferenceImage(BaseModel):
     label: str
@@ -71,13 +69,22 @@ class ReferenceSearchProfileDraft(BaseModel):
     product_type: str
     keywords: typing.List[str]
 
+class StoryboardShot(BaseModel):
+    role: typing.Union[typing_extensions.Literal['hook'], typing_extensions.Literal['problem'], typing_extensions.Literal['demo'], typing_extensions.Literal['benefit'], typing_extensions.Literal['call_to_action']]
+    description: str
+    keyframe_prompt: str
+    motion_prompt: str
+    duration_seconds: int
+    on_screen_text: str
+    voiceover: str
+
 # #########################################################################
 # Generated type aliases (0)
 # #########################################################################
 
 
 # #########################################################################
-# Model rebuilds (4)
+# Model rebuilds (5)
 # #########################################################################
 # Resolve string forward references now that every model above is defined so
 # class declaration order never breaks Pydantic construction (issue #793).
@@ -87,3 +94,4 @@ ContentBrief.model_rebuild()
 LabeledReferenceImage.model_rebuild()
 ReferenceImageReview.model_rebuild()
 ReferenceSearchProfileDraft.model_rebuild()
+StoryboardShot.model_rebuild()

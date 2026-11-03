@@ -1028,3 +1028,5 @@ body.column-resizing * { cursor: col-resize !important; user-select: none !impor
 .brief-references img { object-fit: cover; border-radius: 8px; }
 .brief-references p { flex: 1; min-width: 220px; margin: 0; color: var(--muted); font-size: var(--text-xs); }
 .brief-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.brief-shot { border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: grid; gap: 10px; }
+.brief-shot legend { padding: 0 6px; font-weight: 600; text-transform: capitalize; }

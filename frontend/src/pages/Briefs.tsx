@@ -5,6 +5,15 @@ import { EmptyState, PageHeader, Panel, SkeletonPage } from "../components/ui";
 import { useI18n } from "../hooks/useI18n";
 import { getJson, postJson, putJson } from "../services/http";
 
+type Shot = {
+  role: string;
+  description: string;
+  keyframe_prompt: string;
+  motion_prompt: string;
+  duration_seconds: number;
+  on_screen_text: string;
+  voiceover: string;
+};
 type Brief = {
   title: string;
   reference_rationale: string;
@@ -12,11 +21,9 @@ type Brief = {
   product_placement: string;
   selling_angle: string;
   target_audience: string;
-  composition: string;
   style: string[];
   colors: string[];
-  on_image_text: string;
-  image_prompt: string;
+  shots?: Shot[];
   selected_reference_ids: string[];
 };
 type BriefRecord = { product_id: string; user_idea: string; brief: Brief; status: "draft" | "approved" };
@@ -24,14 +31,18 @@ type Product = { product_id: string; title: string | null; images: string[] };
 type ReferenceImage = { image_id: string; image_url: string };
 
 const API = "/api/v1/products";
-const TEXT_FIELDS: { key: keyof Brief; label: string; rows: number }[] = [
+const TEXT_FIELDS: { key: "scene" | "product_placement" | "selling_angle" | "target_audience"; label: string; rows: number }[] = [
   { key: "scene", label: "Scene", rows: 3 },
   { key: "product_placement", label: "Product placement", rows: 3 },
   { key: "selling_angle", label: "Selling angle", rows: 2 },
   { key: "target_audience", label: "Target audience", rows: 2 },
-  { key: "composition", label: "Composition", rows: 2 },
-  { key: "on_image_text", label: "Text on image", rows: 1 },
-  { key: "image_prompt", label: "Image prompt", rows: 7 },
+];
+const SHOT_FIELDS: { key: "description" | "keyframe_prompt" | "motion_prompt" | "on_screen_text" | "voiceover"; label: string; rows: number }[] = [
+  { key: "description", label: "What the viewer sees", rows: 2 },
+  { key: "keyframe_prompt", label: "Keyframe image prompt", rows: 5 },
+  { key: "motion_prompt", label: "Motion prompt", rows: 2 },
+  { key: "on_screen_text", label: "Text on screen", rows: 1 },
+  { key: "voiceover", label: "Voice-over", rows: 2 },
 ];
 const words = (text: string) => text.split(",").map((word) => word.trim()).filter(Boolean);
 
@@ -126,7 +137,7 @@ function BriefCard({
       {create.error && <p role="alert">{create.error.message}</p>}
       {record && (
         <form
-          key={`${record.product_id}-${record.status}-${record.brief.image_prompt}`}
+          key={`${record.product_id}-${record.status}-${record.brief.title}`}
           className="brief-form"
           onSubmit={(event) => {
             event.preventDefault();
@@ -138,6 +149,11 @@ function BriefCard({
               colors: words(String(data.get("colors"))),
             };
             for (const field of TEXT_FIELDS) Object.assign(brief, { [field.key]: String(data.get(field.key)) });
+            brief.shots = (record.brief.shots ?? []).map((shot, index) => {
+              const next: Shot = { ...shot, duration_seconds: Number(data.get(`shot_${index}_duration`)) || shot.duration_seconds };
+              for (const field of SHOT_FIELDS) next[field.key] = String(data.get(`shot_${index}_${field.key}`));
+              return next;
+            });
             save.mutate({ brief, status: submitter?.value === "approved" ? "approved" : "draft" });
           }}
         >
@@ -155,6 +171,22 @@ function BriefCard({
               <textarea name={field.key} rows={field.rows} defaultValue={String(record.brief[field.key] ?? "")} />
             </label>
           ))}
+          {(record.brief.shots ?? []).map((shot, index) => (
+            <fieldset className="brief-shot" key={`${index}-${shot.keyframe_prompt}`}>
+              <legend>{`${index + 1}. ${shot.role}`}</legend>
+              <label className="brief-field">
+                <span>{t("Seconds")}</span>
+                <input name={`shot_${index}_duration`} type="number" min={1} max={15} defaultValue={shot.duration_seconds} />
+              </label>
+              {SHOT_FIELDS.map((field) => (
+                <label className="brief-field" key={field.key}>
+                  <span>{t(field.label)}</span>
+                  <textarea name={`shot_${index}_${field.key}`} rows={field.rows} defaultValue={shot[field.key]} />
+                </label>
+              ))}
+            </fieldset>
+          ))}
+          {!record.brief.shots?.length && <p>{t("This brief has no storyboard yet. Regenerate it.")}</p>}
           <label className="brief-field">
             <span>{t("Style (comma separated)")}</span>
             <input name="style" defaultValue={record.brief.style.join(", ")} />

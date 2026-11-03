@@ -23,7 +23,7 @@ class StreamState(BaseModel, typing.Generic[StreamStateValueT]):
     value: StreamStateValueT
     state: typing_extensions.Literal["Pending", "Incomplete", "Complete"]
 # #########################################################################
-# Generated classes (4)
+# Generated classes (5)
 # #########################################################################
 
 class ContentBrief(BaseModel):
@@ -34,11 +34,9 @@ class ContentBrief(BaseModel):
     product_placement: typing.Optional[str] = None
     selling_angle: typing.Optional[str] = None
     target_audience: typing.Optional[str] = None
-    composition: typing.Optional[str] = None
     style: typing.List[str]
     colors: typing.List[str]
-    on_image_text: typing.Optional[str] = None
-    image_prompt: typing.Optional[str] = None
+    shots: typing.List["StoryboardShot"]
 
 class LabeledReferenceImage(BaseModel):
     label: typing.Optional[str] = None
@@ -53,13 +51,22 @@ class ReferenceSearchProfileDraft(BaseModel):
     product_type: typing.Optional[str] = None
     keywords: typing.List[str]
 
+class StoryboardShot(BaseModel):
+    role: typing.Optional[typing.Union[typing_extensions.Literal['hook'], typing_extensions.Literal['problem'], typing_extensions.Literal['demo'], typing_extensions.Literal['benefit'], typing_extensions.Literal['call_to_action']]] = None
+    description: typing.Optional[str] = None
+    keyframe_prompt: typing.Optional[str] = None
+    motion_prompt: typing.Optional[str] = None
+    duration_seconds: typing.Optional[int] = None
+    on_screen_text: typing.Optional[str] = None
+    voiceover: typing.Optional[str] = None
+
 # #########################################################################
 # Generated type aliases (0)
 # #########################################################################
 
 
 # #########################################################################
-# Model rebuilds (4)
+# Model rebuilds (5)
 # #########################################################################
 # Resolve string forward references now that every model above is defined so
 # class declaration order never breaks Pydantic construction (issue #793).
@@ -69,3 +76,4 @@ ContentBrief.model_rebuild()
 LabeledReferenceImage.model_rebuild()
 ReferenceImageReview.model_rebuild()
 ReferenceSearchProfileDraft.model_rebuild()
+StoryboardShot.model_rebuild()

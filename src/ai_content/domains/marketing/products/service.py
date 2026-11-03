@@ -30,6 +30,16 @@ _PINTEREST_SEARCH = "https://www.pinterest.com/search/pins/?q="
 _SCREEN_BATCH = 200
 DUPLICATE_COSINE = 0.90
 DUPLICATE_HAMMING = 4
+BRIEF_FIELDS = (
+    "title",
+    "scene",
+    "product_placement",
+    "selling_angle",
+    "target_audience",
+    "style",
+    "colors",
+    "shots",
+)
 
 
 def _clean_pins(pins: list[dict[str, Any]]) -> list[dict[str, str]]:
@@ -267,7 +277,7 @@ class ProductCatalogService:
         current = await self._repository.get_brief(product_id)
         if current is None:
             return None
-        brief = {**current["brief"], **{k: v for k, v in changes.items() if k in current["brief"]}}
+        brief = {**current["brief"], **{k: v for k, v in changes.items() if k in BRIEF_FIELDS}}
         await self._repository.save_brief(product_id, current["user_idea"], brief, status)
         return await self._repository.get_brief(product_id)
 
