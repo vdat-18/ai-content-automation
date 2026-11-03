@@ -29,6 +29,9 @@ class ApplicationSettings(BaseSettings):
     image_base_url: str = Field("", validation_alias="AIC_IMAGE_BASE_URL")
     image_api_key: SecretStr | None = Field(None, validation_alias="AIC_IMAGE_API_KEY")
     image_model: str = Field("", validation_alias="AIC_IMAGE_MODEL")
+    video_base_url: str = Field("", validation_alias="AIC_VIDEO_BASE_URL")
+    video_api_key: SecretStr | None = Field(None, validation_alias="AIC_VIDEO_API_KEY")
+    video_model: str = Field("", validation_alias="AIC_VIDEO_MODEL")
 
     # Local ONNX image embedding used to drop duplicate references; empty disables it.
     embedding_model: str = Field("dinov3-vits16", validation_alias="AIC_EMBEDDING_MODEL")
@@ -115,6 +118,11 @@ class ApplicationSettings(BaseSettings):
     @property
     def image_api_key_value(self) -> str | None:
         key = self.image_api_key or self.screening_api_key
+        return key.get_secret_value() if key else None
+
+    @property
+    def video_api_key_value(self) -> str | None:
+        key = self.video_api_key or self.image_api_key or self.screening_api_key
         return key.get_secret_value() if key else None
 
     def object_storage(self) -> ObjectStorageSettings:

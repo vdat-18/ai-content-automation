@@ -17,6 +17,7 @@ from ai_content.domains.marketing.creative_knowledge.repositories import (
 )
 from ai_content.domains.marketing.creative_knowledge.service import CreativeKnowledgeService
 from ai_content.domains.marketing.products.briefing import ContentBriefWriter
+from ai_content.domains.marketing.products.clips import VideoClient
 from ai_content.domains.marketing.products.embedding import ImageEmbedder
 from ai_content.domains.marketing.products.image_review import ReferenceImageReviewer
 from ai_content.domains.marketing.products.keyframe_check import KeyframeChecker
@@ -51,6 +52,9 @@ class ApiRuntimeSettings:
     image_base_url: str = ""
     image_api_key: str | None = None
     image_model: str = ""
+    video_base_url: str = ""
+    video_api_key: str | None = None
+    video_model: str = ""
     database_backend: Literal["sqlite", "postgresql"] = "sqlite"
     database_url: str | None = None
 
@@ -76,6 +80,11 @@ def get_runtime_settings() -> ApiRuntimeSettings:
         image_base_url=application.image_base_url or application.screening_base_url,
         image_api_key=application.image_api_key_value,
         image_model=application.image_model,
+        video_base_url=application.video_base_url
+        or application.image_base_url
+        or application.screening_base_url,
+        video_api_key=application.video_api_key_value,
+        video_model=application.video_model,
         database_backend=application.database_backend,
         database_url=(
             application.database_url.get_secret_value() if application.database_url else None
@@ -224,6 +233,16 @@ def _keyframer(settings: ApiRuntimeSettings) -> KeyframeGenerator | None:
     )
 
 
+def _video_client(settings: ApiRuntimeSettings) -> VideoClient | None:
+    if not (settings.video_api_key and settings.video_model):
+        return None
+    return VideoClient(
+        base_url=settings.video_base_url,
+        api_key=settings.video_api_key,
+        model=settings.video_model,
+    )
+
+
 def _keyframe_checker(settings: ApiRuntimeSettings) -> KeyframeChecker | None:
     if not settings.screening_api_key:
         return None
@@ -267,6 +286,7 @@ async def get_product_catalog_service(request: Request) -> AsyncIterator[Product
             _image_embedder(settings),
             _keyframer(settings),
             _keyframe_checker(settings),
+            _video_client(settings),
         )
         return
     repository = SqliteProductRepository(settings.db_path)
@@ -279,6 +299,7 @@ async def get_product_catalog_service(request: Request) -> AsyncIterator[Product
             _image_embedder(settings),
             _keyframer(settings),
             _keyframe_checker(settings),
+            _video_client(settings),
         )
     finally:
         repository.close()

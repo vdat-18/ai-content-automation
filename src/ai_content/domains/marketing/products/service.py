@@ -12,6 +12,13 @@ from openpyxl import Workbook
 from openpyxl.styles import Font
 
 from .briefing import MAX_REFERENCES, BriefUnavailable, ContentBriefWriter
+from .clips import (
+    ClipGenerationError,
+    StitchUnavailable,
+    VideoClient,
+    clip_seconds,
+    stitch,
+)
 from .embedding import ImageEmbedder, cosine, dhash, download_images, hamming
 from .identity import PIN_SIZE_DIR, media_source_fingerprint
 from .image_review import ReferenceImageReviewer
@@ -105,6 +112,7 @@ class ProductCatalogService:
         embedder: ImageEmbedder | None = None,
         keyframer: KeyframeGenerator | None = None,
         checker: KeyframeChecker | None = None,
+        videographer: VideoClient | None = None,
     ) -> None:
         self._repository = repository
         self._generator = generator
@@ -113,6 +121,7 @@ class ProductCatalogService:
         self._embedder = embedder
         self._keyframer = keyframer
         self._checker = checker
+        self._videographer = videographer
 
     async def ingest(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Store whatever a captured page or feed response contains."""
@@ -433,6 +442,130 @@ class ProductCatalogService:
             return None
         description = str(shot.get("description") or shot["keyframe_prompt"])
         return await self._checker.check(description, photos, image, master)
+
+    async def clips(self, product_id: str, media_root: Path) -> list[dict[str, Any]]:
+        """List clips, first collecting the ones whose video job has finished."""
+        clips = await self._repository.list_clips(product_id)
+        if self._videographer is None:
+            return clips
+        for clip in clips:
+            if clip["status"] == "processing":
+                await self._collect_clip(clip, media_root)
+        return await self._repository.list_clips(product_id)
+
+    async def _collect_clip(self, clip: dict[str, Any], media_root: Path) -> None:
+        assert self._videographer is not None
+        try:
+            state = await self._videographer.status(clip["job_id"], clip["job_model"])
+            if state.status == "completed" and state.video_url:
+                content = await self._videographer.download(state.video_url)
+                relative = f"clips/{clip['product_id']}/shot_{clip['shot_index']}.mp4"
+                target = Path(media_root) / relative
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(content)
+                update = {"status": "ready", "video_path": relative, "error": None}
+            elif state.status == "failed":
+                update = {"status": "failed", "error": state.error or "The video job failed"}
+            else:
+                return
+        except ClipGenerationError:
+            return
+        await self._repository.save_clip({**clip, **update})
+
+    async def generate_clips(
+        self, product_id: str, media_root: Path, shot_index: int | None = None
+    ) -> list[dict[str, Any]] | None:
+        """Start a video job for each approved keyframe that has no clip yet.
+
+        An explicit shot_index starts that shot again, which costs one more clip.
+        """
+        record = await self._repository.get_brief(product_id)
+        if record is None:
+            return None
+        if self._videographer is None:
+            raise KeyframeUnavailable("Video model is not configured (AIC_VIDEO_MODEL)")
+        shots = record["brief"].get("shots") or []
+        keyframes = {k["shot_index"]: k for k in await self._repository.list_keyframes(product_id)}
+        clips = {c["shot_index"]: c for c in await self._repository.list_clips(product_id)}
+        approved = [
+            i for i in range(len(shots)) if keyframes.get(i, {}).get("status") == "approved"
+        ]
+        if shot_index is not None:
+            if shot_index not in approved:
+                raise KeyframeUnavailable("Approve this shot's keyframe first")
+            wanted = [shot_index]
+        else:
+            wanted = [
+                i for i in approved if clips.get(i, {}).get("status") not in ("processing", "ready")
+            ]
+        if not wanted:
+            raise KeyframeUnavailable("No approved keyframe is waiting for a clip")
+        for index in wanted:
+            await self._start_clip(
+                product_id, index, shots[index], keyframes[index], clips.get(index), media_root
+            )
+        return await self._repository.list_clips(product_id)
+
+    async def _start_clip(
+        self,
+        product_id: str,
+        index: int,
+        shot: dict[str, Any],
+        keyframe: dict[str, Any],
+        previous: dict[str, Any] | None,
+        media_root: Path,
+    ) -> None:
+        assert self._videographer is not None
+        seconds = clip_seconds(shot.get("duration_seconds"))
+        clip = {
+            "product_id": product_id,
+            "shot_index": index,
+            "job_id": None,
+            "job_model": None,
+            "video_path": (previous or {}).get("video_path"),
+            "seconds": seconds,
+            "attempts": (previous or {}).get("attempts", 0) + 1,
+        }
+        frame = (Path(media_root) / keyframe["image_path"]).read_bytes()
+        prompt = (
+            f"{shot.get('motion_prompt') or 'Slow gentle camera push-in.'} "
+            "Keep the product's exact shape, color and details; do not add or change objects."
+        )
+        try:
+            job_id, job_model = await self._videographer.submit(prompt, frame, seconds)
+        except ClipGenerationError as error:
+            await self._repository.save_clip({**clip, "status": "failed", "error": str(error)})
+            return
+        await self._repository.save_clip(
+            {
+                **clip,
+                "status": "processing",
+                "job_id": job_id,
+                "job_model": job_model,
+                "error": None,
+            }
+        )
+
+    async def build_video(self, product_id: str, media_root: Path) -> str | None:
+        """Stitch the ready clips of approved shots, in story order, into one mp4."""
+        record = await self._repository.get_brief(product_id)
+        if record is None:
+            return None
+        shots = record["brief"].get("shots") or []
+        clips = {c["shot_index"]: c for c in await self.clips(product_id, media_root)}
+        keyframes = {k["shot_index"]: k for k in await self._repository.list_keyframes(product_id)}
+        parts: list[tuple[Path, float]] = []
+        for index, shot in enumerate(shots):
+            if keyframes.get(index, {}).get("status") != "approved":
+                continue
+            clip = clips.get(index)
+            if clip is None or clip["status"] != "ready":
+                raise StitchUnavailable(f"The clip for shot {index + 1} is not ready yet")
+            duration = min(float(shot.get("duration_seconds") or clip["seconds"]), clip["seconds"])
+            parts.append((Path(media_root) / clip["video_path"], duration))
+        relative = f"videos/{product_id}/video.mp4"
+        await stitch(parts, Path(media_root) / relative)
+        return relative
 
     async def set_image_status(self, image_id: str, status: str) -> bool:
         return await self._repository.set_image_status(image_id, status)

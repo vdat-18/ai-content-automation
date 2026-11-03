@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 from ai_content.platform.database.schema import (
     marketplace_products,
     product_briefs,
+    product_clips,
     product_keyframes,
     product_selections,
     reference_images,
@@ -88,6 +89,10 @@ class ProductRepository(Protocol):
 
     async def set_keyframe_status(self, product_id: str, shot_index: int, status: str) -> bool: ...
 
+    async def save_clip(self, clip: dict[str, Any]) -> None: ...
+
+    async def list_clips(self, product_id: str) -> list[dict[str, Any]]: ...
+
 
 def _sold(value: object) -> int | None:
     try:
@@ -125,6 +130,23 @@ _KEYFRAME_COLUMNS = (
     "error",
     "qa_problem",
 )
+
+
+_CLIP_COLUMNS = (
+    "product_id",
+    "shot_index",
+    "status",
+    "job_id",
+    "job_model",
+    "video_path",
+    "seconds",
+    "attempts",
+    "error",
+)
+
+
+def _clip_record(row: Any) -> dict[str, Any]:
+    return dict(zip(_CLIP_COLUMNS, row, strict=True))
 
 
 def _keyframe_record(row: Any) -> dict[str, Any]:
@@ -187,6 +209,13 @@ class SqliteProductRepository:
             self._connection.execute(
                 "ALTER TABLE product_keyframes ADD COLUMN qa_problem TEXT NOT NULL DEFAULT ''"
             )
+        self._connection.execute(
+            "CREATE TABLE IF NOT EXISTS product_clips ("
+            "product_id TEXT NOT NULL, shot_index INTEGER NOT NULL, status TEXT NOT NULL, "
+            "job_id TEXT, job_model TEXT, video_path TEXT, seconds INTEGER NOT NULL DEFAULT 0, "
+            "attempts INTEGER NOT NULL DEFAULT 0, error TEXT, "
+            "PRIMARY KEY (product_id, shot_index))"
+        )
         self._connection.execute(
             "CREATE TABLE IF NOT EXISTS reference_searches ("
             "product_type TEXT NOT NULL, query TEXT NOT NULL, PRIMARY KEY (product_type, query))"
@@ -425,6 +454,22 @@ class SqliteProductRepository:
         )
         self._connection.commit()
         return cursor.rowcount > 0
+
+    async def save_clip(self, clip: dict[str, Any]) -> None:
+        self._connection.execute(
+            f"INSERT OR REPLACE INTO product_clips ({', '.join(_CLIP_COLUMNS)}) "
+            f"VALUES ({', '.join('?' * len(_CLIP_COLUMNS))})",
+            tuple(clip[column] for column in _CLIP_COLUMNS),
+        )
+        self._connection.commit()
+
+    async def list_clips(self, product_id: str) -> list[dict[str, Any]]:
+        rows = self._connection.execute(
+            f"SELECT {', '.join(_CLIP_COLUMNS)} FROM product_clips "
+            "WHERE product_id=? ORDER BY shot_index",
+            (product_id,),
+        ).fetchall()
+        return [_clip_record(row) for row in rows]
 
     async def existing_image_ids(self, image_ids: list[str]) -> set[str]:
         if not image_ids:
@@ -749,6 +794,26 @@ class PostgresProductRepository:
         )
         async with self._engine.begin() as connection:
             return (await connection.execute(statement)).first() is not None
+
+    async def save_clip(self, clip: dict[str, Any]) -> None:
+        values = {column: clip[column] for column in _CLIP_COLUMNS}
+        statement = insert(product_clips).values(**values)
+        statement = statement.on_conflict_do_update(
+            index_elements=["product_id", "shot_index"],
+            set_={k: v for k, v in values.items() if k not in ("product_id", "shot_index")}
+            | {"updated_at": func.now()},
+        )
+        async with self._engine.begin() as connection:
+            await connection.execute(statement)
+
+    async def list_clips(self, product_id: str) -> list[dict[str, Any]]:
+        statement = (
+            select(*(product_clips.c[column] for column in _CLIP_COLUMNS))
+            .where(product_clips.c.product_id == product_id)
+            .order_by(product_clips.c.shot_index)
+        )
+        async with self._engine.connect() as connection:
+            return [_clip_record(row) for row in (await connection.execute(statement)).all()]
 
     async def existing_image_ids(self, image_ids: list[str]) -> set[str]:
         if not image_ids:

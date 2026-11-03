@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, FileText, ImageIcon, RotateCcw, Sparkles, X } from "lucide-react";
+import { Check, Clapperboard, FileText, ImageIcon, RotateCcw, Sparkles, X } from "lucide-react";
 import { useState } from "react";
 import { EmptyState, PageHeader, Panel, SkeletonPage } from "../components/ui";
 import { useI18n } from "../hooks/useI18n";
@@ -28,6 +28,7 @@ type Brief = {
 };
 type BriefRecord = { product_id: string; user_idea: string; brief: Brief; status: "draft" | "approved" };
 type Keyframe = { shot_index: number; status: "ready" | "approved" | "rejected" | "failed"; attempts: number; error: string | null; qa_problem: string };
+type Clip = { shot_index: number; status: "processing" | "ready" | "failed"; seconds: number; attempts: number; error: string | null };
 type Product = { product_id: string; title: string | null; images: string[] };
 type ReferenceImage = { image_id: string; image_url: string };
 
@@ -224,7 +225,25 @@ function Keyframes({ productId, shots, t }: { productId: string; shots: Shot[]; 
       putJson(`${API}/${productId}/keyframes/${shotIndex}`, { status }),
     onSuccess: refresh,
   });
+  const clips = useQuery({
+    queryKey: ["clips", productId],
+    queryFn: ({ signal }) => getJson<Clip[]>(`${API}/${productId}/clips`, signal),
+    refetchInterval: (query) => (query.state.data?.some((clip) => clip.status === "processing") ? 5000 : false),
+  });
+  const refreshClips = () => client.invalidateQueries({ queryKey: ["clips", productId] });
+  const makeClips = useMutation({
+    mutationFn: (shotIndex: number | null) => postJson<Clip[]>(`${API}/${productId}/clips`, { shot_index: shotIndex }),
+    onSuccess: refreshClips,
+  });
+  const [videoVersion, setVideoVersion] = useState(0);
+  const stitchVideo = useMutation({
+    mutationFn: () => postJson<{ video: string }>(`${API}/${productId}/video`),
+    onSuccess: () => setVideoVersion((version) => version + 1),
+  });
   const byShot = new Map((keyframes.data ?? []).map((keyframe) => [keyframe.shot_index, keyframe]));
+  const clipByShot = new Map((clips.data ?? []).map((clip) => [clip.shot_index, clip]));
+  const approvedShots = shots.filter((_, index) => byShot.get(index)?.status === "approved").length;
+  const readyClips = [...clipByShot.values()].filter((clip) => clip.status === "ready").length;
   const masterApproved = byShot.get(0)?.status === "approved";
   const allApproved = shots.length > 0 && shots.every((_, index) => byShot.get(index)?.status === "approved");
   const next = !byShot.has(0) || !masterApproved ? t("Generate master keyframe") : t("Generate the other shots");
@@ -239,6 +258,17 @@ function Keyframes({ productId, shots, t }: { productId: string; shots: Shot[]; 
         </button>
       </div>
       {generate.error && <p role="alert">{generate.error.message}</p>}
+      <div className="brief-actions">
+        <button className="primary-button" disabled={makeClips.isPending || approvedShots === 0} onClick={() => makeClips.mutate(null)}>
+          <Clapperboard size={15} /> {makeClips.isPending ? t("Starting…") : t("Make clips for approved shots")}
+        </button>
+        <button className="secondary-button" disabled={stitchVideo.isPending || readyClips === 0 || readyClips < approvedShots} onClick={() => stitchVideo.mutate()}>
+          {stitchVideo.isPending ? t("Stitching…") : t("Stitch final video")}
+        </button>
+      </div>
+      {makeClips.error && <p role="alert">{makeClips.error.message}</p>}
+      {stitchVideo.error && <p role="alert">{stitchVideo.error.message}</p>}
+      {videoVersion > 0 && <video className="final-video" src={`${API}/${productId}/video?v=${videoVersion}`} controls playsInline />}
       <div className="keyframe-grid">
         {shots.map((shot, index) => {
           const keyframe = byShot.get(index);
@@ -253,6 +283,11 @@ function Keyframes({ productId, shots, t }: { productId: string; shots: Shot[]; 
                 <strong>{`${index + 1}. ${shot.role}`}</strong>
                 {keyframe && <span className="badge">{`${keyframe.status} · ×${keyframe.attempts}`}</span>}
                 {keyframe?.qa_problem && <small role="alert">{`${t("Check flagged")}: ${keyframe.qa_problem}`}</small>}
+                {clipByShot.get(index)?.status === "ready" && (
+                  <video src={`${API}/${productId}/clips/${index}/video?v=${clipByShot.get(index)?.attempts}`} controls playsInline preload="metadata" />
+                )}
+                {clipByShot.get(index)?.status === "processing" && <small>{t("Making the clip…")}</small>}
+                {clipByShot.get(index)?.status === "failed" && <small role="alert">{clipByShot.get(index)?.error}</small>}
                 <div className="keyframe-actions">
                   {keyframe && keyframe.status !== "failed" && (
                     <>

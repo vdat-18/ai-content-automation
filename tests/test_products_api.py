@@ -290,3 +290,37 @@ def test_keyframe_endpoints(
     assert client.get(base).json()[0]["status"] == "approved"
     assert client.put(f"{base}/0", json={"status": "bogus"}).status_code == 422
     assert client.put(f"{base}/5", json={"status": "approved"}).status_code == 404
+
+
+def test_clip_endpoints(
+    tmp_path: Path, client: TestClient, repository: SqliteProductRepository
+) -> None:
+    base = f"/api/v1/products/{PRODUCT_ID}"
+    assert client.post(f"{base}/clips", json={}).status_code == 404
+    _capture_product(client)
+    asyncio.run(repository.save_brief(PRODUCT_ID, "", {"shots": [{"role": "hook"}]}, "approved"))
+    assert client.get(f"{base}/clips").json() == []
+    assert client.post(f"{base}/clips", json={}).status_code == 409
+    assert client.get(f"{base}/clips/0/video").status_code == 404
+    assert client.get(f"{base}/video").status_code == 404
+    assert client.post(f"{base}/video").status_code == 409
+
+    media = tmp_path / "media"
+    (media / "clips" / PRODUCT_ID).mkdir(parents=True)
+    (media / "clips" / PRODUCT_ID / "shot_0.mp4").write_bytes(b"clip-bytes")
+    clip = {
+        "product_id": PRODUCT_ID,
+        "shot_index": 0,
+        "status": "ready",
+        "job_id": "j",
+        "job_model": "m",
+        "video_path": f"clips/{PRODUCT_ID}/shot_0.mp4",
+        "seconds": 6,
+        "attempts": 1,
+        "error": None,
+    }
+    asyncio.run(repository.save_clip(clip))
+    assert client.get(f"{base}/clips/0/video").content == b"clip-bytes"
+    (media / "videos" / PRODUCT_ID).mkdir(parents=True)
+    (media / "videos" / PRODUCT_ID / "video.mp4").write_bytes(b"final")
+    assert client.get(f"{base}/video").content == b"final"

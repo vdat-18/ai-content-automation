@@ -1040,3 +1040,5 @@ body.column-resizing * { cursor: col-resize !important; user-select: none !impor
 .keyframe--rejected img { opacity: 0.45; }
 .keyframe figcaption { display: grid; gap: 6px; padding: 8px; }
 .keyframe-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.keyframe video { width: 100%; aspect-ratio: 9 / 16; background: #000; }
+.final-video { max-height: 70vh; justify-self: start; border-radius: 10px; }

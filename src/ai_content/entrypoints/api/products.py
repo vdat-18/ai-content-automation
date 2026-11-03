@@ -11,6 +11,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from ai_content.domains.marketing.products.briefing import BriefGenerationError, BriefUnavailable
+from ai_content.domains.marketing.products.clips import StitchUnavailable
 from ai_content.domains.marketing.products.references import (
     ProfileGenerationError,
     ReferenceProfile,
@@ -304,3 +305,68 @@ async def keyframe_image(
             if path.is_file():
                 return FileResponse(path, media_type="image/jpeg")
     raise HTTPException(status_code=404, detail="No image for this keyframe")
+
+
+class ClipRequest(BaseModel):
+    shot_index: int | None = None
+
+
+@router.get("/{product_id}/clips")
+async def list_clips(
+    product_id: str,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> list[dict[str, Any]]:
+    return await service.clips(product_id, _media_root())
+
+
+@router.post("/{product_id}/clips")
+async def generate_clips(
+    product_id: str,
+    body: ClipRequest,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> list[dict[str, Any]]:
+    """Start video jobs for approved keyframes; poll GET clips until they are ready."""
+    try:
+        clips = await service.generate_clips(product_id, _media_root(), body.shot_index)
+    except KeyframeUnavailable as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    if clips is None:
+        raise HTTPException(status_code=404, detail="No brief for this product")
+    return clips
+
+
+@router.get("/{product_id}/clips/{shot_index}/video")
+async def clip_video(
+    product_id: str,
+    shot_index: int,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> FileResponse:
+    for clip in await service.clips(product_id, _media_root()):
+        if clip["shot_index"] == shot_index and clip["video_path"]:
+            path = _media_root() / clip["video_path"]
+            if path.is_file():
+                return FileResponse(path, media_type="video/mp4")
+    raise HTTPException(status_code=404, detail="No video for this clip")
+
+
+@router.post("/{product_id}/video")
+async def build_video(
+    product_id: str,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> dict[str, str]:
+    """Stitch the ready clips into one video."""
+    try:
+        path = await service.build_video(product_id, _media_root())
+    except StitchUnavailable as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    if path is None:
+        raise HTTPException(status_code=404, detail="No brief for this product")
+    return {"video": f"/api/v1/products/{product_id}/video"}
+
+
+@router.get("/{product_id}/video")
+async def final_video(product_id: str) -> FileResponse:
+    path = _media_root() / "videos" / product_id / "video.mp4"
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="No stitched video yet")
+    return FileResponse(path, media_type="video/mp4", headers={"Cache-Control": "no-cache"})

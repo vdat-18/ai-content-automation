@@ -98,6 +98,22 @@ product_keyframes = Table(
     schema="marketing",
 )
 
+product_clips = Table(
+    "product_clips",
+    metadata,
+    Column("product_id", Text, primary_key=True),
+    Column("shot_index", Integer, primary_key=True),
+    Column("status", Text, nullable=False),
+    Column("job_id", Text),
+    Column("job_model", Text),
+    Column("video_path", Text),
+    Column("seconds", Integer, nullable=False, server_default=sql_text("0")),
+    Column("attempts", Integer, nullable=False, server_default=sql_text("0")),
+    Column("error", Text),
+    *_timestamps(),
+    schema="marketing",
+)
+
 reference_images = Table(
     "reference_images",
     metadata,
@@ -299,6 +315,7 @@ __all__ = [
     "marketplace_products",
     "product_selections",
     "product_briefs",
+    "product_clips",
     "product_keyframes",
     "reference_images",
     "reference_profiles",
