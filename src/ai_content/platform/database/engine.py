@@ -26,8 +26,8 @@ class Database:
                     "SELECT to_regclass('platform.execution_commands'), "
                     "to_regclass('platform.artifacts'), "
                     "to_regclass('platform.ai_usage_events'), "
-                    "to_regclass('marketing.data_source_snapshots'), "
-                    "to_regclass('marketing.data_source_sync_runs')"
+                    "to_regclass('marketing.marketplace_products'), "
+                    "to_regclass('marketing.reference_images')"
                 )
             )
             required_tables = result.one()
