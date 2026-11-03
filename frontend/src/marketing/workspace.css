@@ -137,9 +137,7 @@ body {
   --sidebar-line: #22303f;
 }
 :root[data-theme="dark"] body { background: radial-gradient(circle at 82% -10%, rgba(49, 104, 213, .12), transparent 30rem), var(--canvas); }
-:root[data-theme="dark"] .page-header--campaign { background: radial-gradient(circle at 88% 25%, rgba(49, 104, 213, .22), transparent 18rem), linear-gradient(135deg, #131e2a, #101a27); }
-
-/* Premium Marketing system: editorial structure, visual depth, and restrained motion. */
+:root[data-theme="dark"] .page-header--campaign { background: radial-gradient(circle at 88% 25%, rgba(49, 104, 213, .22), transparent 18rem), linear-gradient(135deg, #131e2a, #101a27); }/* Premium Marketing system: editorial structure, visual depth, and restrained motion. */
 :root {
   --accent-coral: #ef6a5b;
   --accent-sky: #5c87e8;
@@ -165,9 +163,7 @@ body {
     var(--canvas);
   background-attachment: fixed;
   background-size: auto, auto, 48px 48px, 48px 48px, auto;
-}
-
-/* Navigation becomes a calm frame around the colorful work. */
+}/* Navigation becomes a calm frame around the colorful work. */
 .sidebar {
   border-right-color: color-mix(in srgb, var(--sidebar-line) 78%, transparent);
   background:
@@ -219,9 +215,7 @@ body {
 .page-content > div:not(.page-header),
 .page-content > nav:not(.page-header),
 .page-content > aside:not(.page-header),
-.page-content > details:not(.page-header) { min-width: 0; }
-
-/* Page heroes share one visual language while retaining purpose-specific color. */
+.page-content > details:not(.page-header) { min-width: 0; }/* Page heroes share one visual language while retaining purpose-specific color. */
 .page-header {
   isolation: isolate;
   overflow: hidden;
@@ -269,9 +263,7 @@ body {
 .page-header--analytics .page-header__art i:nth-child(1) { background: linear-gradient(145deg, #176e59, #4eaf91); }
 .page-header--operator { min-height: auto; overflow: visible; border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; padding: 0 0 22px; box-shadow: none; }
 .page-header--operator > div:first-child { max-width: 780px; }
-.page-header--operator h1 { max-width: none; font-size: clamp(1.9rem, 2.6vw, 2.55rem); line-height: 1.05; }
-
-/* Controls are tactile without looking glossy. */
+.page-header--operator h1 { max-width: none; font-size: clamp(1.9rem, 2.6vw, 2.55rem); line-height: 1.05; }/* Controls are tactile without looking glossy. */
 .primary-button, .approve-button {
   position: relative;
   overflow: hidden;
@@ -366,18 +358,4 @@ input:focus, select:focus, textarea:focus { border-color: color-mix(in srgb, var
 @media (prefers-reduced-motion: reduce) {
   .page-content { animation: none; }
   .primary-button::after, .approve-button::after { display: none; }
-}/* Quick media inspection supplements, rather than replaces {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  gap: 6px;
-  background: linear-gradient(180deg, rgba(8,18,34,.08) 15%, rgba(8,18,34,.92) 100%);
-  color: #fff;
-  padding: 38px 12px 12px;
-  opacity: 0;
-  transform: translateY(8px);
-  transition: opacity 160ms var(--ease-out), transform 160ms var(--ease-out);
-  pointer-events: none;
 }
