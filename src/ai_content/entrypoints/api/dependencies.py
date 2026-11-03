@@ -25,6 +25,7 @@ from ai_content.domains.marketing.products.keyframes import (
     KeyframeGenerator,
     KeyframeImageClient,
 )
+from ai_content.domains.marketing.products.posting import PostingPackageWriter
 from ai_content.domains.marketing.products.references import ReferenceProfileGenerator
 from ai_content.domains.marketing.products.repositories import SqliteProductRepository
 from ai_content.domains.marketing.products.service import ProductCatalogService
@@ -243,6 +244,16 @@ def _video_client(settings: ApiRuntimeSettings) -> VideoClient | None:
     )
 
 
+def _posting_writer(settings: ApiRuntimeSettings) -> PostingPackageWriter | None:
+    if not settings.screening_api_key:
+        return None
+    return PostingPackageWriter.from_settings(
+        base_url=settings.screening_base_url,
+        api_key=settings.screening_api_key,
+        model=settings.screening_model,
+    )
+
+
 def _keyframe_checker(settings: ApiRuntimeSettings) -> KeyframeChecker | None:
     if not settings.screening_api_key:
         return None
@@ -287,6 +298,7 @@ async def get_product_catalog_service(request: Request) -> AsyncIterator[Product
             _keyframer(settings),
             _keyframe_checker(settings),
             _video_client(settings),
+            _posting_writer(settings),
         )
         return
     repository = SqliteProductRepository(settings.db_path)
@@ -300,6 +312,7 @@ async def get_product_catalog_service(request: Request) -> AsyncIterator[Product
             _keyframer(settings),
             _keyframe_checker(settings),
             _video_client(settings),
+            _posting_writer(settings),
         )
     finally:
         repository.close()

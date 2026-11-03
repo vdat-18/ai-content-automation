@@ -25,6 +25,9 @@ type_map = {
     "types.LabeledReferenceImage": types.LabeledReferenceImage,
     "stream_types.LabeledReferenceImage": stream_types.LabeledReferenceImage,
 
+    "types.PostingPackage": types.PostingPackage,
+    "stream_types.PostingPackage": stream_types.PostingPackage,
+
     "types.ReferenceImageReview": types.ReferenceImageReview,
     "stream_types.ReferenceImageReview": stream_types.ReferenceImageReview,
 

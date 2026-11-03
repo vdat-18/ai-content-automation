@@ -12,6 +12,7 @@ from pydantic import BaseModel
 
 from ai_content.domains.marketing.products.briefing import BriefGenerationError, BriefUnavailable
 from ai_content.domains.marketing.products.clips import StitchUnavailable
+from ai_content.domains.marketing.products.posting import PostingPackageError
 from ai_content.domains.marketing.products.references import (
     ProfileGenerationError,
     ReferenceProfile,
@@ -366,8 +367,30 @@ async def build_video(
 
 
 @router.get("/{product_id}/video")
-async def final_video(product_id: str) -> FileResponse:
+async def final_video(product_id: str, download: bool = False) -> FileResponse:
     path = _media_root() / "videos" / product_id / "video.mp4"
     if not path.is_file():
         raise HTTPException(status_code=404, detail="No stitched video yet")
-    return FileResponse(path, media_type="video/mp4", headers={"Cache-Control": "no-cache"})
+    return FileResponse(
+        path,
+        media_type="video/mp4",
+        headers={"Cache-Control": "no-cache"},
+        filename=f"{product_id}.mp4" if download else None,
+    )
+
+
+@router.post("/{product_id}/post-package")
+async def create_post_package(
+    product_id: str,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> dict[str, Any]:
+    """Write caption options and hashtags for the finished video."""
+    try:
+        package = await service.create_post_package(product_id)
+    except KeyframeUnavailable as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    except PostingPackageError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+    if package is None:
+        raise HTTPException(status_code=404, detail="No brief for this product")
+    return package

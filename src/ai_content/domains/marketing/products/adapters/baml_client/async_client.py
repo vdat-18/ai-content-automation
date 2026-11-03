@@ -142,6 +142,21 @@ class BamlAsyncClient:
                 "product_type": product_type,"image": image,
             })
             return typing.cast(types.ReferenceImageReview, __result__.cast_to(types, types, stream_types, False, __runtime__))
+    async def WritePostingPackage(self, product_json: str,brief_json: str,
+        baml_options: BamlCallOptions = {},
+    ) -> types.PostingPackage:
+        # Check if on_tick is provided
+        if 'on_tick' in baml_options:
+            # Use streaming internally when on_tick is provided
+            __stream__ = self.stream.WritePostingPackage(product_json=product_json,brief_json=brief_json,
+                baml_options=baml_options)
+            return await __stream__.get_final_response()
+        else:
+            # Original non-streaming code
+            __result__ = await self.__options.merge_options(baml_options).call_function_async(function_name="WritePostingPackage", args={
+                "product_json": product_json,"brief_json": brief_json,
+            })
+            return typing.cast(types.PostingPackage, __result__.cast_to(types, types, stream_types, False, __runtime__))
     
 
 
@@ -199,6 +214,18 @@ class BamlStreamClient:
           lambda x: typing.cast(types.ReferenceImageReview, x.cast_to(types, types, stream_types, False, __runtime__)),
           __ctx__,
         )
+    def WritePostingPackage(self, product_json: str,brief_json: str,
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.BamlStream[stream_types.PostingPackage, types.PostingPackage]:
+        __ctx__, __result__ = self.__options.merge_options(baml_options).create_async_stream(function_name="WritePostingPackage", args={
+            "product_json": product_json,"brief_json": brief_json,
+        })
+        return baml_py.BamlStream[stream_types.PostingPackage, types.PostingPackage](
+          __result__,
+          lambda x: typing.cast(stream_types.PostingPackage, x.cast_to(types, types, stream_types, True, __runtime__)),
+          lambda x: typing.cast(types.PostingPackage, x.cast_to(types, types, stream_types, False, __runtime__)),
+          __ctx__,
+        )
     
 
 class BamlHttpRequestClient:
@@ -235,6 +262,13 @@ class BamlHttpRequestClient:
             "product_type": product_type,"image": image,
         }, mode="request")
         return __result__
+    async def WritePostingPackage(self, product_json: str,brief_json: str,
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.baml_py.HTTPRequest:
+        __result__ = await self.__options.merge_options(baml_options).create_http_request_async(function_name="WritePostingPackage", args={
+            "product_json": product_json,"brief_json": brief_json,
+        }, mode="request")
+        return __result__
     
 
 class BamlHttpStreamRequestClient:
@@ -269,6 +303,13 @@ class BamlHttpStreamRequestClient:
     ) -> baml_py.baml_py.HTTPRequest:
         __result__ = await self.__options.merge_options(baml_options).create_http_request_async(function_name="ReviewReferenceImage", args={
             "product_type": product_type,"image": image,
+        }, mode="stream")
+        return __result__
+    async def WritePostingPackage(self, product_json: str,brief_json: str,
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.baml_py.HTTPRequest:
+        __result__ = await self.__options.merge_options(baml_options).create_http_request_async(function_name="WritePostingPackage", args={
+            "product_json": product_json,"brief_json": brief_json,
         }, mode="stream")
         return __result__
     

@@ -1042,3 +1042,6 @@ body.column-resizing * { cursor: col-resize !important; user-select: none !impor
 .keyframe-actions { display: flex; flex-wrap: wrap; gap: 6px; }
 .keyframe video { width: 100%; aspect-ratio: 9 / 16; background: #000; }
 .final-video { max-height: 70vh; justify-self: start; border-radius: 10px; }
+.post-package { display: grid; gap: 8px; }
+.post-caption { display: flex; gap: 10px; align-items: flex-start; justify-content: space-between; border: 1px solid var(--line); border-radius: 10px; padding: 10px; }
+.post-caption p { margin: 0; white-space: pre-wrap; }

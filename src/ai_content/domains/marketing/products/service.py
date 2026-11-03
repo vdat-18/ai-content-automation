@@ -32,6 +32,7 @@ from .parsing import (
     parse_feed_payload,
     parse_product_page,
 )
+from .posting import PostingPackageWriter
 from .references import ProfileGenerationError, ReferenceProfile, ReferenceProfileGenerator
 from .repositories import ProductRepository
 
@@ -114,6 +115,7 @@ class ProductCatalogService:
         keyframer: KeyframeGenerator | None = None,
         checker: KeyframeChecker | None = None,
         videographer: VideoClient | None = None,
+        poster: PostingPackageWriter | None = None,
     ) -> None:
         self._repository = repository
         self._generator = generator
@@ -123,6 +125,7 @@ class ProductCatalogService:
         self._keyframer = keyframer
         self._checker = checker
         self._videographer = videographer
+        self._poster = poster
 
     async def ingest(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Store whatever a captured page or feed response contains."""
@@ -555,6 +558,19 @@ class ProductCatalogService:
                 "error": None,
             }
         )
+
+    async def create_post_package(self, product_id: str) -> dict[str, Any] | None:
+        """Write caption options and hashtags for the video and keep them on the brief."""
+        record = await self._repository.get_brief(product_id)
+        detail = await self._repository.get_detail(product_id)
+        if record is None or detail is None:
+            return None
+        if self._poster is None:
+            raise KeyframeUnavailable("LLM is not configured (AIC_SCREENING_API_KEY)")
+        package = await self._poster.write(detail, record["brief"])
+        brief = {**record["brief"], "post_package": package}
+        await self._repository.save_brief(product_id, record["user_idea"], brief, record["status"])
+        return package
 
     async def build_video(self, product_id: str, media_root: Path) -> str | None:
         """Stitch the ready clips of approved shots, in story order, into one mp4."""

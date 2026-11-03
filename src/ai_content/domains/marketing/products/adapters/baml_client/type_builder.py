@@ -20,7 +20,7 @@ from .globals import DO_NOT_USE_DIRECTLY_UNLESS_YOU_KNOW_WHAT_YOURE_DOING_RUNTIM
 class TypeBuilder(type_builder.TypeBuilder):
     def __init__(self):
         super().__init__(classes=set(
-          ["ContentBrief","KeyframeCheck","LabeledReferenceImage","ReferenceImageReview","ReferenceSearchProfileDraft","StoryboardShot",]
+          ["ContentBrief","KeyframeCheck","LabeledReferenceImage","PostingPackage","ReferenceImageReview","ReferenceSearchProfileDraft","StoryboardShot",]
         ), enums=set(
           []
         ), runtime=DO_NOT_USE_DIRECTLY_UNLESS_YOU_KNOW_WHAT_YOURE_DOING_RUNTIME)
@@ -31,7 +31,7 @@ class TypeBuilder(type_builder.TypeBuilder):
 
 
     # #########################################################################
-    # Generated classes 6
+    # Generated classes 7
     # #########################################################################
 
     @property
@@ -45,6 +45,10 @@ class TypeBuilder(type_builder.TypeBuilder):
     @property
     def LabeledReferenceImage(self) -> "LabeledReferenceImageViewer":
         return LabeledReferenceImageViewer(self)
+
+    @property
+    def PostingPackage(self) -> "PostingPackageViewer":
+        return PostingPackageViewer(self)
 
     @property
     def ReferenceImageReview(self) -> "ReferenceImageReviewViewer":
@@ -66,7 +70,7 @@ class TypeBuilder(type_builder.TypeBuilder):
 
 
 # #########################################################################
-# Generated classes 6
+# Generated classes 7
 # #########################################################################
 
 class ContentBriefAst:
@@ -230,6 +234,49 @@ class LabeledReferenceImageProperties:
     @property
     def content(self) -> type_builder.ClassPropertyViewer:
         return type_builder.ClassPropertyViewer(self.__bldr.property("content"))
+    
+    
+
+
+class PostingPackageAst:
+    def __init__(self, tb: type_builder.TypeBuilder):
+        _tb = tb._tb # type: ignore (we know how to use this private attribute)
+        self._bldr = _tb.class_("PostingPackage")
+        self._properties: typing.Set[str] = set([  "captions",  "hashtags",  ])
+        self._props = PostingPackageProperties(self._bldr, self._properties)
+
+    def type(self) -> baml_py.FieldType:
+        return self._bldr.field()
+
+    @property
+    def props(self) -> "PostingPackageProperties":
+        return self._props
+
+
+class PostingPackageViewer(PostingPackageAst):
+    def __init__(self, tb: type_builder.TypeBuilder):
+        super().__init__(tb)
+
+    
+    def list_properties(self) -> typing.List[typing.Tuple[str, type_builder.ClassPropertyViewer]]:
+        return [(name, type_builder.ClassPropertyViewer(self._bldr.property(name))) for name in self._properties]
+    
+
+
+class PostingPackageProperties:
+    def __init__(self, bldr: baml_py.ClassBuilder, properties: typing.Set[str]):
+        self.__bldr = bldr
+        self.__properties = properties # type: ignore (we know how to use this private attribute) # noqa: F821
+
+    
+    
+    @property
+    def captions(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("captions"))
+    
+    @property
+    def hashtags(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("hashtags"))
     
     
 

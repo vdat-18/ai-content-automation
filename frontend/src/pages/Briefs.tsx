@@ -1,10 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Clapperboard, FileText, ImageIcon, RotateCcw, Sparkles, X } from "lucide-react";
+import { Check, Clapperboard, Copy, Download, FileText, ImageIcon, RotateCcw, Sparkles, X } from "lucide-react";
 import { useState } from "react";
 import { EmptyState, PageHeader, Panel, SkeletonPage } from "../components/ui";
 import { useI18n } from "../hooks/useI18n";
 import { getJson, postJson, putJson } from "../services/http";
 
+type PostPackage = { captions: string[]; hashtags: string[]; product_url: string };
 type Shot = {
   role: string;
   description: string;
@@ -25,6 +26,7 @@ type Brief = {
   colors: string[];
   shots?: Shot[];
   selected_reference_ids: string[];
+  post_package?: PostPackage;
 };
 type BriefRecord = { product_id: string; user_idea: string; brief: Brief; status: "draft" | "approved" };
 type Keyframe = { shot_index: number; status: "ready" | "approved" | "rejected" | "failed"; attempts: number; error: string | null; qa_problem: string };
@@ -213,12 +215,12 @@ function BriefCard({
           {save.error && <p role="alert">{save.error.message}</p>}
         </form>
       )}
-      {record?.status === "approved" && <Keyframes productId={productId} shots={record.brief.shots ?? []} t={t} />}
+      {record?.status === "approved" && <Keyframes productId={productId} shots={record.brief.shots ?? []} postPackage={record.brief.post_package} t={t} />}
     </Panel>
   );
 }
 
-function Keyframes({ productId, shots, t }: { productId: string; shots: Shot[]; t: (key: string) => string }) {
+function Keyframes({ productId, shots, postPackage, t }: { productId: string; shots: Shot[]; postPackage?: PostPackage; t: (key: string) => string }) {
   const client = useQueryClient();
   const keyframes = useQuery({
     queryKey: ["keyframes", productId],
@@ -250,6 +252,11 @@ function Keyframes({ productId, shots, t }: { productId: string; shots: Shot[]; 
     onSuccess: () => setVideoVersion((version) => version + 1),
   });
   const byShot = new Map((keyframes.data ?? []).map((keyframe) => [keyframe.shot_index, keyframe]));
+  const writePackage = useMutation({
+    mutationFn: () => postJson<PostPackage>(`${API}/${productId}/post-package`),
+    onSuccess: () => client.invalidateQueries({ queryKey: ["briefs"] }),
+  });
+  const copy = (text: string) => navigator.clipboard?.writeText(text).catch(() => undefined);
   const clipByShot = new Map((clips.data ?? []).map((clip) => [clip.shot_index, clip]));
   const approvedShots = shots.filter((_, index) => byShot.get(index)?.status === "approved").length;
   const readyClips = [...clipByShot.values()].filter((clip) => clip.status === "ready").length;
@@ -278,6 +285,32 @@ function Keyframes({ productId, shots, t }: { productId: string; shots: Shot[]; 
       {makeClips.error && <p role="alert">{makeClips.error.message}</p>}
       {stitchVideo.error && <p role="alert">{stitchVideo.error.message}</p>}
       {videoVersion > 0 && <video className="final-video" src={`${API}/${productId}/video?v=${videoVersion}`} controls playsInline />}
+      {videoVersion > 0 && (
+        <div className="brief-actions">
+          <a className="secondary-button" href={`${API}/${productId}/video?download=true`}>
+            <Download size={14} /> {t("Download video")}
+          </a>
+          <button className="secondary-button" disabled={writePackage.isPending} onClick={() => writePackage.mutate()}>
+            {writePackage.isPending ? t("Writing…") : postPackage ? t("Rewrite caption and hashtags") : t("Write caption and hashtags")}
+          </button>
+        </div>
+      )}
+      {writePackage.error && <p role="alert">{writePackage.error.message}</p>}
+      {postPackage && (
+        <div className="post-package">
+          {postPackage.captions.map((caption, index) => (
+            <div className="post-caption" key={index}>
+              <p>{caption}</p>
+              <button className="secondary-button" onClick={() => copy(caption)}><Copy size={14} /> {t("Copy")}</button>
+            </div>
+          ))}
+          <div className="post-caption">
+            <p>{postPackage.hashtags.join(" ")}</p>
+            <button className="secondary-button" onClick={() => copy(postPackage.hashtags.join(" "))}><Copy size={14} /> {t("Copy")}</button>
+          </div>
+          {postPackage.product_url && <p><a href={postPackage.product_url} target="_blank" rel="noreferrer">{t("Product link (replace with your affiliate link)")}</a></p>}
+        </div>
+      )}
       <div className="keyframe-grid">
         {shots.map((shot, index) => {
           const keyframe = byShot.get(index);

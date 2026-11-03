@@ -324,3 +324,15 @@ def test_clip_endpoints(
     (media / "videos" / PRODUCT_ID).mkdir(parents=True)
     (media / "videos" / PRODUCT_ID / "video.mp4").write_bytes(b"final")
     assert client.get(f"{base}/video").content == b"final"
+
+
+def test_post_package_and_download(tmp_path: Path, client: TestClient) -> None:
+    base = f"/api/v1/products/{PRODUCT_ID}"
+    assert client.post(f"{base}/post-package").status_code == 404
+    video = tmp_path / "media" / "videos" / PRODUCT_ID / "video.mp4"
+    video.parent.mkdir(parents=True)
+    video.write_bytes(b"final")
+    download = client.get(f"{base}/video?download=true")
+    assert download.content == b"final"
+    assert PRODUCT_ID in download.headers["content-disposition"]
+    assert "content-disposition" not in client.get(f"{base}/video").headers
