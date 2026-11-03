@@ -19,6 +19,7 @@ from ai_content.domains.marketing.creative_knowledge.service import CreativeKnow
 from ai_content.domains.marketing.products.briefing import ContentBriefWriter
 from ai_content.domains.marketing.products.embedding import ImageEmbedder
 from ai_content.domains.marketing.products.image_review import ReferenceImageReviewer
+from ai_content.domains.marketing.products.keyframe_check import KeyframeChecker
 from ai_content.domains.marketing.products.keyframes import (
     KeyframeGenerator,
     KeyframeImageClient,
@@ -223,6 +224,16 @@ def _keyframer(settings: ApiRuntimeSettings) -> KeyframeGenerator | None:
     )
 
 
+def _keyframe_checker(settings: ApiRuntimeSettings) -> KeyframeChecker | None:
+    if not settings.screening_api_key:
+        return None
+    return KeyframeChecker.from_settings(
+        base_url=settings.screening_base_url,
+        api_key=settings.screening_api_key,
+        model=settings.screening_model,
+    )
+
+
 def _brief_writer(settings: ApiRuntimeSettings) -> ContentBriefWriter | None:
     if not settings.screening_api_key:
         return None
@@ -255,6 +266,7 @@ async def get_product_catalog_service(request: Request) -> AsyncIterator[Product
             _brief_writer(settings),
             _image_embedder(settings),
             _keyframer(settings),
+            _keyframe_checker(settings),
         )
         return
     repository = SqliteProductRepository(settings.db_path)
@@ -266,6 +278,7 @@ async def get_product_catalog_service(request: Request) -> AsyncIterator[Product
             _brief_writer(settings),
             _image_embedder(settings),
             _keyframer(settings),
+            _keyframe_checker(settings),
         )
     finally:
         repository.close()

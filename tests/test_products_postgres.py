@@ -127,6 +127,7 @@ async def _round_trip() -> None:
             "image_path": "keyframes/x/shot_0.jpg",
             "attempts": 1,
             "error": None,
+            "qa_problem": "",
         }
         await briefer._repository.save_keyframe(keyframe)
         await briefer._repository.save_keyframe({**keyframe, "attempts": 2})

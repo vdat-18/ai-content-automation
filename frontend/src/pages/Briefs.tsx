@@ -27,7 +27,7 @@ type Brief = {
   selected_reference_ids: string[];
 };
 type BriefRecord = { product_id: string; user_idea: string; brief: Brief; status: "draft" | "approved" };
-type Keyframe = { shot_index: number; status: "ready" | "approved" | "rejected" | "failed"; attempts: number; error: string | null };
+type Keyframe = { shot_index: number; status: "ready" | "approved" | "rejected" | "failed"; attempts: number; error: string | null; qa_problem: string };
 type Product = { product_id: string; title: string | null; images: string[] };
 type ReferenceImage = { image_id: string; image_url: string };
 
@@ -252,6 +252,7 @@ function Keyframes({ productId, shots, t }: { productId: string; shots: Shot[]; 
               <figcaption>
                 <strong>{`${index + 1}. ${shot.role}`}</strong>
                 {keyframe && <span className="badge">{`${keyframe.status} · ×${keyframe.attempts}`}</span>}
+                {keyframe?.qa_problem && <small role="alert">{`${t("Check flagged")}: ${keyframe.qa_problem}`}</small>}
                 <div className="keyframe-actions">
                   {keyframe && keyframe.status !== "failed" && (
                     <>

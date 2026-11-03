@@ -29,14 +29,14 @@ class _FakeKeyframer:
         self.calls: list[tuple[str, int]] = []
         self.fail = fail
 
-    async def master(self, shot, photos, scene):
-        self.calls.append(("master", len(photos)))
+    async def master(self, shot, photos, scene, fix=""):
+        self.calls.append(("master", len(photos), fix))
         if self.fail:
             raise KeyframeGenerationError("HTTP 503")
         return PNG + b"master"
 
-    async def follow_up(self, shot, master, photos):
-        self.calls.append(("follow_up", len(photos)))
+    async def follow_up(self, shot, master, photos, fix=""):
+        self.calls.append(("follow_up", len(photos), fix))
         assert master == PNG + b"master"
         return PNG + b"follow"
 
@@ -81,7 +81,7 @@ async def test_master_comes_first_then_other_shots_after_approval(tmp_path) -> N
         (1, "ready"),
         (2, "ready"),
     ]
-    assert keyframer.calls == [("master", 2), ("follow_up", 2), ("follow_up", 2)]
+    assert keyframer.calls == [("master", 2, ""), ("follow_up", 2, ""), ("follow_up", 2, "")]
 
 
 async def test_failed_generation_is_recorded_and_attempts_count_up(tmp_path) -> None:
@@ -171,3 +171,40 @@ async def test_client_gives_up_and_rejects_client_errors() -> None:
     )
     with pytest.raises(KeyframeGenerationError, match="no image"):
         await no_image.generate("p", [])
+
+
+class _Checker:
+    def __init__(self, verdicts: list[str | None]) -> None:
+        self.verdicts = verdicts
+        self.calls = 0
+
+    async def check(self, description, photos, keyframe, master=None):
+        self.calls += 1
+        return self.verdicts.pop(0)
+
+
+async def test_failed_check_regenerates_with_the_problem_then_passes(tmp_path) -> None:
+    keyframer = _FakeKeyframer()
+    service = await _service(tmp_path, keyframer)
+    service._checker = _Checker(["wrong color", ""])
+    [record] = await service.generate_keyframes(PRODUCT_ID, tmp_path)
+    assert keyframer.calls == [("master", 2, ""), ("master", 2, "wrong color")]
+    assert (record["status"], record["attempts"], record["qa_problem"]) == ("ready", 2, "")
+
+
+async def test_check_that_keeps_failing_stops_after_two_fixes_and_flags_the_image(tmp_path) -> None:
+    keyframer = _FakeKeyframer()
+    service = await _service(tmp_path, keyframer)
+    checker = _Checker(["bad", "still bad", "no luck"])
+    service._checker = checker
+    [record] = await service.generate_keyframes(PRODUCT_ID, tmp_path)
+    assert checker.calls == 3 and len(keyframer.calls) == 3
+    assert (record["status"], record["attempts"], record["qa_problem"]) == ("ready", 3, "no luck")
+
+
+async def test_unchecked_keyframe_is_not_regenerated(tmp_path) -> None:
+    keyframer = _FakeKeyframer()
+    service = await _service(tmp_path, keyframer)
+    service._checker = _Checker([None])
+    [record] = await service.generate_keyframes(PRODUCT_ID, tmp_path)
+    assert len(keyframer.calls) == 1 and record["qa_problem"] == ""

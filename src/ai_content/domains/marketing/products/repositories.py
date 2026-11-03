@@ -123,6 +123,7 @@ _KEYFRAME_COLUMNS = (
     "image_path",
     "attempts",
     "error",
+    "qa_problem",
 )
 
 
@@ -180,8 +181,12 @@ class SqliteProductRepository:
             "CREATE TABLE IF NOT EXISTS product_keyframes ("
             "product_id TEXT NOT NULL, shot_index INTEGER NOT NULL, status TEXT NOT NULL, "
             "prompt TEXT NOT NULL DEFAULT '', image_path TEXT, attempts INTEGER NOT NULL DEFAULT 0, "
-            "error TEXT, PRIMARY KEY (product_id, shot_index))"
+            "error TEXT, qa_problem TEXT NOT NULL DEFAULT '', PRIMARY KEY (product_id, shot_index))"
         )
+        with contextlib.suppress(sqlite3.OperationalError):
+            self._connection.execute(
+                "ALTER TABLE product_keyframes ADD COLUMN qa_problem TEXT NOT NULL DEFAULT ''"
+            )
         self._connection.execute(
             "CREATE TABLE IF NOT EXISTS reference_searches ("
             "product_type TEXT NOT NULL, query TEXT NOT NULL, PRIMARY KEY (product_type, query))"
@@ -397,10 +402,10 @@ class SqliteProductRepository:
     async def save_keyframe(self, keyframe: dict[str, Any]) -> None:
         self._connection.execute(
             "INSERT INTO product_keyframes "
-            "(product_id, shot_index, status, prompt, image_path, attempts, error) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(product_id, shot_index) DO UPDATE SET "
+            "(product_id, shot_index, status, prompt, image_path, attempts, error, qa_problem) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(product_id, shot_index) DO UPDATE SET "
             "status=excluded.status, prompt=excluded.prompt, image_path=excluded.image_path, "
-            "attempts=excluded.attempts, error=excluded.error",
+            "attempts=excluded.attempts, error=excluded.error, qa_problem=excluded.qa_problem",
             tuple(keyframe[column] for column in _KEYFRAME_COLUMNS),
         )
         self._connection.commit()

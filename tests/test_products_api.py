@@ -282,6 +282,7 @@ def test_keyframe_endpoints(
         "image_path": f"keyframes/{PRODUCT_ID}/shot_0.jpg",
         "attempts": 1,
         "error": None,
+        "qa_problem": "",
     }
     asyncio.run(repository.save_keyframe(keyframe))
     assert client.get(f"{base}/0/image").content == b"jpeg-bytes"

@@ -19,6 +19,9 @@ type_map = {
     "types.ContentBrief": types.ContentBrief,
     "stream_types.ContentBrief": stream_types.ContentBrief,
 
+    "types.KeyframeCheck": types.KeyframeCheck,
+    "stream_types.KeyframeCheck": stream_types.KeyframeCheck,
+
     "types.LabeledReferenceImage": types.LabeledReferenceImage,
     "stream_types.LabeledReferenceImage": stream_types.LabeledReferenceImage,
 

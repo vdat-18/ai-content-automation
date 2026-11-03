@@ -15,6 +15,7 @@ from .briefing import MAX_REFERENCES, BriefUnavailable, ContentBriefWriter
 from .embedding import ImageEmbedder, cosine, dhash, download_images, hamming
 from .identity import PIN_SIZE_DIR, media_source_fingerprint
 from .image_review import ReferenceImageReviewer
+from .keyframe_check import KeyframeChecker
 from .keyframes import KeyframeGenerationError, KeyframeGenerator, fetch_images
 from .media import MediaDownloadReport, download_product_media
 from .parsing import (
@@ -31,6 +32,7 @@ _PINTEREST_SEARCH = "https://www.pinterest.com/search/pins/?q="
 _SCREEN_BATCH = 200
 DUPLICATE_COSINE = 0.90
 DUPLICATE_HAMMING = 4
+MAX_KEYFRAME_FIXES = 2
 KEYFRAME_REVIEW_STATUSES = frozenset({"approved", "ready", "rejected"})
 BRIEF_FIELDS = (
     "title",
@@ -102,6 +104,7 @@ class ProductCatalogService:
         briefer: ContentBriefWriter | None = None,
         embedder: ImageEmbedder | None = None,
         keyframer: KeyframeGenerator | None = None,
+        checker: KeyframeChecker | None = None,
     ) -> None:
         self._repository = repository
         self._generator = generator
@@ -109,6 +112,7 @@ class ProductCatalogService:
         self._briefer = briefer
         self._embedder = embedder
         self._keyframer = keyframer
+        self._checker = checker
 
     async def ingest(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Store whatever a captured page or feed response contains."""
@@ -370,31 +374,65 @@ class ProductCatalogService:
         master: bytes | None,
     ) -> None:
         assert self._keyframer is not None
-        attempts = (previous or {}).get("attempts", 0) + 1
+        attempts = (previous or {}).get("attempts", 0)
         record = {
             "product_id": product_id,
             "shot_index": index,
             "prompt": str(shot["keyframe_prompt"]),
-            "attempts": attempts,
             "image_path": (previous or {}).get("image_path"),
         }
-        try:
-            if index == 0:
-                image = await self._keyframer.master(shot, photos, scene)
-            else:
-                image = await self._keyframer.follow_up(shot, master or b"", photos)
-        except KeyframeGenerationError as error:
-            await self._repository.save_keyframe(
-                {**record, "status": "failed", "error": str(error)}
-            )
-            return
+        image: bytes | None = None
+        problem = ""
+        for _ in range(1 + MAX_KEYFRAME_FIXES):
+            try:
+                if index == 0:
+                    candidate = await self._keyframer.master(shot, photos, scene, problem)
+                else:
+                    candidate = await self._keyframer.follow_up(
+                        shot, master or b"", photos, problem
+                    )
+            except KeyframeGenerationError as error:
+                attempts += 1
+                if image is None:
+                    await self._repository.save_keyframe(
+                        {
+                            **record,
+                            "attempts": attempts,
+                            "status": "failed",
+                            "error": str(error),
+                            "qa_problem": "",
+                        }
+                    )
+                    return
+                break
+            attempts += 1
+            image = candidate
+            problem = await self._check_keyframe(shot, photos, image, master) or ""
+            if not problem:
+                break
+        assert image is not None
         relative = f"keyframes/{product_id}/shot_{index}.jpg"
         target = Path(media_root) / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(image)
         await self._repository.save_keyframe(
-            {**record, "status": "ready", "image_path": relative, "error": None}
+            {
+                **record,
+                "attempts": attempts,
+                "status": "ready",
+                "image_path": relative,
+                "error": None,
+                "qa_problem": problem,
+            }
         )
+
+    async def _check_keyframe(
+        self, shot: dict[str, Any], photos: list[bytes], image: bytes, master: bytes | None
+    ) -> str | None:
+        if self._checker is None:
+            return None
+        description = str(shot.get("description") or shot["keyframe_prompt"])
+        return await self._checker.check(description, photos, image, master)
 
     async def set_image_status(self, image_id: str, status: str) -> bool:
         return await self._repository.set_image_status(image_id, status)

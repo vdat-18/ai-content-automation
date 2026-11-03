@@ -93,6 +93,7 @@ product_keyframes = Table(
     Column("image_path", Text),
     Column("attempts", Integer, nullable=False, server_default=sql_text("0")),
     Column("error", Text),
+    Column("qa_problem", Text, nullable=False, server_default=sql_text("''")),
     *_timestamps(),
     schema="marketing",
 )

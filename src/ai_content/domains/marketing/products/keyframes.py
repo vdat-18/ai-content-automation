@@ -25,6 +25,10 @@ _PRODUCT_RULE = (
 )
 
 
+def _fix_note(problem: str) -> str:
+    return f"A previous attempt had this problem; fix it: {problem}"
+
+
 class KeyframeGenerationError(RuntimeError):
     """The image model did not return a usable image."""
 
@@ -113,7 +117,11 @@ class KeyframeGenerator:
         self._client = client
 
     async def master(
-        self, shot: dict[str, Any], product_photos: list[bytes], scene: bytes | None
+        self,
+        shot: dict[str, Any],
+        product_photos: list[bytes],
+        scene: bytes | None,
+        fix: str = "",
     ) -> bytes:
         parts = [
             f"Images 1 to {len(product_photos)} are the real product photos.",
@@ -126,20 +134,23 @@ class KeyframeGenerator:
                 "styling, never its objects, brand or text."
             )
         parts += [_PRODUCT_RULE, "Shot to create:", str(shot["keyframe_prompt"])]
+        if fix:
+            parts.append(_fix_note(fix))
         return await self._client.generate("\n".join(parts), images)
 
     async def follow_up(
-        self, shot: dict[str, Any], master: bytes, product_photos: list[bytes]
+        self, shot: dict[str, Any], master: bytes, product_photos: list[bytes], fix: str = ""
     ) -> bytes:
-        prompt = "\n".join(
-            [
-                "Image 1 is the approved master keyframe: keep exactly the same place, light, "
-                "colors and product. The remaining images are the real product photos.",
-                _PRODUCT_RULE,
-                "Only change the camera angle, framing and action as described. Shot to create:",
-                str(shot["keyframe_prompt"]),
-            ]
-        )
+        parts = [
+            "Image 1 is the approved master keyframe: keep exactly the same place, light, "
+            "colors and product. The remaining images are the real product photos.",
+            _PRODUCT_RULE,
+            "Only change the camera angle, framing and action as described. Shot to create:",
+            str(shot["keyframe_prompt"]),
+        ]
+        if fix:
+            parts.append(_fix_note(fix))
+        prompt = "\n".join(parts)
         return await self._client.generate(prompt, [master, *product_photos])
 
 
