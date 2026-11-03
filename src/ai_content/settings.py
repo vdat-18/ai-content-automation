@@ -25,6 +25,11 @@ class ApplicationSettings(BaseSettings):
     screening_api_key: SecretStr | None = Field(None, validation_alias="AIC_SCREENING_API_KEY")
     screening_model: str = Field("gemini-3.8-flash", validation_alias="AIC_SCREENING_MODEL")
 
+    # --- Image generation; base URL and key fall back to the screening endpoint when empty ---
+    image_base_url: str = Field("", validation_alias="AIC_IMAGE_BASE_URL")
+    image_api_key: SecretStr | None = Field(None, validation_alias="AIC_IMAGE_API_KEY")
+    image_model: str = Field("", validation_alias="AIC_IMAGE_MODEL")
+
     # Local ONNX image embedding used to drop duplicate references; empty disables it.
     embedding_model: str = Field("dinov3-vits16", validation_alias="AIC_EMBEDDING_MODEL")
 
@@ -106,6 +111,11 @@ class ApplicationSettings(BaseSettings):
     @property
     def screening_api_key_value(self) -> str | None:
         return self.screening_api_key.get_secret_value() if self.screening_api_key else None
+
+    @property
+    def image_api_key_value(self) -> str | None:
+        key = self.image_api_key or self.screening_api_key
+        return key.get_secret_value() if key else None
 
     def object_storage(self) -> ObjectStorageSettings:
         return ObjectStorageSettings(

@@ -43,6 +43,9 @@ class ApiRuntimeSettings:
     screening_api_key: str | None = None
     screening_model: str = "gemini-3.8-flash"
     embedding_model: str = ""
+    image_base_url: str = ""
+    image_api_key: str | None = None
+    image_model: str = ""
     database_backend: Literal["sqlite", "postgresql"] = "sqlite"
     database_url: str | None = None
 
@@ -65,6 +68,9 @@ def get_runtime_settings() -> ApiRuntimeSettings:
         screening_api_key=application.screening_api_key_value,
         screening_model=application.screening_model,
         embedding_model=application.embedding_model,
+        image_base_url=application.image_base_url or application.screening_base_url,
+        image_api_key=application.image_api_key_value,
+        image_model=application.image_model,
         database_backend=application.database_backend,
         database_url=(
             application.database_url.get_secret_value() if application.database_url else None
