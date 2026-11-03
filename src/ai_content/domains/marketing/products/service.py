@@ -27,6 +27,7 @@ from .repositories import ProductRepository
 
 _PINTEREST_SEARCH = "https://www.pinterest.com/search/pins/?q="
 _SCREEN_BATCH = 200
+MIN_QUALITY_SCORE = 5
 
 
 def _clean_pins(pins: list[dict[str, Any]]) -> list[dict[str, str]]:
@@ -51,6 +52,10 @@ def _clean_pins(pins: list[dict[str, Any]]) -> list[dict[str, str]]:
             },
         )
     return list(cleaned.values())
+
+
+def _quality(image: dict[str, Any]) -> int:
+    return int((image.get("screening") or {}).get("quality_score") or 0)
 
 
 class ProductCatalogService:
@@ -117,10 +122,14 @@ class ProductCatalogService:
     async def reference_images(
         self, status: str | None, product_type: str | None
     ) -> list[dict[str, Any]]:
-        return await self._repository.list_reference_images(status, product_type)
+        images = await self._repository.list_reference_images(status, product_type)
+        return sorted(images, key=_quality, reverse=True)
 
     async def screen_images(self, limit: int) -> dict[str, int]:
-        """Review pending images with the vision model: usable ones go live, the rest are rejected."""
+        """Review pending images with the vision model.
+
+        Usable images scoring at least MIN_QUALITY_SCORE go live; the rest are rejected.
+        """
         if self._reviewer is None:
             raise ProfileGenerationError("LLM is not configured (AIC_SCREENING_API_KEY)")
         pending = (await self._repository.list_reference_images("pending", None))[:limit]
@@ -130,16 +139,18 @@ class ProductCatalogService:
             if review is None:
                 counts["failed"] += 1
                 continue
-            usable = bool(review["usable"])
+            usable = (
+                bool(review["usable"]) and int(review.get("quality_score", 0)) >= MIN_QUALITY_SCORE
+            )
             await self._repository.set_image_screening(
-                image_id, review, "new" if usable else "rejected"
+                image_id, review, "live" if usable else "rejected"
             )
             counts["reviewed"] += 1
             counts["usable" if usable else "rejected"] += 1
         return counts
 
     async def create_brief(self, product_id: str, user_idea: str = "") -> dict[str, Any] | None:
-        """Draft one brief for a selected product from its approved reference scenes."""
+        """Draft one brief for a selected product from the best live reference scenes."""
         detail = await self._repository.get_detail(product_id)
         if detail is None:
             return None
@@ -148,12 +159,10 @@ class ProductCatalogService:
         product_type = (await self._repository.selections()).get(product_id)
         if not product_type:
             raise BriefUnavailable("Select this product for content before writing a brief")
-        references = (await self._repository.list_reference_images("approved", product_type))[
-            -MAX_REFERENCES:
-        ]
+        references = (await self.reference_images("live", product_type))[:MAX_REFERENCES]
         if not references:
             raise BriefUnavailable(
-                f"Approve at least one reference image of type '{product_type}' first"
+                f"No usable reference image of type '{product_type}' yet; crawl Pinterest first"
             )
         brief = await self._briefer.write(detail, user_idea, references)
         await self._repository.save_brief(product_id, user_idea.strip(), brief, "draft")

@@ -86,10 +86,6 @@ async def update_reference_profile(
     return profile.as_dict()
 
 
-class ImageStatusUpdate(BaseModel):
-    status: Literal["approved", "rejected"]
-
-
 @router.get("/reference-queue")
 async def reference_queue(
     limit: int = Query(20, ge=1, le=200),
@@ -118,15 +114,15 @@ async def screen_reference_images(
         raise HTTPException(status_code=503, detail=str(error)) from error
 
 
-@router.put("/reference-images/{image_id}")
-async def update_reference_image(
+@router.delete("/reference-images/{image_id}")
+async def remove_reference_image(
     image_id: str,
-    body: ImageStatusUpdate,
     service: ProductCatalogService = Depends(get_product_catalog_service),
 ) -> dict[str, str]:
-    if not await service.set_image_status(image_id, body.status):
+    """Remove an image from the corpus; it stays recorded so a crawl never adds it back."""
+    if not await service.set_image_status(image_id, "removed"):
         raise HTTPException(status_code=404, detail="Reference image not found")
-    return {"image_id": image_id, "status": body.status}
+    return {"image_id": image_id, "status": "removed"}
 
 
 class BriefRequest(BaseModel):

@@ -73,8 +73,8 @@ async def test_pinterest_queue_ingest_and_filters(tmp_path) -> None:
     images = await service.reference_images(None, "áo thun")
     assert images[0]["image_url"] == "https://i.pinimg.com/736x/ab/cd/ef.jpg"
     assert [item["query"] for item in await service.reference_queue(10)] == ["t-shirt photo"]
-    assert await service.set_image_status(images[0]["image_id"], "approved")
-    assert len(await service.reference_images("approved", None)) == 1
+    assert await service.set_image_status(images[0]["image_id"], "removed")
+    assert len(await service.reference_images("removed", None)) == 1
     repository.close()
 
 
@@ -92,13 +92,23 @@ async def test_regenerate_replaces_keywords(tmp_path) -> None:
     repository.close()
 
 
+LOW_PIN = {
+    "image_url": "https://i.pinimg.com/236x/dd/ee/ff.jpg",
+    "pin_url": "/pin/9/",
+    "title": "low",
+}
+
+
 async def test_ingest_screens_images_before_they_go_live(tmp_path) -> None:
     from ai_content.domains.marketing.products.image_review import ReferenceImageReviewer
 
     class _FakeReviewClient:
         async def ReviewReferenceImage(self, product_type, image):
-            usable = product_type == "áo thun"
-            return SimpleNamespace(model_dump=lambda: {"usable": usable, "reason": "ok"})
+            usable = product_type != "cốc"
+            score = 3 if product_type == "thấp" else 8
+            return SimpleNamespace(
+                model_dump=lambda: {"usable": usable, "quality_score": score, "reason": "ok"}
+            )
 
     class _Reviewer(ReferenceImageReviewer):
         async def review_all(self, images, http=None):
@@ -129,8 +139,12 @@ async def test_ingest_screens_images_before_they_go_live(tmp_path) -> None:
         {"kind": "pinterest", "product_type": "áo thun", "query": "q", "pins": [pin]}
     )
     assert stored["screened"] == {"reviewed": 2, "usable": 1, "rejected": 1, "failed": 0}
+    low = await service.ingest(
+        {"kind": "pinterest", "product_type": "thấp", "query": "q", "pins": [LOW_PIN]}
+    )
+    assert low["screened"] == {"reviewed": 1, "usable": 0, "rejected": 1, "failed": 0}
     statuses = {i["product_type"]: i["status"] for i in await service.reference_images(None, None)}
-    assert statuses == {"áo thun": "new", "cốc": "rejected"}
+    assert statuses == {"áo thun": "live", "cốc": "rejected", "thấp": "rejected"}
     repository.close()
 
 

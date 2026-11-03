@@ -131,10 +131,13 @@ class SqliteProductRepository:
         self._connection.execute(
             "CREATE TABLE IF NOT EXISTS reference_images ("
             "image_id TEXT PRIMARY KEY, product_type TEXT NOT NULL, query TEXT NOT NULL, "
-            "image_url TEXT NOT NULL, pin_url TEXT, title TEXT, status TEXT NOT NULL DEFAULT 'new')"
+            "image_url TEXT NOT NULL, pin_url TEXT, title TEXT, status TEXT NOT NULL DEFAULT 'pending')"
         )
         with contextlib.suppress(sqlite3.OperationalError):
             self._connection.execute("ALTER TABLE reference_images ADD COLUMN screening TEXT")
+        self._connection.execute(
+            "UPDATE reference_images SET status='live' WHERE status IN ('new', 'approved')"
+        )
         self._connection.execute(
             "CREATE TABLE IF NOT EXISTS product_briefs ("
             "product_id TEXT PRIMARY KEY, user_idea TEXT NOT NULL DEFAULT '', "

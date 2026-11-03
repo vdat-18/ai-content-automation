@@ -183,25 +183,14 @@ def test_reference_image_review_flow(client: TestClient) -> None:
     image = client.get("/api/v1/products/reference-images?status=pending").json()[0]
     assert image["image_url"].startswith("https://i.pinimg.com/736x/")
 
-    assert (
-        client.put(
-            f"/api/v1/products/reference-images/{image['image_id']}", json={"status": "approved"}
-        ).status_code
-        == 200
-    )
-    assert (
-        client.put(
-            "/api/v1/products/reference-images/missing", json={"status": "approved"}
-        ).status_code
-        == 404
-    )
-    assert (
-        client.put(
-            f"/api/v1/products/reference-images/{image['image_id']}", json={"status": "new"}
-        ).status_code
-        == 422
-    )
-    assert len(client.get("/api/v1/products/reference-images?status=approved").json()) == 1
+    assert client.delete(f"/api/v1/products/reference-images/{image['image_id']}").json() == {
+        "image_id": image["image_id"],
+        "status": "removed",
+    }
+    assert client.delete("/api/v1/products/reference-images/missing").status_code == 404
+    assert len(client.get("/api/v1/products/reference-images?status=removed").json()) == 1
+    again = client.post("/api/v1/products/ingest", json=body).json()
+    assert again["added"] == 0
     assert client.post("/api/v1/products/reference-images/screen").status_code == 503
 
 
@@ -251,9 +240,7 @@ def test_brief_creation_reports_unmet_preconditions_then_succeeds(
     body = {"kind": "pinterest", "product_type": "áo thun", "query": "q", "pins": pins}
     client.post("/api/v1/products/ingest", json=body)
     image = client.get("/api/v1/products/reference-images?status=pending").json()[0]
-    client.put(
-        f"/api/v1/products/reference-images/{image['image_id']}", json={"status": "approved"}
-    )
+    asyncio.run(repository.set_image_status(image["image_id"], "live"))
     created = client.post(url, json={"idea": "ban công"}).json()
     assert created["user_idea"] == "ban công" and created["brief"]["idea_seen"] == "ban công"
 

@@ -41,26 +41,26 @@ async def _service(tmp_path, writer=None) -> ProductCatalogService:
     return service
 
 
-async def _approve_reference(service: ProductCatalogService) -> str:
+async def _make_reference_live(service: ProductCatalogService) -> str:
     await service.ingest(
         {"kind": "pinterest", "product_type": "áo thun", "query": "q", "pins": [PIN]}
     )
     [image] = await service.reference_images("pending", "áo thun")
-    await service.set_image_status(image["image_id"], "approved")
+    await service.set_image_status(image["image_id"], "live")
     return image["image_id"]
 
 
-async def test_brief_needs_selection_and_approved_references(tmp_path) -> None:
+async def test_brief_needs_selection_and_live_references(tmp_path) -> None:
     service = await _service(tmp_path, _FakeWriter())
     assert await service.create_brief("missing") is None
     with pytest.raises(BriefUnavailable, match="Select this product"):
         await service.create_brief(PRODUCT_ID)
 
     await service._repository.select_product(PRODUCT_ID, "áo thun")
-    with pytest.raises(BriefUnavailable, match="Approve at least one reference"):
+    with pytest.raises(BriefUnavailable, match="No usable reference image"):
         await service.create_brief(PRODUCT_ID)
 
-    image_id = await _approve_reference(service)
+    image_id = await _make_reference_live(service)
     record = await service.create_brief(PRODUCT_ID, "  ý tưởng của tôi ")
     assert record is not None
     assert (record["status"], record["user_idea"]) == ("draft", "ý tưởng của tôi")
@@ -76,7 +76,7 @@ async def test_brief_without_llm_reports_configuration_error(tmp_path) -> None:
 async def test_brief_edits_keep_known_fields_and_can_be_approved(tmp_path) -> None:
     service = await _service(tmp_path, _FakeWriter())
     await service._repository.select_product(PRODUCT_ID, "áo thun")
-    await _approve_reference(service)
+    await _make_reference_live(service)
     await service.create_brief(PRODUCT_ID)
 
     updated = await service.update_brief(
@@ -155,3 +155,37 @@ def test_product_facts_are_compact() -> None:
     assert facts["price_vnd"] == "99000"
     assert len(facts["specifications"]) == 20 and len(facts["variants"]) == 10
     assert len(facts["description"]) == 1500
+
+
+class _CapturingWriter:
+    def __init__(self) -> None:
+        self.references: list[dict] = []
+
+    async def write(self, product, user_idea, references):
+        self.references = references
+        return {"title": "T", "selected_reference_ids": []}
+
+
+async def test_brief_uses_the_best_scored_live_references(tmp_path) -> None:
+    writer = _CapturingWriter()
+    service = await _service(tmp_path, writer)
+    await service._repository.select_product(PRODUCT_ID, "áo thun")
+    pins = [
+        {
+            "image_url": f"https://i.pinimg.com/236x/aa/bb/{i}.jpg",
+            "pin_url": f"/pin/{i}/",
+            "title": "",
+        }
+        for i in range(12)
+    ]
+    await service.ingest(
+        {"kind": "pinterest", "product_type": "áo thun", "query": "q", "pins": pins}
+    )
+    images = await service.reference_images("pending", "áo thun")
+    for index, image in enumerate(images):
+        await service._repository.set_image_screening(
+            image["image_id"], {"usable": True, "quality_score": index % 10 + 1}, "live"
+        )
+    await service.create_brief(PRODUCT_ID)
+    scores = [r["screening"]["quality_score"] for r in writer.references]
+    assert len(scores) == 8 and scores == sorted(scores, reverse=True) and scores[0] == 10

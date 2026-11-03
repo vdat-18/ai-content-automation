@@ -87,12 +87,15 @@ async def _round_trip() -> None:
         assert [i["query"] for i in await service.reference_queue(10)] == ["q2"]
         [image] = await service.reference_images("pending", "áo thun")
         assert image["image_url"].startswith("https://i.pinimg.com/736x/")
-        assert await service.set_image_status(image["image_id"], "approved")
-        assert not await service.set_image_status("missing", "approved")
+        assert await service.set_image_status(image["image_id"], "removed")
+        assert not await service.set_image_status("missing", "removed")
 
         class _Reviewer:
             async def review_all(self, images, http=None):
-                return {i["image_id"]: {"usable": True, "reason": "ok"} for i in images}
+                return {
+                    i["image_id"]: {"usable": True, "quality_score": 9, "reason": "ok"}
+                    for i in images
+                }
 
         screener = ProductCatalogService(PostgresProductRepository(engine), reviewer=_Reviewer())  # type: ignore[arg-type]
         await screener.ingest(
@@ -102,8 +105,8 @@ async def _round_trip() -> None:
                 "pins": [{**pins[0], "image_url": "https://i.pinimg.com/236x/aa/bb/cc.jpg"}],
             }
         )
-        [passed] = await screener.reference_images("new", None)
-        assert passed["screening"] == {"usable": True, "reason": "ok"}
+        [passed] = await screener.reference_images("live", None)
+        assert passed["screening"] == {"usable": True, "quality_score": 9, "reason": "ok"}
 
         class _Writer:
             async def write(self, product, user_idea, references):
@@ -111,8 +114,6 @@ async def _round_trip() -> None:
 
         briefer = ProductCatalogService(PostgresProductRepository(engine), briefer=_Writer())  # type: ignore[arg-type]
         await briefer.update_profile(ReferenceProfile("áo thun", ["q1"], "approved"))
-        [reference] = await briefer.reference_images("new", None)
-        await briefer.set_image_status(reference["image_id"], "approved")
         record = await briefer.create_brief("1730000000000000001", "ý tưởng")
         assert record is not None and record["brief"]["idea"] == "ý tưởng"
         updated = await briefer.update_brief("1730000000000000001", {"scene": "mới"}, "approved")

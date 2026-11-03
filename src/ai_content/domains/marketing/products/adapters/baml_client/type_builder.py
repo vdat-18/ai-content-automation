@@ -195,7 +195,7 @@ class ReferenceImageReviewAst:
     def __init__(self, tb: type_builder.TypeBuilder):
         _tb = tb._tb # type: ignore (we know how to use this private attribute)
         self._bldr = _tb.class_("ReferenceImageReview")
-        self._properties: typing.Set[str] = set([  "usable",  "reason",  "scene_type",  "scene_description",  "placement_note",  "heavy_text",  "style",  "colors",  ])
+        self._properties: typing.Set[str] = set([  "usable",  "quality_score",  "reason",  "scene_type",  "scene_description",  "placement_note",  "heavy_text",  "style",  "colors",  ])
         self._props = ReferenceImageReviewProperties(self._bldr, self._properties)
 
     def type(self) -> baml_py.FieldType:
@@ -226,6 +226,10 @@ class ReferenceImageReviewProperties:
     @property
     def usable(self) -> type_builder.ClassPropertyViewer:
         return type_builder.ClassPropertyViewer(self.__bldr.property("usable"))
+    
+    @property
+    def quality_score(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("quality_score"))
     
     @property
     def reason(self) -> type_builder.ClassPropertyViewer:

@@ -1,5 +1,6 @@
 class ReferenceImageReview {
   usable bool
+  quality_score int
   reason string
   scene_type "lifestyle_scene" | "environment" | "flatlay" | "studio_plain" | "cutout" | "graphic" | "other"
   scene_description string
@@ -33,6 +34,8 @@ function ReviewReferenceImage(product_type: string, image: image) -> ReferenceIm
     scene_description: one sentence on the background and setting. placement_note: one sentence
     on where and how our product could be placed. heavy_text: large areas of text.
     style: up to 4 short style words. colors: up to 4 color names.
+    quality_score: 1 to 10, how valuable the scene is as a reference (10: sharp, well lit,
+    attractive, rich real surroundings and an obvious place for the product; 1: unusable).
     reason: one short sentence explaining the usable decision.
 
     {{ _.role("user") }}

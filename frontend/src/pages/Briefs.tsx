@@ -41,8 +41,8 @@ export function BriefsPage() {
   const products = useQuery({ queryKey: ["products"], queryFn: ({ signal }) => getJson<Product[]>(API, signal) });
   const briefs = useQuery({ queryKey: ["briefs"], queryFn: ({ signal }) => getJson<BriefRecord[]>(`${API}/briefs`, signal) });
   const references = useQuery({
-    queryKey: ["reference-images", "approved"],
-    queryFn: ({ signal }) => getJson<ReferenceImage[]>(`${API}/reference-images?status=approved`, signal),
+    queryKey: ["reference-images", "live"],
+    queryFn: ({ signal }) => getJson<ReferenceImage[]>(`${API}/reference-images?status=live`, signal),
   });
 
   if (selections.isLoading || products.isLoading || briefs.isLoading) return <SkeletonPage />;
@@ -56,7 +56,7 @@ export function BriefsPage() {
       <PageHeader
         eyebrow="Affiliate content"
         title="Briefs"
-        description="The agent writes one brief per selected product from its approved reference scenes. Add your own idea and the agent builds on it."
+        description="The agent writes one brief per selected product from its best live reference scenes. Add your own idea and the agent builds on it."
       />
       {selectedIds.length === 0 && (
         <EmptyState icon={<FileText />} title="No products selected" text="Select products for content on the Products page first." />

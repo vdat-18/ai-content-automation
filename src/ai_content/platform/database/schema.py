@@ -92,7 +92,7 @@ reference_images = Table(
     Column("image_url", Text, nullable=False),
     Column("pin_url", Text),
     Column("title", Text),
-    Column("status", Text, nullable=False, server_default=sql_text("'new'")),
+    Column("status", Text, nullable=False, server_default=sql_text("'pending'")),
     Column("screening", JSONB),
     *_timestamps(),
     schema="marketing",

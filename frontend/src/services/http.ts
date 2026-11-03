@@ -53,3 +53,7 @@ export function putJson<T>(path: string, body: object, signal?: AbortSignal): Pr
     body: JSON.stringify(body),
   });
 }
+
+export function deleteJson<T>(path: string, signal?: AbortSignal): Promise<T> {
+  return requestJson<T>(path, { method: "DELETE", signal });
+}

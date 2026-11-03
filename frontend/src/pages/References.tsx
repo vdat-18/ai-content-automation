@@ -3,10 +3,10 @@ import { Package } from "lucide-react";
 import { useState } from "react";
 import { EmptyState, PageHeader, Panel } from "../components/ui";
 import { useI18n } from "../hooks/useI18n";
-import { getJson, postJson, putJson } from "../services/http";
+import { deleteJson, getJson, postJson, putJson } from "../services/http";
 
 export type ReferenceProfile = { product_type: string; keywords: string[]; status: string };
-type Screening = { usable: boolean; reason: string; scene_type: string; scene_description: string; placement_note: string; style: string[]; colors: string[] };
+type Screening = { usable: boolean; quality_score: number; reason: string; scene_type: string; scene_description: string; placement_note: string; style: string[]; colors: string[] };
 type ReferenceImage = { image_id: string; product_type: string; query: string; image_url: string; pin_url: string; title: string; status: string; screening: Screening | null };
 type ScreenReport = { reviewed: number; usable: number; rejected: number; failed: number };
 
@@ -81,7 +81,7 @@ function ReferenceImages() {
   const { t } = useI18n();
   const client = useQueryClient();
   const [productType, setProductType] = useState("");
-  const [status, setStatus] = useState("new");
+  const [status, setStatus] = useState("live");
   const params = new URLSearchParams();
   if (productType) params.set("product_type", productType);
   if (status) params.set("status", status);
@@ -91,8 +91,8 @@ function ReferenceImages() {
     queryFn: ({ signal }) => getJson<ReferenceImage[]>(`${API}/reference-images?${params}`, signal),
     refetchInterval: 10000,
   });
-  const review = useMutation({
-    mutationFn: ({ imageId, next }: { imageId: string; next: string }) => putJson(`${API}/reference-images/${imageId}`, { status: next }),
+  const remove = useMutation({
+    mutationFn: (imageId: string) => deleteJson(`${API}/reference-images/${imageId}`),
     onSuccess: () => client.invalidateQueries({ queryKey: ["reference-images"] }),
   });
   const pending = useQuery({
@@ -110,7 +110,7 @@ function ReferenceImages() {
       <div className="panel-header">
         <div>
           <h2>{t("Reference images")}</h2>
-          <p>{t("Images crawled from Pinterest that Gemini accepted as scenes to borrow. Approve the ones you want to use.")}</p>
+          <p>{t("Images crawled from Pinterest that Gemini accepted as scenes to borrow, best first. Remove the ones you do not want.")}</p>
         </div>
         <div>
           <button className="secondary-button" disabled={screen.isPending} onClick={() => screen.mutate()}>
@@ -130,9 +130,9 @@ function ReferenceImages() {
         </label>
         <label>{t("Status")}{" "}
           <select value={status} onChange={(event) => setStatus(event.target.value)}>
-            <option value="new">{t("Passed Gemini")}</option>
-            <option value="approved">{t("Approved")}</option>
-            <option value="rejected">{t("Rejected")}</option>
+            <option value="live">{t("Live")}</option>
+            <option value="rejected">{t("Rejected by Gemini")}</option>
+            <option value="removed">{t("Removed")}</option>
             <option value="">{t("All")}</option>
           </select>
         </label>
@@ -148,12 +148,11 @@ function ReferenceImages() {
                 <small>{image.query}</small>
                 {image.screening && (
                   <small title={image.screening.placement_note}>
-                    {image.screening.usable ? `${image.screening.scene_type}: ${image.screening.scene_description}` : `✕ ${image.screening.reason}`}
+                    {image.screening.usable ? `★ ${image.screening.quality_score}/10 · ${image.screening.scene_type}: ${image.screening.scene_description}` : `✕ ${image.screening.reason}`}
                   </small>
                 )}
                 <div>
-                  <button className="secondary-button" disabled={review.isPending || image.status === "approved"} onClick={() => review.mutate({ imageId: image.image_id, next: "approved" })}>{t("Approve")}</button>
-                  <button className="secondary-button" disabled={review.isPending || image.status === "rejected"} onClick={() => review.mutate({ imageId: image.image_id, next: "rejected" })}>{t("Reject")}</button>
+                  <button className="secondary-button" disabled={remove.isPending || image.status === "removed"} onClick={() => remove.mutate(image.image_id)}>{t("Remove")}</button>
                 </div>
               </figcaption>
             </figure>
