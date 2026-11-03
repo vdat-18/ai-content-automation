@@ -41,6 +41,7 @@ async def _round_trip() -> None:
                 "reference_profiles",
                 "reference_images",
                 "reference_searches",
+                "product_briefs",
             ):
                 await connection.exec_driver_sql(f"TRUNCATE marketing.{table}")
         service = ProductCatalogService(PostgresProductRepository(engine))
@@ -103,6 +104,21 @@ async def _round_trip() -> None:
         )
         [passed] = await screener.reference_images("new", None)
         assert passed["screening"] == {"usable": True, "reason": "ok"}
+
+        class _Writer:
+            async def write(self, product, user_idea, references):
+                return {"title": "T", "scene": "s", "idea": user_idea}
+
+        briefer = ProductCatalogService(PostgresProductRepository(engine), briefer=_Writer())  # type: ignore[arg-type]
+        await briefer.update_profile(ReferenceProfile("áo thun", ["q1"], "approved"))
+        [reference] = await briefer.reference_images("new", None)
+        await briefer.set_image_status(reference["image_id"], "approved")
+        record = await briefer.create_brief("1730000000000000001", "ý tưởng")
+        assert record is not None and record["brief"]["idea"] == "ý tưởng"
+        updated = await briefer.update_brief("1730000000000000001", {"scene": "mới"}, "approved")
+        assert updated is not None and updated["brief"]["scene"] == "mới"
+        assert [b["status"] for b in await briefer.list_briefs()] == ["approved"]
+        assert await briefer.get_brief("missing") is None
     finally:
         await engine.dispose()
 

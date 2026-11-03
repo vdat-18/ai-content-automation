@@ -20,7 +20,7 @@ from .globals import DO_NOT_USE_DIRECTLY_UNLESS_YOU_KNOW_WHAT_YOURE_DOING_RUNTIM
 class TypeBuilder(type_builder.TypeBuilder):
     def __init__(self):
         super().__init__(classes=set(
-          ["ReferenceImageReview","ReferenceSearchProfileDraft",]
+          ["ContentBrief","LabeledReferenceImage","ReferenceImageReview","ReferenceSearchProfileDraft",]
         ), enums=set(
           []
         ), runtime=DO_NOT_USE_DIRECTLY_UNLESS_YOU_KNOW_WHAT_YOURE_DOING_RUNTIME)
@@ -31,8 +31,16 @@ class TypeBuilder(type_builder.TypeBuilder):
 
 
     # #########################################################################
-    # Generated classes 2
+    # Generated classes 4
     # #########################################################################
+
+    @property
+    def ContentBrief(self) -> "ContentBriefViewer":
+        return ContentBriefViewer(self)
+
+    @property
+    def LabeledReferenceImage(self) -> "LabeledReferenceImageViewer":
+        return LabeledReferenceImageViewer(self)
 
     @property
     def ReferenceImageReview(self) -> "ReferenceImageReviewViewer":
@@ -50,8 +58,138 @@ class TypeBuilder(type_builder.TypeBuilder):
 
 
 # #########################################################################
-# Generated classes 2
+# Generated classes 4
 # #########################################################################
+
+class ContentBriefAst:
+    def __init__(self, tb: type_builder.TypeBuilder):
+        _tb = tb._tb # type: ignore (we know how to use this private attribute)
+        self._bldr = _tb.class_("ContentBrief")
+        self._properties: typing.Set[str] = set([  "title",  "selected_reference_labels",  "reference_rationale",  "scene",  "product_placement",  "selling_angle",  "target_audience",  "composition",  "style",  "colors",  "on_image_text",  "image_prompt",  ])
+        self._props = ContentBriefProperties(self._bldr, self._properties)
+
+    def type(self) -> baml_py.FieldType:
+        return self._bldr.field()
+
+    @property
+    def props(self) -> "ContentBriefProperties":
+        return self._props
+
+
+class ContentBriefViewer(ContentBriefAst):
+    def __init__(self, tb: type_builder.TypeBuilder):
+        super().__init__(tb)
+
+    
+    def list_properties(self) -> typing.List[typing.Tuple[str, type_builder.ClassPropertyViewer]]:
+        return [(name, type_builder.ClassPropertyViewer(self._bldr.property(name))) for name in self._properties]
+    
+
+
+class ContentBriefProperties:
+    def __init__(self, bldr: baml_py.ClassBuilder, properties: typing.Set[str]):
+        self.__bldr = bldr
+        self.__properties = properties # type: ignore (we know how to use this private attribute) # noqa: F821
+
+    
+    
+    @property
+    def title(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("title"))
+    
+    @property
+    def selected_reference_labels(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("selected_reference_labels"))
+    
+    @property
+    def reference_rationale(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("reference_rationale"))
+    
+    @property
+    def scene(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("scene"))
+    
+    @property
+    def product_placement(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("product_placement"))
+    
+    @property
+    def selling_angle(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("selling_angle"))
+    
+    @property
+    def target_audience(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("target_audience"))
+    
+    @property
+    def composition(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("composition"))
+    
+    @property
+    def style(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("style"))
+    
+    @property
+    def colors(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("colors"))
+    
+    @property
+    def on_image_text(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("on_image_text"))
+    
+    @property
+    def image_prompt(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("image_prompt"))
+    
+    
+
+
+class LabeledReferenceImageAst:
+    def __init__(self, tb: type_builder.TypeBuilder):
+        _tb = tb._tb # type: ignore (we know how to use this private attribute)
+        self._bldr = _tb.class_("LabeledReferenceImage")
+        self._properties: typing.Set[str] = set([  "label",  "note",  "content",  ])
+        self._props = LabeledReferenceImageProperties(self._bldr, self._properties)
+
+    def type(self) -> baml_py.FieldType:
+        return self._bldr.field()
+
+    @property
+    def props(self) -> "LabeledReferenceImageProperties":
+        return self._props
+
+
+class LabeledReferenceImageViewer(LabeledReferenceImageAst):
+    def __init__(self, tb: type_builder.TypeBuilder):
+        super().__init__(tb)
+
+    
+    def list_properties(self) -> typing.List[typing.Tuple[str, type_builder.ClassPropertyViewer]]:
+        return [(name, type_builder.ClassPropertyViewer(self._bldr.property(name))) for name in self._properties]
+    
+
+
+class LabeledReferenceImageProperties:
+    def __init__(self, bldr: baml_py.ClassBuilder, properties: typing.Set[str]):
+        self.__bldr = bldr
+        self.__properties = properties # type: ignore (we know how to use this private attribute) # noqa: F821
+
+    
+    
+    @property
+    def label(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("label"))
+    
+    @property
+    def note(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("note"))
+    
+    @property
+    def content(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("content"))
+    
+    
+
 
 class ReferenceImageReviewAst:
     def __init__(self, tb: type_builder.TypeBuilder):

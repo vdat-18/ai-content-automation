@@ -72,6 +72,17 @@ reference_profiles = Table(
     schema="marketing",
 )
 
+product_briefs = Table(
+    "product_briefs",
+    metadata,
+    Column("product_id", Text, primary_key=True),
+    Column("user_idea", Text, nullable=False, server_default=sql_text("''")),
+    Column("brief", JSONB, nullable=False),
+    Column("status", Text, nullable=False, server_default=sql_text("'draft'")),
+    *_timestamps(),
+    schema="marketing",
+)
+
 reference_images = Table(
     "reference_images",
     metadata,
@@ -269,6 +280,7 @@ Index("ix_ai_usage_events_status", ai_usage_events.c.status)
 __all__ = [
     "marketplace_products",
     "product_selections",
+    "product_briefs",
     "reference_images",
     "reference_profiles",
     "reference_searches",

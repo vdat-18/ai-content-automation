@@ -11,6 +11,7 @@ from urllib.parse import quote_plus, urlsplit
 from openpyxl import Workbook
 from openpyxl.styles import Font
 
+from .briefing import MAX_REFERENCES, BriefUnavailable, ContentBriefWriter
 from .identity import PIN_SIZE_DIR, media_source_fingerprint
 from .image_review import ReferenceImageReviewer
 from .media import MediaDownloadReport, download_product_media
@@ -42,7 +43,9 @@ def _clean_pins(pins: list[dict[str, Any]]) -> list[dict[str, str]]:
             image_id,
             {
                 "image_id": image_id,
-                "image_url": parsed._replace(path=PIN_SIZE_DIR.sub("/736x/", parsed.path, 1)).geturl(),
+                "image_url": parsed._replace(
+                    path=PIN_SIZE_DIR.sub("/736x/", parsed.path, 1)
+                ).geturl(),
                 "pin_url": str(pin.get("pin_url") or ""),
                 "title": title,
             },
@@ -56,10 +59,12 @@ class ProductCatalogService:
         repository: ProductRepository,
         generator: ReferenceProfileGenerator | None = None,
         reviewer: ReferenceImageReviewer | None = None,
+        briefer: ContentBriefWriter | None = None,
     ) -> None:
         self._repository = repository
         self._generator = generator
         self._reviewer = reviewer
+        self._briefer = briefer
 
     async def ingest(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Store whatever a captured page or feed response contains."""
@@ -132,6 +137,44 @@ class ProductCatalogService:
             counts["reviewed"] += 1
             counts["usable" if usable else "rejected"] += 1
         return counts
+
+    async def create_brief(self, product_id: str, user_idea: str = "") -> dict[str, Any] | None:
+        """Draft one brief for a selected product from its approved reference scenes."""
+        detail = await self._repository.get_detail(product_id)
+        if detail is None:
+            return None
+        if self._briefer is None:
+            raise ProfileGenerationError("LLM is not configured (AIC_SCREENING_API_KEY)")
+        product_type = (await self._repository.selections()).get(product_id)
+        if not product_type:
+            raise BriefUnavailable("Select this product for content before writing a brief")
+        references = (await self._repository.list_reference_images("approved", product_type))[
+            -MAX_REFERENCES:
+        ]
+        if not references:
+            raise BriefUnavailable(
+                f"Approve at least one reference image of type '{product_type}' first"
+            )
+        brief = await self._briefer.write(detail, user_idea, references)
+        await self._repository.save_brief(product_id, user_idea.strip(), brief, "draft")
+        return await self._repository.get_brief(product_id)
+
+    async def get_brief(self, product_id: str) -> dict[str, Any] | None:
+        return await self._repository.get_brief(product_id)
+
+    async def list_briefs(self) -> list[dict[str, Any]]:
+        return await self._repository.list_briefs()
+
+    async def update_brief(
+        self, product_id: str, changes: dict[str, Any], status: str
+    ) -> dict[str, Any] | None:
+        """Apply human edits to a brief and set its review status."""
+        current = await self._repository.get_brief(product_id)
+        if current is None:
+            return None
+        brief = {**current["brief"], **{k: v for k, v in changes.items() if k in current["brief"]}}
+        await self._repository.save_brief(product_id, current["user_idea"], brief, status)
+        return await self._repository.get_brief(product_id)
 
     async def set_image_status(self, image_id: str, status: str) -> bool:
         return await self._repository.set_image_status(image_id, status)

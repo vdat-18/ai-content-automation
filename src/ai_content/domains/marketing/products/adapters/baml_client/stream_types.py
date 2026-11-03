@@ -23,8 +23,27 @@ class StreamState(BaseModel, typing.Generic[StreamStateValueT]):
     value: StreamStateValueT
     state: typing_extensions.Literal["Pending", "Incomplete", "Complete"]
 # #########################################################################
-# Generated classes (2)
+# Generated classes (4)
 # #########################################################################
+
+class ContentBrief(BaseModel):
+    title: typing.Optional[str] = None
+    selected_reference_labels: typing.List[str]
+    reference_rationale: typing.Optional[str] = None
+    scene: typing.Optional[str] = None
+    product_placement: typing.Optional[str] = None
+    selling_angle: typing.Optional[str] = None
+    target_audience: typing.Optional[str] = None
+    composition: typing.Optional[str] = None
+    style: typing.List[str]
+    colors: typing.List[str]
+    on_image_text: typing.Optional[str] = None
+    image_prompt: typing.Optional[str] = None
+
+class LabeledReferenceImage(BaseModel):
+    label: typing.Optional[str] = None
+    note: typing.Optional[str] = None
+    content: typing.Optional[baml_py.Image] = None
 
 class ReferenceImageReview(BaseModel):
     usable: typing.Optional[bool] = None
@@ -46,11 +65,13 @@ class ReferenceSearchProfileDraft(BaseModel):
 
 
 # #########################################################################
-# Model rebuilds (2)
+# Model rebuilds (4)
 # #########################################################################
 # Resolve string forward references now that every model above is defined so
 # class declaration order never breaks Pydantic construction (issue #793).
 # Recursive models are intentionally omitted (Pydantic resolves those lazily;
 # eagerly rebuilding them can recurse).
+ContentBrief.model_rebuild()
+LabeledReferenceImage.model_rebuild()
 ReferenceImageReview.model_rebuild()
 ReferenceSearchProfileDraft.model_rebuild()

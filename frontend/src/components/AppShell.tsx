@@ -5,6 +5,7 @@ import {
   ChevronDown,
   CircleGauge,
   Menu,
+  FileText,
   Images,
   Package,
   Moon,
@@ -32,6 +33,7 @@ const readStoredSidebarWidth = () => {
 const nav: NavItem[] = [
   { to: "/products", label: "Products", icon: Package, group: "research" },
   { to: "/references", label: "References", icon: Images, group: "research" },
+  { to: "/briefs", label: "Briefs", icon: FileText, group: "research" },
   { to: "/second-brain", label: "SecondBrain", icon: BrainCircuit, group: "research" },
 ];
 

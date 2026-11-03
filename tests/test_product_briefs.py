@@ -1,0 +1,157 @@
+from types import SimpleNamespace
+
+import httpx
+import pytest
+from baml_py.baml_py import BamlClientError
+
+from ai_content.domains.marketing.products.briefing import (
+    BriefGenerationError,
+    BriefUnavailable,
+    ContentBriefWriter,
+    product_facts,
+)
+from ai_content.domains.marketing.products.references import ProfileGenerationError
+from ai_content.domains.marketing.products.repositories import SqliteProductRepository
+from ai_content.domains.marketing.products.service import ProductCatalogService
+
+PRODUCT_ID = "1730000000000000001"
+URL = f"https://shop.tiktok.com/vn/pdp/ao-thun/{PRODUCT_ID}"
+HTML = (
+    '<script>"product_info":{"status":1,"product_id":"1730000000000000001",'
+    '"title":"Áo thun","price":{"min_sku_price":"99000","currency":"VND"},'
+    '"images":[{"url_list":["https://img.example/1.jpg"]}],'
+    '"specifications":[{"name":"Chất liệu","value":"Cotton"}]}</script>'
+)
+PIN = {"image_url": "https://i.pinimg.com/236x/ab/cd/ef.jpg", "pin_url": "/pin/1/", "title": "a"}
+
+
+class _FakeWriter:
+    async def write(self, product, user_idea, references):
+        return {
+            "title": "Brief",
+            "scene": "Phòng giặt",
+            "selected_reference_ids": [references[0]["image_id"]],
+        }
+
+
+async def _service(tmp_path, writer=None) -> ProductCatalogService:
+    repository = SqliteProductRepository(tmp_path / "b.db")
+    service = ProductCatalogService(repository, briefer=writer)
+    await service.ingest({"kind": "page", "url": URL, "html": HTML})
+    return service
+
+
+async def _approve_reference(service: ProductCatalogService) -> str:
+    await service.ingest(
+        {"kind": "pinterest", "product_type": "áo thun", "query": "q", "pins": [PIN]}
+    )
+    [image] = await service.reference_images("pending", "áo thun")
+    await service.set_image_status(image["image_id"], "approved")
+    return image["image_id"]
+
+
+async def test_brief_needs_selection_and_approved_references(tmp_path) -> None:
+    service = await _service(tmp_path, _FakeWriter())
+    assert await service.create_brief("missing") is None
+    with pytest.raises(BriefUnavailable, match="Select this product"):
+        await service.create_brief(PRODUCT_ID)
+
+    await service._repository.select_product(PRODUCT_ID, "áo thun")
+    with pytest.raises(BriefUnavailable, match="Approve at least one reference"):
+        await service.create_brief(PRODUCT_ID)
+
+    image_id = await _approve_reference(service)
+    record = await service.create_brief(PRODUCT_ID, "  ý tưởng của tôi ")
+    assert record is not None
+    assert (record["status"], record["user_idea"]) == ("draft", "ý tưởng của tôi")
+    assert record["brief"]["selected_reference_ids"] == [image_id]
+
+
+async def test_brief_without_llm_reports_configuration_error(tmp_path) -> None:
+    service = await _service(tmp_path)
+    with pytest.raises(ProfileGenerationError, match="not configured"):
+        await service.create_brief(PRODUCT_ID)
+
+
+async def test_brief_edits_keep_known_fields_and_can_be_approved(tmp_path) -> None:
+    service = await _service(tmp_path, _FakeWriter())
+    await service._repository.select_product(PRODUCT_ID, "áo thun")
+    await _approve_reference(service)
+    await service.create_brief(PRODUCT_ID)
+
+    updated = await service.update_brief(
+        PRODUCT_ID, {"scene": "Ban công", "unknown": "x"}, "approved"
+    )
+    assert updated is not None and updated["status"] == "approved"
+    assert updated["brief"]["scene"] == "Ban công" and "unknown" not in updated["brief"]
+    assert [b["product_id"] for b in await service.list_briefs()] == [PRODUCT_ID]
+    assert await service.update_brief("missing", {}, "draft") is None
+
+
+class _FakeBamlClient:
+    def __init__(self, fail: bool = False) -> None:
+        self.fail = fail
+        self.seen: list[tuple[int, int]] = []
+
+    async def DraftContentBrief(self, product_json, user_idea, product_images, references):
+        if self.fail:
+            raise BamlClientError("503", "503", "503")
+        self.seen.append((len(product_images), len(references)))
+        return SimpleNamespace(
+            model_dump=lambda: {"title": "T", "selected_reference_labels": ["ref_2", "ref_9"]}
+        )
+
+
+async def test_writer_maps_labels_and_skips_failed_downloads() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if "gone" in request.url.path:
+            return httpx.Response(404)
+        return httpx.Response(200, content=b"img", headers={"content-type": "image/png"})
+
+    references = [
+        {"image_id": "id-1", "image_url": "https://x/gone.jpg"},
+        {
+            "image_id": "id-2",
+            "image_url": "https://x/ok.jpg",
+            "screening": {"scene_description": "s"},
+        },
+    ]
+    product = {"images": ["https://x/p1.jpg", "https://x/gone-p.jpg", "https://x/p3.jpg"]}
+    client = _FakeBamlClient()
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
+        brief = await ContentBriefWriter(client).write(product, "", references, http)
+    assert brief["selected_reference_ids"] == ["id-2"]
+    assert "selected_reference_labels" not in brief
+    assert client.seen == [(1, 1)]
+
+
+async def test_writer_errors() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if "gone" in request.url.path:
+            return httpx.Response(404)
+        return httpx.Response(200, content=b"i")
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
+        with pytest.raises(BriefGenerationError, match="could be downloaded"):
+            await ContentBriefWriter(_FakeBamlClient()).write(
+                {}, "", [{"image_id": "a", "image_url": "https://x/gone.jpg"}], http
+            )
+        with pytest.raises(BriefGenerationError):
+            await ContentBriefWriter(_FakeBamlClient(fail=True)).write(
+                {}, "", [{"image_id": "a", "image_url": "https://x/ok.jpg"}], http
+            )
+
+
+def test_product_facts_are_compact() -> None:
+    facts = product_facts(
+        {
+            "title": "T",
+            "price": {"sale": "99000"},
+            "specifications": {str(i): i for i in range(40)},
+            "variants": [{"variant": f"v{i}"} for i in range(30)],
+            "description": "d" * 5000,
+        }
+    )
+    assert facts["price_vnd"] == "99000"
+    assert len(facts["specifications"]) == 20 and len(facts["variants"]) == 10
+    assert len(facts["description"]) == 1500

@@ -205,6 +205,59 @@ def test_reference_image_review_flow(client: TestClient) -> None:
     assert client.post("/api/v1/products/reference-images/screen").status_code == 503
 
 
+def test_brief_endpoints(client: TestClient, repository: SqliteProductRepository) -> None:
+    assert client.post("/api/v1/products/missing/brief", json={}).status_code == 404
+    _capture_product(client)
+    assert client.post(f"/api/v1/products/{PRODUCT_ID}/brief", json={}).status_code == 503
+    assert client.get(f"/api/v1/products/{PRODUCT_ID}/brief").status_code == 404
+    update = {"brief": {}, "status": "approved"}
+    assert client.put(f"/api/v1/products/{PRODUCT_ID}/brief", json=update).status_code == 404
+    bogus = {"brief": {}, "status": "bogus"}
+    assert client.put(f"/api/v1/products/{PRODUCT_ID}/brief", json=bogus).status_code == 422
+
+    asyncio.run(repository.save_brief(PRODUCT_ID, "idea", {"scene": "a", "title": "t"}, "draft"))
+    assert client.get("/api/v1/products/briefs").json()[0]["user_idea"] == "idea"
+    edit = {"brief": {"scene": "b"}, "status": "approved"}
+    saved = client.put(f"/api/v1/products/{PRODUCT_ID}/brief", json=edit).json()
+    assert saved["status"] == "approved" and saved["brief"] == {"scene": "b", "title": "t"}
+    assert client.get(f"/api/v1/products/{PRODUCT_ID}/brief").json()["brief"]["scene"] == "b"
+
+
+class _FakeWriter:
+    async def write(self, product, user_idea, references):
+        return {"title": "T", "idea_seen": user_idea, "selected_reference_ids": []}
+
+
+def test_brief_creation_reports_unmet_preconditions_then_succeeds(
+    tmp_path: Path, repository: SqliteProductRepository
+) -> None:
+    app = FastAPI()
+    app.include_router(router)
+
+    async def service() -> AsyncIterator[ProductCatalogService]:
+        yield ProductCatalogService(repository, briefer=_FakeWriter())
+
+    app.dependency_overrides[get_product_catalog_service] = service
+    client = TestClient(app)
+    _capture_product(client)
+    url = f"/api/v1/products/{PRODUCT_ID}/brief"
+
+    first = client.post(url, json={"idea": "ban công"})
+    assert first.status_code == 409 and "Select this product" in first.json()["detail"]
+    asyncio.run(repository.select_product(PRODUCT_ID, "áo thun"))
+    assert client.post(url, json={}).status_code == 409
+
+    pins = [{"image_url": "https://i.pinimg.com/236x/ab/cd/ef.jpg", "pin_url": "/p/", "title": "t"}]
+    body = {"kind": "pinterest", "product_type": "áo thun", "query": "q", "pins": pins}
+    client.post("/api/v1/products/ingest", json=body)
+    image = client.get("/api/v1/products/reference-images?status=pending").json()[0]
+    client.put(
+        f"/api/v1/products/reference-images/{image['image_id']}", json={"status": "approved"}
+    )
+    created = client.post(url, json={"idea": "ban công"}).json()
+    assert created["user_idea"] == "ban công" and created["brief"]["idea_seen"] == "ban công"
+
+
 def test_media_download_with_no_products(client: TestClient) -> None:
     assert client.post("/api/v1/products/media/download").json() == {
         "downloaded": 0,

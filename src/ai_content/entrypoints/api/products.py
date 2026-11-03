@@ -8,6 +8,7 @@ from typing import Any, Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel
 
+from ai_content.domains.marketing.products.briefing import BriefGenerationError, BriefUnavailable
 from ai_content.domains.marketing.products.references import (
     ProfileGenerationError,
     ReferenceProfile,
@@ -126,6 +127,62 @@ async def update_reference_image(
     if not await service.set_image_status(image_id, body.status):
         raise HTTPException(status_code=404, detail="Reference image not found")
     return {"image_id": image_id, "status": body.status}
+
+
+class BriefRequest(BaseModel):
+    idea: str = ""
+
+
+class BriefUpdate(BaseModel):
+    brief: dict[str, Any]
+    status: Literal["draft", "approved"] = "draft"
+
+
+@router.get("/briefs")
+async def list_briefs(
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> list[dict[str, Any]]:
+    return await service.list_briefs()
+
+
+@router.post("/{product_id}/brief")
+async def create_brief(
+    product_id: str,
+    body: BriefRequest,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> dict[str, Any]:
+    try:
+        record = await service.create_brief(product_id, body.idea)
+    except BriefUnavailable as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    except (BriefGenerationError, ProfileGenerationError) as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+    if record is None:
+        raise HTTPException(status_code=404, detail="Product not captured")
+    return record
+
+
+@router.get("/{product_id}/brief")
+async def get_brief(
+    product_id: str,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> dict[str, Any]:
+    record = await service.get_brief(product_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="No brief for this product")
+    return record
+
+
+@router.put("/{product_id}/brief")
+async def update_brief(
+    product_id: str,
+    body: BriefUpdate,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> dict[str, Any]:
+    record = await service.update_brief(product_id, body.brief, body.status)
+    if record is None:
+        raise HTTPException(status_code=404, detail="No brief for this product")
+    return record
 
 
 @router.post("/{product_id}/select")

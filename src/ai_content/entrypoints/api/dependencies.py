@@ -15,6 +15,7 @@ from ai_content.domains.marketing.creative_knowledge.repositories import (
     SqliteCreativeKnowledgeRepository,
 )
 from ai_content.domains.marketing.creative_knowledge.service import CreativeKnowledgeService
+from ai_content.domains.marketing.products.briefing import ContentBriefWriter
 from ai_content.domains.marketing.products.image_review import ReferenceImageReviewer
 from ai_content.domains.marketing.products.references import ReferenceProfileGenerator
 from ai_content.domains.marketing.products.repositories import SqliteProductRepository
@@ -185,6 +186,16 @@ def _image_reviewer(settings: ApiRuntimeSettings) -> ReferenceImageReviewer | No
     )
 
 
+def _brief_writer(settings: ApiRuntimeSettings) -> ContentBriefWriter | None:
+    if not settings.screening_api_key:
+        return None
+    return ContentBriefWriter.from_settings(
+        base_url=settings.screening_base_url,
+        api_key=settings.screening_api_key,
+        model=settings.screening_model,
+    )
+
+
 def _profile_generator(settings: ApiRuntimeSettings) -> ReferenceProfileGenerator | None:
     if not settings.screening_api_key:
         return None
@@ -201,11 +212,19 @@ async def get_product_catalog_service(request: Request) -> AsyncIterator[Product
     postgres = _postgres_runtime(request)
     if postgres is not None:
         yield ProductCatalogService(
-            postgres.product_repository, _profile_generator(settings), _image_reviewer(settings)
+            postgres.product_repository,
+            _profile_generator(settings),
+            _image_reviewer(settings),
+            _brief_writer(settings),
         )
         return
     repository = SqliteProductRepository(settings.db_path)
     try:
-        yield ProductCatalogService(repository, _profile_generator(settings), _image_reviewer(settings))
+        yield ProductCatalogService(
+            repository,
+            _profile_generator(settings),
+            _image_reviewer(settings),
+            _brief_writer(settings),
+        )
     finally:
         repository.close()

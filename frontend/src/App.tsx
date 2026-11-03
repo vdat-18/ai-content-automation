@@ -5,6 +5,7 @@ import { SkeletonPage } from "./components/ui";
 import { useI18n } from "./hooks/useI18n";
 const NotificationsPage = lazy(() => import("./pages/Notifications").then((module) => ({ default: module.NotificationsPage })));
 const ReferencesPage = lazy(() => import("./pages/References").then((module) => ({ default: module.ReferencesPage })));
+const BriefsPage = lazy(() => import("./pages/Briefs").then((module) => ({ default: module.BriefsPage })));
 const ProductsPage = lazy(() => import("./pages/Products").then((module) => ({ default: module.ProductsPage })));
 const CreativeKnowledgePage = lazy(() => import("./pages/CreativeKnowledge").then((module) => ({ default: module.CreativeKnowledgePage })));
 
@@ -16,6 +17,7 @@ export default function App() {
         <Route path="notifications" element={<NotificationsPage />} />
         <Route path="products" element={<ProductsPage />} />
         <Route path="references" element={<ReferencesPage />} />
+        <Route path="briefs" element={<BriefsPage />} />
         <Route path="second-brain" element={<CreativeKnowledgePage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Route>

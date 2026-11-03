@@ -41,8 +41,27 @@ def all_succeeded(checks: typing.Dict[CheckName, Check]) -> bool:
 # #########################################################################
 
 # #########################################################################
-# Generated classes (2)
+# Generated classes (4)
 # #########################################################################
+
+class ContentBrief(BaseModel):
+    title: str
+    selected_reference_labels: typing.List[str]
+    reference_rationale: str
+    scene: str
+    product_placement: str
+    selling_angle: str
+    target_audience: str
+    composition: str
+    style: typing.List[str]
+    colors: typing.List[str]
+    on_image_text: str
+    image_prompt: str
+
+class LabeledReferenceImage(BaseModel):
+    label: str
+    note: str
+    content: baml_py.Image
 
 class ReferenceImageReview(BaseModel):
     usable: bool
@@ -64,11 +83,13 @@ class ReferenceSearchProfileDraft(BaseModel):
 
 
 # #########################################################################
-# Model rebuilds (2)
+# Model rebuilds (4)
 # #########################################################################
 # Resolve string forward references now that every model above is defined so
 # class declaration order never breaks Pydantic construction (issue #793).
 # Recursive models are intentionally omitted (Pydantic resolves those lazily;
 # eagerly rebuilding them can recurse).
+ContentBrief.model_rebuild()
+LabeledReferenceImage.model_rebuild()
 ReferenceImageReview.model_rebuild()
 ReferenceSearchProfileDraft.model_rebuild()

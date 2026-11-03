@@ -16,6 +16,12 @@ from . import stream_types
 
 type_map = {
 
+    "types.ContentBrief": types.ContentBrief,
+    "stream_types.ContentBrief": stream_types.ContentBrief,
+
+    "types.LabeledReferenceImage": types.LabeledReferenceImage,
+    "stream_types.LabeledReferenceImage": stream_types.LabeledReferenceImage,
+
     "types.ReferenceImageReview": types.ReferenceImageReview,
     "stream_types.ReferenceImageReview": stream_types.ReferenceImageReview,
 

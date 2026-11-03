@@ -15,6 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from ai_content.platform.database.schema import (
     marketplace_products,
+    product_briefs,
     product_selections,
     reference_images,
     reference_profiles,
@@ -64,6 +65,14 @@ class ProductRepository(Protocol):
         self, image_id: str, screening: dict[str, Any], status: str | None
     ) -> None: ...
 
+    async def save_brief(
+        self, product_id: str, user_idea: str, brief: dict[str, Any], status: str
+    ) -> None: ...
+
+    async def get_brief(self, product_id: str) -> dict[str, Any] | None: ...
+
+    async def list_briefs(self) -> list[dict[str, Any]]: ...
+
 
 def _sold(value: object) -> int | None:
     try:
@@ -83,6 +92,12 @@ def _queue_candidates(rows: list[dict[str, Any]], limit: int) -> list[str]:
         eligible.append((not item.get("has_video"), -(_sold(item.get("sold_count")) or 0), url))
     eligible.sort()
     return [url for _, _, url in eligible[:limit]]
+
+
+def _brief_record(
+    product_id: str, user_idea: str, brief: dict[str, Any], status: str
+) -> dict[str, Any]:
+    return {"product_id": product_id, "user_idea": user_idea, "brief": brief, "status": status}
 
 
 class SqliteProductRepository:
@@ -120,6 +135,11 @@ class SqliteProductRepository:
         )
         with contextlib.suppress(sqlite3.OperationalError):
             self._connection.execute("ALTER TABLE reference_images ADD COLUMN screening TEXT")
+        self._connection.execute(
+            "CREATE TABLE IF NOT EXISTS product_briefs ("
+            "product_id TEXT PRIMARY KEY, user_idea TEXT NOT NULL DEFAULT '', "
+            "brief TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'draft')"
+        )
         self._connection.execute(
             "CREATE TABLE IF NOT EXISTS reference_searches ("
             "product_type TEXT NOT NULL, query TEXT NOT NULL, PRIMARY KEY (product_type, query))"
@@ -303,6 +323,30 @@ class SqliteProductRepository:
         )
         self._connection.commit()
         return cursor.rowcount > 0
+
+    async def save_brief(
+        self, product_id: str, user_idea: str, brief: dict[str, Any], status: str
+    ) -> None:
+        self._connection.execute(
+            "INSERT INTO product_briefs (product_id, user_idea, brief, status) VALUES (?, ?, ?, ?) "
+            "ON CONFLICT(product_id) DO UPDATE SET user_idea=excluded.user_idea, "
+            "brief=excluded.brief, status=excluded.status",
+            (product_id, user_idea, json.dumps(brief, ensure_ascii=False), status),
+        )
+        self._connection.commit()
+
+    async def get_brief(self, product_id: str) -> dict[str, Any] | None:
+        row = self._connection.execute(
+            "SELECT product_id, user_idea, brief, status FROM product_briefs WHERE product_id=?",
+            (product_id,),
+        ).fetchone()
+        return _brief_record(row[0], row[1], json.loads(row[2]), row[3]) if row else None
+
+    async def list_briefs(self) -> list[dict[str, Any]]:
+        rows = self._connection.execute(
+            "SELECT product_id, user_idea, brief, status FROM product_briefs ORDER BY product_id"
+        ).fetchall()
+        return [_brief_record(r[0], r[1], json.loads(r[2]), r[3]) for r in rows]
 
 
 class PostgresProductRepository:
@@ -517,3 +561,42 @@ class PostgresProductRepository:
         )
         async with self._engine.begin() as connection:
             await connection.execute(statement)
+
+    async def save_brief(
+        self, product_id: str, user_idea: str, brief: dict[str, Any], status: str
+    ) -> None:
+        values = {
+            "product_id": product_id,
+            "user_idea": user_idea,
+            "brief": brief,
+            "status": status,
+        }
+        statement = insert(product_briefs).values(**values)
+        statement = statement.on_conflict_do_update(
+            index_elements=["product_id"],
+            set_={key: value for key, value in values.items() if key != "product_id"}
+            | {"updated_at": func.now()},
+        )
+        async with self._engine.begin() as connection:
+            await connection.execute(statement)
+
+    async def get_brief(self, product_id: str) -> dict[str, Any] | None:
+        statement = select(
+            product_briefs.c.product_id,
+            product_briefs.c.user_idea,
+            product_briefs.c.brief,
+            product_briefs.c.status,
+        ).where(product_briefs.c.product_id == product_id)
+        async with self._engine.connect() as connection:
+            row = (await connection.execute(statement)).one_or_none()
+        return _brief_record(*row) if row else None
+
+    async def list_briefs(self) -> list[dict[str, Any]]:
+        statement = select(
+            product_briefs.c.product_id,
+            product_briefs.c.user_idea,
+            product_briefs.c.brief,
+            product_briefs.c.status,
+        ).order_by(product_briefs.c.product_id)
+        async with self._engine.connect() as connection:
+            return [_brief_record(*row) for row in (await connection.execute(statement)).all()]

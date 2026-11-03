@@ -31,7 +31,7 @@ test("the dashboard only routes to affiliate content and knowledge pages", () =>
   const app = src("App.tsx");
   const shell = src("components", "AppShell.tsx");
 
-  for (const route of ["products", "references", "second-brain", "notifications"]) {
+  for (const route of ["products", "references", "briefs", "second-brain", "notifications"]) {
     assert.match(app, new RegExp(`path="${route}"`));
   }
   assert.match(app, /<Navigate replace to="\/products" \/>/);
