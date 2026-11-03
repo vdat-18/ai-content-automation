@@ -42,6 +42,7 @@ async def _round_trip() -> None:
                 "reference_images",
                 "reference_searches",
                 "product_briefs",
+                "product_keyframes",
             ):
                 await connection.exec_driver_sql(f"TRUNCATE marketing.{table}")
         service = ProductCatalogService(PostgresProductRepository(engine))
@@ -117,6 +118,22 @@ async def _round_trip() -> None:
         assert updated is not None and updated["brief"]["scene"] == "mới"
         assert [b["status"] for b in await briefer.list_briefs()] == ["approved"]
         assert await briefer.get_brief("missing") is None
+
+        keyframe = {
+            "product_id": "1730000000000000001",
+            "shot_index": 0,
+            "status": "ready",
+            "prompt": "p",
+            "image_path": "keyframes/x/shot_0.jpg",
+            "attempts": 1,
+            "error": None,
+        }
+        await briefer._repository.save_keyframe(keyframe)
+        await briefer._repository.save_keyframe({**keyframe, "attempts": 2})
+        assert await briefer.set_keyframe_status("1730000000000000001", 0, "approved")
+        assert not await briefer.set_keyframe_status("1730000000000000001", 9, "approved")
+        [stored_keyframe] = await briefer.list_keyframes("1730000000000000001")
+        assert (stored_keyframe["status"], stored_keyframe["attempts"]) == ("approved", 2)
 
         repository = PostgresProductRepository(engine)
         await repository.add_reference_images(

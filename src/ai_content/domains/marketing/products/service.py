@@ -15,6 +15,7 @@ from .briefing import MAX_REFERENCES, BriefUnavailable, ContentBriefWriter
 from .embedding import ImageEmbedder, cosine, dhash, download_images, hamming
 from .identity import PIN_SIZE_DIR, media_source_fingerprint
 from .image_review import ReferenceImageReviewer
+from .keyframes import KeyframeGenerationError, KeyframeGenerator, fetch_images
 from .media import MediaDownloadReport, download_product_media
 from .parsing import (
     is_feed_url,
@@ -30,6 +31,7 @@ _PINTEREST_SEARCH = "https://www.pinterest.com/search/pins/?q="
 _SCREEN_BATCH = 200
 DUPLICATE_COSINE = 0.90
 DUPLICATE_HAMMING = 4
+KEYFRAME_REVIEW_STATUSES = frozenset({"approved", "ready", "rejected"})
 BRIEF_FIELDS = (
     "title",
     "scene",
@@ -87,6 +89,10 @@ def _diverse(images: list[dict[str, Any]], count: int) -> list[dict[str, Any]]:
     return (chosen + filler)[:count]
 
 
+class KeyframeUnavailable(RuntimeError):
+    """Keyframes cannot be made yet; the message says what to do first."""
+
+
 class ProductCatalogService:
     def __init__(
         self,
@@ -95,12 +101,14 @@ class ProductCatalogService:
         reviewer: ReferenceImageReviewer | None = None,
         briefer: ContentBriefWriter | None = None,
         embedder: ImageEmbedder | None = None,
+        keyframer: KeyframeGenerator | None = None,
     ) -> None:
         self._repository = repository
         self._generator = generator
         self._reviewer = reviewer
         self._briefer = briefer
         self._embedder = embedder
+        self._keyframer = keyframer
 
     async def ingest(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Store whatever a captured page or feed response contains."""
@@ -280,6 +288,113 @@ class ProductCatalogService:
         brief = {**current["brief"], **{k: v for k, v in changes.items() if k in BRIEF_FIELDS}}
         await self._repository.save_brief(product_id, current["user_idea"], brief, status)
         return await self._repository.get_brief(product_id)
+
+    async def list_keyframes(self, product_id: str) -> list[dict[str, Any]]:
+        return await self._repository.list_keyframes(product_id)
+
+    async def set_keyframe_status(self, product_id: str, shot_index: int, status: str) -> bool:
+        if status not in KEYFRAME_REVIEW_STATUSES:
+            raise ValueError(f"Keyframe status must be one of {sorted(KEYFRAME_REVIEW_STATUSES)}")
+        return await self._repository.set_keyframe_status(product_id, shot_index, status)
+
+    async def generate_keyframes(
+        self, product_id: str, media_root: Path, shot_index: int | None = None
+    ) -> list[dict[str, Any]] | None:
+        """Make the master keyframe first; after a human approves it, make the other shots.
+
+        With shot_index None the next step runs: the master when it is not approved yet, else
+        every other shot that is not approved. An explicit shot_index regenerates only that shot.
+        """
+        record = await self._repository.get_brief(product_id)
+        if record is None:
+            return None
+        if self._keyframer is None:
+            raise KeyframeUnavailable("Image model is not configured (AIC_IMAGE_MODEL)")
+        shots = record["brief"].get("shots") or []
+        if not shots:
+            raise KeyframeUnavailable("This brief has no storyboard; regenerate the brief first")
+        existing = {k["shot_index"]: k for k in await self._repository.list_keyframes(product_id)}
+        master_ready = existing.get(0, {}).get("status") == "approved"
+        if shot_index is not None and not 0 <= shot_index < len(shots):
+            raise KeyframeUnavailable(f"Shot {shot_index} does not exist")
+        if shot_index is not None:
+            wanted = [shot_index]
+        elif master_ready:
+            wanted = [
+                i for i in range(1, len(shots)) if existing.get(i, {}).get("status") != "approved"
+            ]
+        else:
+            wanted = [0]
+        if any(i > 0 for i in wanted) and not master_ready:
+            raise KeyframeUnavailable("Approve the master keyframe (shot 0) first")
+        detail = await self._repository.get_detail(product_id)
+        photos = await fetch_images([u for u in (detail or {}).get("images") or [] if u])
+        if not photos:
+            raise KeyframeUnavailable("No product photo could be downloaded")
+        scene = await self._primary_scene(record["brief"]) if 0 in wanted else None
+        master = (
+            (Path(media_root) / existing[0]["image_path"]).read_bytes() if master_ready else None
+        )
+        for index in wanted:
+            await self._make_keyframe(
+                product_id,
+                index,
+                shots[index],
+                existing.get(index),
+                media_root,
+                photos,
+                scene,
+                master,
+            )
+        return await self._repository.list_keyframes(product_id)
+
+    async def _primary_scene(self, brief: dict[str, Any]) -> bytes | None:
+        ids = brief.get("selected_reference_ids") or []
+        if not ids:
+            return None
+        for image in await self._repository.list_reference_images(None, None):
+            if image["image_id"] == ids[0]:
+                found = await fetch_images([image["image_url"]])
+                return found[0] if found else None
+        return None
+
+    async def _make_keyframe(
+        self,
+        product_id: str,
+        index: int,
+        shot: dict[str, Any],
+        previous: dict[str, Any] | None,
+        media_root: Path,
+        photos: list[bytes],
+        scene: bytes | None,
+        master: bytes | None,
+    ) -> None:
+        assert self._keyframer is not None
+        attempts = (previous or {}).get("attempts", 0) + 1
+        record = {
+            "product_id": product_id,
+            "shot_index": index,
+            "prompt": str(shot["keyframe_prompt"]),
+            "attempts": attempts,
+            "image_path": (previous or {}).get("image_path"),
+        }
+        try:
+            if index == 0:
+                image = await self._keyframer.master(shot, photos, scene)
+            else:
+                image = await self._keyframer.follow_up(shot, master or b"", photos)
+        except KeyframeGenerationError as error:
+            await self._repository.save_keyframe(
+                {**record, "status": "failed", "error": str(error)}
+            )
+            return
+        relative = f"keyframes/{product_id}/shot_{index}.jpg"
+        target = Path(media_root) / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(image)
+        await self._repository.save_keyframe(
+            {**record, "status": "ready", "image_path": relative, "error": None}
+        )
 
     async def set_image_status(self, image_id: str, status: str) -> bool:
         return await self._repository.set_image_status(image_id, status)

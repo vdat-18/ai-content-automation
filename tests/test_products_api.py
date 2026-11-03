@@ -256,3 +256,36 @@ def test_media_download_with_no_products(client: TestClient) -> None:
         "skipped": 0,
         "failed": 0,
     }
+
+
+def test_keyframe_endpoints(
+    tmp_path: Path, client: TestClient, repository: SqliteProductRepository
+) -> None:
+    base = f"/api/v1/products/{PRODUCT_ID}/keyframes"
+    assert client.post(base, json={}).status_code == 404
+    _capture_product(client)
+    asyncio.run(
+        repository.save_brief(PRODUCT_ID, "", {"shots": [{"keyframe_prompt": "p"}]}, "draft")
+    )
+    assert client.get(base).json() == []
+    assert client.post(base, json={}).status_code == 409
+    assert client.get(f"{base}/0/image").status_code == 404
+
+    image = tmp_path / "media" / "keyframes" / PRODUCT_ID / "shot_0.jpg"
+    image.parent.mkdir(parents=True)
+    image.write_bytes(b"jpeg-bytes")
+    keyframe = {
+        "product_id": PRODUCT_ID,
+        "shot_index": 0,
+        "status": "ready",
+        "prompt": "p",
+        "image_path": f"keyframes/{PRODUCT_ID}/shot_0.jpg",
+        "attempts": 1,
+        "error": None,
+    }
+    asyncio.run(repository.save_keyframe(keyframe))
+    assert client.get(f"{base}/0/image").content == b"jpeg-bytes"
+    assert client.put(f"{base}/0", json={"status": "approved"}).status_code == 200
+    assert client.get(base).json()[0]["status"] == "approved"
+    assert client.put(f"{base}/0", json={"status": "bogus"}).status_code == 422
+    assert client.put(f"{base}/5", json={"status": "approved"}).status_code == 404

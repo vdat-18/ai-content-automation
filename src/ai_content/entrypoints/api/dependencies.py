@@ -19,6 +19,10 @@ from ai_content.domains.marketing.creative_knowledge.service import CreativeKnow
 from ai_content.domains.marketing.products.briefing import ContentBriefWriter
 from ai_content.domains.marketing.products.embedding import ImageEmbedder
 from ai_content.domains.marketing.products.image_review import ReferenceImageReviewer
+from ai_content.domains.marketing.products.keyframes import (
+    KeyframeGenerator,
+    KeyframeImageClient,
+)
 from ai_content.domains.marketing.products.references import ReferenceProfileGenerator
 from ai_content.domains.marketing.products.repositories import SqliteProductRepository
 from ai_content.domains.marketing.products.service import ProductCatalogService
@@ -207,6 +211,18 @@ def _image_embedder(settings: ApiRuntimeSettings) -> ImageEmbedder | None:
     return _embedder_for(settings.embedding_model, settings.db_path.parent / "models")
 
 
+def _keyframer(settings: ApiRuntimeSettings) -> KeyframeGenerator | None:
+    if not (settings.image_api_key and settings.image_model):
+        return None
+    return KeyframeGenerator(
+        KeyframeImageClient(
+            base_url=settings.image_base_url,
+            api_key=settings.image_api_key,
+            model=settings.image_model,
+        )
+    )
+
+
 def _brief_writer(settings: ApiRuntimeSettings) -> ContentBriefWriter | None:
     if not settings.screening_api_key:
         return None
@@ -238,6 +254,7 @@ async def get_product_catalog_service(request: Request) -> AsyncIterator[Product
             _image_reviewer(settings),
             _brief_writer(settings),
             _image_embedder(settings),
+            _keyframer(settings),
         )
         return
     repository = SqliteProductRepository(settings.db_path)
@@ -248,6 +265,7 @@ async def get_product_catalog_service(request: Request) -> AsyncIterator[Product
             _image_reviewer(settings),
             _brief_writer(settings),
             _image_embedder(settings),
+            _keyframer(settings),
         )
     finally:
         repository.close()

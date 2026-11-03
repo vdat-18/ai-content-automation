@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from ai_content.domains.marketing.products.briefing import BriefGenerationError, BriefUnavailable
@@ -13,7 +15,7 @@ from ai_content.domains.marketing.products.references import (
     ProfileGenerationError,
     ReferenceProfile,
 )
-from ai_content.domains.marketing.products.service import ProductCatalogService
+from ai_content.domains.marketing.products.service import KeyframeUnavailable, ProductCatalogService
 
 from .dependencies import get_product_catalog_service, get_runtime_settings
 
@@ -236,3 +238,69 @@ async def get_product(
 
 def _json(value: object) -> str:
     return json.dumps(value, ensure_ascii=False, indent=2)
+
+
+class KeyframeRequest(BaseModel):
+    shot_index: int | None = None
+
+
+class KeyframeReview(BaseModel):
+    status: str
+
+
+def _media_root() -> Path:
+    return get_runtime_settings().db_path.parent / "media"
+
+
+@router.get("/{product_id}/keyframes")
+async def list_keyframes(
+    product_id: str,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> list[dict[str, Any]]:
+    return await service.list_keyframes(product_id)
+
+
+@router.post("/{product_id}/keyframes")
+async def generate_keyframes(
+    product_id: str,
+    body: KeyframeRequest,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> list[dict[str, Any]]:
+    """Run the next keyframe step; the master must be approved before the other shots."""
+    try:
+        keyframes = await service.generate_keyframes(product_id, _media_root(), body.shot_index)
+    except KeyframeUnavailable as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    if keyframes is None:
+        raise HTTPException(status_code=404, detail="No brief for this product")
+    return keyframes
+
+
+@router.put("/{product_id}/keyframes/{shot_index}")
+async def review_keyframe(
+    product_id: str,
+    shot_index: int,
+    body: KeyframeReview,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> dict[str, str]:
+    try:
+        found = await service.set_keyframe_status(product_id, shot_index, body.status)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    if not found:
+        raise HTTPException(status_code=404, detail="No such keyframe")
+    return {"status": body.status}
+
+
+@router.get("/{product_id}/keyframes/{shot_index}/image")
+async def keyframe_image(
+    product_id: str,
+    shot_index: int,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> FileResponse:
+    for keyframe in await service.list_keyframes(product_id):
+        if keyframe["shot_index"] == shot_index and keyframe["image_path"]:
+            path = _media_root() / keyframe["image_path"]
+            if path.is_file():
+                return FileResponse(path, media_type="image/jpeg")
+    raise HTTPException(status_code=404, detail="No image for this keyframe")

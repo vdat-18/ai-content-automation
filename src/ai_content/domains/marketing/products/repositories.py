@@ -16,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 from ai_content.platform.database.schema import (
     marketplace_products,
     product_briefs,
+    product_keyframes,
     product_selections,
     reference_images,
     reference_profiles,
@@ -81,6 +82,12 @@ class ProductRepository(Protocol):
 
     async def list_briefs(self) -> list[dict[str, Any]]: ...
 
+    async def save_keyframe(self, keyframe: dict[str, Any]) -> None: ...
+
+    async def list_keyframes(self, product_id: str) -> list[dict[str, Any]]: ...
+
+    async def set_keyframe_status(self, product_id: str, shot_index: int, status: str) -> bool: ...
+
 
 def _sold(value: object) -> int | None:
     try:
@@ -106,6 +113,21 @@ def _brief_record(
     product_id: str, user_idea: str, brief: dict[str, Any], status: str
 ) -> dict[str, Any]:
     return {"product_id": product_id, "user_idea": user_idea, "brief": brief, "status": status}
+
+
+_KEYFRAME_COLUMNS = (
+    "product_id",
+    "shot_index",
+    "status",
+    "prompt",
+    "image_path",
+    "attempts",
+    "error",
+)
+
+
+def _keyframe_record(row: Any) -> dict[str, Any]:
+    return dict(zip(_KEYFRAME_COLUMNS, row, strict=True))
 
 
 class SqliteProductRepository:
@@ -153,6 +175,12 @@ class SqliteProductRepository:
             "CREATE TABLE IF NOT EXISTS product_briefs ("
             "product_id TEXT PRIMARY KEY, user_idea TEXT NOT NULL DEFAULT '', "
             "brief TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'draft')"
+        )
+        self._connection.execute(
+            "CREATE TABLE IF NOT EXISTS product_keyframes ("
+            "product_id TEXT NOT NULL, shot_index INTEGER NOT NULL, status TEXT NOT NULL, "
+            "prompt TEXT NOT NULL DEFAULT '', image_path TEXT, attempts INTEGER NOT NULL DEFAULT 0, "
+            "error TEXT, PRIMARY KEY (product_id, shot_index))"
         )
         self._connection.execute(
             "CREATE TABLE IF NOT EXISTS reference_searches ("
@@ -365,6 +393,33 @@ class SqliteProductRepository:
             "SELECT product_id, user_idea, brief, status FROM product_briefs ORDER BY product_id"
         ).fetchall()
         return [_brief_record(r[0], r[1], json.loads(r[2]), r[3]) for r in rows]
+
+    async def save_keyframe(self, keyframe: dict[str, Any]) -> None:
+        self._connection.execute(
+            "INSERT INTO product_keyframes "
+            "(product_id, shot_index, status, prompt, image_path, attempts, error) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT(product_id, shot_index) DO UPDATE SET "
+            "status=excluded.status, prompt=excluded.prompt, image_path=excluded.image_path, "
+            "attempts=excluded.attempts, error=excluded.error",
+            tuple(keyframe[column] for column in _KEYFRAME_COLUMNS),
+        )
+        self._connection.commit()
+
+    async def list_keyframes(self, product_id: str) -> list[dict[str, Any]]:
+        rows = self._connection.execute(
+            f"SELECT {', '.join(_KEYFRAME_COLUMNS)} FROM product_keyframes "
+            "WHERE product_id=? ORDER BY shot_index",
+            (product_id,),
+        ).fetchall()
+        return [_keyframe_record(row) for row in rows]
+
+    async def set_keyframe_status(self, product_id: str, shot_index: int, status: str) -> bool:
+        cursor = self._connection.execute(
+            "UPDATE product_keyframes SET status=? WHERE product_id=? AND shot_index=?",
+            (status, product_id, shot_index),
+        )
+        self._connection.commit()
+        return cursor.rowcount > 0
 
     async def existing_image_ids(self, image_ids: list[str]) -> set[str]:
         if not image_ids:
@@ -656,6 +711,39 @@ class PostgresProductRepository:
         ).order_by(product_briefs.c.product_id)
         async with self._engine.connect() as connection:
             return [_brief_record(*row) for row in (await connection.execute(statement)).all()]
+
+    async def save_keyframe(self, keyframe: dict[str, Any]) -> None:
+        values = {column: keyframe[column] for column in _KEYFRAME_COLUMNS}
+        statement = insert(product_keyframes).values(**values)
+        statement = statement.on_conflict_do_update(
+            index_elements=["product_id", "shot_index"],
+            set_={k: v for k, v in values.items() if k not in ("product_id", "shot_index")}
+            | {"updated_at": func.now()},
+        )
+        async with self._engine.begin() as connection:
+            await connection.execute(statement)
+
+    async def list_keyframes(self, product_id: str) -> list[dict[str, Any]]:
+        statement = (
+            select(*(product_keyframes.c[column] for column in _KEYFRAME_COLUMNS))
+            .where(product_keyframes.c.product_id == product_id)
+            .order_by(product_keyframes.c.shot_index)
+        )
+        async with self._engine.connect() as connection:
+            return [_keyframe_record(row) for row in (await connection.execute(statement)).all()]
+
+    async def set_keyframe_status(self, product_id: str, shot_index: int, status: str) -> bool:
+        statement = (
+            product_keyframes.update()
+            .where(
+                product_keyframes.c.product_id == product_id,
+                product_keyframes.c.shot_index == shot_index,
+            )
+            .values(status=status, updated_at=func.now())
+            .returning(product_keyframes.c.shot_index)
+        )
+        async with self._engine.begin() as connection:
+            return (await connection.execute(statement)).first() is not None
 
     async def existing_image_ids(self, image_ids: list[str]) -> set[str]:
         if not image_ids:
