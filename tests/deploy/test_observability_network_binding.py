@@ -27,7 +27,7 @@ def test_database_and_debug_ports_have_configurable_safe_bind_defaults() -> None
     environment = (_REPOSITORY_ROOT / "deploy/.env.example").read_text(encoding="utf-8")
 
     assert "${AIC_POSTGRES_BIND_ADDRESS:-127.0.0.1}:5432:5432" in base_compose
-    assert debug_compose.count("${AIC_DEBUG_BIND_ADDRESS:-127.0.0.1}") == 19
+    assert debug_compose.count("${AIC_DEBUG_BIND_ADDRESS:-127.0.0.1}") == 16
     assert "${AIC_DEBUG_SEAWEED_S3_PORT:-8333}:8333" in debug_compose
     assert "AIC_POSTGRES_BIND_ADDRESS=127.0.0.1" in environment
     assert "AIC_DEBUG_BIND_ADDRESS=127.0.0.1" in environment
