@@ -17,6 +17,7 @@ class StoryboardShot {
 class ContentBrief {
   title string
   format "problem_solution" | "step_by_step" | "before_after" | "unboxing" | "worth_it_text"
+  script string
   selected_reference_labels string[]
   reference_rationale string
   scene string
@@ -75,6 +76,14 @@ function DraftContentBrief(
     use absolute claims (tốt nhất, rẻ nhất, số 1, 100%, chắc chắn), never name other shopping or
     social platforms and never promise medical results.
 
+    script: the whole voice-over of the video as one continuous Vietnamese text that tells
+    a single story in this order: a hook, a problem shoppers know, the product solving it, one or
+    two concrete benefits from the product facts, and a call to open the product link. Write the
+    script first. About 2.5 spoken Vietnamese words per second: roughly 35 words for every 15
+    second shot. Then cut it into consecutive parts, one per shot, so reading every shot's
+    voiceover in order gives the script again with nothing added or repeated. Each shot must
+    follow from the one before it (cause and effect), never start a new topic.
+
     shots: exactly {{ shot_count }} shot(s) in story order, each lasting 15 seconds, so
     duration_seconds is always 15. The first shot opens with a hook and the last ends with a
     call_to_action; when there is only one shot it does both, hooking in the first seconds and
@@ -82,8 +91,10 @@ function DraftContentBrief(
     (a complete, self-contained English prompt for an image model: the real product as the clear
     hero, the shared scene, camera angle, lighting, style and colors, and an explicit instruction
     that the product keeps its real shape, color, proportions and label), motion_prompt (English,
-    two or three sentences describing how the camera or objects move over the 15 seconds, one
-    continuous gentle movement without cuts, for animating the keyframe),
+    two or three sentences describing the action over the 15 seconds as timed beats (for
+    example "0 to 5s: slow push-in; 5 to 10s: a hand folds the basket; 10 to 15s: camera settles"),
+    one continuous camera path in the same place with no scene cuts and no new objects, for
+    animating the keyframe),
     duration_seconds, on_screen_text (a short Vietnamese caption, or an empty string) and
     voiceover (one Vietnamese sentence).
 

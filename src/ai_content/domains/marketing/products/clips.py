@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import os
 import shutil
+import textwrap
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import quote
@@ -17,6 +19,12 @@ ASPECT = "9:16"
 _TIMEOUT = 120
 _OUTPUT_SIZE = "720:1280"
 _FPS = "24"
+TRIM_SECONDS = 0.125
+_CAPTION_FONTS = (
+    "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
+    "C:/Windows/Fonts/arialbd.ttf",
+    "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
+)
 
 
 class ClipGenerationError(RuntimeError):
@@ -101,9 +109,9 @@ class VideoClient:
         return response.content
 
 
-async def _run(*args: str) -> None:
+async def _run(*args: str, cwd: Path | None = None) -> None:
     process = await asyncio.create_subprocess_exec(
-        *args, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE
+        *args, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE, cwd=cwd
     )
     _, stderr = await process.communicate()
     if process.returncode:
@@ -111,31 +119,84 @@ async def _run(*args: str) -> None:
         raise StitchUnavailable("ffmpeg could not process the clips")
 
 
-async def stitch(clips: list[tuple[Path, float]], output: Path) -> None:
-    """Trim each clip to its shot duration, normalize them and join them into one mp4."""
+@dataclass(frozen=True)
+class StitchClip:
+    path: Path
+    duration: float
+    caption: str = ""
+
+
+def caption_font() -> Path | None:
+    """First font file that can draw Vietnamese captions (AIC_CAPTION_FONT overrides)."""
+    override = os.environ.get("AIC_CAPTION_FONT")
+    for candidate in ([Path(override)] if override else []) + [Path(f) for f in _CAPTION_FONTS]:
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def _caption_filter(font: Path, textfile: str, end: float) -> str:
+    font_path = font.as_posix().replace(":", r"\:")
+    return (
+        f"drawtext=fontfile='{font_path}':textfile='{textfile}':fontcolor=white:fontsize=46"
+        f":box=1:boxcolor=black@0.55:boxborderw=16:line_spacing=0:x=(w-text_w)/2:y=h*0.64"
+        f":enable='between(t,0.3,{end:.2f})'"
+    )
+
+
+async def stitch(clips: list[StitchClip], output: Path, voiceover: Path | None = None) -> None:
+    """Join the clips into one silent mp4, burn in captions, and lay one voice-over on top.
+
+    The clips' own audio is dropped because it changes at every cut. The first and last frames
+    of each clip are trimmed: a generated clip starts at rest and its last frames often freeze,
+    which makes the cut feel stuck.
+    """
     if shutil.which("ffmpeg") is None:
         raise StitchUnavailable("ffmpeg is not installed on this machine")
     if not clips:
         raise StitchUnavailable("No clip is ready to stitch")
     output.parent.mkdir(parents=True, exist_ok=True)
+    font = caption_font()
     parts: list[Path] = []
-    for index, (source, duration) in enumerate(clips):
-        part = output.parent / f"part_{index}.mp4"
-        await _run(
-            "ffmpeg", "-v", "error", "-y", "-i", str(source), "-t", f"{duration:g}",
-            "-vf", f"scale={_OUTPUT_SIZE}:force_original_aspect_ratio=increase,"
-            f"crop={_OUTPUT_SIZE},setsar=1,fps={_FPS}",
-            "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-ar", "44100", "-ac", "2",
-            str(part),
-        )  # fmt: skip
-        parts.append(part)
-    listing = output.parent / "parts.txt"
-    listing.write_text("".join(f"file '{part.name}'\n" for part in parts), encoding="utf-8")
+    scratch: list[Path] = []
     try:
+        for index, clip in enumerate(clips):
+            part = output.parent / f"part_{index}.mp4"
+            scratch.append(part)
+            seconds = max(0.5, clip.duration - 2 * TRIM_SECONDS)
+            filters = (
+                f"scale={_OUTPUT_SIZE}:force_original_aspect_ratio=increase,"
+                f"crop={_OUTPUT_SIZE},setsar=1,fps={_FPS}"
+            )
+            if clip.caption.strip() and font is not None:
+                textfile = output.parent / f"caption_{index}.txt"
+                textfile.write_text(textwrap.fill(clip.caption.strip(), 20), encoding="utf-8")
+                scratch.append(textfile)
+                filters += "," + _caption_filter(font, textfile.name, min(seconds - 0.3, 8))
+            await _run(
+                "ffmpeg", "-v", "error", "-y", "-ss", f"{TRIM_SECONDS:g}", "-i", str(clip.path),
+                "-t", f"{seconds:.3f}", "-an", "-vf", filters,
+                "-c:v", "libx264", "-pix_fmt", "yuv420p", part.name,
+                cwd=output.parent,
+            )  # fmt: skip
+            parts.append(part)
+        listing = output.parent / "parts.txt"
+        listing.write_text("".join(f"file '{part.name}'\n" for part in parts), encoding="utf-8")
+        scratch.append(listing)
+        silent = output if voiceover is None else output.parent / "silent.mp4"
+        if voiceover is not None:
+            scratch.append(silent)
         await _run(
-            "ffmpeg", "-v", "error", "-y", "-f", "concat", "-safe", "0", "-i", str(listing),
-            "-c", "copy", str(output),
+            "ffmpeg", "-v", "error", "-y", "-f", "concat", "-safe", "0", "-i", listing.name,
+            "-c", "copy", silent.name, cwd=output.parent,
         )  # fmt: skip
+        if voiceover is not None:
+            await _run(
+                "ffmpeg", "-v", "error", "-y", "-i", silent.name, "-i", str(voiceover),
+                "-map", "0:v", "-map", "1:a", "-af", "loudnorm=I=-16:LRA=11:TP=-1.5",
+                "-c:v", "copy", "-c:a", "aac", "-ar", "44100", "-ac", "2", "-shortest",
+                output.name, cwd=output.parent,
+            )  # fmt: skip
     finally:
-        for part in [*parts, listing]:
-            part.unlink(missing_ok=True)
+        for path in scratch:
+            path.unlink(missing_ok=True)

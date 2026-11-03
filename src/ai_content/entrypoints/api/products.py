@@ -6,7 +6,7 @@ import json
 from pathlib import Path
 from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
@@ -17,7 +17,11 @@ from ai_content.domains.marketing.products.references import (
     ProfileGenerationError,
     ReferenceProfile,
 )
-from ai_content.domains.marketing.products.service import KeyframeUnavailable, ProductCatalogService
+from ai_content.domains.marketing.products.service import (
+    VOICEOVER_TYPES,
+    KeyframeUnavailable,
+    ProductCatalogService,
+)
 
 from .dependencies import get_product_catalog_service, get_runtime_settings
 
@@ -399,3 +403,21 @@ async def create_post_package(
     if package is None:
         raise HTTPException(status_code=404, detail="No brief for this product")
     return package
+
+
+@router.put("/{product_id}/voiceover")
+async def upload_voiceover(product_id: str, request: Request) -> dict[str, str]:
+    """Keep one voice-over file for the video; the next stitch lays it over the clips."""
+    kind = request.headers.get("content-type", "").split(";")[0].strip()
+    extension = VOICEOVER_TYPES.get(kind)
+    if extension is None:
+        raise HTTPException(status_code=415, detail=f"Use one of {sorted(VOICEOVER_TYPES)}")
+    content = await request.body()
+    if not content:
+        raise HTTPException(status_code=422, detail="The file is empty")
+    folder = _media_root() / "videos" / product_id
+    folder.mkdir(parents=True, exist_ok=True)
+    for old in folder.glob("voiceover.*"):
+        old.unlink()
+    (folder / f"voiceover.{extension}").write_bytes(content)
+    return {"voiceover": extension}

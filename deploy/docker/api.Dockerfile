@@ -32,8 +32,8 @@ RUN groupadd --gid 10001 aic \
     && mkdir -p /var/lib/aicontent/pilot/artifacts \
     && chown -R aic:aic /var/lib/aicontent
 
-# ffmpeg stitches the generated video clips into one video.
-RUN apt-get update     && apt-get install --yes --no-install-recommends ffmpeg     && rm -rf /var/lib/apt/lists/*
+# ffmpeg stitches the generated video clips into one video; DejaVu draws its captions.
+RUN apt-get update     && apt-get install --yes --no-install-recommends ffmpeg fonts-dejavu-core     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=builder-dependencies /app/.venv /app/.venv
 

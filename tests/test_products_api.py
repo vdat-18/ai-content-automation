@@ -348,3 +348,17 @@ def test_video_info_reports_whether_a_stitched_video_exists(
     video.parent.mkdir(parents=True)
     video.write_bytes(b"v")
     assert client.get(url).json() == {"exists": True}
+
+
+def test_voiceover_upload_replaces_the_previous_file(tmp_path: Path, client: TestClient) -> None:
+    url = f"/api/v1/products/{PRODUCT_ID}/voiceover"
+    folder = tmp_path / "media" / "videos" / PRODUCT_ID
+    assert client.put(url, content=b"x", headers={"content-type": "text/plain"}).status_code == 415
+    assert client.put(url, content=b"", headers={"content-type": "audio/wav"}).status_code == 422
+    assert client.put(url, content=b"mp3", headers={"content-type": "audio/mpeg"}).json() == {
+        "voiceover": "mp3"
+    }
+    assert client.put(url, content=b"wav", headers={"content-type": "audio/wav"}).json() == {
+        "voiceover": "wav"
+    }
+    assert [p.name for p in folder.iterdir()] == ["voiceover.wav"]

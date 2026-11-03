@@ -15,6 +15,7 @@ from .briefing import MAX_REFERENCES, BriefUnavailable, ContentBriefWriter
 from .clips import (
     CLIP_SECONDS,
     ClipGenerationError,
+    StitchClip,
     StitchUnavailable,
     VideoClient,
     stitch,
@@ -47,6 +48,7 @@ KEYFRAME_REVIEW_STATUSES = frozenset({"approved", "ready", "rejected"})
 BRIEF_FIELDS = (
     "title",
     "format",
+    "script",
     "scene",
     "product_placement",
     "selling_angle",
@@ -100,6 +102,23 @@ def _diverse(images: list[dict[str, Any]], count: int) -> list[dict[str, Any]]:
     taken = {image["image_id"] for image in chosen}
     filler = [image for image in images if image["image_id"] not in taken]
     return (chosen + filler)[:count]
+
+
+VOICEOVER_TYPES = {
+    "audio/mpeg": "mp3",
+    "audio/wav": "wav",
+    "audio/x-wav": "wav",
+    "audio/mp4": "m4a",
+}
+
+
+def find_voiceover(media_root: Path, product_id: str) -> Path | None:
+    """The voice-over file kept beside the stitched video, if there is one."""
+    folder = Path(media_root) / "videos" / product_id
+    return next(
+        (p for ext in VOICEOVER_TYPES.values() if (p := folder / f"voiceover.{ext}").is_file()),
+        None,
+    )
 
 
 class KeyframeUnavailable(RuntimeError):
@@ -586,7 +605,7 @@ class ProductCatalogService:
         shots = record["brief"].get("shots") or []
         clips = {c["shot_index"]: c for c in await self.clips(product_id, media_root)}
         keyframes = {k["shot_index"]: k for k in await self._repository.list_keyframes(product_id)}
-        parts: list[tuple[Path, float]] = []
+        parts: list[StitchClip] = []
         for index, shot in enumerate(shots):
             if keyframes.get(index, {}).get("status") != "approved":
                 continue
@@ -594,9 +613,10 @@ class ProductCatalogService:
             if clip is None or clip["status"] != "ready":
                 raise StitchUnavailable(f"The clip for shot {index + 1} is not ready yet")
             duration = min(float(shot.get("duration_seconds") or clip["seconds"]), clip["seconds"])
-            parts.append((Path(media_root) / clip["video_path"], duration))
+            caption = str(shot.get("on_screen_text") or "")
+            parts.append(StitchClip(Path(media_root) / clip["video_path"], duration, caption))
         relative = f"videos/{product_id}/video.mp4"
-        await stitch(parts, Path(media_root) / relative)
+        await stitch(parts, Path(media_root) / relative, find_voiceover(media_root, product_id))
         return relative
 
     async def set_image_status(self, image_id: str, status: str) -> bool:

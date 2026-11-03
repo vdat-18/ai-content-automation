@@ -54,6 +54,10 @@ export function putJson<T>(path: string, body: object, signal?: AbortSignal): Pr
   });
 }
 
+export function putFile<T>(path: string, file: File, signal?: AbortSignal): Promise<T> {
+  return requestJson<T>(path, { method: "PUT", signal, headers: { "Content-Type": file.type }, body: file });
+}
+
 export function deleteJson<T>(path: string, signal?: AbortSignal): Promise<T> {
   return requestJson<T>(path, { method: "DELETE", signal });
 }

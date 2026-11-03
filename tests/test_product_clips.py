@@ -7,8 +7,10 @@ import pytest
 from ai_content.domains.marketing.products.clips import (
     ClipGenerationError,
     JobState,
+    StitchClip,
     StitchUnavailable,
     VideoClient,
+    caption_font,
     stitch,
 )
 from ai_content.domains.marketing.products.repositories import SqliteProductRepository
@@ -174,26 +176,82 @@ async def test_stitch_requires_clips_and_ffmpeg(tmp_path, monkeypatch) -> None:
         await stitch([], tmp_path / "out.mp4")
     monkeypatch.setattr(shutil, "which", lambda name: None)
     with pytest.raises(StitchUnavailable, match="ffmpeg is not installed"):
-        await stitch([(tmp_path / "a.mp4", 1)], tmp_path / "out.mp4")
+        await stitch([StitchClip(tmp_path / "a.mp4", 1)], tmp_path / "out.mp4")
+
+
+def _make_clip(path, color: str, seconds: int = 3, audio: bool = True) -> None:
+    command = [
+        "ffmpeg",
+        "-v",
+        "error",
+        "-y",
+        "-f",
+        "lavfi",
+        "-i",
+        f"color={color}:s=320x568:d={seconds}:r=24",
+    ]
+    if audio:
+        command += ["-f", "lavfi", "-i", f"sine=frequency=440:duration={seconds}"]
+    subprocess.run([*command, "-c:v", "libx264", "-pix_fmt", "yuv420p", str(path)], check=True)
+
+
+def _probe(path, entries: str) -> str:
+    return subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", entries, "-of", "csv=p=0", str(path)],
+        capture_output=True, text=True, check=True,
+    ).stdout  # fmt: skip
 
 
 @pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg is not installed")
-async def test_stitch_joins_trimmed_clips(tmp_path) -> None:
-    sources = []
+async def test_stitch_joins_trimmed_clips_without_the_clips_own_audio(tmp_path) -> None:
+    clips = []
     for index, color in enumerate(("red", "blue")):
         path = tmp_path / f"c{index}.mp4"
-        subprocess.run(
-            ["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", f"color={color}:s=320x568:d=3:r=24",
-             "-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo", "-t", "3", "-shortest",
-             "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", str(path)],
-            check=True,
-        )  # fmt: skip
-        sources.append((path, 2.0))
+        _make_clip(path, color)
+        clips.append(StitchClip(path, 2.0, "Phòng giặt gọn hơn" if index == 0 else ""))
     output = tmp_path / "videos" / "out.mp4"
-    await stitch(sources, output)
-    duration = subprocess.run(
-        ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(output)],
-        capture_output=True, text=True, check=True,
+    await stitch(clips, output)
+    assert 3.3 < float(_probe(output, "format=duration")) < 3.8
+    assert _probe(output, "stream=codec_type").split() == ["video"]
+    assert sorted(p.name for p in output.parent.iterdir()) == ["out.mp4"]
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg is not installed")
+async def test_stitch_lays_one_voiceover_over_the_whole_video(tmp_path) -> None:
+    clip = tmp_path / "c.mp4"
+    _make_clip(clip, "green", seconds=4, audio=False)
+    voice = tmp_path / "voice.wav"
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "sine=frequency=300:duration=2", str(voice)],
+        check=True,
+    )  # fmt: skip
+    output = tmp_path / "videos" / "out.mp4"
+    await stitch([StitchClip(clip, 3.0)], output, voiceover=voice)
+    assert sorted(_probe(output, "stream=codec_type").split()) == ["audio", "video"]
+    assert float(_probe(output, "format=duration")) < 2.3
+
+
+@pytest.mark.skipif(
+    shutil.which("ffmpeg") is None or caption_font() is None, reason="no ffmpeg or caption font"
+)
+async def test_stitch_burns_the_caption_into_the_picture(tmp_path) -> None:
+    clip = tmp_path / "c.mp4"
+    _make_clip(clip, "black", audio=False)
+    plain, captioned = tmp_path / "plain.mp4", tmp_path / "captioned.mp4"
+    await stitch([StitchClip(clip, 3.0)], plain)
+    await stitch([StitchClip(clip, 3.0, "Gấp gọn trong 3 giây")], captioned)
+    frame = lambda video: subprocess.run(  # noqa: E731
+        ["ffmpeg", "-v", "error", "-ss", "1", "-i", str(video), "-frames:v", "1", "-f", "rawvideo", "-pix_fmt", "gray", "-"],
+        capture_output=True, check=True,
     ).stdout  # fmt: skip
-    assert 3.8 < float(duration) < 4.3
-    assert not list(output.parent.glob("part_*.mp4"))
+    assert max(frame(plain)) < 20 and max(frame(captioned)) > 200
+
+
+def test_voiceover_is_found_beside_the_video(tmp_path) -> None:
+    from ai_content.domains.marketing.products.service import find_voiceover
+
+    assert find_voiceover(tmp_path, "p1") is None
+    folder = tmp_path / "videos" / "p1"
+    folder.mkdir(parents=True)
+    (folder / "voiceover.m4a").write_bytes(b"x")
+    assert find_voiceover(tmp_path, "p1") == folder / "voiceover.m4a"

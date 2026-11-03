@@ -3,7 +3,7 @@ import { Check, Clapperboard, Copy, Download, FileText, ImageIcon, RotateCcw, Sp
 import { useState } from "react";
 import { EmptyState, PageHeader, Panel, SkeletonPage } from "../components/ui";
 import { useI18n } from "../hooks/useI18n";
-import { getJson, postJson, putJson } from "../services/http";
+import { getJson, postJson, putFile, putJson } from "../services/http";
 
 type PostPackage = { captions: string[]; hashtags: string[]; product_url: string; warnings?: string[]; ai_label_reminder?: string };
 type Shot = {
@@ -17,6 +17,7 @@ type Shot = {
 };
 type Brief = {
   title: string;
+  script?: string;
   format?: string;
   warnings?: string[];
   reference_rationale: string;
@@ -162,6 +163,7 @@ function BriefCard({
             const brief: Partial<Brief> = {
               title: String(data.get("title")),
               format: String(data.get("format")),
+              script: String(data.get("script")),
               style: words(String(data.get("style"))),
               colors: words(String(data.get("colors"))),
             };
@@ -183,6 +185,10 @@ function BriefCard({
             <select name="format" defaultValue={record.brief.format ?? FORMATS[0]}>
               {FORMATS.map((format) => <option key={format} value={format}>{format.replaceAll("_", " ")}</option>)}
             </select>
+          </label>
+          <label className="brief-field">
+            <span>{t("Script (voice-over of the whole video; each shot reads one part)")}</span>
+            <textarea name="script" rows={5} defaultValue={record.brief.script ?? ""} />
           </label>
           {!!record.brief.warnings?.length && (
             <div role="alert" className="compliance-warning">
@@ -268,6 +274,9 @@ function Keyframes({ productId, shots, postPackage, t }: { productId: string; sh
     queryFn: ({ signal }) => getJson<{ exists: boolean }>(`${API}/${productId}/video-info`, signal),
   });
   const hasVideo = videoVersion > 0 || !!videoInfo.data?.exists;
+  const uploadVoice = useMutation({
+    mutationFn: (file: File) => putFile<{ voiceover: string }>(`${API}/${productId}/voiceover`, file),
+  });
   const stitchVideo = useMutation({
     mutationFn: () => postJson<{ video: string }>(`${API}/${productId}/video`),
     onSuccess: () => {
@@ -306,6 +315,12 @@ function Keyframes({ productId, shots, postPackage, t }: { productId: string; sh
           {stitchVideo.isPending ? t("Stitching…") : t("Stitch final video")}
         </button>
       </div>
+      <label className="brief-field">
+        <span>{t("Voice-over file (mp3, wav or m4a), laid over the video the next time you stitch")}</span>
+        <input type="file" accept="audio/mpeg,audio/wav,audio/mp4" onChange={(event) => { const file = event.target.files?.[0]; if (file) uploadVoice.mutate(file); }} />
+      </label>
+      {uploadVoice.isSuccess && <p>{t("Voice-over saved. Stitch the video again to use it.")}</p>}
+      {uploadVoice.error && <p role="alert">{uploadVoice.error.message}</p>}
       {makeClips.error && <p role="alert">{makeClips.error.message}</p>}
       {stitchVideo.error && <p role="alert">{stitchVideo.error.message}</p>}
       {hasVideo && <video className="final-video" src={`${API}/${productId}/video?v=${videoVersion}`} controls playsInline />}
