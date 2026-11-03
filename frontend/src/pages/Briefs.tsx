@@ -137,7 +137,7 @@ function BriefCard({
       <label className="brief-field">
         <span>{t("Video length (each shot is one 15 second clip)")}</span>
         <select value={videoSeconds} onChange={(event) => setVideoSeconds(Number(event.target.value))}>
-          {[15, 30, 45, 60].map((seconds) => (
+          {[15, 30, 45, 60, 75, 90].map((seconds) => (
             <option key={seconds} value={seconds}>{`${seconds}s · ${seconds / 15} ${seconds === 15 ? t("shot") : t("shots")}`}</option>
           ))}
         </select>

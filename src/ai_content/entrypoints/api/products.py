@@ -143,7 +143,7 @@ async def remove_reference_image(
 
 class BriefRequest(BaseModel):
     idea: str = ""
-    video_seconds: Literal[15, 30, 45, 60] = 15
+    video_seconds: Literal[15, 30, 45, 60, 75, 90] = 15
 
 
 class BriefUpdate(BaseModel):

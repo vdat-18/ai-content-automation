@@ -221,6 +221,7 @@ async def test_video_length_sets_the_shot_count_in_whole_clips(tmp_path) -> None
     await _make_reference_live(service)
     await service.create_brief(PRODUCT_ID)
     await service.create_brief(PRODUCT_ID, video_seconds=60)
-    assert seen == [1, 4]
+    await service.create_brief(PRODUCT_ID, video_seconds=90)
+    assert seen == [1, 4, 6]
     with pytest.raises(BriefUnavailable, match="Video length"):
         await service.create_brief(PRODUCT_ID, video_seconds=20)
