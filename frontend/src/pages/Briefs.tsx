@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FileText, Sparkles } from "lucide-react";
+import { Check, FileText, ImageIcon, RotateCcw, Sparkles, X } from "lucide-react";
 import { useState } from "react";
 import { EmptyState, PageHeader, Panel, SkeletonPage } from "../components/ui";
 import { useI18n } from "../hooks/useI18n";
@@ -27,6 +27,7 @@ type Brief = {
   selected_reference_ids: string[];
 };
 type BriefRecord = { product_id: string; user_idea: string; brief: Brief; status: "draft" | "approved" };
+type Keyframe = { shot_index: number; status: "ready" | "approved" | "rejected" | "failed"; attempts: number; error: string | null };
 type Product = { product_id: string; title: string | null; images: string[] };
 type ReferenceImage = { image_id: string; image_url: string };
 
@@ -202,6 +203,77 @@ function BriefCard({
           {save.error && <p role="alert">{save.error.message}</p>}
         </form>
       )}
+      {record?.status === "approved" && <Keyframes productId={productId} shots={record.brief.shots ?? []} t={t} />}
     </Panel>
+  );
+}
+
+function Keyframes({ productId, shots, t }: { productId: string; shots: Shot[]; t: (key: string) => string }) {
+  const client = useQueryClient();
+  const keyframes = useQuery({
+    queryKey: ["keyframes", productId],
+    queryFn: ({ signal }) => getJson<Keyframe[]>(`${API}/${productId}/keyframes`, signal),
+  });
+  const refresh = () => client.invalidateQueries({ queryKey: ["keyframes", productId] });
+  const generate = useMutation({
+    mutationFn: (shotIndex: number | null) => postJson<Keyframe[]>(`${API}/${productId}/keyframes`, { shot_index: shotIndex }),
+    onSuccess: refresh,
+  });
+  const review = useMutation({
+    mutationFn: ({ shotIndex, status }: { shotIndex: number; status: Keyframe["status"] }) =>
+      putJson(`${API}/${productId}/keyframes/${shotIndex}`, { status }),
+    onSuccess: refresh,
+  });
+  const byShot = new Map((keyframes.data ?? []).map((keyframe) => [keyframe.shot_index, keyframe]));
+  const masterApproved = byShot.get(0)?.status === "approved";
+  const allApproved = shots.length > 0 && shots.every((_, index) => byShot.get(index)?.status === "approved");
+  const next = !byShot.has(0) || !masterApproved ? t("Generate master keyframe") : t("Generate the other shots");
+
+  return (
+    <section className="keyframes">
+      <h3>{t("Keyframes")}</h3>
+      <p>{t("The master keyframe (shot 1) sets the scene. Approve it first; the other shots are made from it and cost one image each.")}</p>
+      <div className="brief-actions">
+        <button className="primary-button" disabled={generate.isPending || allApproved || (byShot.has(0) && !masterApproved)} onClick={() => generate.mutate(null)}>
+          <ImageIcon size={15} /> {generate.isPending ? t("Generating…") : next}
+        </button>
+      </div>
+      {generate.error && <p role="alert">{generate.error.message}</p>}
+      <div className="keyframe-grid">
+        {shots.map((shot, index) => {
+          const keyframe = byShot.get(index);
+          return (
+            <figure key={index} className={`keyframe keyframe--${keyframe?.status ?? "empty"}`}>
+              {keyframe && keyframe.status !== "failed" ? (
+                <img src={`${API}/${productId}/keyframes/${index}/image?v=${keyframe.attempts}`} alt={shot.description} loading="lazy" />
+              ) : (
+                <div className="keyframe-empty">{keyframe?.error ?? t("Not generated yet")}</div>
+              )}
+              <figcaption>
+                <strong>{`${index + 1}. ${shot.role}`}</strong>
+                {keyframe && <span className="badge">{`${keyframe.status} · ×${keyframe.attempts}`}</span>}
+                <div className="keyframe-actions">
+                  {keyframe && keyframe.status !== "failed" && (
+                    <>
+                      <button className="secondary-button" disabled={review.isPending} onClick={() => review.mutate({ shotIndex: index, status: "approved" })}>
+                        <Check size={14} /> {t("Approve")}
+                      </button>
+                      <button className="secondary-button" disabled={review.isPending} onClick={() => review.mutate({ shotIndex: index, status: "rejected" })}>
+                        <X size={14} /> {t("Reject")}
+                      </button>
+                    </>
+                  )}
+                  {(keyframe || index === 0) && (index === 0 || masterApproved) && (
+                    <button className="secondary-button" disabled={generate.isPending} onClick={() => generate.mutate(index)}>
+                      <RotateCcw size={14} /> {t("Regenerate")}
+                    </button>
+                  )}
+                </div>
+              </figcaption>
+            </figure>
+          );
+        })}
+      </div>
+    </section>
   );
 }
