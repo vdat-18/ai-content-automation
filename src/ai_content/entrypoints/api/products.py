@@ -366,6 +366,11 @@ async def build_video(
     return {"video": f"/api/v1/products/{product_id}/video"}
 
 
+@router.get("/{product_id}/video-info")
+async def video_info(product_id: str) -> dict[str, bool]:
+    return {"exists": (_media_root() / "videos" / product_id / "video.mp4").is_file()}
+
+
 @router.get("/{product_id}/video")
 async def final_video(product_id: str, download: bool = False) -> FileResponse:
     path = _media_root() / "videos" / product_id / "video.mp4"

@@ -5,7 +5,7 @@ import { EmptyState, PageHeader, Panel, SkeletonPage } from "../components/ui";
 import { useI18n } from "../hooks/useI18n";
 import { getJson, postJson, putJson } from "../services/http";
 
-type PostPackage = { captions: string[]; hashtags: string[]; product_url: string };
+type PostPackage = { captions: string[]; hashtags: string[]; product_url: string; warnings?: string[]; ai_label_reminder?: string };
 type Shot = {
   role: string;
   description: string;
@@ -17,6 +17,8 @@ type Shot = {
 };
 type Brief = {
   title: string;
+  format?: string;
+  warnings?: string[];
   reference_rationale: string;
   scene: string;
   product_placement: string;
@@ -48,6 +50,7 @@ const SHOT_FIELDS: { key: "description" | "keyframe_prompt" | "motion_prompt" | 
   { key: "on_screen_text", label: "Text on screen", rows: 1 },
   { key: "voiceover", label: "Voice-over", rows: 2 },
 ];
+const FORMATS = ["problem_solution", "step_by_step", "before_after", "unboxing", "worth_it_text"];
 const words = (text: string) => text.split(",").map((word) => word.trim()).filter(Boolean);
 
 export function BriefsPage() {
@@ -158,6 +161,7 @@ function BriefCard({
             const data = new FormData(event.currentTarget);
             const brief: Partial<Brief> = {
               title: String(data.get("title")),
+              format: String(data.get("format")),
               style: words(String(data.get("style"))),
               colors: words(String(data.get("colors"))),
             };
@@ -174,6 +178,18 @@ function BriefCard({
             <span>{t("Title")}</span>
             <input name="title" defaultValue={record.brief.title} />
           </label>
+          <label className="brief-field">
+            <span>{t("Video format")}</span>
+            <select name="format" defaultValue={record.brief.format ?? FORMATS[0]}>
+              {FORMATS.map((format) => <option key={format} value={format}>{format.replaceAll("_", " ")}</option>)}
+            </select>
+          </label>
+          {!!record.brief.warnings?.length && (
+            <div role="alert" className="compliance-warning">
+              <strong>{t("TikTok may flag these words. Rewrite them before posting:")}</strong>
+              <ul>{record.brief.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul>
+            </div>
+          )}
           <div className="brief-references">
             {record.brief.selected_reference_ids.map((id) => imageById.get(id) && <img key={id} src={imageById.get(id)} alt="" width={72} height={96} referrerPolicy="no-referrer" />)}
             <p>{record.brief.reference_rationale}</p>
@@ -247,9 +263,17 @@ function Keyframes({ productId, shots, postPackage, t }: { productId: string; sh
     onSuccess: refreshClips,
   });
   const [videoVersion, setVideoVersion] = useState(0);
+  const videoInfo = useQuery({
+    queryKey: ["video-info", productId],
+    queryFn: ({ signal }) => getJson<{ exists: boolean }>(`${API}/${productId}/video-info`, signal),
+  });
+  const hasVideo = videoVersion > 0 || !!videoInfo.data?.exists;
   const stitchVideo = useMutation({
     mutationFn: () => postJson<{ video: string }>(`${API}/${productId}/video`),
-    onSuccess: () => setVideoVersion((version) => version + 1),
+    onSuccess: () => {
+      setVideoVersion((version) => version + 1);
+      client.invalidateQueries({ queryKey: ["video-info", productId] });
+    },
   });
   const byShot = new Map((keyframes.data ?? []).map((keyframe) => [keyframe.shot_index, keyframe]));
   const writePackage = useMutation({
@@ -284,8 +308,8 @@ function Keyframes({ productId, shots, postPackage, t }: { productId: string; sh
       </div>
       {makeClips.error && <p role="alert">{makeClips.error.message}</p>}
       {stitchVideo.error && <p role="alert">{stitchVideo.error.message}</p>}
-      {videoVersion > 0 && <video className="final-video" src={`${API}/${productId}/video?v=${videoVersion}`} controls playsInline />}
-      {videoVersion > 0 && (
+      {hasVideo && <video className="final-video" src={`${API}/${productId}/video?v=${videoVersion}`} controls playsInline />}
+      {hasVideo && (
         <div className="brief-actions">
           <a className="secondary-button" href={`${API}/${productId}/video?download=true`}>
             <Download size={14} /> {t("Download video")}
@@ -298,6 +322,13 @@ function Keyframes({ productId, shots, postPackage, t }: { productId: string; sh
       {writePackage.error && <p role="alert">{writePackage.error.message}</p>}
       {postPackage && (
         <div className="post-package">
+          {postPackage.ai_label_reminder && <p><strong>{postPackage.ai_label_reminder}</strong></p>}
+          {!!postPackage.warnings?.length && (
+            <div role="alert" className="compliance-warning">
+              <strong>{t("TikTok may flag these words. Rewrite them before posting:")}</strong>
+              <ul>{postPackage.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul>
+            </div>
+          )}
           {postPackage.captions.map((caption, index) => (
             <div className="post-caption" key={index}>
               <p>{caption}</p>

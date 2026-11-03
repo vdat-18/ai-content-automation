@@ -77,7 +77,7 @@ class ContentBriefAst:
     def __init__(self, tb: type_builder.TypeBuilder):
         _tb = tb._tb # type: ignore (we know how to use this private attribute)
         self._bldr = _tb.class_("ContentBrief")
-        self._properties: typing.Set[str] = set([  "title",  "selected_reference_labels",  "reference_rationale",  "scene",  "product_placement",  "selling_angle",  "target_audience",  "style",  "colors",  "shots",  ])
+        self._properties: typing.Set[str] = set([  "title",  "format",  "selected_reference_labels",  "reference_rationale",  "scene",  "product_placement",  "selling_angle",  "target_audience",  "style",  "colors",  "shots",  ])
         self._props = ContentBriefProperties(self._bldr, self._properties)
 
     def type(self) -> baml_py.FieldType:
@@ -108,6 +108,10 @@ class ContentBriefProperties:
     @property
     def title(self) -> type_builder.ClassPropertyViewer:
         return type_builder.ClassPropertyViewer(self.__bldr.property("title"))
+    
+    @property
+    def format(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("format"))
     
     @property
     def selected_reference_labels(self) -> type_builder.ClassPropertyViewer:

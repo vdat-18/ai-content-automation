@@ -208,7 +208,8 @@ def test_brief_endpoints(client: TestClient, repository: SqliteProductRepository
     assert client.get("/api/v1/products/briefs").json()[0]["user_idea"] == "idea"
     edit = {"brief": {"scene": "b"}, "status": "approved"}
     saved = client.put(f"/api/v1/products/{PRODUCT_ID}/brief", json=edit).json()
-    assert saved["status"] == "approved" and saved["brief"] == {"scene": "b", "title": "t"}
+    assert saved["status"] == "approved"
+    assert saved["brief"] == {"scene": "b", "title": "t", "warnings": []}
     assert client.get(f"/api/v1/products/{PRODUCT_ID}/brief").json()["brief"]["scene"] == "b"
 
 
@@ -336,3 +337,14 @@ def test_post_package_and_download(tmp_path: Path, client: TestClient) -> None:
     assert download.content == b"final"
     assert PRODUCT_ID in download.headers["content-disposition"]
     assert "content-disposition" not in client.get(f"{base}/video").headers
+
+
+def test_video_info_reports_whether_a_stitched_video_exists(
+    tmp_path: Path, client: TestClient
+) -> None:
+    url = f"/api/v1/products/{PRODUCT_ID}/video-info"
+    assert client.get(url).json() == {"exists": False}
+    video = tmp_path / "media" / "videos" / PRODUCT_ID / "video.mp4"
+    video.parent.mkdir(parents=True)
+    video.write_bytes(b"v")
+    assert client.get(url).json() == {"exists": True}

@@ -19,6 +19,7 @@ from .clips import (
     VideoClient,
     stitch,
 )
+from .compliance import AI_LABEL_REMINDER, brief_warnings, package_warnings
 from .embedding import ImageEmbedder, cosine, dhash, download_images, hamming
 from .identity import PIN_SIZE_DIR, media_source_fingerprint
 from .image_review import ReferenceImageReviewer
@@ -45,6 +46,7 @@ VIDEO_LENGTHS = (15, 30, 45, 60, 75, 90)
 KEYFRAME_REVIEW_STATUSES = frozenset({"approved", "ready", "rejected"})
 BRIEF_FIELDS = (
     "title",
+    "format",
     "scene",
     "product_placement",
     "selling_angle",
@@ -295,6 +297,7 @@ class ProductCatalogService:
         brief = await self._briefer.write(
             detail, user_idea, references, shot_count=video_seconds // CLIP_SECONDS
         )
+        brief["warnings"] = brief_warnings(brief)
         await self._repository.save_brief(product_id, user_idea.strip(), brief, "draft")
         return await self._repository.get_brief(product_id)
 
@@ -312,6 +315,7 @@ class ProductCatalogService:
         if current is None:
             return None
         brief = {**current["brief"], **{k: v for k, v in changes.items() if k in BRIEF_FIELDS}}
+        brief["warnings"] = brief_warnings(brief)
         await self._repository.save_brief(product_id, current["user_idea"], brief, status)
         return await self._repository.get_brief(product_id)
 
@@ -568,6 +572,8 @@ class ProductCatalogService:
         if self._poster is None:
             raise KeyframeUnavailable("LLM is not configured (AIC_SCREENING_API_KEY)")
         package = await self._poster.write(detail, record["brief"])
+        package["warnings"] = package_warnings(package)
+        package["ai_label_reminder"] = AI_LABEL_REMINDER
         brief = {**record["brief"], "post_package": package}
         await self._repository.save_brief(product_id, record["user_idea"], brief, record["status"])
         return package

@@ -28,6 +28,7 @@ class StreamState(BaseModel, typing.Generic[StreamStateValueT]):
 
 class ContentBrief(BaseModel):
     title: typing.Optional[str] = None
+    format: typing.Optional[typing.Union[typing_extensions.Literal['problem_solution'], typing_extensions.Literal['step_by_step'], typing_extensions.Literal['before_after'], typing_extensions.Literal['unboxing'], typing_extensions.Literal['worth_it_text']]] = None
     selected_reference_labels: typing.List[str]
     reference_rationale: typing.Optional[str] = None
     scene: typing.Optional[str] = None

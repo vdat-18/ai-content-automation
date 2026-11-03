@@ -75,3 +75,23 @@ async def test_service_needs_the_llm(tmp_path) -> None:
     await repository.save_brief(PRODUCT_ID, "", {"title": "T"}, "approved")
     with pytest.raises(KeyframeUnavailable, match="not configured"):
         await service.create_post_package(PRODUCT_ID)
+
+
+async def test_package_and_brief_carry_warnings_and_the_ai_label_reminder(tmp_path) -> None:
+    repository = SqliteProductRepository(tmp_path / "w.db")
+
+    class _Risky(_FakeBaml):
+        async def WritePostingPackage(self, product_json, brief_json):
+            return SimpleNamespace(captions=["Sọt tốt nhất!"], hashtags=["#sot"])
+
+    service = ProductCatalogService(repository, poster=PostingPackageWriter(_Risky()))
+    await repository.upsert_detail({"product_id": PRODUCT_ID, "title": "Giỏ", "images": []})
+    await repository.save_brief(PRODUCT_ID, "", {"title": "T"}, "approved")
+    package = await service.create_post_package(PRODUCT_ID)
+    assert package is not None
+    assert package["warnings"] == ['caption 1: "tốt nhất" (absolute claim)']
+    assert "AI" in package["ai_label_reminder"]
+
+    edited = await service.update_brief(PRODUCT_ID, {"selling_angle": "Rẻ nhất"}, "draft")
+    assert edited is not None
+    assert edited["brief"]["warnings"] == ['selling_angle: "rẻ nhất" (absolute claim)']

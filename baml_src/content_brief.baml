@@ -16,6 +16,7 @@ class StoryboardShot {
 
 class ContentBrief {
   title string
+  format "problem_solution" | "step_by_step" | "before_after" | "unboxing" | "worth_it_text"
   selected_reference_labels string[]
   reference_rationale string
   scene string
@@ -61,6 +62,18 @@ function DraftContentBrief(
     selling_angle: the single strongest reason to buy, in Vietnamese. target_audience: who buys it
     and why, in Vietnamese. style: up to 4 short words. colors: up to 4 color names. title: a
     short Vietnamese name for the brief.
+
+    format: the video style, one of problem_solution (a familiar problem, then the product
+    solving it), step_by_step (how to use it), before_after (a messy or tiring situation, then a
+    tidy or easy one; never fake or exaggerated results), unboxing (opening and setting it up) or
+    worth_it_text (the product shown while on-screen text judges its value). Pick the one that
+    suits the product and the idea.
+
+    The first 3 seconds of the first shot must hook: start on a close-up of the product or on a
+    problem shoppers know, and put a short on-screen question or claim in the first shot's
+    on_screen_text. Write on_screen_text and voiceover in everyday Vietnamese shoppers use. Never
+    use absolute claims (tốt nhất, rẻ nhất, số 1, 100%, chắc chắn), never name other shopping or
+    social platforms and never promise medical results.
 
     shots: exactly {{ shot_count }} shot(s) in story order, each lasting 15 seconds, so
     duration_seconds is always 15. The first shot opens with a hook and the last ends with a
