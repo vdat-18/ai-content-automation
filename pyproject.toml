@@ -69,8 +69,7 @@ target-version = "py311"
 line-length = 100
 src = ["src", "tests"]
 extend-exclude = [
-    "src/ai_content/domains/marketing/creative/adapters/baml_client",
-    "src/ai_content/domains/marketing/research_crawler/adapters/baml_client",
+    "src/ai_content/domains/marketing/products/adapters/baml_client",
 ]
 
 [tool.ruff.lint]

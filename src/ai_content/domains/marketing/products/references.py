@@ -8,11 +8,9 @@ from typing import Any, Protocol
 
 from baml_py.baml_py import BamlError
 
-from ai_content.domains.marketing.research_crawler.adapters.baml_client import types as baml_types
-from ai_content.domains.marketing.research_crawler.adapters.baml_client.async_client import b
-from ai_content.domains.marketing.research_crawler.adapters.baml_model_profile import (
-    build_creative_orchestrator_registry,
-)
+from ai_content.domains.marketing.products.adapters.baml_client import types as baml_types
+from ai_content.domains.marketing.products.adapters.baml_client.async_client import b
+from ai_content.domains.marketing.products.adapters.baml_registry import build_client_registry
 
 
 @dataclass
@@ -43,7 +41,7 @@ class ReferenceProfileGenerator:
 
     @classmethod
     def from_settings(cls, *, base_url: str, api_key: str, model: str) -> ReferenceProfileGenerator:
-        registry = build_creative_orchestrator_registry(
+        registry = build_client_registry(
             name="ReferenceSearchProfile",
             base_url=base_url,
             model=model,

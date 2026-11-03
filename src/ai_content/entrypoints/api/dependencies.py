@@ -2,197 +2,44 @@
 
 from __future__ import annotations
 
-import asyncio
 import sqlite3
-import tempfile
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager, suppress
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
-from celery import Celery
-from fastapi import Depends, FastAPI, HTTPException, Request
-from loguru import logger
-from pydantic import ValidationError
+from fastapi import FastAPI, Request
 
-from ai_content.domains.marketing.creative.adapters.automation_artifacts import (
-    FileMarketingCreativeAutomationStateRepository,
-)
-from ai_content.domains.marketing.creative.adapters.automation_job_repositories import (
-    SqliteCreativeAutomationJobRepository,
-)
-from ai_content.domains.marketing.creative.adapters.automation_storage import (
-    FileMarketingCreativeAutomationStorage,
-    MarketingCreativeAutomationStorage,
-)
-from ai_content.domains.marketing.creative.application.automation_production import (
-    MarketingCreativeAutomationProducer,
-)
-from ai_content.domains.marketing.creative.application.provider_registry import (
-    ManagedMediaProviderRegistry,
-)
-from ai_content.domains.marketing.creative.bootstrap import CreativeRuntime, build_runtime
-from ai_content.domains.marketing.creative.config.managed_media import ManagedMediaConfig
-from ai_content.domains.marketing.creative.config.preparation import PreparationConfig
-from ai_content.domains.marketing.creative.managed_media_runtime import (
-    build_managed_media_runtime,
-)
-from ai_content.domains.marketing.creative.ports.automation_jobs import (
-    ICreativeAutomationJobRepository,
-)
-from ai_content.domains.marketing.creative.ports.automation_workflow import (
-    IMarketingCreativeAutomationStateRepository,
-)
-from ai_content.domains.marketing.creative.ports.media_production import (
-    IFrozenProductMediaResolver,
-)
-from ai_content.domains.marketing.creative_intake.bootstrap import CreativeIntakeRuntime
-from ai_content.domains.marketing.creative_intake.bootstrap import (
-    build_fixture_runtime as build_creative_intake_write_runtime,
-)
-from ai_content.domains.marketing.creative_intake.bootstrap import (
-    build_read_runtime as build_creative_intake_read_runtime,
-)
 from ai_content.domains.marketing.creative_knowledge.repositories import (
     SqliteCreativeKnowledgeRepository,
 )
 from ai_content.domains.marketing.creative_knowledge.service import CreativeKnowledgeService
-from ai_content.domains.marketing.data_sources.adapters.sqlite_repository import (
-    SqliteDataSourceRepository,
-)
-from ai_content.domains.marketing.data_sources.application.scheduler import (
-    run_data_source_sync_schedule,
-)
-from ai_content.domains.marketing.data_sources.bootstrap import DataSourceRuntime
-from ai_content.domains.marketing.data_sources.bootstrap import (
-    build_runtime as build_data_source_runtime,
-)
-from ai_content.domains.marketing.data_sources.config import load_data_sources_config
-from ai_content.domains.marketing.data_sources.ports.interfaces import IDataSourceRepository
-from ai_content.domains.marketing.media_lab.adapters.asset_artifacts import (
-    ObjectStorageMediaAssetArtifacts,
-)
-from ai_content.domains.marketing.media_lab.application.assets import MediaAssetService
-from ai_content.domains.marketing.media_lab.bootstrap import (
-    build_media_asset_runtime,
-)
-from ai_content.domains.marketing.media_lab.domain.assets import MediaAssetLimits
 from ai_content.domains.marketing.products.image_review import ReferenceImageReviewer
 from ai_content.domains.marketing.products.references import ReferenceProfileGenerator
 from ai_content.domains.marketing.products.repositories import SqliteProductRepository
 from ai_content.domains.marketing.products.service import ProductCatalogService
-from ai_content.domains.marketing.research_crawler.artifacts import (
-    ResearchCrawlArtifactWriter,
-)
-from ai_content.domains.marketing.research_crawler.brand_context import (
-    ResearchBrandContextResolver,
-)
-from ai_content.domains.marketing.research_crawler.jev_navigation import (
-    JevBrowserNavigator,
-)
-from ai_content.domains.marketing.research_crawler.media_capture import (
-    ResearchMediaCapturer,
-)
-from ai_content.domains.marketing.research_crawler.repositories import (
-    SqliteResearchCrawlRepository,
-)
-from ai_content.domains.marketing.research_crawler.repository import (
-    ResearchCrawlRepository,
-)
-from ai_content.domains.marketing.research_crawler.scrapling_adapter import (
-    ScraplingCrawler,
-)
-from ai_content.domains.marketing.research_crawler.screening import (
-    NineRouterResearchScreener,
-    ResearchScreeningConfig,
-)
-from ai_content.domains.marketing.research_crawler.service import ResearchCrawlService
 from ai_content.entrypoints.postgres_runtime import PostgresRuntimeContainer
-from ai_content.platform.ai_usage import (
-    AIUsageRepository,
-    AIUsageTracker,
-    SqliteAIUsageRepository,
-)
-from ai_content.platform.artifacts import ArtifactStore, ObjectStorage, ObjectStorageSettings
+from ai_content.platform.ai_usage import AIUsageRepository, SqliteAIUsageRepository
 from ai_content.platform.database import Database
-from ai_content.platform.execution import (
-    CommandScheduler,
-    CommandStatusStore,
-    SqliteCommandQueue,
-)
 from ai_content.platform.notifications import (
     NotificationRepository,
     SqliteNotificationRepository,
 )
-from ai_content.platform.observability import (
-    ObservabilitySettings,
-    instrument_sqlalchemy,
-    sample_commands_forever,
-)
+from ai_content.platform.observability import ObservabilitySettings, instrument_sqlalchemy
 from ai_content.settings import ApplicationSettings
 
 
 @dataclass(frozen=True)
 class ApiRuntimeSettings:
-    """Runtime settings used for dashboard API and front-end."""
+    """Runtime settings used by the dashboard API."""
 
     db_path: Path
-    artifacts_root: Path
-    config_dir: Path
-    prep_base_url: str = "http://127.0.0.1:1234/v1"
-    prep_api_key: str | None = None
-    prep_model: str = "xai/grok-4-fast-reasoning"
-    prep_reasoning_effort: str = "medium"
-    prep_max_tokens: int = 12000
-    prep_max_attempts: int = 3
-    prep_timeout: float = 90
-    orch_base_url: str = "http://127.0.0.1:1234/v1"
-    orch_api_key: str | None = None
-    orch_model: str = "xai/grok-4-fast-reasoning"
-    orch_reasoning_effort: str = "medium"
-    orch_max_tokens: int = 32000
-    orch_max_attempts: int = 3
-    orch_timeout: float = 180
-    image_base_url: str = "http://127.0.0.1:1234/v1"
-    video_base_url: str = "http://127.0.0.1:1234/v1"
     screening_base_url: str = "http://127.0.0.1:1234/v1"
     screening_api_key: str | None = None
     screening_model: str = "gemini-3.8-flash"
-    screening_max_concurrency: int = 5
-    screening_timeout: float = 60
-    router_api_key: str | None = None
-    image_api_key: str | None = None
-    video_api_key: str | None = None
-    managed_media: ManagedMediaConfig | None = None
     database_backend: Literal["sqlite", "postgresql"] = "sqlite"
     database_url: str | None = None
-    execution_backend: Literal["lease_worker", "celery"] = "lease_worker"
-    celery_broker_url: str | None = None
-    celery_broker_connection_timeout_seconds: int = 10
-    creative_automation_max_concurrency: int = 10
-    creative_automation_allow_cached_shopify_fallback: bool = False
-    creative_automation_default_market: str = "US"
-    creative_automation_video_duration_min_seconds: int = 15
-    creative_automation_video_duration_max_seconds: int = 60
-    creative_automation_video_source_duration_max_seconds: int = 15
-    object_storage: ObjectStorageSettings = ObjectStorageSettings()
-    data_sources_config_path: Path | None = None
-    research_crawl_timeout_seconds: float = 300
-    jev_api_url: str | None = None
-    research_cookies_file: Path | None = None
-    jev_api_key: str | None = None
-    vilao_api_key: str | None = None
-    jev_navigation_model: str = "jev-latest"
-    data_source_sync_interval_seconds: float | None = None
-    media_generation_enabled: bool = False
-    media_asset_max_image_bytes: int = 100_000_000
-    media_asset_max_video_bytes: int = 1_000_000_000
-    media_asset_max_image_pixels: int = 100_000_000
-    media_asset_max_video_duration_seconds: int = 600
-    media_asset_max_working_image_pixels: int = 16_777_216
-    media_asset_max_preview_image_pixels: int = 2_073_600
-    media_asset_processing_timeout_seconds: int = 120
 
 
 @dataclass(frozen=True)
@@ -203,115 +50,19 @@ class RuntimeReadiness:
     checks: dict[str, str]
 
 
-def require_media_generation() -> None:
-    """Reject image and video generation while the feature is switched off."""
-    if not get_runtime_settings().media_generation_enabled:
-        raise HTTPException(
-            status_code=503,
-            detail="Image and video generation is disabled (AIC_AI_MEDIA_GENERATION_ENABLED).",
-        )
-
-
 def get_runtime_settings() -> ApiRuntimeSettings:
     """Build default runtime settings for the dashboard API."""
     application = ApplicationSettings()
     return ApiRuntimeSettings(
         db_path=application.data_root / "state.db",
-        artifacts_root=application.data_root / "artifacts",
-        config_dir=application.config_dir,
-        prep_base_url=application.prep_base_url,
-        prep_api_key=application.prep_api_key_value,
-        prep_model=application.prep_model,
-        prep_reasoning_effort=application.prep_reasoning_effort,
-        prep_max_tokens=application.prep_max_tokens,
-        prep_max_attempts=application.prep_max_attempts,
-        prep_timeout=application.prep_timeout,
-        orch_base_url=application.orch_base_url,
-        orch_api_key=application.orch_api_key_value,
-        orch_model=application.orch_model,
-        orch_reasoning_effort=application.orch_reasoning_effort,
-        orch_max_tokens=application.orch_max_tokens,
-        orch_max_attempts=application.orch_max_attempts,
-        orch_timeout=application.orch_timeout,
-        image_base_url=application.image_base_url,
-        video_base_url=application.video_base_url,
         screening_base_url=application.screening_base_url,
         screening_api_key=application.screening_api_key_value,
         screening_model=application.screening_model,
-        screening_max_concurrency=application.screening_max_concurrency,
-        screening_timeout=application.screening_timeout,
-        router_api_key=application.credential("ROUTER_API_KEY"),
-        image_api_key=application.credential("IMAGE_API_KEY"),
-        video_api_key=application.credential("VIDEO_API_KEY"),
-        managed_media=ManagedMediaConfig.from_settings(application),
         database_backend=application.database_backend,
         database_url=(
             application.database_url.get_secret_value() if application.database_url else None
         ),
-        execution_backend=application.execution_backend,
-        celery_broker_url=(
-            application.celery_broker_url.get_secret_value()
-            if application.celery_broker_url
-            else None
-        ),
-        celery_broker_connection_timeout_seconds=(
-            application.celery_broker_connection_timeout_seconds
-        ),
-        creative_automation_max_concurrency=application.creative_automation_max_concurrency,
-        creative_automation_allow_cached_shopify_fallback=(
-            application.creative_automation_allow_cached_shopify_fallback
-        ),
-        creative_automation_default_market=application.creative_automation_default_market,
-        creative_automation_video_duration_min_seconds=(
-            application.creative_automation_video_duration_min_seconds
-        ),
-        creative_automation_video_duration_max_seconds=(
-            application.creative_automation_video_duration_max_seconds
-        ),
-        creative_automation_video_source_duration_max_seconds=(
-            application.creative_automation_video_source_duration_max_seconds
-        ),
-        object_storage=application.object_storage(),
-        data_sources_config_path=application.data_sources_config,
-        research_crawl_timeout_seconds=application.research_crawl_timeout_seconds,
-        jev_api_url=application.jev_api_url,
-        research_cookies_file=application.research_cookies_file,
-        jev_api_key=application.credential("JEV_API_KEY"),
-        vilao_api_key=application.credential("VILAO_API_KEY"),
-        jev_navigation_model=application.jev_navigation_model,
-        data_source_sync_interval_seconds=application.data_source_sync_interval_seconds,
-        media_generation_enabled=application.media_generation_enabled,
-        media_asset_max_image_bytes=application.media_asset_max_image_bytes,
-        media_asset_max_video_bytes=application.media_asset_max_video_bytes,
-        media_asset_max_image_pixels=application.media_asset_max_image_pixels,
-        media_asset_max_video_duration_seconds=application.media_asset_max_video_duration_seconds,
-        media_asset_max_working_image_pixels=application.media_asset_max_working_image_pixels,
-        media_asset_max_preview_image_pixels=application.media_asset_max_preview_image_pixels,
-        media_asset_processing_timeout_seconds=application.media_asset_processing_timeout_seconds,
     )
-
-
-def get_managed_media_provider_registry(request: Request) -> ManagedMediaProviderRegistry:
-    """Return the configured approved media registry or a fail-closed default."""
-    return getattr(
-        request.app.state,
-        "managed_media_provider_registry",
-        ManagedMediaProviderRegistry(),
-    )
-
-
-def get_creative_automation_producer(
-    request: Request,
-) -> MarketingCreativeAutomationProducer | None:
-    """Return an explicitly composed paid production service, never an implicit provider."""
-    return getattr(request.app.state, "creative_automation_producer", None)
-
-
-def get_product_media_source_resolver(
-    request: Request,
-) -> IFrozenProductMediaResolver | None:
-    """Return the secure resolver used to freeze Shopify media before preparation."""
-    return getattr(request.app.state, "product_media_source_resolver", None)
 
 
 @asynccontextmanager
@@ -324,154 +75,16 @@ async def lifespan(application: FastAPI):
         ObservabilitySettings(service_name="aicontent-api"),
     )
     container = None
-    metrics_stop = asyncio.Event()
-    metrics_task: asyncio.Task[None] | None = None
-    sync_stop = asyncio.Event()
-    sync_task: asyncio.Task[None] | None = None
-    sync_scheduler: CommandScheduler | None = None
-    owns_sync_scheduler = False
-    media_asset_service: MediaAssetService | None = None
     if settings.database_backend == "postgresql":
         assert settings.database_url is not None
         database = Database(settings.database_url)
-        container = PostgresRuntimeContainer(
-            database,
-            settings.artifacts_root,
-            preparation_api_key=PreparationConfig.from_settings(settings).api_key,
-            execution_backend=settings.execution_backend,
-            object_storage=settings.object_storage.build()
-            if settings.object_storage.backend == "s3"
-            else None,
-            object_storage_bucket=settings.object_storage.bucket,
-        )
+        container = PostgresRuntimeContainer(database)
         application.state.postgres_runtime = container
         instrument_sqlalchemy(database.engine, observability)
-        if observability.metrics_enabled:
-            metrics_task = asyncio.create_task(
-                sample_commands_forever(
-                    container.execution_status_store,
-                    metrics_stop,
-                    observability.command_metrics_interval_seconds,
-                )
-            )
-    managed_state_repository = (
-        container.creative_automation_state_repository
-        if container is not None
-        else FileMarketingCreativeAutomationStateRepository(ArtifactStore(settings.artifacts_root))
-    )
-    try:
-        managed_media = build_managed_media_runtime(
-            config=settings.managed_media,
-            api_key=settings.router_api_key,
-            image_api_key=settings.image_api_key,
-            video_api_key=settings.video_api_key,
-            artifact_store=(
-                container.artifacts
-                if container is not None
-                else ArtifactStore(settings.artifacts_root)
-            ),
-            artifact_service=(container.artifact_service if container is not None else None),
-            state_repository=managed_state_repository,
-        )
-    except (OSError, ValueError) as error:
-        logger.error("Managed Creative media disabled: {}", error)
-        managed_media = build_managed_media_runtime(
-            config=None,
-            api_key=None,
-            artifact_store=(
-                container.artifacts
-                if container is not None
-                else ArtifactStore(settings.artifacts_root)
-            ),
-            artifact_service=None,
-            state_repository=managed_state_repository,
-        )
-    application.state.managed_media_provider_registry = managed_media.providers
-    application.state.creative_automation_producer = managed_media.producer
-    application.state.product_media_source_resolver = managed_media.source_resolver
-
-    media_asset_limits = MediaAssetLimits(
-        max_image_bytes=settings.media_asset_max_image_bytes,
-        max_video_bytes=settings.media_asset_max_video_bytes,
-        max_image_pixels=settings.media_asset_max_image_pixels,
-        max_video_duration_seconds=settings.media_asset_max_video_duration_seconds,
-        max_working_image_pixels=settings.media_asset_max_working_image_pixels,
-        max_preview_image_pixels=settings.media_asset_max_preview_image_pixels,
-        processing_timeout_seconds=settings.media_asset_processing_timeout_seconds,
-    )
-    if container is not None and container.artifact_service is not None:
-        if container.object_storage is None:
-            raise RuntimeError("Media asset object storage is unavailable")
-        media_asset_service = build_media_asset_runtime(
-            settings.db_path,
-            settings.artifacts_root,
-            media_asset_limits,
-            repository=container.media_lab_asset_repository,
-            artifacts=ObjectStorageMediaAssetArtifacts(
-                container.artifact_service,
-                container.artifact_service.catalog,
-                container.object_storage,
-            ),
-        )
-    else:
-        media_asset_service = build_media_asset_runtime(
-            settings.db_path,
-            settings.artifacts_root,
-            media_asset_limits,
-        )
-    application.state.media_asset_service = media_asset_service
-
-    interval = settings.data_source_sync_interval_seconds
-    if interval is not None:
-        try:
-            sync_definitions = load_data_sources_config(settings.data_sources_config_path)
-        except (OSError, ValueError, ValidationError) as error:
-            logger.error(
-                "Scheduled data source sync disabled: configuration could not be "
-                "loaded from {}: {}",
-                settings.data_sources_config_path,
-                error,
-            )
-            sync_definitions = None
-        if sync_definitions:
-            sync_scheduler = (
-                container.execution_scheduler
-                if container is not None
-                else SqliteCommandQueue(settings.db_path)
-            )
-            owns_sync_scheduler = container is None
-            logger.info(
-                "Scheduled data source sync enabled every {} seconds for {} sources",
-                interval,
-                len(sync_definitions),
-            )
-            sync_task = asyncio.create_task(
-                run_data_source_sync_schedule(
-                    sync_scheduler,
-                    tuple(definition.source_id for definition in sync_definitions),
-                    interval,
-                    sync_stop,
-                )
-            )
-        elif sync_definitions is not None:
-            logger.warning("Scheduled data source sync configured but no data source is defined")
     try:
         yield
     finally:
-        if media_asset_service is not None:
-            media_asset_service.close()
-        metrics_stop.set()
-        if metrics_task is not None:
-            with suppress(asyncio.CancelledError):
-                await metrics_task
-        sync_stop.set()
-        if sync_task is not None:
-            with suppress(asyncio.CancelledError):
-                await sync_task
-        if sync_scheduler is not None and owns_sync_scheduler:
-            sync_scheduler.close()
         if container is not None:
-            container.close()
             await container.database.close()
         observability_runtime = getattr(application.state, "observability_runtime", None)
         if observability_runtime is not None:
@@ -488,123 +101,31 @@ def _postgres_runtime(request: Request) -> PostgresRuntimeContainer | None:
     return container
 
 
-def check_runtime_readiness(settings: ApiRuntimeSettings) -> RuntimeReadiness:
-    """Check required local dependencies without running a business workflow."""
-    checks = _check_config_and_storage(settings)
-
+async def check_runtime_readiness(
+    settings: ApiRuntimeSettings, database: Database | None
+) -> RuntimeReadiness:
+    """Check the data directory and the selected database backend."""
+    checks: dict[str, str] = {}
     try:
         settings.db_path.parent.mkdir(parents=True, exist_ok=True)
-        with sqlite3.connect(settings.db_path, timeout=1) as connection:
-            connection.execute("SELECT 1").fetchone()
-        checks["database"] = "ok"
-    except (OSError, sqlite3.Error):
-        checks["database"] = "unavailable"
-
-    return RuntimeReadiness(
-        ready=all(value == "ok" for value in checks.values()),
-        checks=checks,
-    )
-
-
-def _check_config_and_storage(settings: ApiRuntimeSettings) -> dict[str, str]:
-    """Check filesystem dependencies shared by both database backends."""
-    checks: dict[str, str] = {"config": "ok"}
-    try:
-        settings.artifacts_root.mkdir(parents=True, exist_ok=True)
-        with tempfile.NamedTemporaryFile(dir=settings.artifacts_root):
-            pass
         checks["storage"] = "ok"
     except OSError:
         checks["storage"] = "unavailable"
-    return checks
-
-
-async def check_runtime_readiness_async(
-    settings: ApiRuntimeSettings,
-    database: Database | None,
-    object_storage: ObjectStorage | None = None,
-) -> RuntimeReadiness:
-    """Check local dependencies and the selected database backend."""
-    if settings.database_backend == "sqlite":
-        return check_runtime_readiness(settings)
-    checks = _check_config_and_storage(settings)
-    if settings.object_storage.backend == "s3":
-        try:
-            storage = object_storage or settings.object_storage.build()
-            await asyncio.to_thread(storage.check)
-            checks["storage"] = "ok"
-        except Exception:
-            checks["storage"] = "unavailable"
     try:
-        if database is None:
-            raise RuntimeError("PostgreSQL runtime is unavailable")
-        await database.check()
+        if settings.database_backend == "sqlite":
+            with sqlite3.connect(settings.db_path, timeout=1) as connection:
+                connection.execute("SELECT 1").fetchone()
+        else:
+            if database is None:
+                raise RuntimeError("PostgreSQL runtime is unavailable")
+            await database.check()
         checks["database"] = "ok"
-    except Exception:
+    except (OSError, sqlite3.Error, RuntimeError):
         checks["database"] = "unavailable"
-    if settings.execution_backend == "celery":
-        checks.update(await _check_celery_readiness(settings))
     return RuntimeReadiness(
         ready=all(value == "ok" for value in checks.values()),
         checks=checks,
     )
-
-
-async def _check_celery_readiness(settings: ApiRuntimeSettings) -> dict[str, str]:
-    """Verify that the configured broker is reachable and a worker responds."""
-    if settings.celery_broker_url is None:
-        return {"broker": "unavailable", "worker": "unavailable"}
-    try:
-        await asyncio.to_thread(
-            _check_celery_broker,
-            settings.celery_broker_url,
-            settings.celery_broker_connection_timeout_seconds,
-        )
-    except Exception:
-        return {"broker": "unavailable", "worker": "unavailable"}
-    try:
-        workers = await asyncio.to_thread(
-            _ping_celery_workers,
-            settings.celery_broker_url,
-            settings.celery_broker_connection_timeout_seconds,
-        )
-    except Exception:
-        workers = False
-    return {"broker": "ok", "worker": "ok" if workers else "unavailable"}
-
-
-def _check_celery_broker(broker_url: str, timeout_seconds: int) -> None:
-    app = Celery("aicontent-readiness", broker=broker_url)
-    try:
-        with app.connection_for_read() as connection:
-            connection.ensure_connection(max_retries=0, timeout=timeout_seconds)
-    finally:
-        app.close()
-
-
-def _ping_celery_workers(broker_url: str, timeout_seconds: int) -> bool:
-    app = Celery("aicontent-readiness", broker=broker_url)
-    try:
-        return bool(app.control.ping(timeout=timeout_seconds, limit=1))
-    finally:
-        app.close()
-
-
-async def get_runtime(request: Request) -> AsyncIterator[CreativeRuntime]:
-    """Yield a request-scoped runtime and close resources after use."""
-    settings = get_runtime_settings()
-    postgres = _postgres_runtime(request)
-    if postgres is not None:
-        yield postgres.creative()
-        return
-    runtime = build_runtime(
-        db_path=settings.db_path,
-        artifacts_root=settings.artifacts_root,
-    )
-    try:
-        yield runtime
-    finally:
-        runtime.repository.close()
 
 
 async def get_notification_repository(
@@ -622,163 +143,8 @@ async def get_notification_repository(
         repository.close()
 
 
-async def get_creative_automation_storage(
-    request: Request,
-) -> AsyncIterator[MarketingCreativeAutomationStorage]:
-    """Yield package storage shared by API and worker when PostgreSQL is active."""
-    settings = get_runtime_settings()
-    postgres = _postgres_runtime(request)
-    if postgres is not None:
-        yield postgres.creative_automation_storage
-        return
-    yield FileMarketingCreativeAutomationStorage(ArtifactStore(settings.artifacts_root))
-
-
-async def get_creative_automation_state_repository(
-    request: Request,
-) -> AsyncIterator[IMarketingCreativeAutomationStateRepository]:
-    """Yield workflow state storage safe for the configured runtime."""
-    settings = get_runtime_settings()
-    postgres = _postgres_runtime(request)
-    if postgres is not None:
-        yield postgres.creative_automation_state_repository
-        return
-    yield FileMarketingCreativeAutomationStateRepository(ArtifactStore(settings.artifacts_root))
-
-
-async def get_creative_automation_job_repository(
-    request: Request,
-) -> AsyncIterator[ICreativeAutomationJobRepository]:
-    """Yield durable selected-SKU monitoring state."""
-    settings = get_runtime_settings()
-    postgres = _postgres_runtime(request)
-    if postgres is not None:
-        yield postgres.creative_automation_job_repository
-        return
-    repository = SqliteCreativeAutomationJobRepository(settings.db_path)
-    try:
-        yield repository
-    finally:
-        repository.close()
-
-
-async def get_command_scheduler(request: Request) -> AsyncIterator[CommandScheduler]:
-    """Yield the configured command scheduler."""
-    settings = get_runtime_settings()
-    postgres = _postgres_runtime(request)
-    if postgres is not None:
-        yield postgres.execution_scheduler
-        return
-    queue = SqliteCommandQueue(settings.db_path)
-    try:
-        yield queue
-    finally:
-        queue.close()
-
-
-async def get_command_status_store(request: Request) -> AsyncIterator[CommandStatusStore]:
-    """Yield the public execution command status projection."""
-    settings = get_runtime_settings()
-    postgres = _postgres_runtime(request)
-    if postgres is not None:
-        yield postgres.execution_status_store
-        return
-    queue = SqliteCommandQueue(settings.db_path)
-    try:
-        yield queue
-    finally:
-        queue.close()
-
-
-async def get_research_crawl_repository(
-    request: Request,
-) -> AsyncIterator[ResearchCrawlRepository]:
-    """Yield workspace-neutral research crawl job storage."""
-    settings = get_runtime_settings()
-    postgres = _postgres_runtime(request)
-    if postgres is not None:
-        yield postgres.research_crawl_repository
-        return
-    repository = SqliteResearchCrawlRepository(settings.db_path)
-    try:
-        yield repository
-    finally:
-        repository.close()
-
-
-async def get_research_brand_source_repository(
-    request: Request,
-) -> AsyncIterator[IDataSourceRepository]:
-    """Yield the snapshot repository used to build pinned research brand context."""
-    settings = get_runtime_settings()
-    postgres = _postgres_runtime(request)
-    if postgres is not None:
-        yield postgres.data_source_repository
-        return
-    repository = SqliteDataSourceRepository(settings.db_path)
-    try:
-        yield repository
-    finally:
-        repository.close()
-
-
-async def get_research_crawl_service(
-    request: Request,
-    repository: ResearchCrawlRepository = Depends(get_research_crawl_repository),
-    brand_sources: IDataSourceRepository = Depends(get_research_brand_source_repository),
-) -> ResearchCrawlService:
-    """Build the one-page Scrapling crawl service for API or inline development use."""
-    settings = get_runtime_settings()
-    postgres = _postgres_runtime(request)
-    artifact_writer = ResearchCrawlArtifactWriter(
-        ArtifactStore(settings.artifacts_root),
-        postgres.artifact_service if postgres is not None else None,
-    )
-    return ResearchCrawlService(
-        repository,
-        ScraplingCrawler(
-            (
-                JevBrowserNavigator(
-                    settings.jev_api_key,
-                    endpoint=settings.jev_api_url,
-                    model=settings.jev_navigation_model,
-                )
-                if settings.jev_api_key and settings.jev_api_url
-                else None
-            ),
-            timeout_seconds=settings.research_crawl_timeout_seconds,
-            cookies_file=settings.research_cookies_file,
-        ),
-        artifact_writer,
-        ResearchMediaCapturer(artifact_writer),
-        ResearchBrandContextResolver(brand_sources),
-        screener=_research_screener(
-            settings,
-            postgres.ai_usage_tracker if postgres is not None else None,
-            artifact_writer,
-        ),
-    )
-
-
-def _research_screener(
-    settings: ApiRuntimeSettings,
-    usage_tracker: AIUsageTracker | None,
-    artifact_reader: ResearchCrawlArtifactWriter,
-) -> NineRouterResearchScreener | None:
-    api_key = settings.screening_api_key or settings.vilao_api_key
-    if not api_key:
-        return None
-    config = ResearchScreeningConfig.from_settings(settings)
-    return NineRouterResearchScreener(
-        config,
-        api_key=api_key,
-        usage_tracker=usage_tracker,
-        artifact_reader=artifact_reader,
-    )
-
-
 async def get_ai_usage_repository(request: Request) -> AsyncIterator[AIUsageRepository]:
-    """Yield the durable usage ledger shared by API and workers."""
+    """Yield the durable usage ledger."""
     settings = get_runtime_settings()
     postgres = _postgres_runtime(request)
     if postgres is not None:
@@ -791,13 +157,10 @@ async def get_ai_usage_repository(request: Request) -> AsyncIterator[AIUsageRepo
         repository.close()
 
 
-get_execution_queue = get_command_scheduler
-
-
 async def get_creative_knowledge_service(
     request: Request,
 ) -> AsyncIterator[CreativeKnowledgeService]:
-    """Yield the scoped knowledge registry used by Admin and orchestration."""
+    """Yield the scoped knowledge registry."""
     settings = get_runtime_settings()
     postgres = _postgres_runtime(request)
     if postgres is not None:
@@ -844,62 +207,3 @@ async def get_product_catalog_service(request: Request) -> AsyncIterator[Product
         yield ProductCatalogService(repository, _profile_generator(settings), _image_reviewer(settings))
     finally:
         repository.close()
-
-
-async def get_creative_intake_runtime(request: Request) -> AsyncIterator[CreativeIntakeRuntime]:
-    """Yield the local Creative intake runtime without external actions."""
-    settings = get_runtime_settings()
-    postgres = _postgres_runtime(request)
-    if postgres is not None:
-        yield postgres.intake()
-        return
-    runtime = build_creative_intake_read_runtime(settings.db_path, settings.artifacts_root)
-    try:
-        yield runtime
-    finally:
-        runtime.repository.close()
-
-
-async def get_creative_intake_write_runtime(
-    request: Request,
-) -> AsyncIterator[CreativeIntakeRuntime]:
-    """Yield the intake runtime used by explicit Lead Marketing requests."""
-    settings = get_runtime_settings()
-    postgres = _postgres_runtime(request)
-    if postgres is not None:
-        yield postgres.intake()
-        return
-    runtime = build_creative_intake_write_runtime(
-        settings.db_path,
-        settings.artifacts_root,
-        preparation_api_key=settings.router_api_key,
-    )
-    try:
-        yield runtime
-    finally:
-        runtime.repository.close()
-
-
-async def get_data_source_runtime(request: Request) -> AsyncIterator[DataSourceRuntime]:
-    """Yield configured read-only connectors and durable snapshot storage."""
-    settings = get_runtime_settings()
-    postgres = _postgres_runtime(request)
-    runtime = _build_data_source_runtime(settings, postgres)
-    try:
-        yield runtime
-    finally:
-        await runtime.close()
-
-
-def _build_data_source_runtime(
-    settings: ApiRuntimeSettings,
-    postgres: PostgresRuntimeContainer | None,
-) -> DataSourceRuntime:
-    definitions = load_data_sources_config(settings.data_sources_config_path)
-    return build_data_source_runtime(
-        definitions,
-        settings.db_path,
-        settings.artifacts_root,
-        repository=postgres.data_source_repository if postgres is not None else None,
-        artifact_service=postgres.artifact_service if postgres is not None else None,
-    )

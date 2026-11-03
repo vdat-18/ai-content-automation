@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import re
 from io import BytesIO
 from pathlib import Path
 from typing import Any
@@ -12,8 +11,7 @@ from urllib.parse import quote_plus, urlsplit
 from openpyxl import Workbook
 from openpyxl.styles import Font
 
-from ai_content.domains.marketing.research_crawler.identity import media_source_fingerprint
-
+from .identity import PIN_SIZE_DIR, media_source_fingerprint
 from .image_review import ReferenceImageReviewer
 from .media import MediaDownloadReport, download_product_media
 from .parsing import (
@@ -26,7 +24,6 @@ from .parsing import (
 from .references import ProfileGenerationError, ReferenceProfile, ReferenceProfileGenerator
 from .repositories import ProductRepository
 
-_PIN_SIZE = re.compile(r"^/(?:\d+x\d*|originals)/")
 _PINTEREST_SEARCH = "https://www.pinterest.com/search/pins/?q="
 _SCREEN_BATCH = 200
 
@@ -45,7 +42,7 @@ def _clean_pins(pins: list[dict[str, Any]]) -> list[dict[str, str]]:
             image_id,
             {
                 "image_id": image_id,
-                "image_url": parsed._replace(path=_PIN_SIZE.sub("/736x/", parsed.path, 1)).geturl(),
+                "image_url": parsed._replace(path=PIN_SIZE_DIR.sub("/736x/", parsed.path, 1)).geturl(),
                 "pin_url": str(pin.get("pin_url") or ""),
                 "title": title,
             },

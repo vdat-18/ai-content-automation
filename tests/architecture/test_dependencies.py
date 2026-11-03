@@ -71,15 +71,7 @@ def test_shared_platform_does_not_import_business_domains(project_root: Path) ->
     assert not violations, "Platform dependency violations:\n" + "\n".join(violations)
 
 
-def test_creative_public_contracts_are_importable() -> None:
-    from ai_content.domains.marketing.creative import domain, ports
-    from ai_content.domains.marketing.creative.application import use_cases
-    from ai_content.domains.marketing.creative.ports import contracts
-
-    assert ports.IImageGenerator
-    assert ports.IQAChecker
-    assert ports.ICreativeRepository
-    assert domain.CreativeJob
-    assert domain.AssetVersion
-    assert contracts.StaticCreativeInput
-    assert use_cases.RunCreativeWorkflow
+def test_marketing_domains_do_not_import_entrypoints(marketing_root: Path) -> None:
+    files = _python_files(marketing_root)
+    violations = _violations(files, {"entrypoints"})
+    assert not violations, "Domain dependency violations:\n" + "\n".join(violations)
