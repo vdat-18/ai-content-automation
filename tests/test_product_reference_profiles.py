@@ -98,7 +98,7 @@ async def test_ingest_screens_images_before_they_go_live(tmp_path) -> None:
     class _FakeReviewClient:
         async def ReviewReferenceImage(self, product_type, image):
             usable = product_type != "cốc"
-            return SimpleNamespace(model_dump=lambda: {"usable": usable, "reason": "ok"})
+            return SimpleNamespace(model_dump=lambda: {"usable": usable})
 
     class _Reviewer(ReferenceImageReviewer):
         async def review_all(self, images, http=None):

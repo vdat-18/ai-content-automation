@@ -65,7 +65,6 @@ class LabeledReferenceImage(BaseModel):
 
 class ReferenceImageReview(BaseModel):
     usable: bool
-    reason: str
     description: str
 
 class ReferenceSearchProfileDraft(BaseModel):

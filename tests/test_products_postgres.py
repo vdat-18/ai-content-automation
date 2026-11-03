@@ -92,7 +92,7 @@ async def _round_trip() -> None:
 
         class _Reviewer:
             async def review_all(self, images, http=None):
-                return {i["image_id"]: {"usable": True, "reason": "ok"} for i in images}
+                return {i["image_id"]: {"usable": True} for i in images}
 
         screener = ProductCatalogService(PostgresProductRepository(engine), reviewer=_Reviewer())  # type: ignore[arg-type]
         await screener.ingest(
@@ -103,7 +103,7 @@ async def _round_trip() -> None:
             }
         )
         [passed] = await screener.reference_images("live", None)
-        assert passed["screening"] == {"usable": True, "reason": "ok"}
+        assert passed["screening"] == {"usable": True}
 
         class _Writer:
             async def write(self, product, user_idea, references):

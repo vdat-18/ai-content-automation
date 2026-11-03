@@ -6,7 +6,7 @@ import { useI18n } from "../hooks/useI18n";
 import { deleteJson, getJson, postJson, putJson } from "../services/http";
 
 export type ReferenceProfile = { product_type: string; keywords: string[]; status: string };
-type Screening = { usable: boolean; reason: string; description?: string; scene_description?: string };
+type Screening = { usable: boolean; description?: string; scene_description?: string };
 type ReferenceImage = { image_id: string; product_type: string; query: string; image_url: string; pin_url: string; title: string; status: string; screening: Screening | null };
 type ScreenReport = { reviewed: number; usable: number; rejected: number; failed: number };
 
@@ -149,7 +149,7 @@ function ReferenceImages() {
                 <small>{image.query}</small>
                 {image.screening && (
                   <small title={image.screening.description ?? image.screening.scene_description}>
-                    {image.screening.usable ? (image.screening.description ?? image.screening.scene_description) : `✕ ${image.screening.reason}`}
+                    {`${image.screening.usable ? "" : "✕ "}${image.screening.description ?? image.screening.scene_description ?? ""}`}
                   </small>
                 )}
                 <div>

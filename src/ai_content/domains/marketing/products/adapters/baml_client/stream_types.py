@@ -47,7 +47,6 @@ class LabeledReferenceImage(BaseModel):
 
 class ReferenceImageReview(BaseModel):
     usable: typing.Optional[bool] = None
-    reason: typing.Optional[str] = None
     description: typing.Optional[str] = None
 
 class ReferenceSearchProfileDraft(BaseModel):
