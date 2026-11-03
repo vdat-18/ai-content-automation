@@ -20,23 +20,22 @@ test("pilot API owns every backend HTTP request", () => {
   visit(sourceRoot);
 
   assert.match(http, /response = await fetch\(path, init\)/);
-  assert.match(api, /sourceBrands.*\/api\/v1\/data-sources\/brands/);
   assert.match(api, /creativeKnowledge[\s\S]*marketing\/creative-knowledge/);
-  assert.match(api, /researchCrawls[\s\S]*marketing\/research-crawls/);
+  assert.match(api, /notifications[\s\S]*\/api\/v1\/notifications/);
   for (const file of files.filter((item) => !item.endsWith(path.join("services", "http.ts")))) {
     assert.doesNotMatch(fs.readFileSync(file, "utf8"), /\bfetch\(/, file);
   }
 });
 
-test("the dashboard only routes to research and knowledge pages", () => {
+test("the dashboard only routes to affiliate content and knowledge pages", () => {
   const app = src("App.tsx");
   const shell = src("components", "AppShell.tsx");
 
-  for (const route of ["research-crawler", "research-library", "second-brain", "notifications"]) {
+  for (const route of ["products", "references", "second-brain", "notifications"]) {
     assert.match(app, new RegExp(`path="${route}"`));
   }
-  assert.match(app, /<Navigate replace to="\/research-crawler" \/>/);
-  assert.doesNotMatch(app, /creative-production|creatives|approvals|workflows|data-sources/);
+  assert.match(app, /<Navigate replace to="\/products" \/>/);
+  assert.doesNotMatch(app, /creative-production|creatives|approvals|workflows|data-sources|research-/);
   assert.doesNotMatch(shell, /creative-production|\/creatives|\/approvals|\/data-sources/);
 });
 
