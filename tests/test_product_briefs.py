@@ -166,7 +166,7 @@ class _CapturingWriter:
         return {"title": "T", "selected_reference_ids": []}
 
 
-async def test_brief_uses_the_best_scored_live_references(tmp_path) -> None:
+async def test_brief_uses_varied_live_references(tmp_path) -> None:
     writer = _CapturingWriter()
     service = await _service(tmp_path, writer)
     await service._repository.select_product(PRODUCT_ID, "áo thun")
@@ -183,9 +183,24 @@ async def test_brief_uses_the_best_scored_live_references(tmp_path) -> None:
     )
     images = await service.reference_images("pending", "áo thun")
     for index, image in enumerate(images):
-        await service._repository.set_image_screening(
-            image["image_id"], {"usable": True, "quality_score": index % 10 + 1}, "live"
-        )
+        await service._repository.set_image_screening(image["image_id"], {"usable": True}, "live")
+        cluster = index % 4  # four groups of three near-identical vectors
+        vector = [0.0] * 4
+        vector[cluster] = 1.0
+        await service._repository.set_fingerprint(image["image_id"], f"{index:016x}", vector)
     await service.create_brief(PRODUCT_ID)
-    scores = [r["screening"]["quality_score"] for r in writer.references]
-    assert len(scores) == 8 and scores == sorted(scores, reverse=True) and scores[0] == 10
+    clusters = {
+        index % 4
+        for index, image in enumerate(images)
+        if image["image_id"] in {r["image_id"] for r in writer.references}
+    }
+    assert len(writer.references) == 8 and clusters == {0, 1, 2, 3}
+    assert all("embedding" not in r for r in writer.references)
+
+
+def test_reference_note_prefers_the_description() -> None:
+    from ai_content.domains.marketing.products.briefing import _note
+
+    assert _note({"screening": {"description": "d", "scene_description": "old"}}) == "d"
+    assert _note({"screening": {"scene_description": "old", "placement_note": "p"}}) == "old p"
+    assert _note({}) == ""

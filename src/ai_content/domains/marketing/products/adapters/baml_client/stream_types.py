@@ -47,14 +47,8 @@ class LabeledReferenceImage(BaseModel):
 
 class ReferenceImageReview(BaseModel):
     usable: typing.Optional[bool] = None
-    quality_score: typing.Optional[int] = None
     reason: typing.Optional[str] = None
-    scene_type: typing.Optional[typing.Union[typing_extensions.Literal['lifestyle_scene'], typing_extensions.Literal['environment'], typing_extensions.Literal['flatlay'], typing_extensions.Literal['studio_plain'], typing_extensions.Literal['cutout'], typing_extensions.Literal['graphic'], typing_extensions.Literal['other']]] = None
-    scene_description: typing.Optional[str] = None
-    placement_note: typing.Optional[str] = None
-    heavy_text: typing.Optional[bool] = None
-    style: typing.List[str]
-    colors: typing.List[str]
+    description: typing.Optional[str] = None
 
 class ReferenceSearchProfileDraft(BaseModel):
     product_type: typing.Optional[str] = None

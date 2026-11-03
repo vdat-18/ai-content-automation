@@ -44,11 +44,11 @@ Lưu vector: với vài nghìn ảnh mỗi loại, lưu mảng số trong cột 
 crawl Pinterest
   → loại link trùng (đã có)
   → nhúng embedding, loại ảnh gần giống ảnh đã có hoặc đã bị xóa
-  → Gemini chấm: đạt/không + điểm chất lượng 1-10 + mô tả bối cảnh + thẻ
+  → Gemini chấm: đạt/không đạt + một đoạn mô tả ảnh (bối cảnh, ánh sáng, phong cách, màu, chỗ đặt sản phẩm)
   → đạt: trạng thái live (hiện trên frontend), không đạt: rejected (ẩn, vẫn nhớ để khỏi chấm lại)
 ```
 
-Frontend: bỏ nút Duyệt/Loại, chỉ còn **Xóa** (đánh dấu xóa mềm). Hiển thị điểm chất lượng, sắp xếp theo điểm.
+Frontend: bỏ nút Duyệt/Loại, chỉ còn **Xóa** (đánh dấu xóa mềm). Không có điểm chất lượng; khi chọn ảnh cho brief, hệ thống lấy các ảnh khác nhau nhiều nhất theo vector embedding.
 
 ## 5. Từ một sản phẩm đến N content
 

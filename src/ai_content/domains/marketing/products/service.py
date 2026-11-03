@@ -28,7 +28,6 @@ from .repositories import ProductRepository
 
 _PINTEREST_SEARCH = "https://www.pinterest.com/search/pins/?q="
 _SCREEN_BATCH = 200
-MIN_QUALITY_SCORE = 5
 DUPLICATE_COSINE = 0.90
 DUPLICATE_HAMMING = 4
 
@@ -57,8 +56,25 @@ def _clean_pins(pins: list[dict[str, Any]]) -> list[dict[str, str]]:
     return list(cleaned.values())
 
 
-def _quality(image: dict[str, Any]) -> int:
-    return int((image.get("screening") or {}).get("quality_score") or 0)
+def _diverse(images: list[dict[str, Any]], count: int) -> list[dict[str, Any]]:
+    """Pick images that differ most from each other, newest first, using stored embeddings.
+
+    Images without an embedding are only used to fill the remaining slots.
+    """
+    embedded = [image for image in images if image.get("embedding")]
+    chosen: list[dict[str, Any]] = embedded[:1]
+    while len(chosen) < min(count, len(embedded)):
+        taken = {image["image_id"] for image in chosen}
+        rest = [image for image in embedded if image["image_id"] not in taken]
+        chosen.append(
+            min(
+                rest,
+                key=lambda image: max(cosine(image["embedding"], c["embedding"]) for c in chosen),
+            )
+        )
+    taken = {image["image_id"] for image in chosen}
+    filler = [image for image in images if image["image_id"] not in taken]
+    return (chosen + filler)[:count]
 
 
 class ProductCatalogService:
@@ -189,13 +205,10 @@ class ProductCatalogService:
         self, status: str | None, product_type: str | None
     ) -> list[dict[str, Any]]:
         images = await self._repository.list_reference_images(status, product_type)
-        return sorted(images, key=_quality, reverse=True)
+        return list(reversed(images))
 
     async def screen_images(self, limit: int) -> dict[str, int]:
-        """Review pending images with the vision model.
-
-        Usable images scoring at least MIN_QUALITY_SCORE go live; the rest are rejected.
-        """
+        """Review pending images with the vision model: usable ones go live, the rest are rejected."""
         if self._reviewer is None:
             raise ProfileGenerationError("LLM is not configured (AIC_SCREENING_API_KEY)")
         pending = (await self._repository.list_reference_images("pending", None))[:limit]
@@ -205,9 +218,7 @@ class ProductCatalogService:
             if review is None:
                 counts["failed"] += 1
                 continue
-            usable = (
-                bool(review["usable"]) and int(review.get("quality_score", 0)) >= MIN_QUALITY_SCORE
-            )
+            usable = bool(review["usable"])
             await self._repository.set_image_screening(
                 image_id, review, "live" if usable else "rejected"
             )
@@ -216,7 +227,7 @@ class ProductCatalogService:
         return counts
 
     async def create_brief(self, product_id: str, user_idea: str = "") -> dict[str, Any] | None:
-        """Draft one brief for a selected product from the best live reference scenes."""
+        """Draft one brief for a selected product from varied live reference scenes."""
         detail = await self._repository.get_detail(product_id)
         if detail is None:
             return None
@@ -225,7 +236,16 @@ class ProductCatalogService:
         product_type = (await self._repository.selections()).get(product_id)
         if not product_type:
             raise BriefUnavailable("Select this product for content before writing a brief")
-        references = (await self.reference_images("live", product_type))[:MAX_REFERENCES]
+        live = await self.reference_images("live", product_type)
+        vectors = {
+            item["image_id"]: item["embedding"]
+            for item in await self._repository.fingerprints(product_type)
+        }
+        varied = _diverse(
+            [{**image, "embedding": vectors.get(image["image_id"])} for image in live],
+            MAX_REFERENCES,
+        )
+        references = [{k: v for k, v in image.items() if k != "embedding"} for image in varied]
         if not references:
             raise BriefUnavailable(
                 f"No usable reference image of type '{product_type}' yet; crawl Pinterest first"

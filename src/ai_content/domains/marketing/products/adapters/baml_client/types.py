@@ -65,14 +65,8 @@ class LabeledReferenceImage(BaseModel):
 
 class ReferenceImageReview(BaseModel):
     usable: bool
-    quality_score: int
     reason: str
-    scene_type: typing.Union[typing_extensions.Literal['lifestyle_scene'], typing_extensions.Literal['environment'], typing_extensions.Literal['flatlay'], typing_extensions.Literal['studio_plain'], typing_extensions.Literal['cutout'], typing_extensions.Literal['graphic'], typing_extensions.Literal['other']]
-    scene_description: str
-    placement_note: str
-    heavy_text: bool
-    style: typing.List[str]
-    colors: typing.List[str]
+    description: str
 
 class ReferenceSearchProfileDraft(BaseModel):
     product_type: str

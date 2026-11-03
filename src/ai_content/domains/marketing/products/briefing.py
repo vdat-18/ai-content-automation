@@ -58,6 +58,8 @@ def product_facts(product: dict[str, Any]) -> dict[str, Any]:
 
 def _note(image: dict[str, Any]) -> str:
     screening = image.get("screening") or {}
+    if screening.get("description"):
+        return str(screening["description"])
     parts = [screening.get("scene_description"), screening.get("placement_note")]
     return " ".join(part for part in parts if part)
 

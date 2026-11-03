@@ -6,7 +6,7 @@ import { useI18n } from "../hooks/useI18n";
 import { deleteJson, getJson, postJson, putJson } from "../services/http";
 
 export type ReferenceProfile = { product_type: string; keywords: string[]; status: string };
-type Screening = { usable: boolean; quality_score: number; reason: string; scene_type: string; scene_description: string; placement_note: string; style: string[]; colors: string[] };
+type Screening = { usable: boolean; reason: string; description?: string; scene_description?: string };
 type ReferenceImage = { image_id: string; product_type: string; query: string; image_url: string; pin_url: string; title: string; status: string; screening: Screening | null };
 type ScreenReport = { reviewed: number; usable: number; rejected: number; failed: number };
 
@@ -110,7 +110,7 @@ function ReferenceImages() {
       <div className="panel-header">
         <div>
           <h2>{t("Reference images")}</h2>
-          <p>{t("Images crawled from Pinterest that Gemini accepted as scenes to borrow, best first. Remove the ones you do not want.")}</p>
+          <p>{t("Images crawled from Pinterest that Gemini accepted as scenes to borrow, newest first. Remove the ones you do not want.")}</p>
         </div>
         <div>
           <button className="secondary-button" disabled={screen.isPending} onClick={() => screen.mutate()}>
@@ -148,8 +148,8 @@ function ReferenceImages() {
               <figcaption>
                 <small>{image.query}</small>
                 {image.screening && (
-                  <small title={image.screening.placement_note}>
-                    {image.screening.usable ? `★ ${image.screening.quality_score}/10 · ${image.screening.scene_type}: ${image.screening.scene_description}` : `✕ ${image.screening.reason}`}
+                  <small title={image.screening.description ?? image.screening.scene_description}>
+                    {image.screening.usable ? (image.screening.description ?? image.screening.scene_description) : `✕ ${image.screening.reason}`}
                   </small>
                 )}
                 <div>
