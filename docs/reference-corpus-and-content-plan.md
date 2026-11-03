@@ -1,6 +1,6 @@
 # Thiết kế: kho ảnh tham chiếu và kế hoạch nhiều content cho một sản phẩm
 
-Trạng thái: giai đoạn 1 (kho ảnh tự động) đã làm xong; giai đoạn 2 và 3 còn là đề xuất. Mục tiêu: một sản phẩm tạo được nhiều ads/content **khác nhau rõ rệt**, từ kho ảnh tham chiếu có thể lên tới hàng nghìn ảnh, không cần người duyệt từng ảnh.
+Trạng thái: giai đoạn 1 (kho ảnh tự động) và giai đoạn 2 (chống trùng bằng embedding) đã làm xong; giai đoạn 3 còn là đề xuất. Giai đoạn 2 dùng DINOv3 ViT-S/16 chạy ONNX trên CPU (đổi được bằng `AIC_EMBEDDING_MODEL`), ngưỡng cosine 0,90 và dHash cách nhau tối đa 4 bit, chỉnh theo dữ liệu thật. Mục tiêu: một sản phẩm tạo được nhiều ads/content **khác nhau rõ rệt**, từ kho ảnh tham chiếu có thể lên tới hàng nghìn ảnh, không cần người duyệt từng ảnh.
 
 ## 1. Vấn đề của bản hiện tại
 

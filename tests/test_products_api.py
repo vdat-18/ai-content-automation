@@ -245,6 +245,10 @@ def test_brief_creation_reports_unmet_preconditions_then_succeeds(
     assert created["user_idea"] == "ban công" and created["brief"]["idea_seen"] == "ban công"
 
 
+def test_backfill_needs_the_embedding_model(client: TestClient) -> None:
+    assert client.post("/api/v1/products/reference-images/backfill-fingerprints").status_code == 503
+
+
 def test_media_download_with_no_products(client: TestClient) -> None:
     assert client.post("/api/v1/products/media/download").json() == {
         "downloaded": 0,

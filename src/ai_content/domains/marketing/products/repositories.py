@@ -53,6 +53,14 @@ class ProductRepository(Protocol):
         self, product_type: str, query: str, pins: list[dict[str, str]]
     ) -> int: ...
 
+    async def existing_image_ids(self, image_ids: list[str]) -> set[str]: ...
+
+    async def fingerprints(self, product_type: str) -> list[dict[str, Any]]: ...
+
+    async def images_without_fingerprint(self, limit: int) -> list[dict[str, Any]]: ...
+
+    async def set_fingerprint(self, image_id: str, phash: str, embedding: list[float]) -> None: ...
+
     async def done_searches(self) -> set[tuple[str, str]]: ...
 
     async def list_reference_images(
@@ -135,6 +143,9 @@ class SqliteProductRepository:
         )
         with contextlib.suppress(sqlite3.OperationalError):
             self._connection.execute("ALTER TABLE reference_images ADD COLUMN screening TEXT")
+        for column in ("phash TEXT", "embedding TEXT", "duplicate_of TEXT"):
+            with contextlib.suppress(sqlite3.OperationalError):
+                self._connection.execute(f"ALTER TABLE reference_images ADD COLUMN {column}")
         self._connection.execute(
             "UPDATE reference_images SET status='live' WHERE status IN ('new', 'approved')"
         )
@@ -267,8 +278,8 @@ class SqliteProductRepository:
         before = self._connection.total_changes
         self._connection.executemany(
             "INSERT OR IGNORE INTO reference_images "
-            "(image_id, product_type, query, image_url, pin_url, title, status) "
-            "VALUES (?, ?, ?, ?, ?, ?, 'pending')",
+            "(image_id, product_type, query, image_url, pin_url, title, status, "
+            "phash, embedding, duplicate_of) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             [
                 (
                     pin["image_id"],
@@ -277,6 +288,10 @@ class SqliteProductRepository:
                     pin["image_url"],
                     pin["pin_url"],
                     pin["title"],
+                    pin.get("status", "pending"),
+                    pin.get("phash"),
+                    json.dumps(pin["embedding"]) if pin.get("embedding") else None,
+                    pin.get("duplicate_of"),
                 )
                 for pin in pins
             ],
@@ -350,6 +365,41 @@ class SqliteProductRepository:
             "SELECT product_id, user_idea, brief, status FROM product_briefs ORDER BY product_id"
         ).fetchall()
         return [_brief_record(r[0], r[1], json.loads(r[2]), r[3]) for r in rows]
+
+    async def existing_image_ids(self, image_ids: list[str]) -> set[str]:
+        if not image_ids:
+            return set()
+        marks = ",".join("?" * len(image_ids))
+        rows = self._connection.execute(
+            f"SELECT image_id FROM reference_images WHERE image_id IN ({marks})", image_ids
+        )
+        return {row[0] for row in rows}
+
+    async def fingerprints(self, product_type: str) -> list[dict[str, Any]]:
+        rows = self._connection.execute(
+            "SELECT image_id, phash, embedding FROM reference_images "
+            "WHERE product_type=? AND phash IS NOT NULL",
+            (product_type,),
+        ).fetchall()
+        return [
+            {"image_id": r[0], "phash": r[1], "embedding": json.loads(r[2]) if r[2] else None}
+            for r in rows
+        ]
+
+    async def images_without_fingerprint(self, limit: int) -> list[dict[str, Any]]:
+        rows = self._connection.execute(
+            "SELECT image_id, image_url FROM reference_images "
+            "WHERE phash IS NULL AND status != 'duplicate' LIMIT ?",
+            (limit,),
+        ).fetchall()
+        return [{"image_id": r[0], "image_url": r[1]} for r in rows]
+
+    async def set_fingerprint(self, image_id: str, phash: str, embedding: list[float]) -> None:
+        self._connection.execute(
+            "UPDATE reference_images SET phash=?, embedding=? WHERE image_id=?",
+            (phash, json.dumps(embedding), image_id),
+        )
+        self._connection.commit()
 
 
 class PostgresProductRepository:
@@ -497,7 +547,10 @@ class PostgresProductRepository:
                                 "image_url": pin["image_url"],
                                 "pin_url": pin["pin_url"],
                                 "title": pin["title"],
-                                "status": "pending",
+                                "status": pin.get("status", "pending"),
+                                "phash": pin.get("phash"),
+                                "embedding": pin.get("embedding"),
+                                "duplicate_of": pin.get("duplicate_of"),
                             }
                             for pin in pins
                         ]
@@ -603,3 +656,41 @@ class PostgresProductRepository:
         ).order_by(product_briefs.c.product_id)
         async with self._engine.connect() as connection:
             return [_brief_record(*row) for row in (await connection.execute(statement)).all()]
+
+    async def existing_image_ids(self, image_ids: list[str]) -> set[str]:
+        if not image_ids:
+            return set()
+        statement = select(reference_images.c.image_id).where(
+            reference_images.c.image_id.in_(image_ids)
+        )
+        async with self._engine.connect() as connection:
+            return set((await connection.execute(statement)).scalars().all())
+
+    async def fingerprints(self, product_type: str) -> list[dict[str, Any]]:
+        statement = select(
+            reference_images.c.image_id, reference_images.c.phash, reference_images.c.embedding
+        ).where(
+            reference_images.c.product_type == product_type, reference_images.c.phash.is_not(None)
+        )
+        async with self._engine.connect() as connection:
+            rows = (await connection.execute(statement)).all()
+        return [{"image_id": r[0], "phash": r[1], "embedding": r[2]} for r in rows]
+
+    async def images_without_fingerprint(self, limit: int) -> list[dict[str, Any]]:
+        statement = (
+            select(reference_images.c.image_id, reference_images.c.image_url)
+            .where(reference_images.c.phash.is_(None), reference_images.c.status != "duplicate")
+            .limit(limit)
+        )
+        async with self._engine.connect() as connection:
+            rows = (await connection.execute(statement)).all()
+        return [{"image_id": r[0], "image_url": r[1]} for r in rows]
+
+    async def set_fingerprint(self, image_id: str, phash: str, embedding: list[float]) -> None:
+        statement = (
+            reference_images.update()
+            .where(reference_images.c.image_id == image_id)
+            .values(phash=phash, embedding=embedding, updated_at=func.now())
+        )
+        async with self._engine.begin() as connection:
+            await connection.execute(statement)

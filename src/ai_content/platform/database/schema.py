@@ -94,6 +94,9 @@ reference_images = Table(
     Column("title", Text),
     Column("status", Text, nullable=False, server_default=sql_text("'pending'")),
     Column("screening", JSONB),
+    Column("phash", Text),
+    Column("embedding", JSONB),
+    Column("duplicate_of", Text),
     *_timestamps(),
     schema="marketing",
 )

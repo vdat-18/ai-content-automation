@@ -114,6 +114,18 @@ async def screen_reference_images(
         raise HTTPException(status_code=503, detail=str(error)) from error
 
 
+@router.post("/reference-images/backfill-fingerprints")
+async def backfill_fingerprints(
+    limit: int = Query(500, ge=1, le=2000),
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> dict[str, int]:
+    """Embed images stored before duplicate detection existed (also warms the model)."""
+    try:
+        return {"fingerprinted": await service.backfill_fingerprints(limit)}
+    except ProfileGenerationError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+
+
 @router.delete("/reference-images/{image_id}")
 async def remove_reference_image(
     image_id: str,

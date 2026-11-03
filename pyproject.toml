@@ -38,6 +38,9 @@ dependencies = [
     "opentelemetry-instrumentation-botocore>=0.65b0,<0.66",
     "prometheus-client>=0.26,<1",
     "openpyxl>=3.1.5",
+    "onnxruntime>=1.20",
+    "pillow>=11.0",
+    "numpy>=2.0",
 ]
 
 [project.optional-dependencies]

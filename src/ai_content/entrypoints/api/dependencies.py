@@ -6,6 +6,7 @@ import sqlite3
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
+from functools import cache
 from pathlib import Path
 from typing import Literal
 
@@ -16,6 +17,7 @@ from ai_content.domains.marketing.creative_knowledge.repositories import (
 )
 from ai_content.domains.marketing.creative_knowledge.service import CreativeKnowledgeService
 from ai_content.domains.marketing.products.briefing import ContentBriefWriter
+from ai_content.domains.marketing.products.embedding import ImageEmbedder
 from ai_content.domains.marketing.products.image_review import ReferenceImageReviewer
 from ai_content.domains.marketing.products.references import ReferenceProfileGenerator
 from ai_content.domains.marketing.products.repositories import SqliteProductRepository
@@ -40,6 +42,7 @@ class ApiRuntimeSettings:
     screening_base_url: str = "http://127.0.0.1:1234/v1"
     screening_api_key: str | None = None
     screening_model: str = "gemini-3.8-flash"
+    embedding_model: str = ""
     database_backend: Literal["sqlite", "postgresql"] = "sqlite"
     database_url: str | None = None
 
@@ -61,6 +64,7 @@ def get_runtime_settings() -> ApiRuntimeSettings:
         screening_base_url=application.screening_base_url,
         screening_api_key=application.screening_api_key_value,
         screening_model=application.screening_model,
+        embedding_model=application.embedding_model,
         database_backend=application.database_backend,
         database_url=(
             application.database_url.get_secret_value() if application.database_url else None
@@ -186,6 +190,17 @@ def _image_reviewer(settings: ApiRuntimeSettings) -> ReferenceImageReviewer | No
     )
 
 
+@cache
+def _embedder_for(model: str, models_dir: Path) -> ImageEmbedder:
+    return ImageEmbedder(model, models_dir)
+
+
+def _image_embedder(settings: ApiRuntimeSettings) -> ImageEmbedder | None:
+    if not settings.embedding_model:
+        return None
+    return _embedder_for(settings.embedding_model, settings.db_path.parent / "models")
+
+
 def _brief_writer(settings: ApiRuntimeSettings) -> ContentBriefWriter | None:
     if not settings.screening_api_key:
         return None
@@ -216,6 +231,7 @@ async def get_product_catalog_service(request: Request) -> AsyncIterator[Product
             _profile_generator(settings),
             _image_reviewer(settings),
             _brief_writer(settings),
+            _image_embedder(settings),
         )
         return
     repository = SqliteProductRepository(settings.db_path)
@@ -225,6 +241,7 @@ async def get_product_catalog_service(request: Request) -> AsyncIterator[Product
             _profile_generator(settings),
             _image_reviewer(settings),
             _brief_writer(settings),
+            _image_embedder(settings),
         )
     finally:
         repository.close()

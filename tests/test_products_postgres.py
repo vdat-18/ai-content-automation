@@ -120,6 +120,37 @@ async def _round_trip() -> None:
         assert updated is not None and updated["brief"]["scene"] == "mới"
         assert [b["status"] for b in await briefer.list_briefs()] == ["approved"]
         assert await briefer.get_brief("missing") is None
+
+        repository = PostgresProductRepository(engine)
+        await repository.add_reference_images(
+            "áo thun",
+            "q",
+            [
+                {
+                    "image_id": "fp-1",
+                    "image_url": "https://i.pinimg.com/736x/fp/fp/1.jpg",
+                    "pin_url": "/p/",
+                    "title": "t",
+                    "phash": "00000000000000ff",
+                    "embedding": [1.0, 0.0],
+                },
+                {
+                    "image_id": "fp-2",
+                    "image_url": "https://i.pinimg.com/736x/fp/fp/2.jpg",
+                    "pin_url": "/p/",
+                    "title": "t",
+                    "status": "duplicate",
+                    "duplicate_of": "fp-1",
+                },
+            ],
+        )
+        assert await repository.existing_image_ids(["fp-1", "fp-2", "nope"]) == {"fp-1", "fp-2"}
+        [stored] = [f for f in await repository.fingerprints("áo thun") if f["image_id"] == "fp-1"]
+        assert stored["phash"] == "00000000000000ff" and stored["embedding"] == [1.0, 0.0]
+        missing = {i["image_id"] for i in await repository.images_without_fingerprint(100)}
+        assert "fp-1" not in missing and "fp-2" not in missing
+        await repository.set_fingerprint("fp-2", "0000000000000001", [0.0, 1.0])
+        assert len(await repository.fingerprints("áo thun")) >= 2
     finally:
         await engine.dispose()
 

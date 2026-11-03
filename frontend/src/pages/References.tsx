@@ -133,6 +133,7 @@ function ReferenceImages() {
             <option value="live">{t("Live")}</option>
             <option value="rejected">{t("Rejected by Gemini")}</option>
             <option value="removed">{t("Removed")}</option>
+            <option value="duplicate">{t("Duplicates")}</option>
             <option value="">{t("All")}</option>
           </select>
         </label>

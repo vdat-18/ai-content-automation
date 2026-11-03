@@ -12,6 +12,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font
 
 from .briefing import MAX_REFERENCES, BriefUnavailable, ContentBriefWriter
+from .embedding import ImageEmbedder, cosine, dhash, download_images, hamming
 from .identity import PIN_SIZE_DIR, media_source_fingerprint
 from .image_review import ReferenceImageReviewer
 from .media import MediaDownloadReport, download_product_media
@@ -28,6 +29,8 @@ from .repositories import ProductRepository
 _PINTEREST_SEARCH = "https://www.pinterest.com/search/pins/?q="
 _SCREEN_BATCH = 200
 MIN_QUALITY_SCORE = 5
+DUPLICATE_COSINE = 0.90
+DUPLICATE_HAMMING = 4
 
 
 def _clean_pins(pins: list[dict[str, Any]]) -> list[dict[str, str]]:
@@ -65,11 +68,13 @@ class ProductCatalogService:
         generator: ReferenceProfileGenerator | None = None,
         reviewer: ReferenceImageReviewer | None = None,
         briefer: ContentBriefWriter | None = None,
+        embedder: ImageEmbedder | None = None,
     ) -> None:
         self._repository = repository
         self._generator = generator
         self._reviewer = reviewer
         self._briefer = briefer
+        self._embedder = embedder
 
     async def ingest(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Store whatever a captured page or feed response contains."""
@@ -92,6 +97,7 @@ class ProductCatalogService:
     async def _ingest_pins(self, payload: dict[str, Any]) -> dict[str, Any]:
         product_type = str(payload["product_type"])
         pins = _clean_pins(list(payload.get("pins") or []))
+        pins, duplicates = await self._drop_duplicates(product_type, pins)
         added = await self._repository.add_reference_images(
             product_type, str(payload["query"]), pins
         )
@@ -99,9 +105,69 @@ class ProductCatalogService:
         return {
             "stored": "reference_images",
             "received": len(payload.get("pins") or []),
-            "added": added,
+            "added": added - duplicates,
+            "duplicates": duplicates,
             "screened": screened,
         }
+
+    async def _drop_duplicates(
+        self, product_type: str, pins: list[dict[str, str]]
+    ) -> tuple[list[dict[str, Any]], int]:
+        """Fingerprint new images and mark those that repeat a known image as duplicates.
+
+        Duplicates are still stored (status "duplicate") so a later crawl skips them by id,
+        but they never reach the vision model.
+        """
+        if self._embedder is None or not pins:
+            return list(pins), 0
+        known_ids = await self._repository.existing_image_ids([pin["image_id"] for pin in pins])
+        fresh = [pin for pin in pins if pin["image_id"] not in known_ids]
+        downloaded = await download_images([pin["image_url"] for pin in fresh])
+        known = await self._repository.fingerprints(product_type)
+        for item in known:
+            item["phash_int"] = int(item["phash"], 16)
+        usable = [pin for pin in fresh if pin["image_url"] in downloaded]
+        vectors = await self._embedder.embed_many([downloaded[p["image_url"]] for p in usable])
+        result: list[dict[str, Any]] = [pin for pin in pins if pin["image_id"] in known_ids]
+        duplicates = 0
+        fingerprints = {
+            pin["image_id"]: (dhash(downloaded[pin["image_url"]]), vector)
+            for pin, vector in zip(usable, vectors, strict=True)
+        }
+        for pin in fresh:
+            if pin["image_id"] not in fingerprints:
+                result.append(dict(pin))
+                continue
+            phash, vector = fingerprints[pin["image_id"]]
+            twin = next(
+                (
+                    item
+                    for item in known
+                    if hamming(phash, item["phash_int"]) <= DUPLICATE_HAMMING
+                    or (item["embedding"] and cosine(vector, item["embedding"]) >= DUPLICATE_COSINE)
+                ),
+                None,
+            )
+            if twin is not None:
+                duplicates += 1
+                result.append({**pin, "status": "duplicate", "duplicate_of": twin["image_id"]})
+                continue
+            known.append({"image_id": pin["image_id"], "phash_int": phash, "embedding": vector})
+            result.append({**pin, "phash": f"{phash:016x}", "embedding": vector})
+        return result, duplicates
+
+    async def backfill_fingerprints(self, limit: int = 500) -> int:
+        """Fingerprint images stored before deduplication existed."""
+        if self._embedder is None:
+            raise ProfileGenerationError("Embedding model is disabled (AIC_EMBEDDING_MODEL)")
+        pending = await self._repository.images_without_fingerprint(limit)
+        downloaded = await download_images([image["image_url"] for image in pending])
+        done = [image for image in pending if image["image_url"] in downloaded]
+        vectors = await self._embedder.embed_many([downloaded[i["image_url"]] for i in done])
+        for image, vector in zip(done, vectors, strict=True):
+            phash = dhash(downloaded[image["image_url"]])
+            await self._repository.set_fingerprint(image["image_id"], f"{phash:016x}", vector)
+        return len(done)
 
     async def reference_queue(self, limit: int) -> list[dict[str, str]]:
         """Pinterest searches of approved profiles that were not crawled yet."""
