@@ -25,17 +25,14 @@ cleanup() {
 }
 trap cleanup EXIT
 docker compose --project-name "$project_name" --env-file "$environment_file" \
-  -f "$compose_file" up --detach postgres rabbitmq object-storage
+  -f "$compose_file" up --detach postgres object-storage
 docker compose --project-name "$project_name" --env-file "$environment_file" \
   -f "$compose_file" --profile tools run --rm maintenance restore \
   --backup-set "/backups/$backup_name"
 docker compose --project-name "$project_name" --env-file "$environment_file" \
   -f "$compose_file" run --rm migrate
 docker compose --project-name "$project_name" --env-file "$environment_file" \
-  -f "$compose_file" --profile tools run --rm maintenance recover-execution \
-  --backup-set "/backups/$backup_name"
-docker compose --project-name "$project_name" --env-file "$environment_file" \
-  -f "$compose_file" up --detach api outbox-publisher worker
+  -f "$compose_file" up --detach api
 docker compose --project-name "$project_name" --env-file "$environment_file" \
   -f "$compose_file" --profile tools run --rm maintenance verify-http \
   --backup-set "/backups/$backup_name" --base-url http://api:8000

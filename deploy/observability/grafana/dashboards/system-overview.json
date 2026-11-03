@@ -15,16 +15,6 @@
     },
     {
       "datasource": {"type": "prometheus", "uid": "prometheus"},
-      "fieldConfig": {"defaults": {"mappings": [], "thresholds": {"mode": "absolute", "steps": [{"color": "red", "value": null}, {"color": "green", "value": 1}]}}},
-      "gridPos": {"h": 5, "w": 6, "x": 6, "y": 0},
-      "id": 2,
-      "options": {"colorMode": "background", "graphMode": "none", "justifyMode": "auto", "orientation": "auto", "reduceOptions": {"calcs": ["lastNotNull"], "fields": "", "values": false}, "textMode": "auto"},
-      "targets": [{"expr": "up{job=\"aicontent-worker\"}", "refId": "A"}],
-      "title": "Worker available",
-      "type": "stat"
-    },
-    {
-      "datasource": {"type": "prometheus", "uid": "prometheus"},
       "fieldConfig": {"defaults": {"unit": "s"}},
       "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
       "id": 3,

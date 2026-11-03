@@ -50,11 +50,11 @@ SecondBrain đóng vai trò là kho tri thức (Knowledge Base) định hướng
 * **Bài học tích lũy (Feedback Loop)**: Ghi nhận phong cách video nào tạo ra tương tác cao để các lần sau Agent tự ưu tiên áp dụng.
 
 ### C. Tự động chọn bối cảnh tham khảo (Auto-Reference Matching)
-* Tận dụng kho dữ liệu quảng cáo xu hướng đã cào (`research_crawler`).
-* **Agent tự làm hoàn toàn**:
-  * Dựa trên danh mục sản phẩm (ví dụ: Đồ gia dụng phòng bếp, Mỹ phẩm dưỡng da, Thời trang công sở).
-  * Agent tự lọc và xếp hạng (Screening & Shortlist) các mẫu video/ảnh có bối cảnh đẹp, ánh sáng tốt và góc máy thuận lợi để ghép sản phẩm vào.
-  * Người dùng không phải tìm kiếm hay tích chọn thủ công từng tư liệu tham khảo.
+* Kho ảnh tham chiếu lấy từ Pinterest theo từ khóa của từng loại sản phẩm (trang References).
+* **Luồng hiện tại**:
+  * Chọn sản phẩm đã crawl từ TikTok Shop; LLM sinh loại sản phẩm và từ khóa tìm ảnh, người dùng duyệt từ khóa.
+  * Extension crawl Pinterest theo từ khóa đã duyệt; Gemini chấm từng ảnh, chỉ giữ cảnh thật có thể đặt sản phẩm vào (loại nền trắng trơn, infographic, nhiều chữ).
+  * Người dùng duyệt cuối các ảnh đã qua Gemini; ảnh được duyệt là tham chiếu bối cảnh cho bước brainstorm và tạo ảnh.
 
 ### D. Sinh Video ngắn liền mạch (30–60s Video Continuity)
 * **Kịch bản phân cảnh chuẩn bán hàng**:

@@ -18,17 +18,14 @@ $ComposeArguments = @("--project-name", $ProjectName, "--env-file", $Environment
 
 Push-Location $RepositoryRoot
 try {
-    docker compose @ComposeArguments up --detach postgres rabbitmq object-storage
+    docker compose @ComposeArguments up --detach postgres object-storage
     if ($LASTEXITCODE -ne 0) { throw "Could not start the clean restore dependencies." }
     docker compose @ComposeArguments --profile tools run --rm maintenance restore `
         --backup-set "/backups/$BackupName"
     if ($LASTEXITCODE -ne 0) { throw "Restore failed." }
     docker compose @ComposeArguments run --rm migrate
     if ($LASTEXITCODE -ne 0) { throw "Could not migrate the restored database." }
-    docker compose @ComposeArguments --profile tools run --rm maintenance recover-execution `
-        --backup-set "/backups/$BackupName"
-    if ($LASTEXITCODE -ne 0) { throw "Could not recover restored execution commands." }
-    docker compose @ComposeArguments up --detach api outbox-publisher worker
+    docker compose @ComposeArguments up --detach api
     if ($LASTEXITCODE -ne 0) { throw "Could not start the restored application." }
     docker compose @ComposeArguments --profile tools run --rm maintenance verify-http `
         --backup-set "/backups/$BackupName" `

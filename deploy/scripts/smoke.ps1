@@ -12,7 +12,7 @@ Push-Location $RepositoryRoot
 try {
     docker compose @ComposeArguments -f $ComposeFile up --build --detach
     docker compose @ComposeArguments -f $ComposeFile run --rm smoke
-    docker compose @ComposeArguments -f $ComposeFile restart worker api
+    docker compose @ComposeArguments -f $ComposeFile restart api
     docker compose @ComposeArguments -f $ComposeFile run --rm smoke
 }
 finally {

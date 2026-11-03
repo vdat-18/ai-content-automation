@@ -1,16 +1,7 @@
 services:
-  rabbitmq:
-    ports:
-      - "${AIC_DEBUG_BIND_ADDRESS:-127.0.0.1}:${AIC_DEBUG_RABBITMQ_PORT:-5672}:5672"
-      - "${AIC_DEBUG_BIND_ADDRESS:-127.0.0.1}:${AIC_DEBUG_RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
-
   api:
     ports:
       - "${AIC_DEBUG_BIND_ADDRESS:-127.0.0.1}:${AIC_DEBUG_API_PORT:-8000}:8000"
-
-  worker:
-    ports:
-      - "${AIC_DEBUG_BIND_ADDRESS:-127.0.0.1}:${AIC_DEBUG_WORKER_METRICS_PORT:-9464}:9464"
 
   object-storage:
     ports:

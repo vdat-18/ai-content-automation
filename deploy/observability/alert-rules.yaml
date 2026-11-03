@@ -2,7 +2,7 @@ groups:
   - name: aicontent-service-health
     rules:
       - alert: AicServiceDown
-        expr: up{job=~"aicontent-api|aicontent-worker"} == 0
+        expr: up{job="aicontent-api"} == 0
         for: 2m
         labels:
           severity: critical
@@ -32,25 +32,8 @@ groups:
           summary: "{{ $labels.dependency }} is unavailable"
           description: "The API readiness probe reports a failed runtime dependency."
 
-  - name: aicontent-workflow-health
+  - name: aicontent-artifact-health
     rules:
-      - alert: AicCommandQueueStalled
-        expr: aic_execution_oldest_active_command_age_seconds{queue="control"} > 300
-        for: 5m
-        labels:
-          severity: warning
-        annotations:
-          summary: "Control queue is stalled"
-          description: "The oldest active command has been queued for more than five minutes."
-
-      - alert: AicCommandFailures
-        expr: increase(aic_execution_attempts_total{outcome=~"permanent_error|unexpected_error"}[15m]) > 2
-        labels:
-          severity: warning
-        annotations:
-          summary: "Repeated command failures detected"
-          description: "More than two terminal or unexpected command errors occurred in 15 minutes."
-
       - alert: AicArtifactPublicationFailures
         expr: increase(aic_artifact_publications_total{outcome="failure"}[15m]) > 0
         labels:
@@ -77,64 +60,4 @@ groups:
         annotations:
           summary: "AI failure rate is above the pilot threshold"
           description: "{{ $labels.operation }} on {{ $labels.model }} has exceeded a 20% failure rate with at least five calls."
-          runbook_url: "docs/runbooks/AI_MODEL_INCIDENTS.md"
-
-      - alert: AicSemanticReviewerUnavailable
-        expr: increase(aic_ai_requests_total{operation="semantic_review",outcome="failure"}[15m]) > 2
-        for: 2m
-        labels:
-          severity: warning
-          owner: marketing-ai-operations
-          component: semantic-review
-        annotations:
-          summary: "Semantic reviewer is repeatedly unavailable"
-          description: "More than two complete semantic reviews failed in 15 minutes. Shadow mode must remain non-blocking."
-          runbook_url: "docs/runbooks/AI_MODEL_INCIDENTS.md"
-
-      - alert: AicSemanticUnknownRateHigh
-        expr: |
-          sum by (model) (increase(aic_ai_semantic_reviews_total{outcome="unknown"}[30m]))
-          /
-          clamp_min(sum by (model) (increase(aic_ai_semantic_reviews_total[30m])), 1)
-          > 0.25
-          and
-          sum by (model) (increase(aic_ai_semantic_reviews_total[30m])) >= 4
-        for: 10m
-        labels:
-          severity: warning
-          owner: marketing-ai-quality
-          component: semantic-review
-        annotations:
-          summary: "Semantic reviewer UNKNOWN rate is high"
-          description: "{{ $labels.model }} returned UNKNOWN for more than 25% of at least four reviews."
-          runbook_url: "docs/runbooks/AI_QUALITY_REGRESSION.md"
-
-      - alert: AicImageGenerationFailureBurst
-        expr: increase(aic_ai_requests_total{operation="image.generate",outcome="failure"}[15m]) > 2
-        for: 2m
-        labels:
-          severity: warning
-          owner: marketing-ai-operations
-          component: image-generation
-        annotations:
-          summary: "Image generation failures are repeating"
-          description: "More than two image generation attempts failed in 15 minutes."
-          runbook_url: "docs/runbooks/AI_MODEL_INCIDENTS.md"
-
-      - alert: AicAiInteractiveLatencyHigh
-        expr: |
-          histogram_quantile(
-            0.95,
-            sum by (le, operation, model) (
-              rate(aic_ai_request_duration_seconds_bucket{operation=~"preparation\\..*|semantic_review"}[15m])
-            )
-          ) > 120
-        for: 10m
-        labels:
-          severity: warning
-          owner: marketing-ai-operations
-          component: ai-runtime
-        annotations:
-          summary: "Interactive AI latency is above two minutes"
-          description: "P95 latency for {{ $labels.operation }} on {{ $labels.model }} exceeded the pilot threshold."
           runbook_url: "docs/runbooks/AI_MODEL_INCIDENTS.md"

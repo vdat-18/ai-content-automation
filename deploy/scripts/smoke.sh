@@ -14,5 +14,5 @@ fi
 cd "$repository_root"
 docker compose "$@" -f "$compose_file" up --build --detach
 docker compose "$@" -f "$compose_file" run --rm smoke
-docker compose "$@" -f "$compose_file" restart worker api
+docker compose "$@" -f "$compose_file" restart api
 docker compose "$@" -f "$compose_file" run --rm smoke

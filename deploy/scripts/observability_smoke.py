@@ -69,7 +69,7 @@ def _prometheus_targets_ready(base_url: str) -> bool:
         for target in targets
         if isinstance(target, dict) and isinstance(target.get("labels"), dict)
     }
-    return all(health_by_job.get(job) == "up" for job in ("aicontent-api", "aicontent-worker"))
+    return all(health_by_job.get(job) == "up" for job in ("aicontent-api",))
 
 
 def _prometheus_rules_loaded(base_url: str) -> bool:
@@ -119,7 +119,7 @@ def main() -> int:
     if "aic_ai_requests_total" not in metrics:
         raise ObservabilitySmokeFailure("AI operation metrics were not registered")
     _wait_for(
-        "Prometheus API and worker targets", lambda: _prometheus_targets_ready(args.prometheus_url)
+        "Prometheus API target", lambda: _prometheus_targets_ready(args.prometheus_url)
     )
     if not _prometheus_rules_loaded(args.prometheus_url):
         raise ObservabilitySmokeFailure("Prometheus alert rules were not loaded")

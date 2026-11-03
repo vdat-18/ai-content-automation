@@ -26,7 +26,7 @@ start: config && urls
 
 # Rebuild only the shared Python application image and recreate its services.
 rebuild-backend: config
-    {{ stack }} up -d --build migrate api outbox-publisher worker
+    {{ stack }} up -d --build migrate api
 
 # Rebuild only the Dashboard image and recreate its service.
 rebuild-frontend: config

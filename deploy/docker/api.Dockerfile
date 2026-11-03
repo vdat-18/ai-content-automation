@@ -22,23 +22,17 @@ FROM python:3.11.16-slim-bookworm AS runtime-base
 
 ENV AIC_AI_CONFIG_DIR=/app/config \
     AIC_AI_DATA_ROOT=/var/lib/aicontent/pilot \
-    PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
     PATH=/app/.venv/bin:$PATH \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
 WORKDIR /app
 
-RUN apt-get update \
-    && apt-get install --yes --no-install-recommends ffmpeg \
-    && rm -rf /var/lib/apt/lists/* \
-    && groupadd --gid 10001 aic \
+RUN groupadd --gid 10001 aic \
     && useradd --uid 10001 --gid 10001 --create-home --shell /usr/sbin/nologin aic \
     && mkdir -p /var/lib/aicontent/pilot/artifacts \
     && chown -R aic:aic /var/lib/aicontent
 
 COPY --from=builder-dependencies /app/.venv /app/.venv
-RUN /app/.venv/bin/python -m playwright install --with-deps chromium \
-    && chown -R aic:aic /ms-playwright
 
 FROM runtime-base AS runtime
 

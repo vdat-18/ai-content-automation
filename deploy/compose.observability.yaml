@@ -15,25 +15,6 @@ services:
       otel-collector:
         condition: service_healthy
 
-  worker:
-    environment:
-      AIC_AI_ENVIRONMENT: synthetic
-      AIC_AI_TRACING_ENABLED: "true"
-      AIC_AI_OTLP_TRACES_ENDPOINT: http://otel-collector:4318/v1/traces
-      AIC_AI_TRACE_SAMPLE_RATIO: ${AIC_AI_TRACE_SAMPLE_RATIO:-1}
-      AIC_AI_METRICS_ENABLED: "true"
-      AIC_AI_METRICS_PORT: "9464"
-      AIC_AI_LOG_FORMAT: json
-      AIC_AI_AI_TELEMETRY_ENABLED: ${AIC_AI_AI_TELEMETRY_ENABLED:-true}
-      AIC_AI_LANGFUSE_OTLP_ENDPOINT: ${AIC_AI_LANGFUSE_OTLP_ENDPOINT:-}
-      AIC_AI_LANGFUSE_PUBLIC_KEY: ${AIC_AI_LANGFUSE_PUBLIC_KEY:-}
-      AIC_AI_LANGFUSE_SECRET_KEY: ${AIC_AI_LANGFUSE_SECRET_KEY:-}
-    expose:
-      - "9464"
-    depends_on:
-      otel-collector:
-        condition: service_healthy
-
   tempo:
     image: grafana/tempo:2.9.0@sha256:65a5789759435f1ef696f1953258b9bbdb18eb571d5ce711ff812d2e128288a4
     command: ["-config.file=/etc/tempo/tempo.yaml"]
@@ -124,8 +105,6 @@ services:
     depends_on:
       api:
         condition: service_healthy
-      worker:
-        condition: service_started
       alertmanager:
         condition: service_healthy
     security_opt:

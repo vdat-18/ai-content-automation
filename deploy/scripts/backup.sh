@@ -15,10 +15,9 @@ fi
 cd "$repository_root"
 restart_application() {
   docker compose --env-file "$environment_file" -f "$compose_file" \
-    start outbox-publisher worker api frontend
+    start api frontend
 }
 docker compose --env-file "$environment_file" -f "$compose_file" stop frontend api
-docker compose --env-file "$environment_file" -f "$compose_file" stop outbox-publisher worker
 trap restart_application EXIT
 docker compose --env-file "$environment_file" -f "$compose_file" --profile tools run --rm maintenance create \
   --destination /backups \

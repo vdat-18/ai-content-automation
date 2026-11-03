@@ -16,15 +16,6 @@ services:
       - ../src:/app/src:ro
       - ../config:/app/config:ro
 
-  worker:
-    environment:
-      PYTHONPATH: /app/src
-    healthcheck:
-      timeout: 30s
-    volumes:
-      - ../src:/app/src:ro
-      - ../config:/app/config:ro
-
   frontend:
     build:
       target: development

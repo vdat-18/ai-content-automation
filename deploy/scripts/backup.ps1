@@ -12,8 +12,6 @@ Push-Location $RepositoryRoot
 try {
     docker compose @ComposeArguments stop frontend api
     if ($LASTEXITCODE -ne 0) { throw "Could not stop frontend and API." }
-    docker compose @ComposeArguments stop outbox-publisher worker
-    if ($LASTEXITCODE -ne 0) { throw "Could not stop outbox publisher and worker." }
     docker compose @ComposeArguments --profile tools run --rm maintenance create `
         --destination /backups `
         --backup-id $BackupId `
@@ -22,7 +20,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "Backup creation failed." }
 }
 finally {
-    docker compose @ComposeArguments start outbox-publisher worker api frontend
+    docker compose @ComposeArguments start api frontend
     if ($LASTEXITCODE -ne 0) { Write-Error "Could not restart the application stack." }
     Pop-Location
 }
