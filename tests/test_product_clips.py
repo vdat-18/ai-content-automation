@@ -9,7 +9,6 @@ from ai_content.domains.marketing.products.clips import (
     JobState,
     StitchUnavailable,
     VideoClient,
-    clip_seconds,
     stitch,
 )
 from ai_content.domains.marketing.products.repositories import SqliteProductRepository
@@ -66,17 +65,13 @@ async def _service(tmp_path, video) -> ProductCatalogService:
     return service
 
 
-def test_clip_length_is_the_shortest_that_covers_the_shot() -> None:
-    assert [clip_seconds(n) for n in (None, 3, 6, 7, 15, 30)] == [6, 6, 6, 15, 15, 15]
-
-
 async def test_only_approved_keyframes_start_jobs_and_finished_ones_are_downloaded(
     tmp_path,
 ) -> None:
     video = _FakeVideo()
     service = await _service(tmp_path, video)
     [clip] = await service.generate_clips(PRODUCT_ID, tmp_path)
-    assert (clip["shot_index"], clip["status"], clip["seconds"]) == (0, "processing", 6)
+    assert (clip["shot_index"], clip["status"], clip["seconds"]) == (0, "processing", 15)
     assert video.submitted[0][0].startswith("push in")
 
     with pytest.raises(KeyframeUnavailable, match="No approved keyframe"):
@@ -150,9 +145,9 @@ async def test_video_client_submits_polls_and_downloads() -> None:
         )
 
     client = _client(handler)
-    assert await client.submit("p", b"\x89PNG....", 6) == ("v1", "xai/model")
+    assert await client.submit("p", b"\x89PNG....", 15) == ("v1", "xai/model")
     body = seen[0].content.decode()
-    assert '"seconds":6' in body and '"size":"9:16"' in body and "data:image/png" in body
+    assert '"seconds":15' in body and '"size":"9:16"' in body and "data:image/png" in body
     state = await client.status("v1", "xai/model")
     assert (state.status, state.video_url) == (
         "completed",

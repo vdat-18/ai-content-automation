@@ -26,7 +26,7 @@ PIN = {"image_url": "https://i.pinimg.com/236x/ab/cd/ef.jpg", "pin_url": "/pin/1
 
 
 class _FakeWriter:
-    async def write(self, product, user_idea, references):
+    async def write(self, product, user_idea, references, shot_count=1):
         return {
             "title": "Brief",
             "scene": "Phòng giặt",
@@ -93,7 +93,9 @@ class _FakeBamlClient:
         self.fail = fail
         self.seen: list[tuple[int, int]] = []
 
-    async def DraftContentBrief(self, product_json, user_idea, product_images, references):
+    async def DraftContentBrief(
+        self, product_json, user_idea, shot_count, product_images, references
+    ):
         if self.fail:
             raise BamlClientError("503", "503", "503")
         self.seen.append((len(product_images), len(references)))
@@ -161,7 +163,7 @@ class _CapturingWriter:
     def __init__(self) -> None:
         self.references: list[dict] = []
 
-    async def write(self, product, user_idea, references):
+    async def write(self, product, user_idea, references, shot_count=1):
         self.references = references
         return {"title": "T", "selected_reference_ids": []}
 
@@ -204,3 +206,21 @@ def test_reference_note_prefers_the_description() -> None:
     assert _note({"screening": {"description": "d", "scene_description": "old"}}) == "d"
     assert _note({"screening": {"scene_description": "old", "placement_note": "p"}}) == "old p"
     assert _note({}) == ""
+
+
+async def test_video_length_sets_the_shot_count_in_whole_clips(tmp_path) -> None:
+    seen: list[int] = []
+
+    class _Counting(_FakeWriter):
+        async def write(self, product, user_idea, references, shot_count=1):
+            seen.append(shot_count)
+            return await super().write(product, user_idea, references)
+
+    service = await _service(tmp_path, _Counting())
+    await service._repository.select_product(PRODUCT_ID, "áo thun")
+    await _make_reference_live(service)
+    await service.create_brief(PRODUCT_ID)
+    await service.create_brief(PRODUCT_ID, video_seconds=60)
+    assert seen == [1, 4]
+    with pytest.raises(BriefUnavailable, match="Video length"):
+        await service.create_brief(PRODUCT_ID, video_seconds=20)

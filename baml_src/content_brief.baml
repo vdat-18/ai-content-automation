@@ -30,6 +30,7 @@ class ContentBrief {
 function DraftContentBrief(
   product_json: string,
   user_idea: string,
+  shot_count: int,
   product_images: image[],
   references: LabeledReferenceImage[]
 ) -> ContentBrief {
@@ -46,8 +47,8 @@ function DraftContentBrief(
     recreate in scene and say exactly where and how the product sits in product_placement. Never
     copy a reference literally and never reuse another brand's product, logo or text from it.
 
-    The brief is a storyboard for one short vertical ad video made of 4 to 6 shots. Every shot is
-    first made as a still keyframe image and later animated, so all shots must happen in the
+    The brief is a storyboard for one vertical ad video made of exactly {{ shot_count }} shot(s).
+    Every shot is first made as a still keyframe image and later animated into a 15 second clip, so all shots must happen in the
     same scene (same place, light and color) and show the same real product. Do not show human
     faces; hands, the product and the space are enough.
 
@@ -61,12 +62,15 @@ function DraftContentBrief(
     and why, in Vietnamese. style: up to 4 short words. colors: up to 4 color names. title: a
     short Vietnamese name for the brief.
 
-    shots: 4 to 6 shots in story order, the first a hook and the last a call_to_action, 3 to 8
-    seconds each. For every shot: description (Vietnamese, what the viewer sees), keyframe_prompt
+    shots: exactly {{ shot_count }} shot(s) in story order, each lasting 15 seconds, so
+    duration_seconds is always 15. The first shot opens with a hook and the last ends with a
+    call_to_action; when there is only one shot it does both, hooking in the first seconds and
+    ending on the call to action. For every shot: description (Vietnamese, what the viewer sees), keyframe_prompt
     (a complete, self-contained English prompt for an image model: the real product as the clear
     hero, the shared scene, camera angle, lighting, style and colors, and an explicit instruction
     that the product keeps its real shape, color, proportions and label), motion_prompt (English,
-    one short sentence of camera or object movement for animating the keyframe),
+    two or three sentences describing how the camera or objects move over the 15 seconds, one
+    continuous gentle movement without cuts, for animating the keyframe),
     duration_seconds, on_screen_text (a short Vietnamese caption, or an empty string) and
     voiceover (one Vietnamese sentence).
 

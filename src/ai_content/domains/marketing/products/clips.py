@@ -12,7 +12,7 @@ from urllib.parse import quote
 import httpx
 from loguru import logger
 
-CLIP_SECONDS = (6, 15)
+CLIP_SECONDS = 15
 ASPECT = "9:16"
 _TIMEOUT = 120
 _OUTPUT_SIZE = "720:1280"
@@ -32,14 +32,6 @@ class JobState:
     status: str
     error: str | None = None
     video_url: str | None = None
-
-
-def clip_seconds(duration: int | float | None) -> int:
-    """Pick the shortest supported clip length that covers the shot duration."""
-    for seconds in CLIP_SECONDS:
-        if (duration or 0) <= seconds:
-            return seconds
-    return CLIP_SECONDS[-1]
 
 
 def _media_type(content: bytes) -> str:

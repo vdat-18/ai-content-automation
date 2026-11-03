@@ -106,9 +106,10 @@ function BriefCard({
 }) {
   const client = useQueryClient();
   const [idea, setIdea] = useState(record?.user_idea ?? "");
+  const [videoSeconds, setVideoSeconds] = useState(15);
   const refresh = () => client.invalidateQueries({ queryKey: ["briefs"] });
   const create = useMutation({
-    mutationFn: () => postJson<BriefRecord>(`${API}/${productId}/brief`, { idea }),
+    mutationFn: () => postJson<BriefRecord>(`${API}/${productId}/brief`, { idea, video_seconds: videoSeconds }),
     onSuccess: refresh,
   });
   const save = useMutation({
@@ -130,6 +131,14 @@ function BriefCard({
       <label className="brief-field">
         <span>{t("Your idea (optional)")}</span>
         <textarea rows={2} value={idea} onChange={(event) => setIdea(event.target.value)} placeholder={t("e.g. sunny balcony, tidy feeling for small apartments")} />
+      </label>
+      <label className="brief-field">
+        <span>{t("Video length (each shot is one 15 second clip)")}</span>
+        <select value={videoSeconds} onChange={(event) => setVideoSeconds(Number(event.target.value))}>
+          {[15, 30, 45, 60].map((seconds) => (
+            <option key={seconds} value={seconds}>{`${seconds}s · ${seconds / 15} ${seconds === 15 ? t("shot") : t("shots")}`}</option>
+          ))}
+        </select>
       </label>
       <div className="brief-actions">
         <button className="primary-button" disabled={create.isPending || !productType} onClick={() => create.mutate()}>

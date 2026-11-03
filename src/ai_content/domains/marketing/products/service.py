@@ -13,10 +13,10 @@ from openpyxl.styles import Font
 
 from .briefing import MAX_REFERENCES, BriefUnavailable, ContentBriefWriter
 from .clips import (
+    CLIP_SECONDS,
     ClipGenerationError,
     StitchUnavailable,
     VideoClient,
-    clip_seconds,
     stitch,
 )
 from .embedding import ImageEmbedder, cosine, dhash, download_images, hamming
@@ -40,6 +40,7 @@ _SCREEN_BATCH = 200
 DUPLICATE_COSINE = 0.90
 DUPLICATE_HAMMING = 4
 MAX_KEYFRAME_FIXES = 2
+VIDEO_LENGTHS = (15, 30, 45, 60)
 KEYFRAME_REVIEW_STATUSES = frozenset({"approved", "ready", "rejected"})
 BRIEF_FIELDS = (
     "title",
@@ -257,8 +258,15 @@ class ProductCatalogService:
             counts["usable" if usable else "rejected"] += 1
         return counts
 
-    async def create_brief(self, product_id: str, user_idea: str = "") -> dict[str, Any] | None:
-        """Draft one brief for a selected product from varied live reference scenes."""
+    async def create_brief(
+        self, product_id: str, user_idea: str = "", video_seconds: int = CLIP_SECONDS
+    ) -> dict[str, Any] | None:
+        """Draft one brief for a selected product from varied live reference scenes.
+
+        Every shot becomes one 15 second clip, so the video length sets the number of shots.
+        """
+        if video_seconds not in VIDEO_LENGTHS:
+            raise BriefUnavailable(f"Video length must be one of {list(VIDEO_LENGTHS)} seconds")
         detail = await self._repository.get_detail(product_id)
         if detail is None:
             return None
@@ -281,7 +289,9 @@ class ProductCatalogService:
             raise BriefUnavailable(
                 f"No usable reference image of type '{product_type}' yet; crawl Pinterest first"
             )
-        brief = await self._briefer.write(detail, user_idea, references)
+        brief = await self._briefer.write(
+            detail, user_idea, references, shot_count=video_seconds // CLIP_SECONDS
+        )
         await self._repository.save_brief(product_id, user_idea.strip(), brief, "draft")
         return await self._repository.get_brief(product_id)
 
@@ -516,7 +526,7 @@ class ProductCatalogService:
         media_root: Path,
     ) -> None:
         assert self._videographer is not None
-        seconds = clip_seconds(shot.get("duration_seconds"))
+        seconds = CLIP_SECONDS
         clip = {
             "product_id": product_id,
             "shot_index": index,

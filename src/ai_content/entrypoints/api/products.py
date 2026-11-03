@@ -142,6 +142,7 @@ async def remove_reference_image(
 
 class BriefRequest(BaseModel):
     idea: str = ""
+    video_seconds: Literal[15, 30, 45, 60] = 15
 
 
 class BriefUpdate(BaseModel):
@@ -163,7 +164,7 @@ async def create_brief(
     service: ProductCatalogService = Depends(get_product_catalog_service),
 ) -> dict[str, Any]:
     try:
-        record = await service.create_brief(product_id, body.idea)
+        record = await service.create_brief(product_id, body.idea, body.video_seconds)
     except BriefUnavailable as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
     except (BriefGenerationError, ProfileGenerationError) as error:

@@ -35,6 +35,7 @@ class _BamlBriefClient(Protocol):
         self,
         product_json: str,
         user_idea: str,
+        shot_count: int,
         product_images: list[BamlImage],
         references: list[baml_types.LabeledReferenceImage],
     ) -> baml_types.ContentBrief: ...
@@ -89,6 +90,7 @@ class ContentBriefWriter:
         user_idea: str,
         references: list[dict[str, Any]],
         http: httpx.AsyncClient | None = None,
+        shot_count: int = 1,
     ) -> dict[str, Any]:
         """Return the brief as a dict; selected references are reported as image ids."""
         semaphore = asyncio.Semaphore(_CONCURRENCY)
@@ -141,6 +143,7 @@ class ContentBriefWriter:
             draft = await self._client.DraftContentBrief(
                 json.dumps(product_facts(product), ensure_ascii=False),
                 user_idea.strip(),
+                shot_count,
                 photos,
                 [item[2] for item in loaded],
             )
