@@ -61,11 +61,12 @@ function ReferenceProfiles() {
           <div className="reference-profile__head">
             <strong>{profile.product_type}</strong>
             <span className={`badge badge--${profile.status === "approved" ? "success" : "warning"}`}>{profile.status}</span>
+            <span className="reference-profile__count">{`${profile.keywords.length} ${t("keywords")}`}</span>
           </div>
           <div className="reference-profile__fields">
             <label>
               <span>{t("Keywords (one per line)")}</span>
-              <textarea name="keywords" rows={5} defaultValue={profile.keywords.join("\n")} />
+              <textarea name="keywords" rows={Math.min(Math.max(profile.keywords.length + 1, 4), 9)} defaultValue={profile.keywords.join("\n")} />
             </label>
           </div>
           <div className="reference-profile__actions">
@@ -112,23 +113,24 @@ function ReferenceImages() {
           <h2>{t("Reference images")}</h2>
           <p>{t("Images crawled from Pinterest that Gemini accepted as scenes to borrow, newest first. Remove the ones you do not want.")}</p>
         </div>
-        <div>
-          <button className="secondary-button" disabled={screen.isPending} onClick={() => screen.mutate()}>
+        <div className="reference-review">
+          <button className="primary-button" disabled={screen.isPending || !pending.data?.length} onClick={() => screen.mutate()}>
             {screen.isPending ? t("Reviewing…") : `${t("Review pending")} (${pending.data?.length ?? 0})`}
-          </button>{" "}
-          <span>{images.data?.length ?? 0}</span>
+          </button>
         </div>
       </div>
       {screen.data && <p role="status">{`${t("Reviewed")} ${screen.data.reviewed} · ${t("usable")} ${screen.data.usable} · ${t("rejected")} ${screen.data.rejected} · ${t("failed")} ${screen.data.failed}`}</p>}
       {screen.error && <p role="alert">{screen.error.message}</p>}
       <div className="products-filters">
-        <label>{t("Product type")}{" "}
+        <label className="pf-field">
+          <span>{t("Product type")}</span>
           <select value={productType} onChange={(event) => setProductType(event.target.value)}>
             <option value="">{t("All")}</option>
             {profiles.data.map((profile) => <option key={profile.product_type} value={profile.product_type}>{profile.product_type}</option>)}
           </select>
         </label>
-        <label>{t("Status")}{" "}
+        <label className="pf-field">
+          <span>{t("Status")}</span>
           <select value={status} onChange={(event) => setStatus(event.target.value)}>
             <option value="live">{t("Live")}</option>
             <option value="rejected">{t("Rejected by Gemini")}</option>
@@ -137,6 +139,7 @@ function ReferenceImages() {
             <option value="">{t("All")}</option>
           </select>
         </label>
+        <span className="pf-count">{`${images.data?.length ?? 0} ${t("images")}`}</span>
       </div>
       {images.data?.length ? (
         <div className="reference-grid">
@@ -146,14 +149,14 @@ function ReferenceImages() {
                 <img src={image.image_url} alt={image.title} loading="lazy" referrerPolicy="no-referrer" />
               </a>
               <figcaption>
-                <small>{image.query}</small>
+                <span className="reference-card__query">{image.query}</span>
                 {image.screening && (
                   <small title={image.screening.description ?? image.screening.scene_description}>
                     {`${image.screening.usable ? "" : "✕ "}${image.screening.description ?? image.screening.scene_description ?? ""}`}
                   </small>
                 )}
                 <div>
-                  <button className="secondary-button" disabled={remove.isPending || image.status === "removed"} onClick={() => remove.mutate(image.image_id)}>{t("Remove")}</button>
+                  <button type="button" className="pt-button" disabled={remove.isPending || image.status === "removed"} onClick={() => remove.mutate(image.image_id)}>{t("Remove")}</button>
                 </div>
               </figcaption>
             </figure>

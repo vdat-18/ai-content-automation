@@ -1035,18 +1035,39 @@ body.column-resizing * { cursor: col-resize !important; user-select: none !impor
 .products-table small { display: block; color: var(--muted); margin-top: 2px; }
 .products-table img { object-fit: cover; border-radius: 8px; border: 1px solid var(--line); }
 
-.reference-profile { border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 14px; display: grid; gap: 12px; }
-.reference-profile__head { display: flex; align-items: center; gap: 10px; text-transform: capitalize; }
+.reference-profile {
+  border: 1px solid var(--line); border-radius: 14px; padding: 16px 18px; margin-bottom: 14px;
+  display: grid; gap: 12px; background: var(--paper); box-shadow: var(--shadow-xs);
+}
+.reference-profile__head { display: flex; align-items: center; gap: 10px; text-transform: capitalize; font-size: 15px; }
+.reference-profile__count { margin-left: auto; color: var(--muted); font-size: 12px; font-weight: 600; text-transform: none; }
 .reference-profile__fields { display: grid; gap: 14px; }
-.reference-profile__fields label { display: grid; gap: 6px; font-size: var(--text-xs); color: var(--muted); }
-.reference-profile__fields textarea { width: 100%; resize: vertical; font: inherit; color: var(--text, inherit); padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.reference-profile__fields label { display: grid; gap: 6px; font-size: var(--text-xs); color: var(--muted); font-weight: 600; }
+.reference-profile__fields textarea {
+  width: 100%; resize: vertical; font: inherit; font-size: 13px; line-height: 1.7; font-weight: 400;
+  color: var(--ink); padding: 10px 12px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--surface-soft);
+}
+.reference-profile__fields textarea:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 1px; background: var(--paper); }
 .reference-profile__actions { display: flex; justify-content: flex-end; }
+.reference-review { display: flex; align-items: center; gap: 10px; }
 
-.reference-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
-.reference-card { margin: 0; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--surface); display: grid; }
-.reference-card img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; display: block; }
-.reference-card figcaption { display: grid; gap: 6px; padding: 8px; }
-.reference-card figcaption small { color: var(--muted); }
+.reference-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; }
+.reference-card {
+  margin: 0; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: var(--paper);
+  display: grid; align-content: start; transition: box-shadow .15s, transform .15s;
+}
+.reference-card:hover { box-shadow: var(--shadow-sm); transform: translateY(-2px); }
+.reference-card img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; display: block; background: var(--surface); }
+.reference-card figcaption { display: grid; gap: 6px; padding: 10px; }
+.reference-card figcaption small {
+  color: var(--muted); font-size: 12px; line-height: 1.4;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+}
+.reference-card__query {
+  justify-self: start; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  padding: 2px 8px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line);
+  color: var(--muted); font-size: 11px; font-weight: 600;
+}
 .reference-card figcaption div { display: flex; gap: 6px; }
 
 .brief-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
@@ -1115,3 +1136,5 @@ body.column-resizing * { cursor: col-resize !important; user-select: none !impor
 .pt-spin { animation: pt-rotate 1s linear infinite; }
 @keyframes pt-rotate { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .pt-spin { animation: none; } }
+
+.panel-header .reference-review { margin-left: auto; flex: none; }
