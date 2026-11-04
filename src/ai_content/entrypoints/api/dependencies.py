@@ -56,6 +56,10 @@ class ApiRuntimeSettings:
     video_base_url: str = ""
     video_api_key: str | None = None
     video_model: str = ""
+    tts_base_url: str = ""
+    tts_api_key: str | None = None
+    tts_model: str = ""
+    tts_voice: str = ""
     database_backend: Literal["sqlite", "postgresql"] = "sqlite"
     database_url: str | None = None
 
@@ -86,6 +90,13 @@ def get_runtime_settings() -> ApiRuntimeSettings:
         or application.screening_base_url,
         video_api_key=application.video_api_key_value,
         video_model=application.video_model,
+        tts_base_url=application.tts_base_url
+        or application.video_base_url
+        or application.image_base_url
+        or application.screening_base_url,
+        tts_api_key=application.tts_api_key_value,
+        tts_model=application.tts_model,
+        tts_voice=application.tts_voice,
         database_backend=application.database_backend,
         database_url=(
             application.database_url.get_secret_value() if application.database_url else None

@@ -32,6 +32,10 @@ class ApplicationSettings(BaseSettings):
     video_base_url: str = Field("", validation_alias="AIC_VIDEO_BASE_URL")
     video_api_key: SecretStr | None = Field(None, validation_alias="AIC_VIDEO_API_KEY")
     video_model: str = Field("", validation_alias="AIC_VIDEO_MODEL")
+    tts_base_url: str = Field("", validation_alias="AIC_TTS_BASE_URL")
+    tts_api_key: SecretStr | None = Field(None, validation_alias="AIC_TTS_API_KEY")
+    tts_model: str = Field("", validation_alias="AIC_TTS_MODEL")
+    tts_voice: str = Field("", validation_alias="AIC_TTS_VOICE")
 
     # Local ONNX image embedding used to drop duplicate references; empty disables it.
     embedding_model: str = Field("dinov3-vits16", validation_alias="AIC_EMBEDDING_MODEL")
@@ -123,6 +127,11 @@ class ApplicationSettings(BaseSettings):
     @property
     def video_api_key_value(self) -> str | None:
         key = self.video_api_key or self.image_api_key or self.screening_api_key
+        return key.get_secret_value() if key else None
+
+    @property
+    def tts_api_key_value(self) -> str | None:
+        key = self.tts_api_key or self.video_api_key or self.image_api_key or self.screening_api_key
         return key.get_secret_value() if key else None
 
     def object_storage(self) -> ObjectStorageSettings:
