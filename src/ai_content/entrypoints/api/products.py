@@ -372,7 +372,11 @@ async def build_video(
 
 @router.get("/{product_id}/video-info")
 async def video_info(product_id: str) -> dict[str, bool]:
-    return {"exists": (_media_root() / "videos" / product_id / "video.mp4").is_file()}
+    folder = _media_root() / "videos" / product_id
+    return {
+        "exists": (folder / "video.mp4").is_file(),
+        "voiceover": any(folder.glob("voiceover.*")),
+    }
 
 
 @router.get("/{product_id}/video")
@@ -473,3 +477,32 @@ async def persona_image(
     if path is None or not path.is_file():
         raise HTTPException(status_code=404, detail="No person portrait yet")
     return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "no-cache"})
+
+
+@router.post("/{product_id}/voiceover")
+async def make_voiceover_track(
+    product_id: str,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> dict[str, Any]:
+    """Read every approved shot's voice-over with the text-to-speech model."""
+    try:
+        result = await service.create_voiceover(product_id, _media_root())
+    except KeyframeUnavailable as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    if result is None:
+        raise HTTPException(status_code=404, detail="No brief for this product")
+    return result
+
+
+@router.get("/{product_id}/voiceover")
+async def voiceover_audio(product_id: str) -> FileResponse:
+    folder = _media_root() / "videos" / product_id
+    for extension, media_type in (
+        ("mp3", "audio/mpeg"),
+        ("wav", "audio/wav"),
+        ("m4a", "audio/mp4"),
+    ):
+        path = folder / f"voiceover.{extension}"
+        if path.is_file():
+            return FileResponse(path, media_type=media_type, headers={"Cache-Control": "no-cache"})
+    raise HTTPException(status_code=404, detail="No voice-over yet")

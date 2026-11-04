@@ -119,6 +119,11 @@ async def _run(*args: str, cwd: Path | None = None) -> None:
         raise StitchUnavailable("ffmpeg could not process the clips")
 
 
+def shot_seconds(duration: float) -> float:
+    """Length a shot has in the stitched video once its first and last frames are trimmed."""
+    return max(0.5, duration - 2 * TRIM_SECONDS)
+
+
 @dataclass(frozen=True)
 class StitchClip:
     path: Path
@@ -163,7 +168,7 @@ async def stitch(clips: list[StitchClip], output: Path, voiceover: Path | None =
         for index, clip in enumerate(clips):
             part = output.parent / f"part_{index}.mp4"
             scratch.append(part)
-            seconds = max(0.5, clip.duration - 2 * TRIM_SECONDS)
+            seconds = shot_seconds(clip.duration)
             filters = (
                 f"scale={_OUTPUT_SIZE}:force_original_aspect_ratio=increase,"
                 f"crop={_OUTPUT_SIZE},setsar=1,fps={_FPS}"

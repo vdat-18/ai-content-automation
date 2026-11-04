@@ -29,6 +29,7 @@ from ai_content.domains.marketing.products.posting import PostingPackageWriter
 from ai_content.domains.marketing.products.references import ReferenceProfileGenerator
 from ai_content.domains.marketing.products.repositories import SqliteProductRepository
 from ai_content.domains.marketing.products.service import ProductCatalogService
+from ai_content.domains.marketing.products.speech import SpeechClient
 from ai_content.entrypoints.postgres_runtime import PostgresRuntimeContainer
 from ai_content.platform.ai_usage import AIUsageRepository, SqliteAIUsageRepository
 from ai_content.platform.database import Database
@@ -255,6 +256,17 @@ def _video_client(settings: ApiRuntimeSettings) -> VideoClient | None:
     )
 
 
+def _speech_client(settings: ApiRuntimeSettings) -> SpeechClient | None:
+    if not (settings.tts_api_key and settings.tts_model):
+        return None
+    return SpeechClient(
+        base_url=settings.tts_base_url,
+        api_key=settings.tts_api_key,
+        model=settings.tts_model,
+        voice=settings.tts_voice,
+    )
+
+
 def _posting_writer(settings: ApiRuntimeSettings) -> PostingPackageWriter | None:
     if not settings.screening_api_key:
         return None
@@ -310,6 +322,7 @@ async def get_product_catalog_service(request: Request) -> AsyncIterator[Product
             _keyframe_checker(settings),
             _video_client(settings),
             _posting_writer(settings),
+            _speech_client(settings),
         )
         return
     repository = SqliteProductRepository(settings.db_path)
@@ -324,6 +337,7 @@ async def get_product_catalog_service(request: Request) -> AsyncIterator[Product
             _keyframe_checker(settings),
             _video_client(settings),
             _posting_writer(settings),
+            _speech_client(settings),
         )
     finally:
         repository.close()

@@ -273,11 +273,23 @@ function Keyframes({ productId, shots, postPackage, persona, t }: { productId: s
   const [videoVersion, setVideoVersion] = useState(0);
   const videoInfo = useQuery({
     queryKey: ["video-info", productId],
-    queryFn: ({ signal }) => getJson<{ exists: boolean }>(`${API}/${productId}/video-info`, signal),
+    queryFn: ({ signal }) => getJson<{ exists: boolean; voiceover: boolean }>(`${API}/${productId}/video-info`, signal),
   });
   const hasVideo = videoVersion > 0 || !!videoInfo.data?.exists;
+  const makeVoice = useMutation({
+    mutationFn: () => postJson<{ seconds: number[]; too_long_shots: number[] }>(`${API}/${productId}/voiceover`),
+    onSuccess: () => {
+      setVoiceVersion((version) => version + 1);
+      client.invalidateQueries({ queryKey: ["video-info", productId] });
+    },
+  });
+  const [voiceVersion, setVoiceVersion] = useState(0);
   const uploadVoice = useMutation({
     mutationFn: (file: File) => putFile<{ voiceover: string }>(`${API}/${productId}/voiceover`, file),
+    onSuccess: () => {
+      setVoiceVersion((version) => version + 1);
+      client.invalidateQueries({ queryKey: ["video-info", productId] });
+    },
   });
   const stitchVideo = useMutation({
     mutationFn: () => postJson<{ video: string }>(`${API}/${productId}/video`),
@@ -351,8 +363,16 @@ function Keyframes({ productId, shots, postPackage, persona, t }: { productId: s
           {stitchVideo.isPending ? t("Stitching…") : t("Stitch final video")}
         </button>
       </div>
+      <div className="brief-actions">
+        <button className="secondary-button" disabled={makeVoice.isPending || approvedShots === 0} onClick={() => makeVoice.mutate()}>
+          {makeVoice.isPending ? t("Reading…") : t("Read the voice-over")}
+        </button>
+      </div>
+      {makeVoice.error && <p role="alert">{makeVoice.error.message}</p>}
+      {!!makeVoice.data?.too_long_shots.length && <p role="alert">{`${t("These shots have more words than fit in 15 seconds; shorten their voice-over:")} ${makeVoice.data.too_long_shots.join(", ")}`}</p>}
+      {videoInfo.data?.voiceover && <audio controls src={`${API}/${productId}/voiceover?v=${voiceVersion}`} />}
       <label className="brief-field">
-        <span>{t("Voice-over file (mp3, wav or m4a), laid over the video the next time you stitch")}</span>
+        <span>{t("Or upload your own voice-over file (mp3, wav or m4a). It is laid over the video the next time you stitch")}</span>
         <input type="file" accept="audio/mpeg,audio/wav,audio/mp4" onChange={(event) => { const file = event.target.files?.[0]; if (file) uploadVoice.mutate(file); }} />
       </label>
       {uploadVoice.isSuccess && <p>{t("Voice-over saved. Stitch the video again to use it.")}</p>}

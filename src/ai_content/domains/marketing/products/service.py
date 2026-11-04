@@ -23,6 +23,7 @@ from .clips import (
     StitchClip,
     StitchUnavailable,
     VideoClient,
+    shot_seconds,
     stitch,
 )
 from .compliance import AI_LABEL_REMINDER, brief_warnings, package_warnings
@@ -42,6 +43,7 @@ from .parsing import (
 from .posting import PostingPackageWriter
 from .references import ProfileGenerationError, ReferenceProfile, ReferenceProfileGenerator
 from .repositories import ProductRepository
+from .speech import SpeechClient, SpeechError, make_voiceover
 
 _PINTEREST_SEARCH = "https://www.pinterest.com/search/pins/?q="
 _SCREEN_BATCH = 200
@@ -144,6 +146,7 @@ class ProductCatalogService:
         checker: KeyframeChecker | None = None,
         videographer: VideoClient | None = None,
         poster: PostingPackageWriter | None = None,
+        speaker: SpeechClient | None = None,
     ) -> None:
         self._repository = repository
         self._generator = generator
@@ -154,6 +157,7 @@ class ProductCatalogService:
         self._checker = checker
         self._videographer = videographer
         self._poster = poster
+        self._speaker = speaker
 
     async def ingest(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Store whatever a captured page or feed response contains."""
@@ -673,6 +677,49 @@ class ProductCatalogService:
         brief = {**record["brief"], "post_package": package}
         await self._repository.save_brief(product_id, record["user_idea"], brief, record["status"])
         return package
+
+    async def create_voiceover(self, product_id: str, media_root: Path) -> dict[str, Any] | None:
+        """Read each approved shot's voice-over so its words start with the shot."""
+        record = await self._repository.get_brief(product_id)
+        if record is None:
+            return None
+        if self._speaker is None:
+            raise KeyframeUnavailable("Text-to-speech is not configured (AIC_TTS_MODEL)")
+        keyframes = {k["shot_index"]: k for k in await self._repository.list_keyframes(product_id)}
+        shots = [
+            shot
+            for index, shot in enumerate(record["brief"].get("shots") or [])
+            if keyframes.get(index, {}).get("status") == "approved"
+        ]
+        if not shots:
+            raise KeyframeUnavailable("Approve at least one keyframe first")
+        segments = [
+            (
+                str(shot.get("voiceover") or ""),
+                shot_seconds(
+                    min(float(shot.get("duration_seconds") or CLIP_SECONDS), CLIP_SECONDS)
+                ),
+            )
+            for shot in shots
+        ]
+        folder = Path(media_root) / "videos" / product_id
+        folder.mkdir(parents=True, exist_ok=True)
+        for old in folder.glob("voiceover.*"):
+            old.unlink()
+        try:
+            lengths = await make_voiceover(self._speaker, segments, folder / "voiceover.mp3")
+        except SpeechError as error:
+            raise KeyframeUnavailable(f"The voice-over could not be made: {error}") from error
+        too_long = [
+            i + 1
+            for i, (n, (_, limit)) in enumerate(zip(lengths, segments, strict=True))
+            if n > limit * 1.25
+        ]
+        return {
+            "voiceover": "mp3",
+            "seconds": [round(n, 1) for n in lengths],
+            "too_long_shots": too_long,
+        }
 
     async def build_video(self, product_id: str, media_root: Path) -> str | None:
         """Stitch the ready clips of approved shots, in story order, into one mp4."""
