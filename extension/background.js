@@ -127,7 +127,7 @@ async function afterHarvest(auto) {
   // give the page's last JSON responses time to reach the collector
   await new Promise((resolve) => setTimeout(resolve, 5000));
   try {
-    const urls = await (await fetch(`${COLLECTOR}/queue?limit=${Number(auto.limit) || 50}`)).json();
+    const urls = await (await fetch(`${COLLECTOR}/queue?limit=${Number(auto.limit) || 5000}`)).json();
     if (!urls.length) {
       await chrome.storage.local.set({ autoNote: "Không có sản phẩm mới để lấy chi tiết." });
       return;

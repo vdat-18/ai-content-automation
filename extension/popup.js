@@ -27,11 +27,11 @@ document.getElementById("capture").addEventListener("click", () => {
 document.getElementById("auto").addEventListener("click", () => {
   const auto = {
     concurrency: Number(document.getElementById("auto-tabs").value) || 3,
-    limit: Number(document.getElementById("auto-limit").value) || 50,
+    limit: Number(document.getElementById("auto-limit").value) || 0, // 0 = every product found
   };
   chrome.storage.local.set({ autoNote: "Đang cuộn lấy danh sách..." });
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    if (tabs[0]?.id) sendToTab(tabs[0].id, { type: "harvest", rounds: 80, auto });
+    if (tabs[0]?.id) sendToTab(tabs[0].id, { type: "harvest", rounds: auto.limit ? 80 : 400, auto });
   });
 });
 document.getElementById("harvest").addEventListener("click", () => {
