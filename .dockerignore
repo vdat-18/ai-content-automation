@@ -1,0 +1,12 @@
+# Keep host-built dependencies, secrets and local data out of the Docker build context
+.git
+.venv
+**/node_modules
+**/dist
+**/__pycache__
+**/*.tsbuildinfo
+.creative-pilot
+.backups
+.pytest_cache
+.ruff_cache
+deploy/.env
