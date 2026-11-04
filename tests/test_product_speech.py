@@ -72,7 +72,7 @@ async def test_each_reading_is_fitted_to_its_shot(tmp_path) -> None:
     lengths = {"ngắn": 1.0, "dài": 6.0}
 
     class _Fake:
-        async def speak(self, text):
+        async def speak(self, text, voice=None):
             return _tone(lengths[text])
 
     output = tmp_path / "videos" / "voiceover.mp3"
@@ -96,3 +96,32 @@ async def test_service_needs_the_speaker_and_an_approved_keyframe(tmp_path) -> N
     service = ProductCatalogService(repository, speaker=object())  # type: ignore[arg-type]
     with pytest.raises(KeyframeUnavailable, match="Approve at least one keyframe"):
         await service.create_voiceover(PRODUCT_ID, tmp_path)
+
+
+async def test_speech_client_uses_the_voice_it_is_asked_for() -> None:
+    seen: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return httpx.Response(200, content=b"ID3audio")
+
+    await _client(handler).speak("a", "maichi.mp3")
+    assert '"voice":"maichi.mp3"' in seen[0].content.decode()
+
+
+async def test_voice_sample_is_made_once_and_unknown_voices_are_refused(tmp_path) -> None:
+    calls: list[str] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        calls.append(request.content.decode())
+        return httpx.Response(200, content=b"ID3audio")
+
+    service = ProductCatalogService(
+        SqliteProductRepository(tmp_path / "s.db"), speaker=_client(handler)
+    )
+    first = await service.voice_sample("hamy.mp3", tmp_path)
+    second = await service.voice_sample("hamy.mp3", tmp_path)
+    assert first == second and first.read_bytes() == b"ID3audio"
+    assert len(calls) == 1 and '"voice":"hamy.mp3"' in calls[0]
+    with pytest.raises(KeyframeUnavailable, match="Unknown voice"):
+        await service.voice_sample("../evil", tmp_path)

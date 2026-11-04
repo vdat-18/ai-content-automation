@@ -43,7 +43,7 @@ from .parsing import (
 from .posting import PostingPackageWriter
 from .references import ProfileGenerationError, ReferenceProfile, ReferenceProfileGenerator
 from .repositories import ProductRepository
-from .speech import SpeechClient, SpeechError, make_voiceover
+from .speech import SAMPLE_TEXT, VOICES, SpeechClient, SpeechError, make_voiceover
 
 _PINTEREST_SEARCH = "https://www.pinterest.com/search/pins/?q="
 _SCREEN_BATCH = 200
@@ -690,13 +690,17 @@ class ProductCatalogService:
         await self._repository.save_brief(product_id, record["user_idea"], brief, record["status"])
         return package
 
-    async def create_voiceover(self, product_id: str, media_root: Path) -> dict[str, Any] | None:
+    async def create_voiceover(
+        self, product_id: str, media_root: Path, voice: str | None = None
+    ) -> dict[str, Any] | None:
         """Read each approved shot's voice-over so its words start with the shot."""
         record = await self._repository.get_brief(product_id)
         if record is None:
             return None
         if self._speaker is None:
             raise KeyframeUnavailable("Text-to-speech is not configured (AIC_TTS_MODEL)")
+        if voice and voice not in VOICES:
+            raise KeyframeUnavailable(f"Unknown voice {voice}")
         keyframes = {k["shot_index"]: k for k in await self._repository.list_keyframes(product_id)}
         shots = [
             shot
@@ -719,7 +723,7 @@ class ProductCatalogService:
         for old in folder.glob("voiceover.*"):
             old.unlink()
         try:
-            lengths = await make_voiceover(self._speaker, segments, folder / "voiceover.mp3")
+            lengths = await make_voiceover(self._speaker, segments, folder / "voiceover.mp3", voice)
         except SpeechError as error:
             raise KeyframeUnavailable(f"The voice-over could not be made: {error}") from error
         too_long = [
@@ -732,6 +736,22 @@ class ProductCatalogService:
             "seconds": [round(n, 1) for n in lengths],
             "too_long_shots": too_long,
         }
+
+    async def voice_sample(self, voice: str, media_root: Path) -> Path:
+        """A short reading in one voice, made once and kept so listening again costs nothing."""
+        if self._speaker is None:
+            raise KeyframeUnavailable("Text-to-speech is not configured (AIC_TTS_MODEL)")
+        if voice not in VOICES:
+            raise KeyframeUnavailable(f"Unknown voice {voice}")
+        target = Path(media_root) / "voice_samples" / f"{voice.removesuffix('.mp3')}.mp3"
+        if not target.is_file():
+            try:
+                audio = await self._speaker.speak(SAMPLE_TEXT, voice)
+            except SpeechError as error:
+                raise KeyframeUnavailable(f"The sample could not be made: {error}") from error
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(audio)
+        return target
 
     async def build_video(self, product_id: str, media_root: Path) -> str | None:
         """Stitch the ready clips of approved shots, in story order, into one mp4."""

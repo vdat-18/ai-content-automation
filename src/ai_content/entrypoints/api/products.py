@@ -22,6 +22,7 @@ from ai_content.domains.marketing.products.service import (
     KeyframeUnavailable,
     ProductCatalogService,
 )
+from ai_content.domains.marketing.products.speech import VOICES
 
 from .dependencies import get_product_catalog_service, get_runtime_settings
 
@@ -36,6 +37,23 @@ async def ingest_capture(
     service: ProductCatalogService = Depends(get_product_catalog_service),
 ) -> dict[str, Any]:
     return await service.ingest(payload)
+
+
+@router.get("/voices")
+async def voices() -> list[dict[str, str]]:
+    return [{"id": key, "label": label} for key, label in VOICES.items()]
+
+
+@router.get("/voices/{voice}/sample")
+async def voice_sample(
+    voice: str,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> FileResponse:
+    try:
+        path = await service.voice_sample(voice, _media_root())
+    except KeyframeUnavailable as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    return FileResponse(path, media_type="audio/mpeg")
 
 
 @router.get("/queue")
@@ -479,14 +497,21 @@ async def persona_image(
     return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "no-cache"})
 
 
+class VoiceoverRequest(BaseModel):
+    voice: str | None = None
+
+
 @router.post("/{product_id}/voiceover")
 async def make_voiceover_track(
     product_id: str,
+    payload: VoiceoverRequest | None = None,
     service: ProductCatalogService = Depends(get_product_catalog_service),
 ) -> dict[str, Any]:
     """Read every approved shot's voice-over with the text-to-speech model."""
     try:
-        result = await service.create_voiceover(product_id, _media_root())
+        result = await service.create_voiceover(
+            product_id, _media_root(), payload.voice if payload else None
+        )
     except KeyframeUnavailable as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
     if result is None:

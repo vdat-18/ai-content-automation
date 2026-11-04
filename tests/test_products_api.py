@@ -393,3 +393,9 @@ def test_persona_endpoints(
     assert client.put(base, json={"status": "approved"}).status_code == 200
     saved = client.get(f"/api/v1/products/{PRODUCT_ID}/brief").json()
     assert saved["brief"]["persona"]["status"] == "approved"
+
+
+def test_voice_list_and_unknown_voice_sample(client: TestClient) -> None:
+    listed = client.get("/api/v1/products/voices").json()
+    assert {"id": "kimoanh.mp3", "label": "Kim Oanh"} in listed
+    assert client.get("/api/v1/products/voices/nope/sample").status_code == 409

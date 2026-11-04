@@ -276,8 +276,14 @@ function Keyframes({ productId, shots, postPackage, persona, t }: { productId: s
     queryFn: ({ signal }) => getJson<{ exists: boolean; voiceover: boolean }>(`${API}/${productId}/video-info`, signal),
   });
   const hasVideo = videoVersion > 0 || !!videoInfo.data?.exists;
+  const voices = useQuery({
+    queryKey: ["voices"],
+    queryFn: ({ signal }) => getJson<{ id: string; label: string }[]>(`${API}/voices`, signal),
+    staleTime: Infinity,
+  });
+  const [voice, setVoice] = useState("");
   const makeVoice = useMutation({
-    mutationFn: () => postJson<{ seconds: number[]; too_long_shots: number[] }>(`${API}/${productId}/voiceover`),
+    mutationFn: () => postJson<{ seconds: number[]; too_long_shots: number[] }>(`${API}/${productId}/voiceover`, { voice: voice || null }),
     onSuccess: () => {
       setVoiceVersion((version) => version + 1);
       client.invalidateQueries({ queryKey: ["video-info", productId] });
@@ -363,6 +369,16 @@ function Keyframes({ productId, shots, postPackage, persona, t }: { productId: s
           {stitchVideo.isPending ? t("Stitching…") : t("Stitch final video")}
         </button>
       </div>
+      <label className="brief-field">
+        <span>{t("Voice (press play to hear a sample)")}</span>
+        <select value={voice} onChange={(event) => setVoice(event.target.value)}>
+          <option value="">{t("Default voice")}</option>
+          {(voices.data ?? []).map((option) => (
+            <option key={option.id} value={option.id}>{option.label}</option>
+          ))}
+        </select>
+      </label>
+      {voice && <audio key={voice} controls preload="none" src={`${API}/voices/${encodeURIComponent(voice)}/sample`} />}
       <div className="brief-actions">
         <button className="secondary-button" disabled={makeVoice.isPending || approvedShots === 0} onClick={() => makeVoice.mutate()}>
           {makeVoice.isPending ? t("Reading…") : t("Read the voice-over")}

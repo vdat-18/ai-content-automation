@@ -18,6 +18,21 @@ _RETRY_DELAY = 4.0
 _MAX_SPEEDUP = 1.25
 _DEFAULT_VOICE = "auto"
 
+# Voices the marketplace's Vietnamese model offers (GET /models, model_options.voice).
+VOICES: dict[str, str] = {
+    "auto": "Tự chọn",
+    "kimoanh.mp3": "Kim Oanh",
+    "maichi.mp3": "Mai Chi",
+    "hamy.mp3": "Hà My",
+    "tiendat.mp3": "Tiến Đạt",
+    "huuduc.mp3": "Hữu Đức",
+    "giongadam.mp3": "Giọng Adam",
+}
+SAMPLE_TEXT = (
+    "Căn hộ nhỏ mà quần áo bừa bãi làm nhà cửa chật chội? "
+    "Sọt lưới gấp gọn thông minh, giúp bạn tối ưu không gian. Bấm vào giỏ hàng nhé!"
+)
+
 
 class SpeechError(RuntimeError):
     """The text-to-speech service did not return audio."""
@@ -43,11 +58,11 @@ class SpeechClient:
         self._http = http or httpx.AsyncClient(timeout=_TIMEOUT)
         self._retry_delay = retry_delay
 
-    async def speak(self, text: str) -> bytes:
+    async def speak(self, text: str, voice: str | None = None) -> bytes:
         body = {
             "model": self._model,
             "input": text,
-            "voice": self._voice,
+            "voice": voice or self._voice,
             "response_format": "mp3",
         }
         last = "no response"
@@ -81,7 +96,10 @@ async def _probe_seconds(path: Path) -> float:
 
 
 async def make_voiceover(
-    client: SpeechClient, segments: list[tuple[str, float]], output: Path
+    client: SpeechClient,
+    segments: list[tuple[str, float]],
+    output: Path,
+    voice: str | None = None,
 ) -> list[float]:
     """Read each text so it starts with its shot, and join the readings into one mp3.
 
@@ -112,7 +130,7 @@ async def make_voiceover(
                 continue
             raw = output.parent / f"voice_raw_{index}.mp3"
             scratch.append(raw)
-            raw.write_bytes(await client.speak(text.strip()))
+            raw.write_bytes(await client.speak(text.strip(), voice))
             length = await _probe_seconds(raw)
             lengths.append(length)
             speed = min(max(length / seconds, 1.0), _MAX_SPEEDUP)
