@@ -139,6 +139,9 @@
   // TikTok answers a product it does not sell to this region with a bare JSON message
   const unavailable = () => /not currently available in your country or region/i.test((document.body?.innerText || "").slice(0, 600));
 
+  // a product page that never rendered (blocked silently or failed to load) has almost no text
+  const emptyShell = () => (document.body?.innerText || "").trim().length < 200;
+
   const runWalkerFlow = async () => {
     await wait(3000);
     await waitForHuman();
@@ -148,6 +151,10 @@
     }
     if (!/\/pdp\//.test(location.pathname)) {
       send({ type: "page-done", ok: false, reason: "không phải trang sản phẩm" });
+      return;
+    }
+    if (emptyShell()) {
+      send({ type: "page-done", ok: false, reason: "trang rỗng" });
       return;
     }
     await scrollLikeReader();
@@ -221,13 +228,27 @@
   const FEED_IDLE_ROUNDS = 4; // rounds with nothing new and no "Xem thêm" left
   const FEED_STUCK_CLICKS = 8; // clicks on "Xem thêm" in a row that brought nothing
   // after a click, wait for new cards or new JSON instead of a fixed pause
+  const networkRequests = () =>
+    performance.getEntriesByType("resource").filter((entry) => entry.initiatorType === "fetch" || entry.initiatorType === "xmlhttprequest").length;
+  const NETWORK_QUIET_MS = 4000; // the page counts as done loading after this long without a new request
   const waitForGrowth = async (count, payloads, timeoutMs) => {
     const started = Date.now();
+    const requests = networkRequests();
+    let lastActivity = Date.now();
+    let seen = requests;
+    let grew = false;
     while (Date.now() - started < timeoutMs) {
       await wait(500);
-      if (productCount() > count || state.sent.size > payloads) return true;
+      if (productCount() > count || state.sent.size > payloads) grew = true;
+      const now = networkRequests();
+      if (now > seen) {
+        seen = now;
+        lastActivity = Date.now();
+      }
+      // new products showed up and the network went quiet: the batch is complete
+      if (grew && Date.now() - lastActivity >= NETWORK_QUIET_MS / 2) return true;
     }
-    return false;
+    return grew;
   };
 
   // TikTok swaps the "Xem thêm" button for this text when the feed has nothing left

@@ -1,0 +1,128 @@
+// The background worker runs 200 times faster than real time here, so minutes of waiting take milliseconds.
+const fs = require("node:fs");
+const vm = require("node:vm");
+const path = require("node:path");
+const { test } = require("node:test");
+const assert = require("node:assert/strict");
+
+const SPEED = 200; // 1 real ms = 200 virtual ms
+const t0 = Date.now();
+const vnow = () => t0 + (Date.now() - t0) * SPEED;
+
+function makeWorld() {
+  const store = {};
+  let nextTab = 100;
+  const opened = [];
+  const removed = [];
+  const notes = [];
+  let handler;
+  const chrome = {
+    storage: {
+      local: {
+        get: (defaults) => Promise.resolve(Object.fromEntries(Object.entries(defaults).map(([k, v]) => [k, store[k] ?? v]))),
+        set: (values) => {
+          Object.assign(store, JSON.parse(JSON.stringify(values)));
+          return Promise.resolve();
+        },
+      },
+    },
+    tabs: {
+      create: async ({ url }) => {
+        const id = nextTab++;
+        opened.push({ id, url, at: vnow() });
+        return { id };
+      },
+      remove: (id) => {
+        removed.push(id);
+        return Promise.resolve();
+      },
+      update: () => Promise.resolve(),
+    },
+    action: { setBadgeText: () => {} },
+    notifications: { create: (options) => notes.push(options.message) },
+    runtime: { onMessage: { addListener: (listener) => { handler = listener; } } },
+  };
+  const FakeDate = class extends Date {
+    static now() {
+      return vnow();
+    }
+  };
+  const context = {
+    chrome,
+    fetch: async () => ({ json: async () => [] }),
+    console,
+    Date: FakeDate,
+    setTimeout: (callback, ms) => setTimeout(callback, Math.max(0, ms / SPEED)),
+    clearTimeout,
+    Math,
+  };
+  vm.createContext(context);
+  vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "background.js"), "utf8"), context);
+  const send = (message, tab) =>
+    new Promise((resolve) => {
+      const returned = handler(message, { tab: tab ? { id: tab } : undefined }, resolve);
+      if (!returned) resolve();
+    });
+  return { store, opened, removed, notes, send };
+}
+
+const wait = (virtualMs) => new Promise((resolve) => setTimeout(resolve, virtualMs / SPEED));
+const urls = (count) => Array.from({ length: count }, (_, i) => `https://shop.tiktok.com/vn/pdp/s/${1000 + i}`);
+
+test("three captcha waves stop the run and block a new one for a while", async () => {
+  const w = makeWorld();
+  await w.send({ type: "walker-start", urls: urls(20), concurrency: 3 });
+  await wait(20_000);
+  for (let i = 0; i < 3; i += 1) {
+    const tab = Object.keys(w.store.walker.active)[0];
+    await w.send({ type: "challenge", reason: "captcha" }, Number(tab));
+    if (i < 2) {
+      await w.send({ type: "resumed" });
+      await wait(40_000);
+    }
+  }
+  await wait(1000);
+  assert.ok(w.store.walker.running === false && /captcha 3 lần/.test(w.store.walker.note), w.store.walker.note);
+  await w.send({ type: "walker-start", urls: urls(5), concurrency: 1 });
+  await wait(500);
+  assert.ok(w.store.walker.running === false && /nghỉ thêm/.test(w.store.autoNote), w.store.autoNote);
+});
+
+test("captchas on several tabs at once count as one wave and double the delay once", async () => {
+  const w = makeWorld();
+  await w.send({ type: "walker-start", urls: urls(20), concurrency: 3 });
+  await wait(20_000);
+  const before = w.store.walker.delayMs;
+  for (const tab of Object.keys(w.store.walker.active)) await w.send({ type: "challenge", reason: "captcha" }, Number(tab));
+  await wait(500);
+  assert.equal(w.store.captchaLog.length, 1);
+  const after = w.store.walker.delayMs;
+  assert.ok(after >= before * 2 * 0.75 - 1 && after <= before * 2 * 1.25 + 1, `${before} -> ${after}`);
+  assert.equal(w.store.walker.paused, true);
+  await wait(15 * 60_000 + 5_000);
+  assert.ok(w.store.walker.running === false && /15 phút/.test(w.store.walker.note), w.store.walker.note);
+});
+
+test("a login wall is not counted as a captcha", async () => {
+  const w = makeWorld();
+  await w.send({ type: "walker-start", urls: urls(5), concurrency: 1 });
+  await wait(2_000);
+  await w.send({ type: "challenge", reason: "đăng nhập" }, Number(Object.keys(w.store.walker.active)[0]));
+  assert.ok(!(w.store.captchaLog || []).length);
+});
+
+test("never more than six pages in any minute, and every page is read", async () => {
+  const w = makeWorld();
+  await w.send({ type: "walker-start", urls: urls(14), concurrency: 5 });
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  const stopAt = Date.now() + 8000;
+  while (Date.now() < stopAt && w.store.walker.running) {
+    for (const tab of Object.keys(w.store.walker.active)) await w.send({ type: "page-done", ok: true }, Number(tab));
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+  const times = w.opened.map((entry) => entry.at);
+  let maxIn60 = 0;
+  for (const start of times) maxIn60 = Math.max(maxIn60, times.filter((at) => at >= start && at < start + 60_000).length);
+  assert.ok(maxIn60 <= 6, `max in any 60s = ${maxIn60}`);
+  assert.equal(w.store.walker.done, 14);
+});
