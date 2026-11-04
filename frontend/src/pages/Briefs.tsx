@@ -292,7 +292,22 @@ function Keyframes({ productId, shots, postPackage, persona, t }: { productId: s
     queryFn: ({ signal }) => getJson<{ id: string; label: string }[]>(`${API}/voices`, signal),
     staleTime: Infinity,
   });
-  const [voice, setVoice] = useState("");
+  const [pickedVoice, setPickedVoice] = useState(() => {
+    try {
+      return window.localStorage.getItem("aic-voice") ?? "";
+    } catch {
+      return "";
+    }
+  });
+  const voice = pickedVoice || (voices.data ?? []).find((option) => option.id !== "auto")?.id || "";
+  const setVoice = (next: string) => {
+    setPickedVoice(next);
+    try {
+      window.localStorage.setItem("aic-voice", next);
+    } catch {
+      /* the choice just is not remembered */
+    }
+  };
   const makeVoice = useMutation({
     mutationFn: () => postJson<{ seconds: number[]; too_long_shots: number[] }>(`${API}/${productId}/voiceover`, { voice: voice || null }),
     onSuccess: () => {
@@ -388,7 +403,6 @@ function Keyframes({ productId, shots, postPackage, persona, t }: { productId: s
       <label className="brief-field">
         <span>{t("Voice (press play to hear a sample)")}</span>
         <select value={voice} onChange={(event) => setVoice(event.target.value)}>
-          <option value="">{t("Default voice")}</option>
           {(voices.data ?? []).map((option) => (
             <option key={option.id} value={option.id}>{option.label}</option>
           ))}
