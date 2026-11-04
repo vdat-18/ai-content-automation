@@ -230,6 +230,9 @@
     return false;
   };
 
+  // TikTok swaps the "Xem thêm" button for this text when the feed has nothing left
+  const feedEnded = () => /no more products/i.test(document.body?.innerText || "");
+
   const harvestFeed = async (rounds, auto) => {
     state.harvest = true;
     let idle = 0;
@@ -242,6 +245,10 @@
       await waitForHuman();
       window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "smooth" });
       await wait(1500);
+      if (auto && feedEnded()) {
+        reason = 'trang báo "No more products": đã hết sản phẩm';
+        break;
+      }
       const payloads = state.sent.size;
       const { clicked, seen } = clickLoadMore();
       if (clicked) clicks += 1;
@@ -256,6 +263,11 @@
         break;
       }
       const now = productCount();
+      if (auto && feedEnded()) {
+        last = now;
+        reason = 'trang báo "No more products": đã hết sản phẩm';
+        break;
+      }
       if (auto) {
         if (clicked) stuck = grew ? 0 : stuck + 1;
         idle = grew ? 0 : idle + 1;
