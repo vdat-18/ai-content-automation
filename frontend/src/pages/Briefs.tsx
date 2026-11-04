@@ -500,6 +500,34 @@ function Keyframes({ productId, shots, postPackage, persona, t }: { productId: s
           );
         })}
       </div>
+      <RunLog productId={productId} t={t} />
     </section>
+  );
+}
+
+type RunEvent = { id: number; at: string; step: string; shot_index: number | null; status: string; message: string };
+
+function RunLog({ productId, t }: { productId: string; t: (key: string) => string }) {
+  const events = useQuery({
+    queryKey: ["run-log", productId],
+    queryFn: ({ signal }) => getJson<RunEvent[]>(`${API}/${productId}/events`, signal),
+    refetchInterval: 5000,
+  });
+  const rows = [...(events.data ?? [])].reverse();
+  return (
+    <details className="run-log" open>
+      <summary>{`${t("Run log")} (${rows.length})`}</summary>
+      {rows.length === 0 && <p>{t("Nothing has run yet.")}</p>}
+      <ul>
+        {rows.map((event) => (
+          <li key={event.id} className={`run-log--${event.status}`}>
+            <time dateTime={event.at}>{new Date(event.at.includes("T") ? event.at : `${event.at.replace(" ", "T")}Z`).toLocaleTimeString()}</time>
+            <strong>{event.shot_index === null ? event.step : `${event.step} · ${t("shot")} ${event.shot_index + 1}`}</strong>
+            <span className="badge">{event.status}</span>
+            <span>{event.message}</span>
+          </li>
+        ))}
+      </ul>
+    </details>
   );
 }

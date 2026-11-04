@@ -395,6 +395,15 @@ async def build_video(
     return {"video": f"/api/v1/products/{product_id}/video"}
 
 
+@router.get("/{product_id}/events")
+async def run_log(
+    product_id: str,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> list[dict[str, Any]]:
+    """The step-by-step log of what ran for this product's video."""
+    return await service.events(product_id)
+
+
 @router.get("/{product_id}/video-info")
 async def video_info(product_id: str) -> dict[str, bool]:
     folder = _media_root() / "videos" / product_id

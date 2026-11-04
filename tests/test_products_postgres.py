@@ -44,6 +44,7 @@ async def _round_trip() -> None:
                 "product_briefs",
                 "product_keyframes",
                 "product_clips",
+                "product_events",
             ):
                 await connection.exec_driver_sql(f"TRUNCATE marketing.{table}")
         service = ProductCatalogService(PostgresProductRepository(engine))
@@ -152,6 +153,14 @@ async def _round_trip() -> None:
         await briefer._repository.save_clip({**clip, "status": "ready", "video_path": "c.mp4"})
         [stored_clip] = await briefer._repository.list_clips("1730000000000000001")
         assert (stored_clip["status"], stored_clip["video_path"]) == ("ready", "c.mp4")
+        await briefer._repository.add_event("1730000000000000001", "clip", 0, "ok", "first")
+        await briefer._repository.add_event("1730000000000000001", "video", None, "ok", "second")
+        events = await briefer._repository.list_events("1730000000000000001")
+        assert [(e["step"], e["shot_index"], e["message"]) for e in events[-2:]] == [
+            ("clip", 0, "first"),
+            ("video", None, "second"),
+        ]
+        assert events[0]["at"]
 
         repository = PostgresProductRepository(engine)
         await repository.add_reference_images(

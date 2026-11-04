@@ -343,3 +343,17 @@ async def test_the_real_product_size_reaches_the_image_prompt_and_the_checker(tm
     await service.generate_keyframes(PRODUCT_ID, tmp_path)
     assert "about 60 cm tall, knee height" in prompts[0]
     assert "about 60 cm tall, knee height" in seen[0]
+
+
+async def test_each_step_is_written_to_the_run_log(tmp_path) -> None:
+    service = await _service(tmp_path, _FakeKeyframer())
+    service._checker = _Checker(["wrong color", ""])
+    await service.generate_keyframes(PRODUCT_ID, tmp_path)
+    await service.set_keyframe_status(PRODUCT_ID, 0, "approved")
+    events = await service.events(PRODUCT_ID)
+    assert [(e["step"], e["status"], e["shot_index"]) for e in events] == [
+        ("keyframe", "retry", 0),
+        ("keyframe", "ok", 0),
+        ("keyframe", "approved", 0),
+    ]
+    assert "wrong color" in events[0]["message"] and "2 attempt" in events[1]["message"]

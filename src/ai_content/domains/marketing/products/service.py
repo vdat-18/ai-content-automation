@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote_plus, urlsplit
 
+from loguru import logger
 from openpyxl import Workbook
 from openpyxl.styles import Font
 
@@ -356,7 +357,26 @@ class ProductCatalogService:
                 "attempts": 0,
             }
         await self._repository.save_brief(product_id, user_idea.strip(), brief, "draft")
+        await self._log(
+            product_id,
+            "brief",
+            "ok",
+            f"Wrote a {video_seconds}s brief with {len(brief.get('shots') or [])} shot(s): "
+            f"{brief.get('title', '')}",
+        )
         return await self._repository.get_brief(product_id)
+
+    async def _log(
+        self, product_id: str, step: str, status: str, message: str, shot_index: int | None = None
+    ) -> None:
+        """Add a line to the run log; the log must never break the step it describes."""
+        try:
+            await self._repository.add_event(product_id, step, shot_index, status, message[:600])
+        except Exception as error:  # noqa: BLE001
+            logger.warning("Could not write the run log: {}", error)
+
+    async def events(self, product_id: str) -> list[dict[str, Any]]:
+        return await self._repository.list_events(product_id)
 
     async def get_brief(self, product_id: str) -> dict[str, Any] | None:
         return await self._repository.get_brief(product_id)
@@ -382,7 +402,10 @@ class ProductCatalogService:
     async def set_keyframe_status(self, product_id: str, shot_index: int, status: str) -> bool:
         if status not in KEYFRAME_REVIEW_STATUSES:
             raise ValueError(f"Keyframe status must be one of {sorted(KEYFRAME_REVIEW_STATUSES)}")
-        return await self._repository.set_keyframe_status(product_id, shot_index, status)
+        changed = await self._repository.set_keyframe_status(product_id, shot_index, status)
+        if changed:
+            await self._log(product_id, "keyframe", status, f"Marked {status}", shot_index)
+        return changed
 
     async def generate_persona(
         self, product_id: str, media_root: Path, description: str | None = None
@@ -402,6 +425,7 @@ class ProductCatalogService:
         try:
             image = await self._keyframer.persona(text)
         except KeyframeGenerationError as error:
+            await self._log(product_id, "persona", "error", str(error))
             raise KeyframeUnavailable(f"The person could not be made: {error}") from error
         relative = f"persona/{product_id}/persona.jpg"
         target = Path(media_root) / relative
@@ -415,6 +439,9 @@ class ProductCatalogService:
         }
         brief = {**record["brief"], "persona": persona}
         await self._repository.save_brief(product_id, record["user_idea"], brief, record["status"])
+        await self._log(
+            product_id, "persona", "ok", f"Portrait made (attempt {persona['attempts']})"
+        )
         return persona
 
     async def set_persona_status(self, product_id: str, status: str) -> bool:
@@ -530,6 +557,7 @@ class ProductCatalogService:
                     )
             except KeyframeGenerationError as error:
                 attempts += 1
+                await self._log(product_id, "keyframe", "error", str(error), index)
                 if image is None:
                     await self._repository.save_keyframe(
                         {
@@ -547,6 +575,9 @@ class ProductCatalogService:
             problem = await self._check_keyframe(shot, photos, image, master, persona, before) or ""
             if not problem:
                 break
+            await self._log(
+                product_id, "keyframe", "retry", f"Attempt {attempts}: Gemini says {problem}", index
+            )
         assert image is not None
         relative = f"keyframes/{product_id}/shot_{index}.jpg"
         target = Path(media_root) / relative
@@ -561,6 +592,14 @@ class ProductCatalogService:
                 "error": None,
                 "qa_problem": problem,
             }
+        )
+        await self._log(
+            product_id,
+            "keyframe",
+            "flagged" if problem else "ok",
+            f"Image ready after {attempts} attempt(s)"
+            + (f", still flagged: {problem}" if problem else ""),
+            index,
         )
 
     async def _keyframe_before(self, product_id: str, index: int, media_root: Path) -> bytes | None:
@@ -610,8 +649,14 @@ class ProductCatalogService:
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_bytes(content)
                 update = {"status": "ready", "video_path": relative, "error": None}
+                await self._log(
+                    clip["product_id"], "clip", "ok", "Clip downloaded", clip["shot_index"]
+                )
             elif state.status == "failed":
                 update = {"status": "failed", "error": state.error or "The video job failed"}
+                await self._log(
+                    clip["product_id"], "clip", "error", update["error"], clip["shot_index"]
+                )
             else:
                 return
         except ClipGenerationError:
@@ -672,6 +717,7 @@ class ProductCatalogService:
             "seconds": seconds,
             "attempts": (previous or {}).get("attempts", 0) + 1,
         }
+        delivery = str(shot.get("delivery") or "narrated")
         frame = (Path(media_root) / keyframe["image_path"]).read_bytes()
         prompt = (
             f"{shot.get('motion_prompt') or 'Slow gentle camera push-in.'} "
@@ -685,6 +731,7 @@ class ProductCatalogService:
             job_id, job_model = await self._videographer.submit(prompt, frame, seconds)
         except ClipGenerationError as error:
             await self._repository.save_clip({**clip, "status": "failed", "error": str(error)})
+            await self._log(product_id, "clip", "error", str(error), index)
             return
         await self._repository.save_clip(
             {
@@ -695,6 +742,7 @@ class ProductCatalogService:
                 "error": None,
             }
         )
+        await self._log(product_id, "clip", "started", f"Video job started ({delivery})", index)
 
     async def create_post_package(self, product_id: str) -> dict[str, Any] | None:
         """Write caption options and hashtags for the video and keep them on the brief."""
@@ -709,6 +757,9 @@ class ProductCatalogService:
         package["ai_label_reminder"] = AI_LABEL_REMINDER
         brief = {**record["brief"], "post_package": package}
         await self._repository.save_brief(product_id, record["user_idea"], brief, record["status"])
+        await self._log(
+            product_id, "post", "ok", f"Wrote {len(package.get('captions') or [])} caption(s)"
+        )
         return package
 
     async def create_voiceover(
@@ -752,6 +803,13 @@ class ProductCatalogService:
             for i, (n, (_, limit)) in enumerate(zip(lengths, segments, strict=True))
             if n > limit * MAX_SPEEDUP
         ]
+        await self._log(
+            product_id,
+            "voiceover",
+            "warning" if too_long else "ok",
+            f"Read in voice {voice or 'default'}; shots {[round(n, 1) for n in lengths]} s"
+            + (f"; too long: {too_long}" if too_long else ""),
+        )
         return {
             "voiceover": "mp3",
             "seconds": [round(n, 1) for n in lengths],
@@ -799,7 +857,15 @@ class ProductCatalogService:
             caption = str(shot.get("on_screen_text") or "") if captions else ""
             parts.append(StitchClip(Path(media_root) / clip["video_path"], duration, caption))
         relative = f"videos/{product_id}/video.mp4"
-        await stitch(parts, Path(media_root) / relative, find_voiceover(media_root, product_id))
+        voice = find_voiceover(media_root, product_id)
+        await stitch(parts, Path(media_root) / relative, voice)
+        await self._log(
+            product_id,
+            "video",
+            "ok",
+            f"Stitched {len(parts)} clip(s), voice-over {'yes' if voice else 'no'}, "
+            f"captions {'yes' if captions else 'no'}",
+        )
         return relative
 
     async def set_image_status(self, image_id: str, status: str) -> bool:

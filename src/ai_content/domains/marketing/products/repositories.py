@@ -17,6 +17,7 @@ from ai_content.platform.database.schema import (
     marketplace_products,
     product_briefs,
     product_clips,
+    product_events,
     product_keyframes,
     product_selections,
     reference_images,
@@ -93,6 +94,12 @@ class ProductRepository(Protocol):
 
     async def list_clips(self, product_id: str) -> list[dict[str, Any]]: ...
 
+    async def add_event(
+        self, product_id: str, step: str, shot_index: int | None, status: str, message: str
+    ) -> None: ...
+
+    async def list_events(self, product_id: str, limit: int = 300) -> list[dict[str, Any]]: ...
+
 
 def _sold(value: object) -> int | None:
     try:
@@ -130,6 +137,17 @@ _KEYFRAME_COLUMNS = (
     "error",
     "qa_problem",
 )
+
+
+_EVENT_COLUMNS = ("id", "at", "step", "shot_index", "status", "message")
+
+
+def _event_record(row: Any) -> dict[str, Any]:
+    record = dict(zip(_EVENT_COLUMNS, row, strict=True))
+    record["at"] = str(
+        record["at"].isoformat() if hasattr(record["at"], "isoformat") else record["at"]
+    )
+    return record
 
 
 _CLIP_COLUMNS = (
@@ -215,6 +233,12 @@ class SqliteProductRepository:
             "job_id TEXT, job_model TEXT, video_path TEXT, seconds INTEGER NOT NULL DEFAULT 0, "
             "attempts INTEGER NOT NULL DEFAULT 0, error TEXT, "
             "PRIMARY KEY (product_id, shot_index))"
+        )
+        self._connection.execute(
+            "CREATE TABLE IF NOT EXISTS product_events ("
+            "id INTEGER PRIMARY KEY AUTOINCREMENT, product_id TEXT NOT NULL, step TEXT NOT NULL, "
+            "shot_index INTEGER, status TEXT NOT NULL, message TEXT NOT NULL DEFAULT '', "
+            "at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"
         )
         self._connection.execute(
             "CREATE TABLE IF NOT EXISTS reference_searches ("
@@ -470,6 +494,24 @@ class SqliteProductRepository:
             (product_id,),
         ).fetchall()
         return [_clip_record(row) for row in rows]
+
+    async def add_event(
+        self, product_id: str, step: str, shot_index: int | None, status: str, message: str
+    ) -> None:
+        self._connection.execute(
+            "INSERT INTO product_events (product_id, step, shot_index, status, message) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (product_id, step, shot_index, status, message),
+        )
+        self._connection.commit()
+
+    async def list_events(self, product_id: str, limit: int = 300) -> list[dict[str, Any]]:
+        rows = self._connection.execute(
+            "SELECT id, at, step, shot_index, status, message FROM product_events "
+            "WHERE product_id=? ORDER BY id DESC LIMIT ?",
+            (product_id, limit),
+        ).fetchall()
+        return [_event_record(row) for row in reversed(rows)]
 
     async def existing_image_ids(self, image_ids: list[str]) -> set[str]:
         if not image_ids:
@@ -814,6 +856,31 @@ class PostgresProductRepository:
         )
         async with self._engine.connect() as connection:
             return [_clip_record(row) for row in (await connection.execute(statement)).all()]
+
+    async def add_event(
+        self, product_id: str, step: str, shot_index: int | None, status: str, message: str
+    ) -> None:
+        statement = insert(product_events).values(
+            product_id=product_id,
+            step=step,
+            shot_index=shot_index,
+            status=status,
+            message=message,
+        )
+        async with self._engine.begin() as connection:
+            await connection.execute(statement)
+
+    async def list_events(self, product_id: str, limit: int = 300) -> list[dict[str, Any]]:
+        columns = ("id", "at", "step", "shot_index", "status", "message")
+        statement = (
+            select(*(product_events.c[column] for column in columns))
+            .where(product_events.c.product_id == product_id)
+            .order_by(product_events.c.id.desc())
+            .limit(limit)
+        )
+        async with self._engine.connect() as connection:
+            rows = (await connection.execute(statement)).all()
+        return [_event_record(row) for row in reversed(rows)]
 
     async def existing_image_ids(self, image_ids: list[str]) -> set[str]:
         if not image_ids:

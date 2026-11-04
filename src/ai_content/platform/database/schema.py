@@ -114,6 +114,20 @@ product_clips = Table(
     schema="marketing",
 )
 
+product_events = Table(
+    "product_events",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("product_id", Text, nullable=False),
+    Column("step", Text, nullable=False),
+    Column("shot_index", Integer),
+    Column("status", Text, nullable=False),
+    Column("message", Text, nullable=False, server_default=sql_text("''")),
+    Column("at", DateTime(timezone=True), server_default=func.now(), nullable=False),
+    schema="marketing",
+)
+Index("ix_product_events_product", product_events.c.product_id, product_events.c.id)
+
 reference_images = Table(
     "reference_images",
     metadata,
@@ -316,6 +330,7 @@ __all__ = [
     "product_selections",
     "product_briefs",
     "product_clips",
+    "product_events",
     "product_keyframes",
     "reference_images",
     "reference_profiles",
