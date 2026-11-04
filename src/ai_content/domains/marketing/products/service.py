@@ -381,15 +381,16 @@ class ProductCatalogService:
         """Describe in full the images reviewed before reviews carried detail; their status stays."""
         if self._reviewer is None:
             raise ProfileGenerationError("LLM is not configured (AIC_SCREENING_API_KEY)")
-        images = [
+        todo = [
             image
             for image in await self._repository.list_reference_images(None, None)
             if image["status"] in ("live", "rejected")
             and image["screening"] is not None
             and not image["screening"].get("setting")
-        ][:limit]
+        ]
+        images = todo[:limit]
         reviews = await self._reviewer.review_all(images)
-        counts = {"described": 0, "failed": 0, "left": max(0, len(images) - limit)}
+        counts = {"described": 0, "failed": 0, "left": len(todo) - len(images)}
         for image_id, review in reviews.items():
             if review is None:
                 counts["failed"] += 1

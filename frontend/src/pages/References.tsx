@@ -135,9 +135,21 @@ function ReferenceImages() {
     mutationFn: () => postJson<{ checked: number; marked_duplicate: number }>(`${API}/reference-images/recheck-duplicates`),
     onSuccess: () => client.invalidateQueries({ queryKey: ["reference-images"] }),
   });
+  // a few images per request, so no request runs into the server's time limit; repeat until none is left
+  const [described, setDescribed] = useState<{ done: number; failed: number; left: number } | null>(null);
   const redescribe = useMutation({
-    mutationFn: () => postJson<{ described: number; failed: number; left: number }>(`${API}/reference-images/redescribe?limit=30`),
-    onSuccess: () => client.invalidateQueries({ queryKey: ["reference-images"] }),
+    mutationFn: async () => {
+      let done = 0;
+      let failed = 0;
+      for (;;) {
+        const batch = await postJson<{ described: number; failed: number; left: number }>(`${API}/reference-images/redescribe?limit=4`);
+        done += batch.described;
+        failed += batch.failed;
+        setDescribed({ done, failed, left: batch.left });
+        void client.invalidateQueries({ queryKey: ["reference-images"] });
+        if (!batch.described || batch.left <= failed) return { done, failed };
+      }
+    },
   });
   const screen = useMutation({
     mutationFn: () => postJson<ScreenReport>(`${API}/reference-images/screen?limit=30`),
@@ -169,7 +181,7 @@ function ReferenceImages() {
       {screen.error && <p role="alert">{screen.error.message}</p>}
       {recheck.data && <p role="status">{`${t("Checked")} ${recheck.data.checked} · ${t("new duplicates")} ${recheck.data.marked_duplicate}`}</p>}
       {recheck.error && <p role="alert">{recheck.error.message}</p>}
-      {redescribe.data && <p role="status">{`${t("Described")} ${redescribe.data.described} · ${t("failed")} ${redescribe.data.failed}${redescribe.data.left ? ` · ${t("more left, press again")}` : ""}`}</p>}
+      {described && <p role="status">{`${t("Described")} ${described.done} · ${t("failed")} ${described.failed} · ${t("left")} ${described.left}`}</p>}
       {redescribe.error && <p role="alert">{redescribe.error.message}</p>}
       <div className="products-filters">
         <label className="pf-field">
