@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 from io import BytesIO
 from pathlib import Path
 from typing import Any
@@ -56,7 +57,17 @@ from .speech import (
 
 _PINTEREST_SEARCH = "https://www.pinterest.com/search/pins/?q="
 _SCREEN_BATCH = 200
-DUPLICATE_COSINE = 0.90
+
+
+def _duplicate_similarity() -> float:
+    """Embedding similarity from which two images count as the same one (AIC_DUPLICATE_SIMILARITY)."""
+    try:
+        return min(max(float(os.environ.get("AIC_DUPLICATE_SIMILARITY", "0.80")), 0.5), 0.99)
+    except ValueError:
+        return 0.80
+
+
+DUPLICATE_COSINE = _duplicate_similarity()
 DUPLICATE_HAMMING = 4
 MAX_KEYFRAME_FIXES = 2
 # The voice-over is added later, so the picture only has to look right: a talking shot shows
@@ -198,7 +209,7 @@ class ProductCatalogService:
     async def _ingest_pins(self, payload: dict[str, Any]) -> dict[str, Any]:
         product_type = str(payload["product_type"])
         pins = _clean_pins(list(payload.get("pins") or []))
-        pins, duplicates = await self._drop_duplicates(product_type, pins)
+        pins, duplicates, check_failed = await self._drop_duplicates(product_type, pins)
         added = await self._repository.add_reference_images(
             product_type, str(payload["query"]), pins
         )
@@ -208,38 +219,53 @@ class ProductCatalogService:
             "received": len(payload.get("pins") or []),
             "added": added - duplicates,
             "duplicates": duplicates,
+            "check_failed": check_failed,
             "screened": screened,
         }
 
     async def _drop_duplicates(
         self, product_type: str, pins: list[dict[str, str]]
-    ) -> tuple[list[dict[str, Any]], int]:
+    ) -> tuple[list[dict[str, Any]], int, int]:
         """Fingerprint new images and mark those that repeat a known image as duplicates.
 
         Duplicates are still stored (status "duplicate") so a later crawl skips them by id,
-        but they never reach the vision model.
+        but they never reach the vision model. An image that cannot be checked is stored as
+        "check_failed" and never passes as new; when the check cannot run at all it raises.
+        Returns the pins to store, the number of duplicates and the number that failed the check.
         """
-        if self._embedder is None or not pins:
-            return list(pins), 0
+        if not pins:
+            return [], 0, 0
+        if self._embedder is None:
+            raise ProfileGenerationError(
+                "The duplicate check is off, so no image was stored: set AIC_EMBEDDING_MODEL"
+            )
         known_ids = await self._repository.existing_image_ids([pin["image_id"] for pin in pins])
         fresh = [pin for pin in pins if pin["image_id"] not in known_ids]
         downloaded = await download_images([pin["image_url"] for pin in fresh])
         known = await self._repository.fingerprints(product_type)
         for item in known:
             item["phash_int"] = int(item["phash"], 16)
-        usable = [pin for pin in fresh if pin["image_url"] in downloaded]
-        vectors = await self._embedder.embed_many([downloaded[p["image_url"]] for p in usable])
         result: list[dict[str, Any]] = [pin for pin in pins if pin["image_id"] in known_ids]
-        duplicates = 0
-        fingerprints = {
-            pin["image_id"]: (dhash(downloaded[pin["image_url"]]), vector)
-            for pin, vector in zip(usable, vectors, strict=True)
-        }
+        failed = 0
+        checkable: list[tuple[dict[str, str], int, bytes]] = []
         for pin in fresh:
-            if pin["image_id"] not in fingerprints:
-                result.append(dict(pin))
-                continue
-            phash, vector = fingerprints[pin["image_id"]]
+            content = downloaded.get(pin["image_url"])
+            try:
+                if content is None:
+                    raise ValueError("the image could not be downloaded")
+                checkable.append((pin, dhash(content), content))
+            except Exception as error:  # noqa: BLE001
+                logger.warning("Duplicate check failed for {}: {}", pin["image_url"], error)
+                failed += 1
+                result.append({**pin, "status": "check_failed"})
+        try:
+            vectors = await self._embedder.embed_many([content for _, _, content in checkable])
+        except Exception as error:
+            raise ProfileGenerationError(
+                f"The duplicate check failed, so no image was stored: {str(error)[:200]}"
+            ) from error
+        duplicates = 0
+        for (pin, phash, _), vector in zip(checkable, vectors, strict=True):
             twin = next(
                 (
                     item
@@ -255,7 +281,45 @@ class ProductCatalogService:
                 continue
             known.append({"image_id": pin["image_id"], "phash_int": phash, "embedding": vector})
             result.append({**pin, "phash": f"{phash:016x}", "embedding": vector})
-        return result, duplicates
+        return result, duplicates, failed
+
+    async def recheck_duplicates(self) -> dict[str, int]:
+        """Apply the current similarity threshold to images that are already stored.
+
+        Oldest first, an image that looks like an earlier one becomes a duplicate. Removed and
+        rejected images still count as the earlier one, so their copies do not come back.
+        """
+        images = await self._repository.list_reference_images(None, None)  # oldest first
+        by_type: dict[str, list[dict[str, Any]]] = {}
+        for image in images:
+            by_type.setdefault(image["product_type"], []).append(image)
+        checked = marked = 0
+        for product_type, group in by_type.items():
+            prints = {
+                fp["image_id"]: fp for fp in await self._repository.fingerprints(product_type)
+            }
+            kept: list[dict[str, Any]] = []
+            for image in group:
+                fingerprint = prints.get(image["image_id"])
+                if fingerprint is None or image["status"] in ("duplicate", "check_failed"):
+                    continue
+                checked += 1
+                phash = int(fingerprint["phash"], 16)
+                twin = any(
+                    hamming(phash, int(other["phash"], 16)) <= DUPLICATE_HAMMING
+                    or (
+                        other["embedding"]
+                        and fingerprint["embedding"]
+                        and cosine(fingerprint["embedding"], other["embedding"]) >= DUPLICATE_COSINE
+                    )
+                    for other in kept
+                )
+                if twin and image["status"] in ("pending", "live"):
+                    await self._repository.set_image_status(image["image_id"], "duplicate")
+                    marked += 1
+                else:
+                    kept.append(fingerprint)
+        return {"checked": checked, "marked_duplicate": marked}
 
     async def backfill_fingerprints(self, limit: int = 500) -> int:
         """Fingerprint images stored before deduplication existed."""
@@ -268,6 +332,8 @@ class ProductCatalogService:
         for image, vector in zip(done, vectors, strict=True):
             phash = dhash(downloaded[image["image_url"]])
             await self._repository.set_fingerprint(image["image_id"], f"{phash:016x}", vector)
+            if image.get("status") == "check_failed":
+                await self._repository.set_image_status(image["image_id"], "pending")
         return len(done)
 
     async def reference_queue(self, limit: int) -> list[dict[str, str]]:

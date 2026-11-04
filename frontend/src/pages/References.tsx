@@ -101,6 +101,10 @@ function ReferenceImages() {
     queryFn: ({ signal }) => getJson<ReferenceImage[]>(`${API}/reference-images?status=pending`, signal),
     refetchInterval: 10000,
   });
+  const recheck = useMutation({
+    mutationFn: () => postJson<{ checked: number; marked_duplicate: number }>(`${API}/reference-images/recheck-duplicates`),
+    onSuccess: () => client.invalidateQueries({ queryKey: ["reference-images"] }),
+  });
   const screen = useMutation({
     mutationFn: () => postJson<ScreenReport>(`${API}/reference-images/screen?limit=30`),
     onSuccess: () => client.invalidateQueries({ queryKey: ["reference-images"] }),
@@ -114,6 +118,9 @@ function ReferenceImages() {
           <p>{t("Images crawled from Pinterest that Gemini accepted as scenes to borrow, newest first. Remove the ones you do not want.")}</p>
         </div>
         <div className="reference-review">
+          <button className="secondary-button" disabled={recheck.isPending} onClick={() => recheck.mutate()} title={t("Mark images that look like an earlier one (80% similar or more) as duplicates")}>
+            {recheck.isPending ? t("Checking…") : t("Re-check duplicates")}
+          </button>
           <button className="primary-button" disabled={screen.isPending || !pending.data?.length} onClick={() => screen.mutate()}>
             {screen.isPending ? t("Reviewing…") : `${t("Review pending")} (${pending.data?.length ?? 0})`}
           </button>
@@ -121,6 +128,8 @@ function ReferenceImages() {
       </div>
       {screen.data && <p role="status">{`${t("Reviewed")} ${screen.data.reviewed} · ${t("usable")} ${screen.data.usable} · ${t("rejected")} ${screen.data.rejected} · ${t("failed")} ${screen.data.failed}`}</p>}
       {screen.error && <p role="alert">{screen.error.message}</p>}
+      {recheck.data && <p role="status">{`${t("Checked")} ${recheck.data.checked} · ${t("new duplicates")} ${recheck.data.marked_duplicate}`}</p>}
+      {recheck.error && <p role="alert">{recheck.error.message}</p>}
       <div className="products-filters">
         <label className="pf-field">
           <span>{t("Product type")}</span>
@@ -136,6 +145,7 @@ function ReferenceImages() {
             <option value="rejected">{t("Rejected by Gemini")}</option>
             <option value="removed">{t("Removed")}</option>
             <option value="duplicate">{t("Duplicates")}</option>
+            <option value="check_failed">{t("Duplicate check failed")}</option>
             <option value="">{t("All")}</option>
           </select>
         </label>

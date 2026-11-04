@@ -49,9 +49,17 @@ const locked = (task) => {
 // ---- ingest from content scripts -------------------------------------------------
 async function ingest(payload) {
   try {
-    await fetch(`${COLLECTOR}/ingest`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    const response = await fetch(`${COLLECTOR}/ingest`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     const s = await chrome.storage.local.get({ sent: 0 });
-    await chrome.storage.local.set({ sent: s.sent + 1, error: "" });
+    if (!response.ok) {
+      // the collector refused the data (for example the duplicate check is off): say so, never swallow it
+      const detail = await response.json().then((body) => body.detail).catch(() => "");
+      await chrome.storage.local.set({ sent: s.sent + 1, error: `HTTP ${response.status}${detail ? `: ${detail}` : ""}` });
+      return;
+    }
+    const result = await response.json().catch(() => ({}));
+    const failed = Number(result.check_failed || 0);
+    await chrome.storage.local.set({ sent: s.sent + 1, error: failed ? `${failed} ảnh không kiểm tra trùng được (xem trang References)` : "" });
   } catch (error) {
     await chrome.storage.local.set({ error: String(error) });
   }

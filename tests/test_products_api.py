@@ -266,7 +266,30 @@ def test_brief_creation_reports_unmet_preconditions_then_succeeds(
 
 
 def test_backfill_needs_the_embedding_model(client: TestClient) -> None:
+    client.app.dependency_overrides[get_product_catalog_service] = _service_without_embedder
     assert client.post("/api/v1/products/reference-images/backfill-fingerprints").status_code == 503
+
+
+async def _service_without_embedder() -> AsyncIterator[ProductCatalogService]:
+    service = ProductCatalogService(SqliteProductRepository(Path(":memory:")))
+    service._embedder = None  # noqa: SLF001
+    yield service
+
+
+def test_ingesting_images_without_a_duplicate_check_is_refused_not_passed(
+    client: TestClient,
+) -> None:
+    client.app.dependency_overrides[get_product_catalog_service] = _service_without_embedder
+    body = {
+        "kind": "pinterest",
+        "product_type": "x",
+        "query": "q",
+        "pins": [
+            {"image_url": "https://i.pinimg.com/236x/a/b/c.jpg", "pin_url": "/pin/1/", "title": "t"}
+        ],
+    }
+    response = client.post("/api/v1/products/ingest", json=body)
+    assert response.status_code == 503 and "duplicate check" in response.json()["detail"]
 
 
 def test_media_download_with_no_products(client: TestClient) -> None:

@@ -19,6 +19,7 @@ x-python-environment: &python-environment
   AIC_TTS_VOICE: ${AIC_TTS_VOICE:-}
   AIC_TTS_SPEED: ${AIC_TTS_SPEED:-1.3}
   AIC_CLIP_SPEED: ${AIC_CLIP_SPEED:-1.25}
+  AIC_DUPLICATE_SIMILARITY: ${AIC_DUPLICATE_SIMILARITY:-0.80}
   AIC_AI_DATA_ROOT: /var/lib/aicontent/pilot
   AIC_AI_DATABASE_BACKEND: postgresql
   AIC_AI_DATABASE_URL: >-

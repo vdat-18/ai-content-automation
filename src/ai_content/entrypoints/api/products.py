@@ -41,7 +41,10 @@ async def ingest_capture(
     payload: dict[str, Any],
     service: ProductCatalogService = Depends(get_product_catalog_service),
 ) -> dict[str, Any]:
-    return await service.ingest(payload)
+    try:
+        return await service.ingest(payload)
+    except ProfileGenerationError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
 
 
 @router.get("/voices")
@@ -134,6 +137,14 @@ async def reference_queue(
     service: ProductCatalogService = Depends(get_product_catalog_service),
 ) -> list[dict[str, str]]:
     return await service.reference_queue(limit)
+
+
+@router.post("/reference-images/recheck-duplicates")
+async def recheck_duplicates(
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> dict[str, int]:
+    """Apply the current similarity threshold to the reference images already stored."""
+    return await service.recheck_duplicates()
 
 
 @router.get("/reference-images")

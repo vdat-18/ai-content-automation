@@ -564,11 +564,11 @@ class SqliteProductRepository:
 
     async def images_without_fingerprint(self, limit: int) -> list[dict[str, Any]]:
         rows = self._connection.execute(
-            "SELECT image_id, image_url FROM reference_images "
+            "SELECT image_id, image_url, status FROM reference_images "
             "WHERE phash IS NULL AND status != 'duplicate' LIMIT ?",
             (limit,),
         ).fetchall()
-        return [{"image_id": r[0], "image_url": r[1]} for r in rows]
+        return [{"image_id": r[0], "image_url": r[1], "status": r[2]} for r in rows]
 
     async def set_fingerprint(self, image_id: str, phash: str, embedding: list[float]) -> None:
         self._connection.execute(
@@ -962,13 +962,15 @@ class PostgresProductRepository:
 
     async def images_without_fingerprint(self, limit: int) -> list[dict[str, Any]]:
         statement = (
-            select(reference_images.c.image_id, reference_images.c.image_url)
+            select(
+                reference_images.c.image_id, reference_images.c.image_url, reference_images.c.status
+            )
             .where(reference_images.c.phash.is_(None), reference_images.c.status != "duplicate")
             .limit(limit)
         )
         async with self._engine.connect() as connection:
             rows = (await connection.execute(statement)).all()
-        return [{"image_id": r[0], "image_url": r[1]} for r in rows]
+        return [{"image_id": r[0], "image_url": r[1], "status": r[2]} for r in rows]
 
     async def set_fingerprint(self, image_id: str, phash: str, embedding: list[float]) -> None:
         statement = (

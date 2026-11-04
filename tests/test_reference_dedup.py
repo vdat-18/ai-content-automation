@@ -158,3 +158,80 @@ async def test_backfill_needs_an_embedder(tmp_path) -> None:
     service = ProductCatalogService(SqliteProductRepository(tmp_path / "n.db"))
     with pytest.raises(ProfileGenerationError, match="disabled"):
         await service.backfill_fingerprints()
+
+
+async def test_similarity_of_eighty_percent_counts_as_the_same_image(tmp_path, monkeypatch) -> None:
+    near = _jpeg(_checker(48))
+    far = _jpeg(_checker(40))
+    VECTORS[near] = [0.85, 0.5268, 0.0]  # 85% like BASE: a copy from now on
+    VECTORS[far] = [0.70, 0.7141, 0.0]  # 70% like BASE: still a different image
+    CONTENT[URLS["a"].replace("a/aa", "n/nn")] = near
+    URLS["near"] = URLS["a"].replace("aa/aa/aaaa", "dd/dd/dddd")
+    URLS["far"] = URLS["a"].replace("aa/aa/aaaa", "ee/ee/eeee")
+    CONTENT[URLS["near"]] = near
+    CONTENT[URLS["far"]] = far
+    service, _ = await _service(tmp_path)
+    result = await service.ingest(_crawl("a", "near", "far"))
+    assert (result["added"], result["duplicates"]) == (2, 1)
+    rows = {i["title"]: i["status"] for i in await service.reference_images(None, "áo thun")}
+    assert rows["near"] == "duplicate" and rows["far"] == "pending"
+
+
+async def test_an_image_that_cannot_be_checked_is_flagged_not_passed(tmp_path, monkeypatch) -> None:
+    service, _ = await _service(tmp_path)
+
+    async def download(urls, http=None):
+        return {}
+
+    monkeypatch.setattr(service_module, "download_images", download)
+    result = await service.ingest(_crawl("a"))
+    assert (result["added"], result["duplicates"], result["check_failed"]) == (1, 0, 1)
+    [row] = await service.reference_images(None, "áo thun")
+    assert row["status"] == "check_failed"
+    assert await service.reference_images("pending", "áo thun") == []
+
+
+async def test_a_broken_embedder_stops_the_ingest_instead_of_letting_images_through(
+    tmp_path,
+) -> None:
+    class Broken:
+        async def embed_many(self, contents):
+            raise RuntimeError("model file is missing")
+
+    service = ProductCatalogService(SqliteProductRepository(tmp_path / "b.db"), embedder=Broken())  # type: ignore[arg-type]
+    with pytest.raises(ProfileGenerationError, match="duplicate check failed"):
+        await service.ingest(_crawl("a"))
+    assert await service.reference_images(None, "áo thun") == []
+
+
+async def test_ingest_without_an_embedder_is_refused(tmp_path) -> None:
+    service = ProductCatalogService(SqliteProductRepository(tmp_path / "n2.db"))
+    with pytest.raises(ProfileGenerationError, match="duplicate check is off"):
+        await service.ingest(_crawl("a"))
+
+
+async def test_recheck_applies_a_lower_threshold_to_stored_images(tmp_path) -> None:
+    service, _ = await _service(tmp_path)
+    repository = service._repository  # noqa: SLF001
+    near = _jpeg(_checker(48))
+    VECTORS[near] = [0.85, 0.5268, 0.0]
+    await service.ingest(_crawl("a"))
+    # an image stored back when only 90% counted as a copy
+    await repository.add_reference_images(
+        "áo thun",
+        "q",
+        [
+            {
+                "image_id": "late",
+                "image_url": "https://x/late.jpg",
+                "pin_url": "/p/",
+                "title": "late",
+                "phash": f"{dhash(near):016x}",
+                "embedding": VECTORS[near],
+            }
+        ],
+    )
+    report = await service.recheck_duplicates()
+    assert report["marked_duplicate"] == 1
+    rows = {i["title"]: i["status"] for i in await service.reference_images(None, "áo thun")}
+    assert rows["late"] == "duplicate" and rows["a"] == "pending"
