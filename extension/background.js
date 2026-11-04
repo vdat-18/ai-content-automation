@@ -77,6 +77,7 @@ async function finishTab(tabId, ok, reason) {
   const known = await locked(async () => {
     const w = await getState();
     if (!w.active[tabId]) return false;
+    if (reason === "unavailable") await rememberUnavailable(w.active[tabId]);
     delete w.active[tabId];
     if (ok) w.done += 1;
     else w.failed += 1;
@@ -108,12 +109,22 @@ async function pauseForHuman(tabId, reason) {
   });
 }
 
+// Products TikTok does not sell to this region come back in the queue every run, so remember them.
+const productKey = (url) => (url.match(/\/pdp\/(?:[^/?]+\/)?(\d+)/) || [])[1] || url;
+async function rememberUnavailable(url) {
+  const s = await chrome.storage.local.get({ unavailable: [] });
+  const key = productKey(url);
+  if (!s.unavailable.includes(key)) await chrome.storage.local.set({ unavailable: [...s.unavailable, key] });
+}
+
 async function startWalker(urls, meta, concurrency) {
+  const skipped = new Set((await chrome.storage.local.get({ unavailable: [] })).unavailable);
+  const wanted = skipped.size ? urls.filter((url) => !skipped.has(productKey(url))) : urls;
   await locked(() =>
     setState({
       ...EMPTY,
       running: true,
-      queue: urls,
+      queue: wanted,
       meta: meta || {},
       concurrency: Math.min(Math.max(Number(concurrency) || 1, 1), MAX_TABS),
       note: "Bắt đầu",

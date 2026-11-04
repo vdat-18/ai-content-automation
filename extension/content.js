@@ -97,9 +97,16 @@
     await wait(800);
   };
 
+  // TikTok answers a product it does not sell to this region with a bare JSON message
+  const unavailable = () => /not currently available in your country or region/i.test((document.body?.innerText || "").slice(0, 600));
+
   const runWalkerFlow = async () => {
     await wait(3000);
     await waitForHuman();
+    if (unavailable()) {
+      send({ type: "page-done", ok: false, reason: "unavailable" });
+      return;
+    }
     if (!/\/pdp\//.test(location.pathname)) {
       send({ type: "page-done", ok: false, reason: "không phải trang sản phẩm" });
       return;
