@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import shutil
 from pathlib import Path
 
@@ -15,7 +16,17 @@ _TIMEOUT = 120
 _TRIES = 3
 _RETRY_STATUSES = {429, 500, 502, 503, 504}
 _RETRY_DELAY = 4.0
-_MAX_SPEEDUP = 1.25
+MAX_SPEEDUP = 1.35
+
+
+def tts_speed() -> float:
+    """Pace the voice-over is read at (AIC_TTS_SPEED); ad voice-overs are brisk."""
+    try:
+        return min(max(float(os.environ.get("AIC_TTS_SPEED", "1.15")), 1.0), MAX_SPEEDUP)
+    except ValueError:
+        return 1.15
+
+
 _DEFAULT_VOICE = "auto"
 
 # Voices the marketplace's Vietnamese model offers (GET /models, model_options.voice).
@@ -103,7 +114,8 @@ async def make_voiceover(
 ) -> list[float]:
     """Read each text so it starts with its shot, and join the readings into one mp3.
 
-    A reading longer than its shot is sped up to at most 1.25x and then cut; a shorter one is
+    Every reading is sped up to the brisk pace of AIC_TTS_SPEED, and one longer than its shot
+    further, to at most 1.35x, and then cut; a shorter one is
     padded with silence, so every shot's words begin where the shot begins. Returns the natural
     length of each reading so a caller can tell which shots need shorter text.
     """
@@ -133,7 +145,7 @@ async def make_voiceover(
             raw.write_bytes(await client.speak(text.strip(), voice))
             length = await _probe_seconds(raw)
             lengths.append(length)
-            speed = min(max(length / seconds, 1.0), _MAX_SPEEDUP)
+            speed = min(max(length / seconds, tts_speed()), MAX_SPEEDUP)
             await _run(
                 "ffmpeg", "-v", "error", "-y", "-i", raw.name,
                 "-af", f"atempo={speed:.4f},apad=whole_dur={seconds:.3f}",

@@ -119,9 +119,21 @@ async def _run(*args: str, cwd: Path | None = None) -> None:
         raise StitchUnavailable("ffmpeg could not process the clips")
 
 
-def shot_seconds(duration: float) -> float:
-    """Length a shot has in the stitched video once its first and last frames are trimmed."""
+def clip_speed() -> float:
+    """How much faster than generated the clips play (AIC_CLIP_SPEED); video models drift slowly."""
+    try:
+        return min(max(float(os.environ.get("AIC_CLIP_SPEED", "1.25")), 1.0), 2.0)
+    except ValueError:
+        return 1.25
+
+
+def _source_seconds(duration: float) -> float:
     return max(0.5, duration - 2 * TRIM_SECONDS)
+
+
+def shot_seconds(duration: float) -> float:
+    """Length a shot has in the stitched video once trimmed and sped up."""
+    return _source_seconds(duration) / clip_speed()
 
 
 @dataclass(frozen=True)
@@ -170,6 +182,7 @@ async def stitch(clips: list[StitchClip], output: Path, voiceover: Path | None =
             scratch.append(part)
             seconds = shot_seconds(clip.duration)
             filters = (
+                f"setpts=PTS/{clip_speed():.4f},"
                 f"scale={_OUTPUT_SIZE}:force_original_aspect_ratio=increase,"
                 f"crop={_OUTPUT_SIZE},setsar=1,fps={_FPS}"
             )
@@ -180,7 +193,7 @@ async def stitch(clips: list[StitchClip], output: Path, voiceover: Path | None =
                 filters += "," + _caption_filter(font, textfile.name, min(seconds - 0.3, 8))
             await _run(
                 "ffmpeg", "-v", "error", "-y", "-ss", f"{TRIM_SECONDS:g}", "-i", str(clip.path),
-                "-t", f"{seconds:.3f}", "-an", "-vf", filters,
+                "-t", f"{_source_seconds(clip.duration):.3f}", "-an", "-vf", filters,
                 "-c:v", "libx264", "-pix_fmt", "yuv420p", part.name,
                 cwd=output.parent,
             )  # fmt: skip

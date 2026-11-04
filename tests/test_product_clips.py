@@ -275,3 +275,16 @@ async def test_clip_prompt_follows_the_shots_delivery(tmp_path) -> None:
     )
     await service.generate_clips(PRODUCT_ID, tmp_path, shot_index=0)
     assert "Nobody speaks" in video.submitted[1][0]
+
+
+def test_clips_play_faster_by_the_configured_speed(monkeypatch) -> None:
+    from ai_content.domains.marketing.products.clips import clip_speed, shot_seconds
+
+    monkeypatch.delenv("AIC_CLIP_SPEED", raising=False)
+    assert clip_speed() == 1.25 and round(shot_seconds(15), 2) == 11.8
+    monkeypatch.setenv("AIC_CLIP_SPEED", "1")
+    assert round(shot_seconds(15), 2) == 14.75
+    monkeypatch.setenv("AIC_CLIP_SPEED", "9")
+    assert clip_speed() == 2.0
+    monkeypatch.setenv("AIC_CLIP_SPEED", "abc")
+    assert clip_speed() == 1.25

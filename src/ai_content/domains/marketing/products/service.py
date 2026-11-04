@@ -43,7 +43,14 @@ from .parsing import (
 from .posting import PostingPackageWriter
 from .references import ProfileGenerationError, ReferenceProfile, ReferenceProfileGenerator
 from .repositories import ProductRepository
-from .speech import SAMPLE_TEXT, VOICES, SpeechClient, SpeechError, make_voiceover
+from .speech import (
+    MAX_SPEEDUP,
+    SAMPLE_TEXT,
+    VOICES,
+    SpeechClient,
+    SpeechError,
+    make_voiceover,
+)
 
 _PINTEREST_SEARCH = "https://www.pinterest.com/search/pins/?q="
 _SCREEN_BATCH = 200
@@ -739,7 +746,7 @@ class ProductCatalogService:
         too_long = [
             i + 1
             for i, (n, (_, limit)) in enumerate(zip(lengths, segments, strict=True))
-            if n > limit * 1.25
+            if n > limit * MAX_SPEEDUP
         ]
         return {
             "voiceover": "mp3",
