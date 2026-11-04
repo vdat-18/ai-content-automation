@@ -1,44 +1,83 @@
 <!doctype html>
-<html>
+<html lang="vi">
   <head>
     <meta charset="utf-8" />
-    <style>
-      body { width: 300px; font: 13px system-ui; padding: 10px; }
-      label { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
-      button { width: 100%; padding: 6px; margin-bottom: 6px; }
-      input[type=number] { width: 60px; }
-      hr { margin: 10px 0; border: 0; border-top: 1px solid #ddd; }
-      #status, #walker { margin-top: 6px; color: #444; }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="popup.css" />
   </head>
   <body>
-    <label><input type="checkbox" id="enabled" /> Thu thập khi tôi tự duyệt</label>
-    <b>Tự động</b>
-    <div style="margin:4px 0 6px;color:#444">Đăng nhập và giải captcha trên trang TikTok Shop trước, rồi bấm nút dưới.</div>
-    <label>Số tab chạy song song: <input type="number" id="auto-tabs" value="3" min="1" max="5" /></label>
-    <label>Số sản phẩm tối đa: <input type="number" id="auto-limit" value="50" min="1" max="500" /></label>
-    <button id="auto">Tự cuộn lấy hết danh sách rồi cào chi tiết</button>
-    <div id="auto-note"></div>
-    <hr />
-    <button id="capture">Capture trang này</button>
-    <div id="status"></div>
-    <button id="harvest">Cuộn trang danh sách này để lấy thêm sản phẩm</button>
-    <hr />
-    <b>Tự duyệt danh sách sản phẩm</b>
-    <label style="margin-top:6px">Số sản phẩm: <input type="number" id="count" value="20" min="1" max="200" /></label>
-    <button id="start">Lấy danh sách từ collector và chạy</button>
-    <button id="stop">Dừng</button>
-    <div id="walker"></div>
-    <hr />
-    <b>Ảnh tham chiếu Pinterest</b>
-    <label style="margin-top:6px">Số từ khóa (trống = tất cả): <input type="number" id="pin-searches" min="1" max="200" /></label>
-    <label>Số ảnh mỗi từ khóa (trống = đến hết): <input type="number" id="pin-images" min="10" max="2000" /></label>
-    <button id="pins">Crawl Pinterest theo từ khóa đã duyệt</button>
-    <hr />
-    <button id="xlsx">Tải Excel</button>
-    <button id="json">Tải JSON</button>
-    <button id="media">Tải ảnh/video về máy</button>
-    <div id="media-status"></div>
+    <header class="top">
+      <div class="brand">
+        <span class="logo">A</span>
+        <div>
+          <strong>AIC Collector</strong>
+          <small id="status">Đã gửi 0 gói về collector</small>
+        </div>
+      </div>
+      <label class="switch" title="Gửi dữ liệu về collector khi bạn tự duyệt trang">
+        <input type="checkbox" id="enabled" />
+        <span class="slider"></span>
+        <span class="switch-label">Tự thu khi duyệt</span>
+      </label>
+    </header>
+
+    <section class="card hero">
+      <h2>1. Lấy sản phẩm TikTok Shop</h2>
+      <p class="hint">Đăng nhập và giải captcha trên trang TikTok Shop trước, rồi bấm nút dưới.</p>
+      <div class="row">
+        <label class="field">
+          <span>Tab song song</span>
+          <input type="number" id="auto-tabs" value="3" min="1" max="5" />
+        </label>
+        <label class="field">
+          <span>Tối đa sản phẩm</span>
+          <input type="number" id="auto-limit" value="50" min="1" max="500" />
+        </label>
+      </div>
+      <button id="auto" class="primary">Cuộn lấy danh sách, rồi cào chi tiết</button>
+      <div id="auto-note" class="note"></div>
+      <div id="walker" class="progress"></div>
+      <button id="stop" class="ghost danger">Dừng</button>
+    </section>
+
+    <section class="card">
+      <h2>2. Ảnh tham chiếu Pinterest</h2>
+      <p class="hint">Đăng nhập Pinterest trước. Để trống hai ô để lấy hết.</p>
+      <div class="row">
+        <label class="field">
+          <span>Số từ khóa</span>
+          <input type="number" id="pin-searches" min="1" max="200" placeholder="tất cả" />
+        </label>
+        <label class="field">
+          <span>Ảnh mỗi từ khóa</span>
+          <input type="number" id="pin-images" min="10" max="2000" placeholder="hết" />
+        </label>
+      </div>
+      <button id="pins" class="primary">Crawl Pinterest theo từ khóa đã duyệt</button>
+    </section>
+
+    <details class="card">
+      <summary>Thủ công</summary>
+      <button id="capture" class="secondary">Capture trang này</button>
+      <button id="harvest" class="secondary">Chỉ cuộn trang danh sách (15 lượt)</button>
+      <div class="row">
+        <label class="field">
+          <span>Số sản phẩm</span>
+          <input type="number" id="count" value="20" min="1" max="200" />
+        </label>
+      </div>
+      <button id="start" class="secondary">Lấy từ collector và chạy từng tab</button>
+    </details>
+
+    <details class="card">
+      <summary>Xuất dữ liệu</summary>
+      <div class="row">
+        <button id="xlsx" class="secondary">Excel</button>
+        <button id="json" class="secondary">JSON</button>
+      </div>
+      <button id="media" class="secondary">Tải ảnh/video về máy</button>
+      <div id="media-status" class="note"></div>
+    </details>
     <script src="popup.js"></script>
   </body>
 </html>
