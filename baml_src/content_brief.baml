@@ -107,10 +107,14 @@ function DraftContentBrief(
     (a complete, self-contained English prompt for an image model: "the person from the character
     image" doing the action of this shot with the real product as the clear hero, the shared scene, camera angle, lighting, style and colors, and an explicit instruction
     that the product keeps its real shape, color, proportions and label), motion_prompt (English,
-    two or three sentences describing the action over the 15 seconds as timed beats (for
-    example "0 to 5s: slow push-in; 5 to 10s: a hand folds the basket; 10 to 15s: camera settles"),
-    one continuous camera path in the same place with no scene cuts and no new objects, for
-    animating the keyframe; the clips are silent, so describe only what is seen and mention
+    four or five sentences describing the action over the 15 seconds as timed beats of about 3
+    seconds, each beat a new, clearly visible action or camera move (for example "0 to 3s: she
+    grabs the basket and swings it open; 3 to 6s: quick push-in as she stuffs clothes inside; 6
+    to 9s: camera swings around to her side while she lifts it; 9 to 12s: she folds it flat in
+    one move; 12 to 15s: she holds it up and smiles to the camera"). The pace is quick and
+    energetic like a TikTok ad: brisk natural movements, never slow motion or a slow drift, no
+    long pauses. Keep one continuous camera path in the same place with no scene cuts and no new
+    objects, for animating the keyframe; the clips are silent, so describe only what is seen and mention
     no sound, music or dialogue; for a narrated shot nobody talks and lips stay closed or
     relaxed, for a talking shot the person talks naturally with small expressions and gestures),
     delivery (narrated or talking),

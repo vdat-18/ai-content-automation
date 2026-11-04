@@ -665,6 +665,8 @@ class ProductCatalogService:
         prompt = (
             f"{shot.get('motion_prompt') or 'Slow gentle camera push-in.'} "
             "Keep the product's exact shape, color and details; do not add or change objects. "
+            "Energetic TikTok pace: brisk natural movement and quick camera moves, "
+            "never slow motion, no long pauses. "
             f"{_DELIVERY_RULE[shot.get('delivery') == 'talking']} "
             "The clip has no sound: no dialogue, no music, no text on screen."
         )
