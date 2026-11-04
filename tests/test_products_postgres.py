@@ -162,6 +162,16 @@ async def _round_trip() -> None:
         ]
         assert events[0]["at"]
 
+        repository_for_delete = briefer._repository
+        assert await repository_for_delete.delete_product("1730000000000000001") is True
+        assert await repository_for_delete.delete_product("1730000000000000001") is False
+        assert await repository_for_delete.list_events("1730000000000000001") == []
+        assert await repository_for_delete.list_clips("1730000000000000001") == []
+        assert all(
+            item["product_id"] != "1730000000000000001"
+            for item in await repository_for_delete.list_details()
+        )
+
         repository = PostgresProductRepository(engine)
         await repository.add_reference_images(
             "áo thun",

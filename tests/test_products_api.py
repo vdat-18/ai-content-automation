@@ -399,3 +399,25 @@ def test_voice_list_and_unknown_voice_sample(client: TestClient) -> None:
     listed = client.get("/api/v1/products/voices").json()
     assert {"id": "kimoanh.mp3", "label": "Kim Oanh"} in listed
     assert client.get("/api/v1/products/voices/nope/sample").status_code == 409
+
+
+def test_deleting_a_product_removes_it_and_what_was_made_from_it(
+    tmp_path: Path, client: TestClient
+) -> None:
+    _capture_product(client)
+    media = tmp_path / "media"
+    for relative in (f"keyframes/{PRODUCT_ID}/shot_0.jpg", f"videos/{PRODUCT_ID}/video.mp4"):
+        (media / relative).parent.mkdir(parents=True, exist_ok=True)
+        (media / relative).write_bytes(b"x")
+
+    assert client.delete(f"/api/v1/products/{PRODUCT_ID}").json() == {"deleted": True}
+    assert client.get("/api/v1/products").json() == []
+    assert client.get(f"/api/v1/products/{PRODUCT_ID}").status_code == 404
+    assert not (media / "keyframes" / PRODUCT_ID).exists()
+    assert not (media / "videos" / PRODUCT_ID).exists()
+    assert client.delete(f"/api/v1/products/{PRODUCT_ID}").status_code == 404
+
+    # collecting the same product again does not bring it back
+    _capture_product(client)
+    assert client.get("/api/v1/products").json() == []
+    assert PRODUCT_ID not in client.get("/api/v1/products/queue").text

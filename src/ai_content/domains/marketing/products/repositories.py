@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Protocol
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncEngine
 
@@ -100,6 +100,8 @@ class ProductRepository(Protocol):
 
     async def list_events(self, product_id: str, limit: int = 300) -> list[dict[str, Any]]: ...
 
+    async def delete_product(self, product_id: str) -> bool: ...
+
 
 def _sold(value: object) -> int | None:
     try:
@@ -139,6 +141,13 @@ _KEYFRAME_COLUMNS = (
 )
 
 
+_PRODUCT_OWNED_TABLES = (
+    "product_selections",
+    "product_briefs",
+    "product_keyframes",
+    "product_clips",
+    "product_events",
+)
 _EVENT_COLUMNS = ("id", "at", "step", "shot_index", "status", "message")
 
 
@@ -184,10 +193,15 @@ class SqliteProductRepository:
                 has_video INTEGER NOT NULL DEFAULT 0,
                 listing TEXT,
                 detail TEXT,
-                detail_captured_at TEXT
+                detail_captured_at TEXT,
+                deleted INTEGER NOT NULL DEFAULT 0
             )
             """
         )
+        with contextlib.suppress(sqlite3.OperationalError):
+            self._connection.execute(
+                "ALTER TABLE marketplace_products ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0"
+            )
         self._connection.execute(
             "CREATE TABLE IF NOT EXISTS product_selections ("
             "product_id TEXT PRIMARY KEY, product_type TEXT)"
@@ -291,25 +305,29 @@ class SqliteProductRepository:
 
     async def queue(self, limit: int) -> list[str]:
         rows = self._connection.execute(
-            "SELECT listing FROM marketplace_products WHERE detail IS NULL AND listing IS NOT NULL"
+            "SELECT listing FROM marketplace_products "
+            "WHERE detail IS NULL AND listing IS NOT NULL AND deleted=0"
         ).fetchall()
         return _queue_candidates([json.loads(row[0]) for row in rows], limit)
 
     async def list_details(self) -> list[dict[str, Any]]:
         rows = self._connection.execute(
-            "SELECT detail FROM marketplace_products WHERE detail IS NOT NULL ORDER BY product_id"
+            "SELECT detail FROM marketplace_products "
+            "WHERE detail IS NOT NULL AND deleted=0 ORDER BY product_id"
         ).fetchall()
         return [json.loads(row[0]) for row in rows]
 
     async def list_listing(self) -> list[dict[str, Any]]:
         rows = self._connection.execute(
-            "SELECT listing FROM marketplace_products WHERE listing IS NOT NULL ORDER BY product_id"
+            "SELECT listing FROM marketplace_products "
+            "WHERE listing IS NOT NULL AND deleted=0 ORDER BY product_id"
         ).fetchall()
         return [json.loads(row[0]) for row in rows]
 
     async def get_detail(self, product_id: str) -> dict[str, Any] | None:
         row = self._connection.execute(
-            "SELECT detail FROM marketplace_products WHERE product_id=? AND detail IS NOT NULL",
+            "SELECT detail FROM marketplace_products "
+            "WHERE product_id=? AND detail IS NOT NULL AND deleted=0",
             (product_id,),
         ).fetchone()
         return json.loads(row[0]) if row else None
@@ -513,6 +531,17 @@ class SqliteProductRepository:
         ).fetchall()
         return [_event_record(row) for row in reversed(rows)]
 
+    async def delete_product(self, product_id: str) -> bool:
+        """Hide the product for good and drop everything made from it."""
+        cursor = self._connection.execute(
+            "UPDATE marketplace_products SET deleted=1 WHERE product_id=? AND deleted=0",
+            (product_id,),
+        )
+        for table in _PRODUCT_OWNED_TABLES:
+            self._connection.execute(f"DELETE FROM {table} WHERE product_id=?", (product_id,))
+        self._connection.commit()
+        return cursor.rowcount > 0
+
     async def existing_image_ids(self, image_ids: list[str]) -> set[str]:
         if not image_ids:
             return set()
@@ -593,7 +622,9 @@ class PostgresProductRepository:
 
     async def queue(self, limit: int) -> list[str]:
         statement = select(marketplace_products.c.listing).where(
-            marketplace_products.c.detail.is_(None), marketplace_products.c.listing.is_not(None)
+            marketplace_products.c.detail.is_(None),
+            marketplace_products.c.listing.is_not(None),
+            marketplace_products.c.deleted.is_(False),
         )
         async with self._engine.connect() as connection:
             rows = (await connection.execute(statement)).scalars().all()
@@ -602,7 +633,10 @@ class PostgresProductRepository:
     async def list_details(self) -> list[dict[str, Any]]:
         statement = (
             select(marketplace_products.c.detail)
-            .where(marketplace_products.c.detail.is_not(None))
+            .where(
+                marketplace_products.c.detail.is_not(None),
+                marketplace_products.c.deleted.is_(False),
+            )
             .order_by(marketplace_products.c.product_id)
         )
         async with self._engine.connect() as connection:
@@ -611,7 +645,10 @@ class PostgresProductRepository:
     async def list_listing(self) -> list[dict[str, Any]]:
         statement = (
             select(marketplace_products.c.listing)
-            .where(marketplace_products.c.listing.is_not(None))
+            .where(
+                marketplace_products.c.listing.is_not(None),
+                marketplace_products.c.deleted.is_(False),
+            )
             .order_by(marketplace_products.c.product_id)
         )
         async with self._engine.connect() as connection:
@@ -621,6 +658,7 @@ class PostgresProductRepository:
         statement = select(marketplace_products.c.detail).where(
             marketplace_products.c.product_id == product_id,
             marketplace_products.c.detail.is_not(None),
+            marketplace_products.c.deleted.is_(False),
         )
         async with self._engine.connect() as connection:
             return (await connection.execute(statement)).scalar_one_or_none()
@@ -881,6 +919,27 @@ class PostgresProductRepository:
         async with self._engine.connect() as connection:
             rows = (await connection.execute(statement)).all()
         return [_event_record(row) for row in reversed(rows)]
+
+    async def delete_product(self, product_id: str) -> bool:
+        """Hide the product for good and drop everything made from it."""
+        async with self._engine.begin() as connection:
+            result = await connection.execute(
+                update(marketplace_products)
+                .where(
+                    marketplace_products.c.product_id == product_id,
+                    marketplace_products.c.deleted.is_(False),
+                )
+                .values(deleted=True)
+            )
+            for table in (
+                product_selections,
+                product_briefs,
+                product_keyframes,
+                product_clips,
+                product_events,
+            ):
+                await connection.execute(delete(table).where(table.c.product_id == product_id))
+        return bool(result.rowcount)
 
     async def existing_image_ids(self, image_ids: list[str]) -> set[str]:
         if not image_ids:

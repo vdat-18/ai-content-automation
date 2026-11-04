@@ -1,9 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDownToLine, ArrowUpToLine, Download, Film, Package, Search } from "lucide-react";
+import { ArrowDownToLine, ArrowUpToLine, Download, Film, Package, RotateCcw, Search, Trash2 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { EmptyState, PageHeader, Panel, SkeletonPage } from "../components/ui";
 import { useI18n } from "../hooks/useI18n";
-import { getJson, postJson } from "../services/http";
+import { deleteJson, getJson, postJson } from "../services/http";
 import type { ReferenceProfile } from "./References";
 
 type Product = {
@@ -47,6 +47,14 @@ export function ProductsPage() {
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: ["product-selections"] });
       void client.invalidateQueries({ queryKey: ["reference-profiles"] });
+    },
+  });
+
+  const remove = useMutation({
+    mutationFn: (productId: string) => deleteJson<{ deleted: boolean }>(`${API}/${productId}`),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ["products"] });
+      void client.invalidateQueries({ queryKey: ["product-selections"] });
     },
   });
 
@@ -125,14 +133,26 @@ export function ProductsPage() {
                     <td>{toNumber(product.review_count).toLocaleString("vi-VN")}</td>
                     <td>{product.rating ?? "-"}</td>
                     <td>
-                      {product.product_id in (selections.data ?? {}) ? (
-                        <>
-                          <span className="badge badge--success">{selections.data?.[product.product_id] || t("Selected")}</span>
-                          <button className="secondary-button" disabled={select.isPending} onClick={() => select.mutate({ productId: product.product_id, regenerate: true })}>{t("Regenerate keywords")}</button>
-                        </>
-                      ) : (
-                        <button className="secondary-button" disabled={select.isPending} onClick={() => select.mutate({ productId: product.product_id, regenerate: false })}>{t("Select for content")}</button>
-                      )}
+                      <div className="pt-actions">
+                        {product.product_id in (selections.data ?? {}) ? (
+                          <>
+                            <span className="pt-keyword" title={t("Keyword used to find reference images")}>{selections.data?.[product.product_id] || t("Selected")}</span>
+                            <button type="button" className="pt-icon" aria-label={t("Regenerate keywords")} title={t("Regenerate keywords")} disabled={select.isPending} onClick={() => select.mutate({ productId: product.product_id, regenerate: true })}><RotateCcw size={14} /></button>
+                          </>
+                        ) : (
+                          <button type="button" className="pt-button" disabled={select.isPending} onClick={() => select.mutate({ productId: product.product_id, regenerate: false })}>{t("Select for content")}</button>
+                        )}
+                        <button
+                          type="button"
+                          className="pt-icon pt-icon--danger"
+                          aria-label={t("Delete product")}
+                          title={t("Delete product")}
+                          disabled={remove.isPending}
+                          onClick={() => {
+                            if (window.confirm(t("Delete this product and its brief, images, clips and video? It will not be collected again."))) remove.mutate(product.product_id);
+                          }}
+                        ><Trash2 size={14} /></button>
+                      </div>
                     </td>
                 </tr>
               ))}

@@ -72,6 +72,17 @@ async def list_products(
     return await service.details(include_junk)
 
 
+@router.delete("/{product_id}")
+async def delete_product(
+    product_id: str,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> dict[str, bool]:
+    """Delete a product and everything made from it; the collector will not bring it back."""
+    if not await service.delete_product(product_id, _media_root()):
+        raise HTTPException(status_code=404, detail="No such product")
+    return {"deleted": True}
+
+
 @router.post("/media/download")
 async def download_media(
     service: ProductCatalogService = Depends(get_product_catalog_service),

@@ -66,3 +66,18 @@ def test_paths_cannot_leave_the_media_folder(tmp_path) -> None:
     for bad in ("../x", "/etc/passwd", "a/../../x", ""):
         with pytest.raises(ValueError):
             store.path(bad)
+
+
+async def test_remove_tree_deletes_a_folder_in_both_places(tmp_path) -> None:
+    remote = _Remote()
+    remote.delete_prefix = lambda prefix: [  # type: ignore[attr-defined]
+        remote.objects.pop(key) for key in list(remote.objects) if key.startswith(prefix)
+    ]
+    store = MediaStore(tmp_path, remote)
+    await store.write("clips/p/shot_0.mp4", b"a")
+    await store.write("clips/p/shot_1.mp4", b"b")
+    await store.write("clips/other/shot_0.mp4", b"c")
+
+    await store.remove_tree("clips/p")
+    assert not (tmp_path / "clips" / "p").exists()
+    assert list(remote.objects) == [KEY_PREFIX + "clips/other/shot_0.mp4"]

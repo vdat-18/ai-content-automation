@@ -49,6 +49,7 @@ marketplace_products = Table(
     Column("listing", JSONB),
     Column("detail", JSONB),
     Column("detail_captured_at", DateTime(timezone=True)),
+    Column("deleted", Boolean, nullable=False, server_default=sql_text("false")),
     *_timestamps(),
     schema="marketing",
 )

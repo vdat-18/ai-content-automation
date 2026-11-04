@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import asyncio
 import mimetypes
+import shutil
 from pathlib import Path, PurePosixPath
 from typing import Protocol
 
@@ -27,6 +28,8 @@ class RemoteMedia(Protocol):
     def exists(self, key: str) -> bool: ...
 
     def delete(self, key: str) -> None: ...
+
+    def delete_prefix(self, prefix: str) -> None: ...
 
 
 class S3RemoteMedia:
@@ -94,6 +97,14 @@ class S3RemoteMedia:
 
     def delete(self, key: str) -> None:
         self._client.delete_object(Bucket=self._bucket, Key=key)
+
+    def delete_prefix(self, prefix: str) -> None:
+        pages = self._client.get_paginator("list_objects_v2").paginate(
+            Bucket=self._bucket, Prefix=prefix
+        )
+        for page in pages:
+            for item in page.get("Contents", []):
+                self._client.delete_object(Bucket=self._bucket, Key=item["Key"])
 
 
 def _relative(relative: str | Path) -> str:
@@ -171,6 +182,13 @@ class MediaStore:
         return self._remote is not None and await asyncio.to_thread(
             self._remote.exists, self._key(relative)
         )
+
+    async def remove_tree(self, relative: str | Path) -> None:
+        """Delete a folder with everything in it, here and in the remote store."""
+        shutil.rmtree(self.path(relative), ignore_errors=True)
+        if self._remote is not None:
+            prefix = self._key(relative).rstrip("/") + "/"
+            await asyncio.to_thread(self._remote.delete_prefix, prefix)
 
     async def remove(self, relative: str | Path) -> None:
         self.path(relative).unlink(missing_ok=True)

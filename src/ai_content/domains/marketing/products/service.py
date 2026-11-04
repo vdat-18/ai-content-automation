@@ -880,6 +880,15 @@ class ProductCatalogService:
         )
         return relative
 
+    async def delete_product(self, product_id: str, media_root: Path) -> bool:
+        """Delete a product with its brief, images, clips and video; it is not collected again."""
+        deleted = await self._repository.delete_product(product_id)
+        if deleted:
+            store = self.media(media_root)
+            for folder in ("persona", "keyframes", "clips", "videos"):
+                await store.remove_tree(f"{folder}/{product_id}")
+        return deleted
+
     async def set_image_status(self, image_id: str, status: str) -> bool:
         return await self._repository.set_image_status(image_id, status)
 
