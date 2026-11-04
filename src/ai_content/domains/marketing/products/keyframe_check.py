@@ -22,6 +22,7 @@ class _BamlCheckClient(Protocol):
         master_keyframe: BamlImage | None,
         keyframe: BamlImage,
         character: BamlImage | None,
+        previous_keyframe: BamlImage | None,
     ) -> baml_types.KeyframeCheck: ...
 
 
@@ -56,6 +57,7 @@ class KeyframeChecker:
         keyframe: bytes,
         master: bytes | None = None,
         persona: bytes | None = None,
+        previous: bytes | None = None,
     ) -> str | None:
         """Return "" when the keyframe passes, the problem text when it fails, None if unchecked."""
         try:
@@ -65,6 +67,7 @@ class KeyframeChecker:
                 _image(master) if master else None,
                 _image(keyframe),
                 _image(persona) if persona else None,
+                _image(previous) if previous else None,
             )
         except BamlError as error:
             logger.warning("Keyframe check failed: {}", str(error)[:300])

@@ -496,6 +496,7 @@ class ProductCatalogService:
     ) -> None:
         assert self._keyframer is not None
         attempts = (previous or {}).get("attempts", 0)
+        before = await self._keyframe_before(product_id, index, media_root)
         record = {
             "product_id": product_id,
             "shot_index": index,
@@ -528,7 +529,7 @@ class ProductCatalogService:
                 break
             attempts += 1
             image = candidate
-            problem = await self._check_keyframe(shot, photos, image, master, persona) or ""
+            problem = await self._check_keyframe(shot, photos, image, master, persona, before) or ""
             if not problem:
                 break
         assert image is not None
@@ -547,6 +548,16 @@ class ProductCatalogService:
             }
         )
 
+    async def _keyframe_before(self, product_id: str, index: int, media_root: Path) -> bytes | None:
+        """The image of the shot just before this one, so the cut between them can be checked."""
+        if index < 2:
+            return None  # shot 1 follows the master, which is already its reference
+        for keyframe in await self._repository.list_keyframes(product_id):
+            if keyframe["shot_index"] == index - 1 and keyframe.get("image_path"):
+                path = Path(media_root) / keyframe["image_path"]
+                return path.read_bytes() if path.is_file() else None
+        return None
+
     async def _check_keyframe(
         self,
         shot: dict[str, Any],
@@ -554,11 +565,12 @@ class ProductCatalogService:
         image: bytes,
         master: bytes | None,
         persona: bytes | None = None,
+        before: bytes | None = None,
     ) -> str | None:
         if self._checker is None:
             return None
         description = str(shot.get("description") or shot["keyframe_prompt"])
-        return await self._checker.check(description, photos, image, master, persona)
+        return await self._checker.check(description, photos, image, master, persona, before)
 
     async def clips(self, product_id: str, media_root: Path) -> list[dict[str, Any]]:
         """List clips, first collecting the ones whose video job has finished."""

@@ -8,7 +8,8 @@ function CheckKeyframe(
   product_photos: image[],
   master_keyframe: image?,
   keyframe: image,
-  character: image?
+  character: image?,
+  previous_keyframe: image?
 ) -> KeyframeCheck {
   client OrchestrationModel
   prompt #"
@@ -21,7 +22,9 @@ function CheckKeyframe(
     product as in the photos (same shape, color, proportions, material, label and printed text,
     same number of items); it has no extra or missing parts, no warped geometry and no
     unreadable or invented text or logos; the picture shows what the shot description asks for;
-    when a master keyframe is given, the light and color palette match it; when a character image
+    when a master keyframe is given, the light and color palette match it; when the previous
+    shot's keyframe is given, the same person wears the same outfit in the same kind of room and
+    light, so the two shots could be cut together without a jarring jump; when a character image
     is given, the person in the keyframe is clearly the same person (face, hair, skin tone,
     clothes) and has natural hands and limbs with no extra or missing fingers. Ignore
     background text and small decoration unless it contradicts the product.
@@ -40,6 +43,11 @@ function CheckKeyframe(
     {% if master_keyframe %}
     Master keyframe (the scene to match):
     {{ master_keyframe }}
+    {% endif %}
+
+    {% if previous_keyframe %}
+    Previous shot's keyframe (this shot must continue from it):
+    {{ previous_keyframe }}
     {% endif %}
 
     {% if character %}

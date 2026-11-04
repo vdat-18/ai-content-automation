@@ -178,7 +178,7 @@ class _Checker:
         self.verdicts = verdicts
         self.calls = 0
 
-    async def check(self, description, photos, keyframe, master=None, persona=None):
+    async def check(self, description, photos, keyframe, master=None, persona=None, previous=None):
         self.calls += 1
         return self.verdicts.pop(0)
 
@@ -208,6 +208,26 @@ async def test_unchecked_keyframe_is_not_regenerated(tmp_path) -> None:
     service._checker = _Checker([None])
     [record] = await service.generate_keyframes(PRODUCT_ID, tmp_path)
     assert len(keyframer.calls) == 1 and record["qa_problem"] == ""
+
+
+class _RecordingChecker:
+    def __init__(self) -> None:
+        self.previous: list[bytes | None] = []
+
+    async def check(self, description, photos, keyframe, master=None, persona=None, previous=None):
+        self.previous.append(previous)
+        return ""
+
+
+async def test_later_shots_are_checked_against_the_shot_before_them(tmp_path) -> None:
+    service = await _service(tmp_path, _FakeKeyframer())
+    checker = _RecordingChecker()
+    service._checker = checker
+    await service.generate_keyframes(PRODUCT_ID, tmp_path)
+    await service.set_keyframe_status(PRODUCT_ID, 0, "approved")
+    await service.generate_keyframes(PRODUCT_ID, tmp_path)
+    # master and shot 1 (which follows the master) have no earlier shot; shot 2 sees shot 1
+    assert checker.previous == [None, None, PNG + b"follow"]
 
 
 class _PersonaKeyframer(_FakeKeyframer):
