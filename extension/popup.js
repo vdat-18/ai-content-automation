@@ -1,27 +1,41 @@
 const enabled = document.getElementById("enabled");
 const status = document.getElementById("status");
 const walkerBox = document.getElementById("walker");
+const pinBox = document.getElementById("pin-walker");
 
 const sendToTab = (tabId, message) =>
   chrome.tabs.sendMessage(tabId, message, () => {
     if (chrome.runtime.lastError) status.textContent = "Hãy mở trang TikTok/Pinterest rồi tải lại tab (F5).";
   });
 
+// One walker runs at a time, and its progress shows only in the section of the site it belongs to.
+const paint = ({ box, bar, stop }, w, mine, describe) => {
+  const total = mine ? w.queue.length : 0;
+  box.textContent = mine ? describe(w) : "";
+  bar.hidden = !total;
+  bar.firstElementChild.style.width = total ? `${Math.round(((w.done + w.failed) / total) * 100)}%` : "0%";
+  stop.hidden = !(mine && w.running);
+};
+const state = (w) => (w.running ? (w.paused ? "TẠM DỪNG, cần bạn" : "Đang chạy") : "Đã dừng");
+const tiktokText = (w) =>
+  `${state(w)}: ${w.done + w.failed}/${w.queue.length} sản phẩm | ${Object.keys(w.active || {}).length} tab | OK ${w.done} | lỗi ${w.failed}\n${w.note}`;
+const pinterestText = (w) =>
+  `${state(w)}: từ khóa ${w.done + w.failed}/${w.queue.length} | OK ${w.done} | lỗi ${w.failed}${w.detail ? `\nĐang thu ${w.detail}` : `\n${w.note}`}`;
+
 const refresh = () =>
   chrome.storage.local.get({ enabled: false, sent: 0, error: "", walker: null, autoNote: "" }, (s) => {
-    document.getElementById("auto-note").textContent = s.autoNote;
+    const w = s.walker;
+    document.getElementById("auto-note").textContent = w?.kind === "pinterest" && w.running ? "" : s.autoNote;
     enabled.checked = Boolean(s.enabled);
     status.textContent = s.error ? `Lỗi gửi: ${s.error}` : `Đã gửi ${s.sent} gói về collector`;
-    const w = s.walker;
-    walkerBox.textContent = w
-      ? `${w.running ? (w.paused ? "TẠM DỪNG - cần bạn" : "Đang chạy") : "Không chạy"}: ${w.done + w.failed}/${w.queue.length} | ${Object.keys(w.active || {}).length} tab | OK ${w.done} | lỗi ${w.failed} | ${w.note}${w.detail ? `
-Đang thu: ${w.detail}` : ""}`
-      : "";
-    const bar = document.getElementById("walker-bar");
-    if (bar) {
-      const total = w?.queue?.length || 0;
-      bar.hidden = !(w && total);
-      bar.firstElementChild.style.width = total ? `${Math.round(((w.done + w.failed) / total) * 100)}%` : "0%";
+    const pinterest = w?.kind === "pinterest";
+    paint({ box: walkerBox, bar: document.getElementById("walker-bar"), stop: document.getElementById("stop") }, w, Boolean(w) && !pinterest, tiktokText);
+    paint({ box: pinBox, bar: document.getElementById("pin-bar"), stop: document.getElementById("pin-stop") }, w, Boolean(w) && pinterest, pinterestText);
+    const busy = Boolean(w?.running);
+    for (const id of ["auto", "start", "pins"]) {
+      const button = document.getElementById(id);
+      button.disabled = busy;
+      button.title = busy ? "Đang có một lượt thu thập chạy, hãy đợi hoặc bấm Dừng" : "";
     }
   });
 
@@ -63,6 +77,7 @@ document.getElementById("start").addEventListener("click", async () => {
   }
 });
 document.getElementById("stop").addEventListener("click", () => chrome.runtime.sendMessage({ type: "walker-stop" }));
+document.getElementById("pin-stop").addEventListener("click", () => chrome.runtime.sendMessage({ type: "walker-stop" }));
 const API = "http://127.0.0.1:8000/api/v1/products";
 document.getElementById("pins").addEventListener("click", async () => {
   chrome.storage.local.set({ autoNote: "" });
@@ -71,13 +86,13 @@ document.getElementById("pins").addEventListener("click", async () => {
   try {
     const items = await (await fetch(`${API}/reference-queue?limit=${searches}`)).json();
     if (!items.length) {
-      walkerBox.textContent = "Chưa có từ khóa nào đã duyệt (hoặc đã crawl hết).";
+      pinBox.textContent = "Chưa có từ khóa nào đã duyệt (hoặc đã crawl hết).";
       return;
     }
     const meta = Object.fromEntries(items.map((item) => [item.url, { product_type: item.product_type, query: item.query, max_images: maxImages }]));
-    chrome.runtime.sendMessage({ type: "walker-start", urls: items.map((item) => item.url), meta });
+    chrome.runtime.sendMessage({ type: "walker-start", kind: "pinterest", urls: items.map((item) => item.url), meta });
   } catch (error) {
-    walkerBox.textContent = `Không gọi được API: ${error}`;
+    pinBox.textContent = `Không gọi được API: ${error}`;
   }
 });
 document.getElementById("xlsx").addEventListener("click", () => chrome.tabs.create({ url: `${API}/export?format=xlsx` }));

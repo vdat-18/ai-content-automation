@@ -27,6 +27,7 @@ const EMPTY = {
   delayMs: BASE_DELAY_MS,
   note: "",
   detail: "",
+  kind: "tiktok", // which collector owns the run: "tiktok" or "pinterest"
 };
 const timers = new Map(); // tabId -> timeout that gives up on a page that never finishes
 const recentOpens = []; // when the last product tabs were opened, for the per-minute cap
@@ -222,7 +223,7 @@ async function rememberUnavailable(url) {
   if (!s.unavailable.includes(key)) await chrome.storage.local.set({ unavailable: [...s.unavailable, key] });
 }
 
-async function startWalker(urls, meta, concurrency) {
+async function startWalker(urls, meta, concurrency, kind = "tiktok") {
   const waitMs = await breakerOpenFor();
   if (waitMs > 0) {
     const note = `Vừa gặp captcha nhiều lần. Hãy nghỉ thêm khoảng ${Math.ceil(waitMs / 60_000)} phút rồi chạy lại.`;
@@ -238,6 +239,7 @@ async function startWalker(urls, meta, concurrency) {
       running: true,
       queue: wanted,
       meta: meta || {},
+      kind,
       concurrency: Math.min(Math.max(Number(concurrency) || 1, 1), MAX_TABS),
       note: "Bắt đầu",
     }),
@@ -312,7 +314,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (message.auto) afterHarvest(message.auto, { reason: message.reason || "", count: message.count || 0, clicks: message.clicks || 0 });
       break;
     case "walker-start":
-      startWalker(message.urls, message.meta, message.concurrency);
+      startWalker(message.urls, message.meta, message.concurrency, message.kind === "pinterest" ? "pinterest" : "tiktok");
       break;
     case "walker-stop":
       stopWalker("Đã dừng");

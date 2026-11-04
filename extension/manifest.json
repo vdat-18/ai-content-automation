@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "AIC Collector (research)",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Captures product and review data from pages in your own Chrome and sends it to a local collector. Pauses for you at any security check or login.",
   "permissions": ["storage", "notifications"],
   "host_permissions": [
