@@ -933,6 +933,15 @@ class ProductCatalogService:
         result["profile"] = profile.as_dict()
         return result
 
+    async def mark_selected(self, product_id: str) -> bool:
+        """Put a product in the selected list straight away, before its keyword exists."""
+        if await self._repository.get_detail(product_id) is None:
+            return False
+        selections = await self._repository.selections()
+        if product_id not in selections:
+            await self._repository.select_product(product_id, None)
+        return True
+
     async def selections(self) -> dict[str, str | None]:
         return await self._repository.selections()
 

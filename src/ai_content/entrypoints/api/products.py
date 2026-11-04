@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from pathlib import Path
 from typing import Any, Literal
@@ -24,7 +25,11 @@ from ai_content.domains.marketing.products.service import (
 )
 from ai_content.domains.marketing.products.speech import VOICES
 
-from .dependencies import get_product_catalog_service, get_runtime_settings
+from .dependencies import (
+    get_product_catalog_service,
+    get_runtime_settings,
+    product_catalog_scope_for,
+)
 
 router = APIRouter(prefix="/api/v1/products", tags=["products"])
 
@@ -231,16 +236,53 @@ async def update_brief(
     return record
 
 
+# Keywords come from an LLM and take a while, so choosing a product only queues the work: the row
+# shows "queued" at once and the keyword appears when a background worker is done with it.
+_select_tasks: set[asyncio.Task[None]] = set()
+_select_errors: dict[str, str] = {}
+_SELECT_WORKERS = 2
+_select_gate = asyncio.Semaphore(_SELECT_WORKERS)
+
+
+async def _run_select(open_scope: Any, product_id: str, regenerate: bool) -> None:
+    async with _select_gate:
+        try:
+            async with open_scope() as service:
+                result = await service.select(product_id, regenerate)
+        except Exception as error:  # noqa: BLE001
+            _select_errors[product_id] = str(error)[:300]
+            return
+    if result is None:
+        _select_errors[product_id] = "Product not captured"
+    elif result.get("error"):
+        _select_errors[product_id] = str(result["error"])
+    else:
+        _select_errors.pop(product_id, None)
+
+
 @router.post("/{product_id}/select")
 async def select_product(
     product_id: str,
+    request: Request,
     regenerate: bool = False,
     service: ProductCatalogService = Depends(get_product_catalog_service),
 ) -> dict[str, Any]:
-    result = await service.select(product_id, regenerate)
-    if result is None:
+    """Queue a product for content; its keyword is made in the background."""
+    if not await service.mark_selected(product_id):
         raise HTTPException(status_code=404, detail="Product not captured")
-    return result
+    _select_errors.pop(product_id, None)
+    task = asyncio.create_task(
+        _run_select(product_catalog_scope_for(request), product_id, regenerate)
+    )
+    _select_tasks.add(task)
+    task.add_done_callback(_select_tasks.discard)
+    return {"product_id": product_id, "queued": True}
+
+
+@router.get("/select-errors")
+async def select_errors() -> dict[str, str]:
+    """Products whose keyword could not be made, with the reason."""
+    return dict(_select_errors)
 
 
 @router.get("/export")

@@ -348,26 +348,15 @@ def _profile_generator(settings: ApiRuntimeSettings) -> ReferenceProfileGenerato
     )
 
 
-async def get_product_catalog_service(request: Request) -> AsyncIterator[ProductCatalogService]:
-    """Yield the collected marketplace product catalog."""
+@asynccontextmanager
+async def product_catalog_scope(postgres: Any) -> AsyncIterator[ProductCatalogService]:
+    """Open the product catalog service, in a request or in a background task."""
     settings = get_runtime_settings()
-    postgres = _postgres_runtime(request)
-    if postgres is not None:
-        yield ProductCatalogService(
-            postgres.product_repository,
-            _profile_generator(settings),
-            _image_reviewer(settings),
-            _brief_writer(settings),
-            _image_embedder(settings),
-            _keyframer(settings),
-            _keyframe_checker(settings),
-            _video_client(settings),
-            _posting_writer(settings),
-            _speech_client(settings),
-            _remote_media(settings),
-        )
-        return
-    repository = SqliteProductRepository(settings.db_path)
+    repository = (
+        postgres.product_repository
+        if postgres is not None
+        else SqliteProductRepository(settings.db_path)
+    )
     try:
         yield ProductCatalogService(
             repository,
@@ -383,4 +372,17 @@ async def get_product_catalog_service(request: Request) -> AsyncIterator[Product
             _remote_media(settings),
         )
     finally:
-        repository.close()
+        if postgres is None:
+            repository.close()
+
+
+def product_catalog_scope_for(request: Request):
+    """A scope that stays usable after the request that asked for it has ended."""
+    postgres = _postgres_runtime(request)
+    return lambda: product_catalog_scope(postgres)
+
+
+async def get_product_catalog_service(request: Request) -> AsyncIterator[ProductCatalogService]:
+    """Yield the collected marketplace product catalog."""
+    async with product_catalog_scope(_postgres_runtime(request)) as service:
+        yield service

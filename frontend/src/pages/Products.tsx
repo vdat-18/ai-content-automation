@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDownToLine, ArrowUpToLine, Download, Film, Package, RotateCcw, Search, Trash2 } from "lucide-react";
+import { ArrowDownToLine, ArrowUpToLine, Download, Film, Loader2, Package, RotateCcw, Search, Trash2 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { EmptyState, PageHeader, Panel, SkeletonPage } from "../components/ui";
 import { useI18n } from "../hooks/useI18n";
@@ -40,12 +40,23 @@ export function ProductsPage() {
   const query = useQuery({ queryKey: ["products"], queryFn: ({ signal }) => getJson<Product[]>(API, signal), refetchInterval: 10000 });
   const media = useMutation({ mutationFn: () => postJson<MediaReport>(`${API}/media/download`) });
   const client = useQueryClient();
-  const selections = useQuery({ queryKey: ["product-selections"], queryFn: ({ signal }) => getJson<Record<string, string | null>>(`${API}/selections`, signal) });
+  // a selected product whose keyword is not made yet has a null type; poll until the queue is empty
+  const selections = useQuery({
+    queryKey: ["product-selections"],
+    queryFn: ({ signal }) => getJson<Record<string, string | null>>(`${API}/selections`, signal),
+    refetchInterval: (query) => (Object.values(query.state.data ?? {}).some((type) => !type) ? 3000 : false),
+  });
+  const selectErrors = useQuery({
+    queryKey: ["select-errors"],
+    queryFn: ({ signal }) => getJson<Record<string, string>>(`${API}/select-errors`, signal),
+    refetchInterval: (query) => (Object.values(selections.data ?? {}).some((type) => !type) || Object.keys(query.state.data ?? {}).length ? 3000 : false),
+  });
   const select = useMutation({
     mutationFn: ({ productId, regenerate }: { productId: string; regenerate: boolean }) =>
       postJson<SelectResult>(`${API}/${productId}/select?regenerate=${regenerate}`),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: ["product-selections"] });
+      void client.invalidateQueries({ queryKey: ["select-errors"] });
       void client.invalidateQueries({ queryKey: ["reference-profiles"] });
     },
   });
@@ -134,14 +145,32 @@ export function ProductsPage() {
                     <td>{product.rating ?? "-"}</td>
                     <td>
                       <div className="pt-actions">
-                        {product.product_id in (selections.data ?? {}) ? (
-                          <>
-                            <span className="pt-keyword" title={t("Keyword used to find reference images")}>{selections.data?.[product.product_id] || t("Selected")}</span>
-                            <button type="button" className="pt-icon" aria-label={t("Regenerate keywords")} title={t("Regenerate keywords")} disabled={select.isPending} onClick={() => select.mutate({ productId: product.product_id, regenerate: true })}><RotateCcw size={14} /></button>
-                          </>
-                        ) : (
-                          <button type="button" className="pt-button" disabled={select.isPending} onClick={() => select.mutate({ productId: product.product_id, regenerate: false })}>{t("Select for content")}</button>
-                        )}
+                        {(() => {
+                          const picked = product.product_id in (selections.data ?? {});
+                          const keyword = selections.data?.[product.product_id];
+                          const failure = selectErrors.data?.[product.product_id];
+                          const queue = () => select.mutate({ productId: product.product_id, regenerate: true });
+                          if (!picked) {
+                            return <button type="button" className="pt-button" onClick={() => select.mutate({ productId: product.product_id, regenerate: false })}>{t("Select for content")}</button>;
+                          }
+                          if (keyword) {
+                            return (
+                              <>
+                                <span className="pt-keyword" title={t("Keyword used to find reference images")}>{keyword}</span>
+                                <button type="button" className="pt-icon" aria-label={t("Regenerate keywords")} title={t("Regenerate keywords")} onClick={queue}><RotateCcw size={14} /></button>
+                              </>
+                            );
+                          }
+                          if (failure) {
+                            return (
+                              <>
+                                <span className="pt-error" title={failure}>{t("Keyword failed")}</span>
+                                <button type="button" className="pt-icon" aria-label={t("Try again")} title={`${failure} · ${t("Try again")}`} onClick={queue}><RotateCcw size={14} /></button>
+                              </>
+                            );
+                          }
+                          return <span className="pt-queued"><Loader2 size={13} className="pt-spin" aria-hidden="true" />{t("Making keyword…")}</span>;
+                        })()}
                         <button
                           type="button"
                           className="pt-icon pt-icon--danger"

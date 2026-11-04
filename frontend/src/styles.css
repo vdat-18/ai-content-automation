@@ -1109,3 +1109,9 @@ body.column-resizing * { cursor: col-resize !important; user-select: none !impor
 .pt-icon:hover:not(:disabled) { background: var(--surface); color: var(--ink); }
 .pt-icon--danger:hover:not(:disabled) { background: #fee2e2; border-color: #fecaca; color: #991b1b; }
 .pt-icon:disabled, .pt-button:disabled { opacity: .5; cursor: default; }
+.pt-queued, .pt-error { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+.pt-queued { color: var(--muted); background: var(--surface); border: 1px solid var(--line); }
+.pt-error { color: #991b1b; background: #fee2e2; border: 1px solid #fecaca; }
+.pt-spin { animation: pt-rotate 1s linear infinite; }
+@keyframes pt-rotate { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .pt-spin { animation: none; } }
