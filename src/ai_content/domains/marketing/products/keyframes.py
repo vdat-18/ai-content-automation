@@ -21,7 +21,13 @@ _MAX_PRODUCT_PHOTOS = 3
 _PRODUCT_RULE = (
     "The product photos show the real product: keep its exact shape, color, proportions, "
     "material, label and details, and never add features it does not have. Do not copy text, "
-    "logos, prices or overlays from the photos. Vertical 9:16 photo, no human faces."
+    "logos, prices or overlays from the photos. Vertical 9:16 photo."
+)
+_NO_PEOPLE = "Do not show any human face; hands, the product and the space are enough."
+_PERSONA_RULE = (
+    "is the character, a synthetic person who does not exist: keep exactly the same face, hair, "
+    "skin tone, body and clothes in every shot, with natural hands and no extra fingers. "
+    "The person does not speak to the camera."
 )
 
 
@@ -116,42 +122,71 @@ class KeyframeGenerator:
     def __init__(self, client: KeyframeImageClient) -> None:
         self._client = client
 
+    async def persona(self, description: str, fix: str = "") -> bytes:
+        """A reference portrait of the recurring person; every keyframe is built around it."""
+        parts = [
+            "A natural, candid photo of a synthetic person who does not exist and does not "
+            "resemble any real or famous person, in a relaxed pose, waist-up, in soft daylight "
+            "against a plain light wall, facing the camera with a friendly neutral expression. "
+            "Vertical 9:16 photo.",
+            f"The person: {description}",
+        ]
+        if fix:
+            parts.append(_fix_note(fix))
+        return await self._client.generate("\n".join(parts), [])
+
     async def master(
         self,
         shot: dict[str, Any],
         product_photos: list[bytes],
         scene: bytes | None,
         fix: str = "",
+        persona: bytes | None = None,
     ) -> bytes:
-        parts = [
-            f"Images 1 to {len(product_photos)} are the real product photos.",
-        ]
+        parts = [f"Images 1 to {len(product_photos)} are the real product photos."]
         images = list(product_photos)
+        if persona is not None:
+            images.append(persona)
+            parts.append(f"Image {len(images)} {_PERSONA_RULE}")
         if scene is not None:
             images.append(scene)
             parts.append(
                 f"Image {len(images)} is a scene reference: borrow only its setting, light and "
-                "styling, never its objects, brand or text."
+                "styling, never its objects, brand, text or people."
             )
-        parts += [_PRODUCT_RULE, "Shot to create:", str(shot["keyframe_prompt"])]
+        parts += [_PRODUCT_RULE, "" if persona is not None else _NO_PEOPLE]
+        parts += ["Shot to create:", str(shot["keyframe_prompt"])]
         if fix:
             parts.append(_fix_note(fix))
-        return await self._client.generate("\n".join(parts), images)
+        return await self._client.generate("\n".join(p for p in parts if p), images)
 
     async def follow_up(
-        self, shot: dict[str, Any], master: bytes, product_photos: list[bytes], fix: str = ""
+        self,
+        shot: dict[str, Any],
+        master: bytes,
+        product_photos: list[bytes],
+        fix: str = "",
+        persona: bytes | None = None,
     ) -> bytes:
+        images = [master]
         parts = [
-            "Image 1 is the approved master keyframe: keep exactly the same place, light, "
-            "colors and product. The remaining images are the real product photos.",
-            _PRODUCT_RULE,
-            "Only change the camera angle, framing and action as described. Shot to create:",
+            "Image 1 is the approved master keyframe: keep the same product, light, colors and "
+            "the same style of place."
+        ]
+        if persona is not None:
+            images.append(persona)
+            parts.append(f"Image {len(images)} {_PERSONA_RULE}")
+        images += product_photos
+        parts.append("The remaining images are the real product photos.")
+        parts += [_PRODUCT_RULE, "" if persona is not None else _NO_PEOPLE]
+        parts += [
+            "Change the camera angle, framing, action and, when the shot says so, the spot in "
+            "the same home. Shot to create:",
             str(shot["keyframe_prompt"]),
         ]
         if fix:
             parts.append(_fix_note(fix))
-        prompt = "\n".join(parts)
-        return await self._client.generate(prompt, [master, *product_photos])
+        return await self._client.generate("\n".join(p for p in parts if p), images)
 
 
 async def fetch_images(urls: list[str], http: httpx.AsyncClient | None = None) -> list[bytes]:

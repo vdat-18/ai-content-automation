@@ -11,7 +11,12 @@ from urllib.parse import quote_plus, urlsplit
 from openpyxl import Workbook
 from openpyxl.styles import Font
 
-from .briefing import MAX_REFERENCES, BriefUnavailable, ContentBriefWriter
+from .briefing import (
+    MAX_REFERENCES,
+    BriefGenerationError,
+    BriefUnavailable,
+    ContentBriefWriter,
+)
 from .clips import (
     CLIP_SECONDS,
     ClipGenerationError,
@@ -44,6 +49,8 @@ DUPLICATE_COSINE = 0.90
 DUPLICATE_HAMMING = 4
 MAX_KEYFRAME_FIXES = 2
 VIDEO_LENGTHS = (15, 30, 45, 60, 75, 90)
+BRIEF_ATTEMPTS = 3
+PERSONA_STATUSES = frozenset({"ready", "approved", "rejected"})
 KEYFRAME_REVIEW_STATUSES = frozenset({"approved", "ready", "rejected"})
 BRIEF_FIELDS = (
     "title",
@@ -313,10 +320,23 @@ class ProductCatalogService:
             raise BriefUnavailable(
                 f"No usable reference image of type '{product_type}' yet; crawl Pinterest first"
             )
-        brief = await self._briefer.write(
-            detail, user_idea, references, shot_count=video_seconds // CLIP_SECONDS
-        )
+        shot_count = video_seconds // CLIP_SECONDS
+        for _ in range(BRIEF_ATTEMPTS):
+            brief = await self._briefer.write(detail, user_idea, references, shot_count=shot_count)
+            if "shots" not in brief or len(brief["shots"]) == shot_count:
+                break
+        else:
+            raise BriefGenerationError(
+                f"The model wrote {len(brief['shots'])} shots instead of {shot_count}; try again"
+            )
         brief["warnings"] = brief_warnings(brief)
+        if brief.get("persona"):
+            brief["persona"] = {
+                "description": str(brief["persona"]),
+                "image_path": None,
+                "status": "none",
+                "attempts": 0,
+            }
         await self._repository.save_brief(product_id, user_idea.strip(), brief, "draft")
         return await self._repository.get_brief(product_id)
 
@@ -345,6 +365,50 @@ class ProductCatalogService:
         if status not in KEYFRAME_REVIEW_STATUSES:
             raise ValueError(f"Keyframe status must be one of {sorted(KEYFRAME_REVIEW_STATUSES)}")
         return await self._repository.set_keyframe_status(product_id, shot_index, status)
+
+    async def generate_persona(
+        self, product_id: str, media_root: Path, description: str | None = None
+    ) -> dict[str, Any] | None:
+        """Make (or remake) the portrait of the recurring person; a human approves it."""
+        record = await self._repository.get_brief(product_id)
+        if record is None:
+            return None
+        if self._keyframer is None:
+            raise KeyframeUnavailable("Image model is not configured (AIC_IMAGE_MODEL)")
+        persona = dict(record["brief"].get("persona") or {})
+        text = (
+            description if description is not None else persona.get("description") or ""
+        ).strip()
+        if not text:
+            raise KeyframeUnavailable("This brief has no person yet; regenerate the brief first")
+        try:
+            image = await self._keyframer.persona(text)
+        except KeyframeGenerationError as error:
+            raise KeyframeUnavailable(f"The person could not be made: {error}") from error
+        relative = f"persona/{product_id}/persona.jpg"
+        target = Path(media_root) / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(image)
+        persona = {
+            "description": text,
+            "image_path": relative,
+            "status": "ready",
+            "attempts": int(persona.get("attempts") or 0) + 1,
+        }
+        brief = {**record["brief"], "persona": persona}
+        await self._repository.save_brief(product_id, record["user_idea"], brief, record["status"])
+        return persona
+
+    async def set_persona_status(self, product_id: str, status: str) -> bool:
+        if status not in PERSONA_STATUSES:
+            raise ValueError(f"Person status must be one of {sorted(PERSONA_STATUSES)}")
+        record = await self._repository.get_brief(product_id)
+        persona = (record or {}).get("brief", {}).get("persona")
+        if record is None or not persona or not persona.get("image_path"):
+            return False
+        brief = {**record["brief"], "persona": {**persona, "status": status}}
+        await self._repository.save_brief(product_id, record["user_idea"], brief, record["status"])
+        return True
 
     async def generate_keyframes(
         self, product_id: str, media_root: Path, shot_index: int | None = None
@@ -376,6 +440,12 @@ class ProductCatalogService:
             wanted = [0]
         if any(i > 0 for i in wanted) and not master_ready:
             raise KeyframeUnavailable("Approve the master keyframe (shot 0) first")
+        persona = record["brief"].get("persona") or {}
+        persona_image: bytes | None = None
+        if persona.get("description"):
+            if persona.get("status") != "approved" or not persona.get("image_path"):
+                raise KeyframeUnavailable("Approve the person's portrait first")
+            persona_image = (Path(media_root) / persona["image_path"]).read_bytes()
         detail = await self._repository.get_detail(product_id)
         photos = await fetch_images([u for u in (detail or {}).get("images") or [] if u])
         if not photos:
@@ -394,6 +464,7 @@ class ProductCatalogService:
                 photos,
                 scene,
                 master,
+                persona_image,
             )
         return await self._repository.list_keyframes(product_id)
 
@@ -417,6 +488,7 @@ class ProductCatalogService:
         photos: list[bytes],
         scene: bytes | None,
         master: bytes | None,
+        persona: bytes | None = None,
     ) -> None:
         assert self._keyframer is not None
         attempts = (previous or {}).get("attempts", 0)
@@ -431,10 +503,10 @@ class ProductCatalogService:
         for _ in range(1 + MAX_KEYFRAME_FIXES):
             try:
                 if index == 0:
-                    candidate = await self._keyframer.master(shot, photos, scene, problem)
+                    candidate = await self._keyframer.master(shot, photos, scene, problem, persona)
                 else:
                     candidate = await self._keyframer.follow_up(
-                        shot, master or b"", photos, problem
+                        shot, master or b"", photos, problem, persona
                     )
             except KeyframeGenerationError as error:
                 attempts += 1
@@ -452,7 +524,7 @@ class ProductCatalogService:
                 break
             attempts += 1
             image = candidate
-            problem = await self._check_keyframe(shot, photos, image, master) or ""
+            problem = await self._check_keyframe(shot, photos, image, master, persona) or ""
             if not problem:
                 break
         assert image is not None
@@ -472,12 +544,17 @@ class ProductCatalogService:
         )
 
     async def _check_keyframe(
-        self, shot: dict[str, Any], photos: list[bytes], image: bytes, master: bytes | None
+        self,
+        shot: dict[str, Any],
+        photos: list[bytes],
+        image: bytes,
+        master: bytes | None,
+        persona: bytes | None = None,
     ) -> str | None:
         if self._checker is None:
             return None
         description = str(shot.get("description") or shot["keyframe_prompt"])
-        return await self._checker.check(description, photos, image, master)
+        return await self._checker.check(description, photos, image, master, persona)
 
     async def clips(self, product_id: str, media_root: Path) -> list[dict[str, Any]]:
         """List clips, first collecting the ones whose video job has finished."""

@@ -1030,6 +1030,11 @@ body.column-resizing * { cursor: col-resize !important; user-select: none !impor
 .brief-actions { display: flex; justify-content: flex-end; gap: 8px; }
 .brief-shot { border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: grid; gap: 10px; }
 .brief-shot legend { padding: 0 6px; font-weight: 600; text-transform: capitalize; }
+.persona { border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: grid; gap: 8px; }
+.persona h4 { margin: 0; }
+.persona-body { display: flex; gap: 12px; align-items: flex-start; }
+.persona-body img { border-radius: 8px; object-fit: cover; aspect-ratio: 9 / 16; }
+.persona-body > div { flex: 1; display: grid; gap: 8px; }
 .keyframes { margin-top: 20px; display: grid; gap: 10px; }
 .keyframes h3 { margin: 0; }
 .keyframe-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; align-items: start; }

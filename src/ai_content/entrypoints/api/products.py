@@ -421,3 +421,55 @@ async def upload_voiceover(product_id: str, request: Request) -> dict[str, str]:
         old.unlink()
     (folder / f"voiceover.{extension}").write_bytes(content)
     return {"voiceover": extension}
+
+
+class PersonaRequest(BaseModel):
+    description: str | None = None
+
+
+class PersonaReview(BaseModel):
+    status: str
+
+
+@router.post("/{product_id}/persona")
+async def make_persona(
+    product_id: str,
+    body: PersonaRequest,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> dict[str, Any]:
+    """Make the portrait of the person who appears in every shot of the video."""
+    try:
+        persona = await service.generate_persona(product_id, _media_root(), body.description)
+    except KeyframeUnavailable as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    if persona is None:
+        raise HTTPException(status_code=404, detail="No brief for this product")
+    return persona
+
+
+@router.put("/{product_id}/persona")
+async def review_persona(
+    product_id: str,
+    body: PersonaReview,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> dict[str, str]:
+    try:
+        found = await service.set_persona_status(product_id, body.status)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+    if not found:
+        raise HTTPException(status_code=404, detail="No person portrait for this brief")
+    return {"status": body.status}
+
+
+@router.get("/{product_id}/persona/image")
+async def persona_image(
+    product_id: str,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> FileResponse:
+    record = await service.get_brief(product_id)
+    relative = ((record or {}).get("brief", {}).get("persona") or {}).get("image_path")
+    path = _media_root() / relative if relative else None
+    if path is None or not path.is_file():
+        raise HTTPException(status_code=404, detail="No person portrait yet")
+    return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "no-cache"})

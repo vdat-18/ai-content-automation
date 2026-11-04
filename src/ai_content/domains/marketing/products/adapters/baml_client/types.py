@@ -48,6 +48,7 @@ class ContentBrief(BaseModel):
     title: str
     format: typing.Union[typing_extensions.Literal['problem_solution'], typing_extensions.Literal['step_by_step'], typing_extensions.Literal['before_after'], typing_extensions.Literal['unboxing'], typing_extensions.Literal['worth_it_text']]
     script: str
+    persona: str
     selected_reference_labels: typing.List[str]
     reference_rationale: str
     scene: str

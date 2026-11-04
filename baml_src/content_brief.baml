@@ -18,6 +18,7 @@ class ContentBrief {
   title string
   format "problem_solution" | "step_by_step" | "before_after" | "unboxing" | "worth_it_text"
   script string
+  persona string
   selected_reference_labels string[]
   reference_rationale string
   scene string
@@ -50,9 +51,17 @@ function DraftContentBrief(
     copy a reference literally and never reuse another brand's product, logo or text from it.
 
     The brief is a storyboard for one vertical ad video made of exactly {{ shot_count }} shot(s).
-    Every shot is first made as a still keyframe image and later animated into a 15 second clip, so all shots must happen in the
-    same scene (same place, light and color) and show the same real product. Do not show human
-    faces; hands, the product and the space are enough.
+    Every shot is first made as a still keyframe image and later animated into a 15 second clip.
+    The video follows one recurring person who uses the real product, and every shot shows that
+    same person doing something concrete with it (picking it up, using it, trying it, comparing
+    before and after, reacting). Make the shots differ: change the camera angle and distance, the
+    action and, where the story needs it, the spot inside the same home or place. Avoid shots that
+    only zoom or drift. The person never speaks to the camera; the voice-over tells the story.
+
+    persona: an English description of that person for an image model, suited to the target
+    audience of the product: apparent age, gender, build, hair, a simple everyday outfit that fits
+    the setting and the product, and a friendly natural look. It must describe an invented
+    person, never a real or famous one.
 
     Every number, percentage, price, material or feature in the text must come from the product
     facts; never invent figures or claims.
@@ -88,8 +97,8 @@ function DraftContentBrief(
     duration_seconds is always 15. The first shot opens with a hook and the last ends with a
     call_to_action; when there is only one shot it does both, hooking in the first seconds and
     ending on the call to action. For every shot: description (Vietnamese, what the viewer sees), keyframe_prompt
-    (a complete, self-contained English prompt for an image model: the real product as the clear
-    hero, the shared scene, camera angle, lighting, style and colors, and an explicit instruction
+    (a complete, self-contained English prompt for an image model: "the person from the character
+    image" doing the action of this shot with the real product as the clear hero, the shared scene, camera angle, lighting, style and colors, and an explicit instruction
     that the product keeps its real shape, color, proportions and label), motion_prompt (English,
     two or three sentences describing the action over the 15 seconds as timed beats (for
     example "0 to 5s: slow push-in; 5 to 10s: a hand folds the basket; 10 to 15s: camera settles"),

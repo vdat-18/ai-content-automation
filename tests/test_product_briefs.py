@@ -225,3 +225,21 @@ async def test_video_length_sets_the_shot_count_in_whole_clips(tmp_path) -> None
     assert seen == [1, 4, 6]
     with pytest.raises(BriefUnavailable, match="Video length"):
         await service.create_brief(PRODUCT_ID, video_seconds=20)
+
+
+async def test_brief_is_rewritten_until_it_has_the_requested_number_of_shots(tmp_path) -> None:
+    counts = [1, 1, 2]
+
+    class _Wrong(_FakeWriter):
+        async def write(self, product, user_idea, references, shot_count=1):
+            return {"title": "T", "shots": [{}] * counts.pop(0)}
+
+    service = await _service(tmp_path, _Wrong())
+    await service._repository.select_product(PRODUCT_ID, "áo thun")
+    await _make_reference_live(service)
+    record = await service.create_brief(PRODUCT_ID, video_seconds=30)
+    assert record is not None and len(record["brief"]["shots"]) == 2 and counts == []
+
+    counts[:] = [3, 3, 3]
+    with pytest.raises(BriefGenerationError, match="3 shots instead of 2"):
+        await service.create_brief(PRODUCT_ID, video_seconds=30)

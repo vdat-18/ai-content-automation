@@ -5,6 +5,7 @@ import { EmptyState, PageHeader, Panel, SkeletonPage } from "../components/ui";
 import { useI18n } from "../hooks/useI18n";
 import { getJson, postJson, putFile, putJson } from "../services/http";
 
+type Persona = { description: string; image_path: string | null; status: "none" | "ready" | "approved" | "rejected"; attempts: number };
 type PostPackage = { captions: string[]; hashtags: string[]; product_url: string; warnings?: string[]; ai_label_reminder?: string };
 type Shot = {
   role: string;
@@ -30,6 +31,7 @@ type Brief = {
   shots?: Shot[];
   selected_reference_ids: string[];
   post_package?: PostPackage;
+  persona?: Persona;
 };
 type BriefRecord = { product_id: string; user_idea: string; brief: Brief; status: "draft" | "approved" };
 type Keyframe = { shot_index: number; status: "ready" | "approved" | "rejected" | "failed"; attempts: number; error: string | null; qa_problem: string };
@@ -237,12 +239,12 @@ function BriefCard({
           {save.error && <p role="alert">{save.error.message}</p>}
         </form>
       )}
-      {record?.status === "approved" && <Keyframes productId={productId} shots={record.brief.shots ?? []} postPackage={record.brief.post_package} t={t} />}
+      {record?.status === "approved" && <Keyframes key={`${productId}-${record.brief.title}`} productId={productId} shots={record.brief.shots ?? []} postPackage={record.brief.post_package} persona={record.brief.persona} t={t} />}
     </Panel>
   );
 }
 
-function Keyframes({ productId, shots, postPackage, t }: { productId: string; shots: Shot[]; postPackage?: PostPackage; t: (key: string) => string }) {
+function Keyframes({ productId, shots, postPackage, persona, t }: { productId: string; shots: Shot[]; postPackage?: PostPackage; persona?: Persona; t: (key: string) => string }) {
   const client = useQueryClient();
   const keyframes = useQuery({
     queryKey: ["keyframes", productId],
@@ -290,6 +292,17 @@ function Keyframes({ productId, shots, postPackage, t }: { productId: string; sh
     onSuccess: () => client.invalidateQueries({ queryKey: ["briefs"] }),
   });
   const copy = (text: string) => navigator.clipboard?.writeText(text).catch(() => undefined);
+  const [personaText, setPersonaText] = useState(persona?.description ?? "");
+  const refreshBriefs = () => client.invalidateQueries({ queryKey: ["briefs"] });
+  const makePersona = useMutation({
+    mutationFn: () => postJson<Persona>(`${API}/${productId}/persona`, { description: personaText }),
+    onSuccess: refreshBriefs,
+  });
+  const reviewPersona = useMutation({
+    mutationFn: (status: Persona["status"]) => putJson(`${API}/${productId}/persona`, { status }),
+    onSuccess: refreshBriefs,
+  });
+  const personaPending = !!persona?.description && persona.status !== "approved";
   const clipByShot = new Map((clips.data ?? []).map((clip) => [clip.shot_index, clip]));
   const approvedShots = shots.filter((_, index) => byShot.get(index)?.status === "approved").length;
   const readyClips = [...clipByShot.values()].filter((clip) => clip.status === "ready").length;
@@ -301,8 +314,31 @@ function Keyframes({ productId, shots, postPackage, t }: { productId: string; sh
     <section className="keyframes">
       <h3>{t("Keyframes")}</h3>
       <p>{t("The master keyframe (shot 1) sets the scene. Approve it first; the other shots are made from it and cost one image each.")}</p>
+      {persona?.description && (
+        <div className="persona">
+          <h4>{t("Person in the video (synthetic, one portrait is reused in every shot)")}</h4>
+          <div className="persona-body">
+            {persona.image_path && <img src={`${API}/${productId}/persona/image?v=${persona.attempts}`} alt="" width={120} />}
+            <div>
+              <textarea rows={3} value={personaText} onChange={(event) => setPersonaText(event.target.value)} />
+              <div className="brief-actions">
+                <button className="secondary-button" disabled={makePersona.isPending || !personaText.trim()} onClick={() => makePersona.mutate()}>
+                  <RotateCcw size={14} /> {makePersona.isPending ? t("Generating…") : persona.image_path ? t("Regenerate portrait") : t("Generate portrait")}
+                </button>
+                {persona.image_path && persona.status !== "approved" && (
+                  <button className="primary-button" disabled={reviewPersona.isPending} onClick={() => reviewPersona.mutate("approved")}>
+                    <Check size={14} /> {t("Approve person")}
+                  </button>
+                )}
+                {persona.status === "approved" && <span className="badge badge--success">{t("approved")}</span>}
+              </div>
+              {(makePersona.error || reviewPersona.error) && <p role="alert">{(makePersona.error ?? reviewPersona.error)?.message}</p>}
+            </div>
+          </div>
+        </div>
+      )}
       <div className="brief-actions">
-        <button className="primary-button" disabled={generate.isPending || allApproved || (byShot.has(0) && !masterApproved)} onClick={() => generate.mutate(null)}>
+        <button className="primary-button" disabled={generate.isPending || allApproved || personaPending || (byShot.has(0) && !masterApproved)} onClick={() => generate.mutate(null)}>
           <ImageIcon size={15} /> {generate.isPending ? t("Generating…") : next}
         </button>
       </div>

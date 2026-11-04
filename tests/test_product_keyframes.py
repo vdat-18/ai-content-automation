@@ -29,13 +29,13 @@ class _FakeKeyframer:
         self.calls: list[tuple[str, int]] = []
         self.fail = fail
 
-    async def master(self, shot, photos, scene, fix=""):
+    async def master(self, shot, photos, scene, fix="", persona=None):
         self.calls.append(("master", len(photos), fix))
         if self.fail:
             raise KeyframeGenerationError("HTTP 503")
         return PNG + b"master"
 
-    async def follow_up(self, shot, master, photos, fix=""):
+    async def follow_up(self, shot, master, photos, fix="", persona=None):
         self.calls.append(("follow_up", len(photos), fix))
         assert master == PNG + b"master"
         return PNG + b"follow"
@@ -178,7 +178,7 @@ class _Checker:
         self.verdicts = verdicts
         self.calls = 0
 
-    async def check(self, description, photos, keyframe, master=None):
+    async def check(self, description, photos, keyframe, master=None, persona=None):
         self.calls += 1
         return self.verdicts.pop(0)
 
@@ -208,3 +208,86 @@ async def test_unchecked_keyframe_is_not_regenerated(tmp_path) -> None:
     service._checker = _Checker([None])
     [record] = await service.generate_keyframes(PRODUCT_ID, tmp_path)
     assert len(keyframer.calls) == 1 and record["qa_problem"] == ""
+
+
+class _PersonaKeyframer(_FakeKeyframer):
+    def __init__(self) -> None:
+        super().__init__()
+        self.personas: list[bytes | None] = []
+
+    async def persona(self, description, fix=""):
+        return PNG + description.encode()
+
+    async def master(self, shot, photos, scene, fix="", persona=None):
+        self.personas.append(persona)
+        return await super().master(shot, photos, scene, fix, persona)
+
+
+async def test_a_person_must_be_approved_before_keyframes_and_is_passed_to_each_one(
+    tmp_path,
+) -> None:
+    keyframer = _PersonaKeyframer()
+    service = await _service(tmp_path, keyframer)
+    brief = {
+        "title": "b",
+        "shots": SHOTS,
+        "persona": {"description": "woman, 28", "status": "none"},
+    }
+    await service._repository.save_brief(PRODUCT_ID, "", brief, "approved")
+
+    with pytest.raises(KeyframeUnavailable, match="Approve the person"):
+        await service.generate_keyframes(PRODUCT_ID, tmp_path)
+
+    persona = await service.generate_persona(PRODUCT_ID, tmp_path)
+    assert persona is not None and persona["status"] == "ready" and persona["attempts"] == 1
+    assert (tmp_path / persona["image_path"]).read_bytes() == PNG + b"woman, 28"
+    with pytest.raises(KeyframeUnavailable, match="Approve the person"):
+        await service.generate_keyframes(PRODUCT_ID, tmp_path)
+
+    assert await service.set_persona_status(PRODUCT_ID, "approved")
+    await service.generate_keyframes(PRODUCT_ID, tmp_path)
+    assert keyframer.personas == [PNG + b"woman, 28"]
+    edited = await service.generate_persona(PRODUCT_ID, tmp_path, "man, 40")
+    assert edited is not None and edited["description"] == "man, 40" and edited["attempts"] == 2
+
+
+async def test_person_errors_are_reported(tmp_path) -> None:
+    service = await _service(tmp_path, _FakeKeyframer())
+    assert await service.generate_persona("missing", tmp_path) is None
+    with pytest.raises(KeyframeUnavailable, match="no person yet"):
+        await service.generate_persona(PRODUCT_ID, tmp_path)
+    assert not await service.set_persona_status(PRODUCT_ID, "approved")
+    with pytest.raises(ValueError, match="status must be one of"):
+        await service.set_persona_status(PRODUCT_ID, "published")
+
+
+class _RecordingClient:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, int]] = []
+
+    async def generate(self, prompt, images):
+        self.calls.append((prompt, len(images)))
+        return PNG
+
+
+async def test_prompts_name_the_person_only_when_there_is_one() -> None:
+    from ai_content.domains.marketing.products.keyframes import KeyframeGenerator
+
+    client = _RecordingClient()
+    generator = KeyframeGenerator(client)  # type: ignore[arg-type]
+    shot = {"keyframe_prompt": "she folds the basket"}
+    await generator.master(shot, [b"p1", b"p2"], b"room", persona=b"face")
+    await generator.master(shot, [b"p1"], None)
+    await generator.follow_up(shot, b"master", [b"p1"], persona=b"face")
+    await generator.persona("woman, 28")
+    with_person, without, follow, portrait = client.calls
+    assert with_person[1] == 4 and "Image 3 is the character" in with_person[0]
+    assert (
+        "Image 4 is a scene reference" in with_person[0]
+        and "Do not show any human face" not in with_person[0]
+    )
+    assert without[1] == 1 and "Do not show any human face" in without[0]
+    assert follow[1] == 3 and "Image 2 is the character" in follow[0]
+    assert (
+        portrait[1] == 0 and "does not exist" in portrait[0] and portrait[0].endswith("woman, 28")
+    )

@@ -362,3 +362,31 @@ def test_voiceover_upload_replaces_the_previous_file(tmp_path: Path, client: Tes
         "voiceover": "wav"
     }
     assert [p.name for p in folder.iterdir()] == ["voiceover.wav"]
+
+
+def test_persona_endpoints(
+    tmp_path: Path, client: TestClient, repository: SqliteProductRepository
+) -> None:
+    base = f"/api/v1/products/{PRODUCT_ID}/persona"
+    assert client.post(base, json={}).status_code == 404
+    assert client.put(base, json={"status": "approved"}).status_code == 404
+    assert client.get(f"{base}/image").status_code == 404
+    _capture_product(client)
+    persona = {
+        "description": "woman, 28",
+        "image_path": f"persona/{PRODUCT_ID}/persona.jpg",
+        "status": "ready",
+        "attempts": 1,
+    }
+    asyncio.run(repository.save_brief(PRODUCT_ID, "", {"persona": persona}, "approved"))
+    assert client.post(base, json={}).status_code == 409
+    assert client.put(base, json={"status": "bogus"}).status_code == 422
+    assert client.get(f"{base}/image").status_code == 404
+
+    portrait = tmp_path / "media" / "persona" / PRODUCT_ID / "persona.jpg"
+    portrait.parent.mkdir(parents=True)
+    portrait.write_bytes(b"portrait")
+    assert client.get(f"{base}/image").content == b"portrait"
+    assert client.put(base, json={"status": "approved"}).status_code == 200
+    saved = client.get(f"/api/v1/products/{PRODUCT_ID}/brief").json()
+    assert saved["brief"]["persona"]["status"] == "approved"
