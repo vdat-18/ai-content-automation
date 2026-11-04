@@ -25,6 +25,7 @@ type Brief = {
   reference_rationale: string;
   scene: string;
   product_placement: string;
+  product_size?: string;
   selling_angle: string;
   target_audience: string;
   style: string[];
@@ -41,9 +42,10 @@ type Product = { product_id: string; title: string | null; images: string[] };
 type ReferenceImage = { image_id: string; image_url: string };
 
 const API = "/api/v1/products";
-const TEXT_FIELDS: { key: "scene" | "product_placement" | "selling_angle" | "target_audience"; label: string; rows: number }[] = [
+const TEXT_FIELDS: { key: "scene" | "product_placement" | "product_size" | "selling_angle" | "target_audience"; label: string; rows: number }[] = [
   { key: "scene", label: "Scene", rows: 3 },
   { key: "product_placement", label: "Product placement", rows: 3 },
+  { key: "product_size", label: "Real product size (keeps the scale in the images)", rows: 2 },
   { key: "selling_angle", label: "Selling angle", rows: 2 },
   { key: "target_audience", label: "Target audience", rows: 2 },
 ];
