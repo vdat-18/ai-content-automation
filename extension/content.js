@@ -236,6 +236,7 @@
     let stuck = 0;
     let clicks = 0;
     let reason = "đã cuộn đủ số lượt";
+    const startPath = location.pathname;
     let last = productCount();
     for (let i = 0; i < rounds; i += 1) {
       await waitForHuman();
@@ -247,6 +248,13 @@
       banner(`AIC Collector: lấy danh sách ${i + 1}/${rounds}, ${last} sản phẩm, đã bấm Xem thêm ${clicks} lần${clicked ? "" : ", chưa thấy nút Xem thêm"} (${seen} nút)`);
       send({ type: "heartbeat" });
       const grew = await waitForGrowth(last, payloads, clicked ? 8000 : 3000);
+      if (location.pathname !== startPath) {
+        // a button that opens another page was pressed by mistake: go back and stop
+        history.back();
+        await wait(2500);
+        reason = "bấm nhầm một nút chuyển sang trang khác, đã quay lại";
+        break;
+      }
       const now = productCount();
       if (auto) {
         if (clicked) stuck = grew ? 0 : stuck + 1;
