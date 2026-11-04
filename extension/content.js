@@ -201,30 +201,54 @@
   // With `auto` it keeps going until no new product shows up, then tells the background worker,
   // which reads every product page.
   const productCount = () => new Set(Array.from(document.querySelectorAll("a[href*='/pdp/']")).map((a) => a.pathname)).size;
-  const FEED_IDLE_ROUNDS = 5;
+  const FEED_IDLE_ROUNDS = 4; // rounds with nothing new and no "Xem thêm" left
+  const FEED_STUCK_CLICKS = 8; // clicks on "Xem thêm" in a row that brought nothing
+  // after a click, wait for new cards or new JSON instead of a fixed pause
+  const waitForGrowth = async (count, payloads, timeoutMs) => {
+    const started = Date.now();
+    while (Date.now() - started < timeoutMs) {
+      await wait(500);
+      if (productCount() > count || state.sent.size > payloads) return true;
+    }
+    return false;
+  };
+
   const harvestFeed = async (rounds, auto) => {
     state.harvest = true;
     let idle = 0;
+    let stuck = 0;
+    let clicks = 0;
+    let reason = "đã cuộn đủ số lượt";
     let last = productCount();
-    let lastPayloads = state.sent.size;
-    for (let i = 0; i < rounds && (!auto || idle < FEED_IDLE_ROUNDS); i += 1) {
+    for (let i = 0; i < rounds; i += 1) {
       await waitForHuman();
       window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "smooth" });
-      await wait(1200);
+      await wait(1500);
+      const payloads = state.sent.size;
       const clicked = clickLoadMore();
-      banner(`AIC Collector: lấy danh sách ${i + 1}/${rounds}, ${last} sản phẩm${clicked ? ", đã bấm Xem thêm" : ""}`);
+      if (clicked) clicks += 1;
+      banner(`AIC Collector: lấy danh sách ${i + 1}/${rounds}, ${last} sản phẩm, đã bấm Xem thêm ${clicks} lần`);
       send({ type: "heartbeat" });
-      await wait(2200 + Math.random() * 1500);
-      // new product cards in the page, or new JSON the page just loaded, both mean more products came
+      const grew = await waitForGrowth(last, payloads, clicked ? 8000 : 3000);
       const now = productCount();
-      idle = now > last || state.sent.size > lastPayloads ? 0 : idle + 1;
+      if (auto) {
+        if (clicked) stuck = grew ? 0 : stuck + 1;
+        idle = grew ? 0 : idle + 1;
+        if (!clicked && idle >= FEED_IDLE_ROUNDS) {
+          reason = "không còn nút Xem thêm và không có sản phẩm mới";
+          break;
+        }
+        if (stuck >= FEED_STUCK_CLICKS) {
+          reason = `bấm Xem thêm ${FEED_STUCK_CLICKS} lần liên tiếp mà không có sản phẩm mới`;
+          break;
+        }
+      }
       last = now;
-      lastPayloads = state.sent.size;
     }
     state.harvest = false;
     window.scrollTo({ top: 0, behavior: "smooth" });
-    banner(auto ? `AIC Collector: có ${last} sản phẩm, bắt đầu lấy chi tiết` : "AIC Collector: xong, đã gửi danh sách sản phẩm");
-    if (auto) send({ type: "harvest-done", auto });
+    banner(auto ? `AIC Collector: dừng cuộn (${reason}), có ${last} sản phẩm` : "AIC Collector: xong, đã gửi danh sách sản phẩm");
+    if (auto) send({ type: "harvest-done", auto, count: last, clicks, reason });
   };
 
   window.addEventListener("message", (event) => {

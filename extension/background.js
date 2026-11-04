@@ -134,16 +134,20 @@ async function startWalker(urls, meta, concurrency) {
 }
 
 // ---- one click: scroll the feed, then read every product page ---------------------
-async function afterHarvest(auto) {
+async function afterHarvest(auto, summary) {
   // give the page's last JSON responses time to reach the collector
   await new Promise((resolve) => setTimeout(resolve, 5000));
   try {
     const urls = await (await fetch(`${COLLECTOR}/queue?limit=${Number(auto.limit) || 5000}`)).json();
     if (!urls.length) {
-      await chrome.storage.local.set({ autoNote: "Không có sản phẩm mới để lấy chi tiết." });
+      await chrome.storage.local.set({
+        autoNote: `Dừng cuộn: ${summary.reason}. Trang có ${summary.count} sản phẩm, đã bấm Xem thêm ${summary.clicks} lần. Không có sản phẩm mới để lấy chi tiết.`,
+      });
       return;
     }
-    await chrome.storage.local.set({ autoNote: `Đã có ${urls.length} sản phẩm, đang lấy chi tiết` });
+    await chrome.storage.local.set({
+      autoNote: `Dừng cuộn: ${summary.reason}. Trang có ${summary.count} sản phẩm, đã bấm Xem thêm ${summary.clicks} lần. ${urls.length} sản phẩm chưa có chi tiết, đang lấy.`,
+    });
     startWalker(urls, {}, auto.concurrency);
   } catch (error) {
     await chrome.storage.local.set({ autoNote: `Không gọi được collector: ${error}` });
@@ -184,7 +188,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       finishTab(tabId, Boolean(message.ok), message.reason || "");
       break;
     case "harvest-done":
-      if (message.auto) afterHarvest(message.auto);
+      if (message.auto) afterHarvest(message.auto, { reason: message.reason || "", count: message.count || 0, clicks: message.clicks || 0 });
       break;
     case "walker-start":
       startWalker(message.urls, message.meta, message.concurrency);
