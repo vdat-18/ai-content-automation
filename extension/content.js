@@ -175,17 +175,20 @@
     state.harvest = true;
     let idle = 0;
     let last = productCount();
+    let lastPayloads = state.sent.size;
     for (let i = 0; i < rounds && (!auto || idle < FEED_IDLE_ROUNDS); i += 1) {
       await waitForHuman();
       window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "smooth" });
       await wait(1200);
-      clickByText("Xem thêm");
-      banner(`AIC Collector: lấy danh sách ${i + 1}/${rounds}, ${last} sản phẩm`);
+      const clicked = clickByText("Xem thêm");
+      banner(`AIC Collector: lấy danh sách ${i + 1}/${rounds}, ${last} sản phẩm${clicked ? ", đã bấm Xem thêm" : ""}`);
       send({ type: "heartbeat" });
       await wait(2200 + Math.random() * 1500);
+      // new product cards in the page, or new JSON the page just loaded, both mean more products came
       const now = productCount();
-      idle = now > last ? 0 : idle + 1;
+      idle = now > last || state.sent.size > lastPayloads ? 0 : idle + 1;
       last = now;
+      lastPayloads = state.sent.size;
     }
     state.harvest = false;
     window.scrollTo({ top: 0, behavior: "smooth" });
