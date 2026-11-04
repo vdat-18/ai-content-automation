@@ -9,6 +9,7 @@ class StoryboardShot {
   description string
   keyframe_prompt string
   motion_prompt string
+  delivery "narrated" | "talking"
   duration_seconds int
   on_screen_text string
   voiceover string
@@ -56,7 +57,13 @@ function DraftContentBrief(
     same person doing something concrete with it (picking it up, using it, trying it, comparing
     before and after, reacting). Make the shots differ: change the camera angle and distance, the
     action and, where the story needs it, the spot inside the same home or place. Avoid shots that
-    only zoom or drift. The person never speaks to the camera; the voice-over tells the story.
+    only zoom or drift. The voice-over is a separate recording laid over the finished video, and the picture never has
+    sound. Each shot has a delivery. narrated: the voice-over is heard while the person is busy
+    with the product and nobody is seen speaking, so frame it with the mouth hidden or not the
+    focus (seen from behind or the side, hands and product close-up, face turned down or away,
+    or small in a wide frame). talking: the person is seen speaking in a relaxed conversation
+    to the camera while the voice-over is heard, framed at chest or waist level so the face is
+    clear. Use talking for the hook and the call to action and narrated for the middle shots.
 
     persona: an English description of that person for an image model, suited to the target
     audience of the product: apparent age, gender, build, hair, a simple everyday outfit that fits
@@ -103,9 +110,10 @@ function DraftContentBrief(
     two or three sentences describing the action over the 15 seconds as timed beats (for
     example "0 to 5s: slow push-in; 5 to 10s: a hand folds the basket; 10 to 15s: camera settles"),
     one continuous camera path in the same place with no scene cuts and no new objects, for
-    animating the keyframe; the clips are silent, because the voice-over is recorded separately
-    and laid over the finished video, so describe only what is seen: nobody talks, lips are
-    closed or relaxed, and no sound, music or dialogue is mentioned),
+    animating the keyframe; the clips are silent, so describe only what is seen and mention
+    no sound, music or dialogue; for a narrated shot nobody talks and lips stay closed or
+    relaxed, for a talking shot the person talks naturally with small expressions and gestures),
+    delivery (narrated or talking),
     duration_seconds, on_screen_text (a short Vietnamese caption, or an empty string) and
     voiceover (one Vietnamese sentence).
 

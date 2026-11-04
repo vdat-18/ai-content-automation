@@ -383,7 +383,7 @@ class StoryboardShotAst:
     def __init__(self, tb: type_builder.TypeBuilder):
         _tb = tb._tb # type: ignore (we know how to use this private attribute)
         self._bldr = _tb.class_("StoryboardShot")
-        self._properties: typing.Set[str] = set([  "role",  "description",  "keyframe_prompt",  "motion_prompt",  "duration_seconds",  "on_screen_text",  "voiceover",  ])
+        self._properties: typing.Set[str] = set([  "role",  "description",  "keyframe_prompt",  "motion_prompt",  "delivery",  "duration_seconds",  "on_screen_text",  "voiceover",  ])
         self._props = StoryboardShotProperties(self._bldr, self._properties)
 
     def type(self) -> baml_py.FieldType:
@@ -426,6 +426,10 @@ class StoryboardShotProperties:
     @property
     def motion_prompt(self) -> type_builder.ClassPropertyViewer:
         return type_builder.ClassPropertyViewer(self.__bldr.property("motion_prompt"))
+    
+    @property
+    def delivery(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("delivery"))
     
     @property
     def duration_seconds(self) -> type_builder.ClassPropertyViewer:

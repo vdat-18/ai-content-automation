@@ -67,6 +67,7 @@ class StoryboardShot(BaseModel):
     description: typing.Optional[str] = None
     keyframe_prompt: typing.Optional[str] = None
     motion_prompt: typing.Optional[str] = None
+    delivery: typing.Optional[typing.Union[typing_extensions.Literal['narrated'], typing_extensions.Literal['talking']]] = None
     duration_seconds: typing.Optional[int] = None
     on_screen_text: typing.Optional[str] = None
     voiceover: typing.Optional[str] = None

@@ -255,3 +255,23 @@ def test_voiceover_is_found_beside_the_video(tmp_path) -> None:
     folder.mkdir(parents=True)
     (folder / "voiceover.m4a").write_bytes(b"x")
     assert find_voiceover(tmp_path, "p1") == folder / "voiceover.m4a"
+
+
+async def test_clip_prompt_follows_the_shots_delivery(tmp_path) -> None:
+    video = _FakeVideo()
+    service = await _service(tmp_path, video)
+    record = await service._repository.get_brief(PRODUCT_ID)
+    shots = [{**record["brief"]["shots"][0], "delivery": "talking"}]
+    await service._repository.save_brief(
+        PRODUCT_ID, "", {**record["brief"], "shots": shots}, "approved"
+    )
+    await service.generate_clips(PRODUCT_ID, tmp_path)
+    assert "speaks naturally to the camera" in video.submitted[0][0]
+    assert "no dialogue" in video.submitted[0][0]
+
+    shots[0]["delivery"] = "narrated"
+    await service._repository.save_brief(
+        PRODUCT_ID, "", {**record["brief"], "shots": shots}, "approved"
+    )
+    await service.generate_clips(PRODUCT_ID, tmp_path, shot_index=0)
+    assert "Nobody speaks" in video.submitted[1][0]

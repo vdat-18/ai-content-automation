@@ -50,6 +50,12 @@ _SCREEN_BATCH = 200
 DUPLICATE_COSINE = 0.90
 DUPLICATE_HAMMING = 4
 MAX_KEYFRAME_FIXES = 2
+# The voice-over is added later, so the picture only has to look right: a talking shot shows
+# natural speaking, a narrated shot keeps the mouth closed so no words seem out of sync.
+_DELIVERY_RULE = {
+    True: "The person speaks naturally to the camera, mouth moving like in conversation.",
+    False: "Nobody speaks: lips stay closed or relaxed, no lip movement.",
+}
 VIDEO_LENGTHS = (15, 30, 45, 60, 75, 90)
 BRIEF_ATTEMPTS = 3
 PERSONA_STATUSES = frozenset({"ready", "approved", "rejected"})
@@ -659,7 +665,8 @@ class ProductCatalogService:
         prompt = (
             f"{shot.get('motion_prompt') or 'Slow gentle camera push-in.'} "
             "Keep the product's exact shape, color and details; do not add or change objects. "
-            "Silent clip: nobody speaks, no lip-sync, no dialogue, no music, no text on screen."
+            f"{_DELIVERY_RULE[shot.get('delivery') == 'talking']} "
+            "The clip has no sound: no dialogue, no music, no text on screen."
         )
         try:
             job_id, job_model = await self._videographer.submit(prompt, frame, seconds)

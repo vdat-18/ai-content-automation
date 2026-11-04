@@ -85,6 +85,7 @@ class StoryboardShot(BaseModel):
     description: str
     keyframe_prompt: str
     motion_prompt: str
+    delivery: typing.Union[typing_extensions.Literal['narrated'], typing_extensions.Literal['talking']]
     duration_seconds: int
     on_screen_text: str
     voiceover: str

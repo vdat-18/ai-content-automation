@@ -12,6 +12,7 @@ type Shot = {
   description: string;
   keyframe_prompt: string;
   motion_prompt: string;
+  delivery?: "narrated" | "talking";
   duration_seconds: number;
   on_screen_text: string;
   voiceover: string;
@@ -173,6 +174,7 @@ function BriefCard({
             brief.shots = (record.brief.shots ?? []).map((shot, index) => {
               const next: Shot = { ...shot, duration_seconds: Number(data.get(`shot_${index}_duration`)) || shot.duration_seconds };
               for (const field of SHOT_FIELDS) next[field.key] = String(data.get(`shot_${index}_${field.key}`));
+              next.delivery = data.get(`shot_${index}_delivery`) === "talking" ? "talking" : "narrated";
               return next;
             });
             save.mutate({ brief, status: submitter?.value === "approved" ? "approved" : "draft" });
@@ -214,6 +216,13 @@ function BriefCard({
               <label className="brief-field">
                 <span>{t("Seconds")}</span>
                 <input name={`shot_${index}_duration`} type="number" min={1} max={15} defaultValue={shot.duration_seconds} />
+              </label>
+              <label className="brief-field">
+                <span>{t("Delivery")}</span>
+                <select name={`shot_${index}_delivery`} defaultValue={shot.delivery ?? "narrated"}>
+                  <option value="narrated">{t("Narrated (voice-over, mouth not shown speaking)")}</option>
+                  <option value="talking">{t("Talking (person speaks to the camera, mouth roughly follows)")}</option>
+                </select>
               </label>
               {SHOT_FIELDS.map((field) => (
                 <label className="brief-field" key={field.key}>
