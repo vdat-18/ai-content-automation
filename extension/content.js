@@ -84,6 +84,28 @@
     return true;
   };
 
+  // The "Xem thêm" that loads more products sits under the product grid. The ones at the top of each
+  // section are links to another page, so only a plain button below every product card is clicked.
+  const clickLoadMore = () => {
+    const cards = Array.from(document.querySelectorAll("a[href*='/pdp/']"));
+    const gridBottom = cards.reduce((bottom, card) => Math.max(bottom, card.getBoundingClientRect().bottom + window.scrollY), 0);
+    const buttons = Array.from(document.querySelectorAll("button, [role='button'], div, span")).filter(
+      (el) =>
+        el.children.length <= 2 &&
+        (el.textContent || "").replace(/[\s→←>›]+/g, " ").trim() === "Xem thêm" &&
+        el.offsetParent !== null &&
+        !el.closest("a[href]"),
+    );
+    const candidates = buttons
+      .map((el) => ({ el, top: el.getBoundingClientRect().top + window.scrollY }))
+      .filter(({ top }) => top >= gridBottom - 5)
+      .sort((a, b) => b.top - a.top);
+    if (!candidates.length) return false;
+    candidates[0].el.scrollIntoView({ block: "center", behavior: "smooth" });
+    candidates[0].el.click();
+    return true;
+  };
+
   const REVIEW_PAGES = 1; // TikTok answers the review paging call with code 100000, so only the first page is read
 
   const scrollLikeReader = async () => {
@@ -189,7 +211,7 @@
       await waitForHuman();
       window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "smooth" });
       await wait(1200);
-      const clicked = clickByText("Xem thêm");
+      const clicked = clickLoadMore();
       banner(`AIC Collector: lấy danh sách ${i + 1}/${rounds}, ${last} sản phẩm${clicked ? ", đã bấm Xem thêm" : ""}`);
       send({ type: "heartbeat" });
       await wait(2200 + Math.random() * 1500);
