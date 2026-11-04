@@ -100,3 +100,4 @@ details.card > summary::-webkit-details-marker { display: none; }
 details.card > summary::after { content: "▾"; float: right; color: var(--muted); }
 details.card[open] > summary::after { content: "▴"; }
 details.card[open] { gap: 8px; }
+.version { font-size: 10px; font-weight: 600; color: var(--muted); margin-left: 4px; }

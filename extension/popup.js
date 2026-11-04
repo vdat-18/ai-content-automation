@@ -18,6 +18,8 @@ const refresh = () =>
       : "";
   });
 
+const version = document.getElementById("version");
+if (version) version.textContent = `v${chrome.runtime.getManifest().version}`;
 enabled.addEventListener("change", () => chrome.storage.local.set({ enabled: enabled.checked }));
 document.getElementById("capture").addEventListener("click", () => {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {

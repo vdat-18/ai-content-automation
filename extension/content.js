@@ -85,25 +85,42 @@
   };
 
   // The "Xem thêm" that loads more products sits under the product grid. The ones at the top of each
-  // section are links to another page, so only a plain button below every product card is clicked.
+  // section are links to another page, so only a plain button, never one inside a link, is clicked,
+  // and the lowest one on the page wins. The label is found from its text, whatever the markup is.
+  const loadMoreButtons = () => {
+    const found = [];
+    const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+    while (walker.nextNode()) {
+      const label = (walker.currentNode.nodeValue || "").replace(/[\s→←>›»]+/g, " ").trim().toLowerCase();
+      if (label !== "xem thêm" || !walker.currentNode.parentElement) continue;
+      const element = walker.currentNode.parentElement;
+      const target = element.closest("button, [role='button']") || element;
+      if (target.closest("a[href]")) continue;
+      const rect = target.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) continue;
+      found.push({ target, top: rect.top + window.scrollY });
+    }
+    return found.sort((x, y) => y.top - x.top);
+  };
+
+  const press = (target) => {
+    target.scrollIntoView({ block: "center", behavior: "instant" });
+    for (const type of ["pointerdown", "mousedown", "pointerup", "mouseup", "click"]) {
+      target.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window }));
+    }
+  };
+
+  // only a button below the last product card loads more; the others belong to a section above
   const clickLoadMore = () => {
-    const cards = Array.from(document.querySelectorAll("a[href*='/pdp/']"));
-    const gridBottom = cards.reduce((bottom, card) => Math.max(bottom, card.getBoundingClientRect().bottom + window.scrollY), 0);
-    const buttons = Array.from(document.querySelectorAll("button, [role='button'], div, span")).filter(
-      (el) =>
-        el.children.length <= 2 &&
-        (el.textContent || "").replace(/[\s→←>›]+/g, " ").trim() === "Xem thêm" &&
-        el.offsetParent !== null &&
-        !el.closest("a[href]"),
-    );
-    const candidates = buttons
-      .map((el) => ({ el, top: el.getBoundingClientRect().top + window.scrollY }))
-      .filter(({ top }) => top >= gridBottom - 5)
-      .sort((a, b) => b.top - a.top);
-    if (!candidates.length) return false;
-    candidates[0].el.scrollIntoView({ block: "center", behavior: "smooth" });
-    candidates[0].el.click();
-    return true;
+    const buttons = loadMoreButtons();
+    const gridBottom = Array.from(document.querySelectorAll("a[href*='/pdp/']")).reduce((bottom, card) => {
+      const rect = card.getBoundingClientRect();
+      return rect.height ? Math.max(bottom, rect.bottom + window.scrollY) : bottom;
+    }, 0);
+    const usable = buttons.filter(({ top }) => top >= gridBottom - 5);
+    if (!usable.length) return { clicked: false, seen: buttons.length };
+    press(usable[0].target);
+    return { clicked: true, seen: buttons.length };
   };
 
   const REVIEW_PAGES = 1; // TikTok answers the review paging call with code 100000, so only the first page is read
@@ -225,9 +242,9 @@
       window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "smooth" });
       await wait(1500);
       const payloads = state.sent.size;
-      const clicked = clickLoadMore();
+      const { clicked, seen } = clickLoadMore();
       if (clicked) clicks += 1;
-      banner(`AIC Collector: lấy danh sách ${i + 1}/${rounds}, ${last} sản phẩm, đã bấm Xem thêm ${clicks} lần`);
+      banner(`AIC Collector: lấy danh sách ${i + 1}/${rounds}, ${last} sản phẩm, đã bấm Xem thêm ${clicks} lần${clicked ? "" : ", chưa thấy nút Xem thêm"} (${seen} nút)`);
       send({ type: "heartbeat" });
       const grew = await waitForGrowth(last, payloads, clicked ? 8000 : 3000);
       const now = productCount();
