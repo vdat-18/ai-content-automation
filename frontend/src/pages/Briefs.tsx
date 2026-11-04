@@ -306,8 +306,9 @@ function Keyframes({ productId, shots, postPackage, persona, t }: { productId: s
       client.invalidateQueries({ queryKey: ["video-info", productId] });
     },
   });
+  const [captions, setCaptions] = useState(false);
   const stitchVideo = useMutation({
-    mutationFn: () => postJson<{ video: string }>(`${API}/${productId}/video`),
+    mutationFn: () => postJson<{ video: string }>(`${API}/${productId}/video`, { captions }),
     onSuccess: () => {
       setVideoVersion((version) => version + 1);
       client.invalidateQueries({ queryKey: ["video-info", productId] });
@@ -378,6 +379,10 @@ function Keyframes({ productId, shots, postPackage, persona, t }: { productId: s
           {stitchVideo.isPending ? t("Stitching…") : t("Stitch final video")}
         </button>
       </div>
+      <label className="brief-field">
+        <span>{t("Burn the on-screen text into the video (it can cover the product)")}</span>
+        <input type="checkbox" checked={captions} onChange={(event) => setCaptions(event.target.checked)} />
+      </label>
       <label className="brief-field">
         <span>{t("Voice (press play to hear a sample)")}</span>
         <select value={voice} onChange={(event) => setVoice(event.target.value)}>

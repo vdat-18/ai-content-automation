@@ -763,8 +763,14 @@ class ProductCatalogService:
             target.write_bytes(audio)
         return target
 
-    async def build_video(self, product_id: str, media_root: Path) -> str | None:
-        """Stitch the ready clips of approved shots, in story order, into one mp4."""
+    async def build_video(
+        self, product_id: str, media_root: Path, captions: bool = False
+    ) -> str | None:
+        """Stitch the ready clips of approved shots, in story order, into one mp4.
+
+        Captions are only burned into the picture when asked for, since the text can cover the
+        product.
+        """
         record = await self._repository.get_brief(product_id)
         if record is None:
             return None
@@ -779,7 +785,7 @@ class ProductCatalogService:
             if clip is None or clip["status"] != "ready":
                 raise StitchUnavailable(f"The clip for shot {index + 1} is not ready yet")
             duration = min(float(shot.get("duration_seconds") or clip["seconds"]), clip["seconds"])
-            caption = str(shot.get("on_screen_text") or "")
+            caption = str(shot.get("on_screen_text") or "") if captions else ""
             parts.append(StitchClip(Path(media_root) / clip["video_path"], duration, caption))
         relative = f"videos/{product_id}/video.mp4"
         await stitch(parts, Path(media_root) / relative, find_voiceover(media_root, product_id))

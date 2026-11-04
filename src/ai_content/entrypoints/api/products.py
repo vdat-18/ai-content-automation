@@ -373,14 +373,21 @@ async def clip_video(
     raise HTTPException(status_code=404, detail="No video for this clip")
 
 
+class VideoRequest(BaseModel):
+    captions: bool = False
+
+
 @router.post("/{product_id}/video")
 async def build_video(
     product_id: str,
+    payload: VideoRequest | None = None,
     service: ProductCatalogService = Depends(get_product_catalog_service),
 ) -> dict[str, str]:
-    """Stitch the ready clips into one video."""
+    """Stitch the ready clips into one video; captions are burned in only on request."""
     try:
-        path = await service.build_video(product_id, _media_root())
+        path = await service.build_video(
+            product_id, _media_root(), payload.captions if payload else False
+        )
     except StitchUnavailable as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
     if path is None:
