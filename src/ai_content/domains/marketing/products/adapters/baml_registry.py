@@ -15,20 +15,31 @@ def build_client_registry(
     temperature: float | None,
     max_output_tokens: int,
 ) -> ClientRegistry:
-    options: dict[str, object] = {
-        "base_url": base_url,
-        "model": model,
-        "api_key": api_key,
-        "max_tokens": max_output_tokens,
-        "stream": False,
-    }
-    if reasoning_effort is not None:
-        options["reasoning_effort"] = reasoning_effort
-    if temperature is not None:
-        options["temperature"] = temperature
+    """Build the BAML client; model may list several names, comma separated, as fallbacks."""
+    models = [m.strip() for m in model.split(",") if m.strip()]
     registry = ClientRegistry()
-    registry.add_llm_client(name, "openai-generic", options)
-    registry.set_primary(name)
+    names: list[str] = []
+    for position, one_model in enumerate(models):
+        options: dict[str, object] = {
+            "base_url": base_url,
+            "model": one_model,
+            "api_key": api_key,
+            "max_tokens": max_output_tokens,
+            "stream": False,
+        }
+        if reasoning_effort is not None:
+            options["reasoning_effort"] = reasoning_effort
+        if temperature is not None:
+            options["temperature"] = temperature
+        client_name = name if position == 0 else f"{name}Fallback{position}"
+        registry.add_llm_client(client_name, "openai-generic", options)
+        names.append(client_name)
+    if len(names) > 1:
+        # Several models: try them in order, moving on when one errors (e.g. quota exhausted).
+        registry.add_llm_client(f"{name}Chain", "fallback", {"strategy": names})
+        registry.set_primary(f"{name}Chain")
+    else:
+        registry.set_primary(name)
     return registry
 
 
