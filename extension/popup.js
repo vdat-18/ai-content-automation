@@ -14,8 +14,15 @@ const refresh = () =>
     status.textContent = s.error ? `Lỗi gửi: ${s.error}` : `Đã gửi ${s.sent} gói về collector`;
     const w = s.walker;
     walkerBox.textContent = w
-      ? `${w.running ? (w.paused ? "TẠM DỪNG - cần bạn" : "Đang chạy") : "Không chạy"}: ${w.done + w.failed}/${w.queue.length} | ${Object.keys(w.active || {}).length} tab | OK ${w.done} | lỗi ${w.failed} | ${w.note}`
+      ? `${w.running ? (w.paused ? "TẠM DỪNG - cần bạn" : "Đang chạy") : "Không chạy"}: ${w.done + w.failed}/${w.queue.length} | ${Object.keys(w.active || {}).length} tab | OK ${w.done} | lỗi ${w.failed} | ${w.note}${w.detail ? `
+Đang thu: ${w.detail}` : ""}`
       : "";
+    const bar = document.getElementById("walker-bar");
+    if (bar) {
+      const total = w?.queue?.length || 0;
+      bar.hidden = !(w && total);
+      bar.firstElementChild.style.width = total ? `${Math.round(((w.done + w.failed) / total) * 100)}%` : "0%";
+    }
   });
 
 const version = document.getElementById("version");
@@ -58,6 +65,7 @@ document.getElementById("start").addEventListener("click", async () => {
 document.getElementById("stop").addEventListener("click", () => chrome.runtime.sendMessage({ type: "walker-stop" }));
 const API = "http://127.0.0.1:8000/api/v1/products";
 document.getElementById("pins").addEventListener("click", async () => {
+  chrome.storage.local.set({ autoNote: "" });
   const searches = Number(document.getElementById("pin-searches").value) || 200;
   const maxImages = Number(document.getElementById("pin-images").value) || 0;
   try {

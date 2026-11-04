@@ -208,6 +208,7 @@
       window.scrollBy({ top: Math.round(window.innerHeight * 0.9), behavior: "smooth" });
       send({ type: "heartbeat" });
       banner(`AIC Collector: Pinterest ${meta.query}: ${pins.size} ảnh`);
+      send({ type: "progress", detail: `"${meta.query}": ${pins.size} ảnh` });
       await wait(1400 + Math.random() * 900);
       collectPins(pins);
       idleRounds = pins.size === before ? idleRounds + 1 : 0;

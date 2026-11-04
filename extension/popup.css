@@ -101,3 +101,6 @@ details.card > summary::after { content: "▾"; float: right; color: var(--muted
 details.card[open] > summary::after { content: "▴"; }
 details.card[open] { gap: 8px; }
 .version { font-size: 10px; font-weight: 600; color: var(--muted); margin-left: 4px; }
+.bar { height: 6px; border-radius: 999px; background: var(--line); overflow: hidden; }
+.bar > span { display: block; height: 100%; width: 0; background: var(--accent); transition: width .3s; }
+.progress { white-space: pre-line; }

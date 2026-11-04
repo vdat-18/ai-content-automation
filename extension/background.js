@@ -26,6 +26,7 @@ const EMPTY = {
   concurrency: 1,
   delayMs: BASE_DELAY_MS,
   note: "",
+  detail: "",
 };
 const timers = new Map(); // tabId -> timeout that gives up on a page that never finishes
 const recentOpens = []; // when the last product tabs were opened, for the per-minute cap
@@ -140,6 +141,7 @@ async function finishTab(tabId, ok, reason) {
     if (!w.active[tabId]) return false;
     if (reason === "unavailable") await rememberUnavailable(w.active[tabId]);
     delete w.active[tabId];
+    w.detail = "";
     if (ok) {
       w.done += 1;
       w.delayMs = Math.max(BASE_DELAY_MS, Math.round(w.delayMs * SHRINK_FACTOR));
@@ -276,6 +278,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({ walker: w.running && Boolean(url), meta: (url && w.meta?.[url]) || null });
       });
       return true;
+    case "progress":
+      locked(async () => {
+        const w = await getState();
+        if (!w.running || !w.active[tabId]) return;
+        w.detail = String(message.detail || "").slice(0, 160);
+        await setState(w);
+      });
+      break;
     case "heartbeat":
       locked(getState).then((w) => {
         if (w.running && !w.paused && w.active[tabId]) armTimer(tabId);
