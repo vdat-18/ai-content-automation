@@ -25,3 +25,6 @@ frontend/dist/
 # Browser sessions for logged-in research crawls
 /.secrets/
 .coverage
+
+# Local run data: database, generated media and removed env lines
+.creative-pilot/

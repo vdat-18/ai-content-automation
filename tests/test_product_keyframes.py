@@ -357,3 +357,21 @@ async def test_each_step_is_written_to_the_run_log(tmp_path) -> None:
         ("keyframe", "approved", 0),
     ]
     assert "wrong color" in events[0]["message"] and "2 attempt" in events[1]["message"]
+
+
+async def test_generated_keyframes_are_uploaded_and_restored_from_the_remote(tmp_path) -> None:
+    from tests.test_product_media_store import _Remote
+
+    remote = _Remote()
+    service = await _service(tmp_path, _FakeKeyframer())
+    service._remote_media = remote
+    await service.generate_keyframes(PRODUCT_ID, tmp_path)
+    assert (
+        remote.objects["affiliate-media/keyframes/" + PRODUCT_ID + "/shot_0.jpg"] == PNG + b"master"
+    )
+
+    (tmp_path / "keyframes" / PRODUCT_ID / "shot_0.jpg").unlink()
+    await service.set_keyframe_status(PRODUCT_ID, 0, "approved")
+    # the master is read back from the remote to make the other shots
+    await service.generate_keyframes(PRODUCT_ID, tmp_path)
+    assert (tmp_path / "keyframes" / PRODUCT_ID / "shot_1.jpg").is_file()

@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 from fastapi import FastAPI, Request
 
@@ -25,6 +25,7 @@ from ai_content.domains.marketing.products.keyframes import (
     KeyframeGenerator,
     KeyframeImageClient,
 )
+from ai_content.domains.marketing.products.media_store import S3RemoteMedia
 from ai_content.domains.marketing.products.posting import PostingPackageWriter
 from ai_content.domains.marketing.products.references import ReferenceProfileGenerator
 from ai_content.domains.marketing.products.repositories import SqliteProductRepository
@@ -63,6 +64,11 @@ class ApiRuntimeSettings:
     tts_voice: str = ""
     database_backend: Literal["sqlite", "postgresql"] = "sqlite"
     database_url: str | None = None
+    media_s3_endpoint_url: str | None = None
+    media_s3_bucket: str = ""
+    media_s3_access_key: str | None = None
+    media_s3_secret_key: str | None = None
+    media_s3_region: str = "us-east-1"
 
 
 @dataclass(frozen=True)
@@ -71,6 +77,23 @@ class RuntimeReadiness:
 
     ready: bool
     checks: dict[str, str]
+
+
+def _media_s3_settings(application: ApplicationSettings) -> dict[str, Any]:
+    """Generated images and videos go to object storage when it is the configured backend."""
+    if application.object_storage_backend != "s3":
+        return {}
+    return {
+        "media_s3_endpoint_url": application.s3_endpoint_url,
+        "media_s3_bucket": application.s3_bucket,
+        "media_s3_access_key": application.s3_access_key.get_secret_value()
+        if application.s3_access_key
+        else None,
+        "media_s3_secret_key": application.s3_secret_key.get_secret_value()
+        if application.s3_secret_key
+        else None,
+        "media_s3_region": application.s3_region,
+    }
 
 
 def get_runtime_settings() -> ApiRuntimeSettings:
@@ -102,6 +125,7 @@ def get_runtime_settings() -> ApiRuntimeSettings:
         database_url=(
             application.database_url.get_secret_value() if application.database_url else None
         ),
+        **_media_s3_settings(application),
     )
 
 
@@ -267,6 +291,23 @@ def _speech_client(settings: ApiRuntimeSettings) -> SpeechClient | None:
     )
 
 
+def _remote_media(settings: ApiRuntimeSettings) -> S3RemoteMedia | None:
+    if not (
+        settings.media_s3_endpoint_url
+        and settings.media_s3_bucket
+        and settings.media_s3_access_key
+        and settings.media_s3_secret_key
+    ):
+        return None
+    return S3RemoteMedia(
+        endpoint_url=settings.media_s3_endpoint_url,
+        bucket=settings.media_s3_bucket,
+        access_key=settings.media_s3_access_key,
+        secret_key=settings.media_s3_secret_key,
+        region=settings.media_s3_region,
+    )
+
+
 def _posting_writer(settings: ApiRuntimeSettings) -> PostingPackageWriter | None:
     if not settings.screening_api_key:
         return None
@@ -323,6 +364,7 @@ async def get_product_catalog_service(request: Request) -> AsyncIterator[Product
             _video_client(settings),
             _posting_writer(settings),
             _speech_client(settings),
+            _remote_media(settings),
         )
         return
     repository = SqliteProductRepository(settings.db_path)
@@ -338,6 +380,7 @@ async def get_product_catalog_service(request: Request) -> AsyncIterator[Product
             _video_client(settings),
             _posting_writer(settings),
             _speech_client(settings),
+            _remote_media(settings),
         )
     finally:
         repository.close()

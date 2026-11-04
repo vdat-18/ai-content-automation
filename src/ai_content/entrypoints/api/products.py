@@ -325,8 +325,8 @@ async def keyframe_image(
 ) -> FileResponse:
     for keyframe in await service.list_keyframes(product_id):
         if keyframe["shot_index"] == shot_index and keyframe["image_path"]:
-            path = _media_root() / keyframe["image_path"]
-            if path.is_file():
+            path = await service.media(_media_root()).fetch(keyframe["image_path"])
+            if path is not None:
                 return FileResponse(path, media_type="image/jpeg")
     raise HTTPException(status_code=404, detail="No image for this keyframe")
 
@@ -367,8 +367,8 @@ async def clip_video(
 ) -> FileResponse:
     for clip in await service.clips(product_id, _media_root()):
         if clip["shot_index"] == shot_index and clip["video_path"]:
-            path = _media_root() / clip["video_path"]
-            if path.is_file():
+            path = await service.media(_media_root()).fetch(clip["video_path"])
+            if path is not None:
                 return FileResponse(path, media_type="video/mp4")
     raise HTTPException(status_code=404, detail="No video for this clip")
 
@@ -405,18 +405,30 @@ async def run_log(
 
 
 @router.get("/{product_id}/video-info")
-async def video_info(product_id: str) -> dict[str, bool]:
-    folder = _media_root() / "videos" / product_id
+async def video_info(
+    product_id: str,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> dict[str, bool]:
+    store = service.media(_media_root())
     return {
-        "exists": (folder / "video.mp4").is_file(),
-        "voiceover": any(folder.glob("voiceover.*")),
+        "exists": await store.exists(f"videos/{product_id}/video.mp4"),
+        "voiceover": any(
+            [
+                await store.exists(f"videos/{product_id}/voiceover.{ext}")
+                for ext in VOICEOVER_TYPES.values()
+            ]
+        ),
     }
 
 
 @router.get("/{product_id}/video")
-async def final_video(product_id: str, download: bool = False) -> FileResponse:
-    path = _media_root() / "videos" / product_id / "video.mp4"
-    if not path.is_file():
+async def final_video(
+    product_id: str,
+    download: bool = False,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> FileResponse:
+    path = await service.media(_media_root()).fetch(f"videos/{product_id}/video.mp4")
+    if path is None:
         raise HTTPException(status_code=404, detail="No stitched video yet")
     return FileResponse(
         path,
@@ -444,7 +456,11 @@ async def create_post_package(
 
 
 @router.put("/{product_id}/voiceover")
-async def upload_voiceover(product_id: str, request: Request) -> dict[str, str]:
+async def upload_voiceover(
+    product_id: str,
+    request: Request,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> dict[str, str]:
     """Keep one voice-over file for the video; the next stitch lays it over the clips."""
     kind = request.headers.get("content-type", "").split(";")[0].strip()
     extension = VOICEOVER_TYPES.get(kind)
@@ -453,11 +469,10 @@ async def upload_voiceover(product_id: str, request: Request) -> dict[str, str]:
     content = await request.body()
     if not content:
         raise HTTPException(status_code=422, detail="The file is empty")
-    folder = _media_root() / "videos" / product_id
-    folder.mkdir(parents=True, exist_ok=True)
-    for old in folder.glob("voiceover.*"):
-        old.unlink()
-    (folder / f"voiceover.{extension}").write_bytes(content)
+    store = service.media(_media_root())
+    for old in VOICEOVER_TYPES.values():
+        await store.remove(f"videos/{product_id}/voiceover.{old}")
+    await store.write(f"videos/{product_id}/voiceover.{extension}", content)
     return {"voiceover": extension}
 
 
@@ -507,8 +522,8 @@ async def persona_image(
 ) -> FileResponse:
     record = await service.get_brief(product_id)
     relative = ((record or {}).get("brief", {}).get("persona") or {}).get("image_path")
-    path = _media_root() / relative if relative else None
-    if path is None or not path.is_file():
+    path = await service.media(_media_root()).fetch(relative) if relative else None
+    if path is None:
         raise HTTPException(status_code=404, detail="No person portrait yet")
     return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "no-cache"})
 
@@ -536,14 +551,17 @@ async def make_voiceover_track(
 
 
 @router.get("/{product_id}/voiceover")
-async def voiceover_audio(product_id: str) -> FileResponse:
-    folder = _media_root() / "videos" / product_id
+async def voiceover_audio(
+    product_id: str,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> FileResponse:
+    store = service.media(_media_root())
     for extension, media_type in (
         ("mp3", "audio/mpeg"),
         ("wav", "audio/wav"),
         ("m4a", "audio/mp4"),
     ):
-        path = folder / f"voiceover.{extension}"
-        if path.is_file():
+        path = await store.fetch(f"videos/{product_id}/voiceover.{extension}")
+        if path is not None:
             return FileResponse(path, media_type=media_type, headers={"Cache-Control": "no-cache"})
     raise HTTPException(status_code=404, detail="No voice-over yet")

@@ -34,6 +34,7 @@ from .image_review import ReferenceImageReviewer
 from .keyframe_check import KeyframeChecker
 from .keyframes import KeyframeGenerationError, KeyframeGenerator, fetch_images
 from .media import MediaDownloadReport, download_product_media
+from .media_store import MediaStore, RemoteMedia
 from .parsing import (
     is_feed_url,
     is_product_url,
@@ -162,6 +163,7 @@ class ProductCatalogService:
         videographer: VideoClient | None = None,
         poster: PostingPackageWriter | None = None,
         speaker: SpeechClient | None = None,
+        remote_media: RemoteMedia | None = None,
     ) -> None:
         self._repository = repository
         self._generator = generator
@@ -173,6 +175,7 @@ class ProductCatalogService:
         self._videographer = videographer
         self._poster = poster
         self._speaker = speaker
+        self._remote_media = remote_media
 
     async def ingest(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Store whatever a captured page or feed response contains."""
@@ -366,6 +369,10 @@ class ProductCatalogService:
         )
         return await self._repository.get_brief(product_id)
 
+    def media(self, media_root: Path) -> MediaStore:
+        """The store of generated files: the local folder plus the remote copy, when set up."""
+        return MediaStore(Path(media_root), self._remote_media)
+
     async def _log(
         self, product_id: str, step: str, status: str, message: str, shot_index: int | None = None
     ) -> None:
@@ -428,9 +435,7 @@ class ProductCatalogService:
             await self._log(product_id, "persona", "error", str(error))
             raise KeyframeUnavailable(f"The person could not be made: {error}") from error
         relative = f"persona/{product_id}/persona.jpg"
-        target = Path(media_root) / relative
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes(image)
+        await self.media(media_root).write(relative, image)
         persona = {
             "description": text,
             "image_path": relative,
@@ -490,14 +495,14 @@ class ProductCatalogService:
         if persona.get("description"):
             if persona.get("status") != "approved" or not persona.get("image_path"):
                 raise KeyframeUnavailable("Approve the person's portrait first")
-            persona_image = (Path(media_root) / persona["image_path"]).read_bytes()
+            persona_image = await self.media(media_root).read(persona["image_path"])
         detail = await self._repository.get_detail(product_id)
         photos = await fetch_images([u for u in (detail or {}).get("images") or [] if u])
         if not photos:
             raise KeyframeUnavailable("No product photo could be downloaded")
         scene = await self._primary_scene(record["brief"]) if 0 in wanted else None
         master = (
-            (Path(media_root) / existing[0]["image_path"]).read_bytes() if master_ready else None
+            await self.media(media_root).read(existing[0]["image_path"]) if master_ready else None
         )
         size = str(record["brief"].get("product_size") or "")
         for index in wanted:
@@ -580,9 +585,7 @@ class ProductCatalogService:
             )
         assert image is not None
         relative = f"keyframes/{product_id}/shot_{index}.jpg"
-        target = Path(media_root) / relative
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes(image)
+        await self.media(media_root).write(relative, image)
         await self._repository.save_keyframe(
             {
                 **record,
@@ -608,8 +611,8 @@ class ProductCatalogService:
             return None  # shot 1 follows the master, which is already its reference
         for keyframe in await self._repository.list_keyframes(product_id):
             if keyframe["shot_index"] == index - 1 and keyframe.get("image_path"):
-                path = Path(media_root) / keyframe["image_path"]
-                return path.read_bytes() if path.is_file() else None
+                found = await self.media(media_root).fetch(keyframe["image_path"])
+                return found.read_bytes() if found else None
         return None
 
     async def _check_keyframe(
@@ -645,9 +648,7 @@ class ProductCatalogService:
             if state.status == "completed" and state.video_url:
                 content = await self._videographer.download(state.video_url)
                 relative = f"clips/{clip['product_id']}/shot_{clip['shot_index']}.mp4"
-                target = Path(media_root) / relative
-                target.parent.mkdir(parents=True, exist_ok=True)
-                target.write_bytes(content)
+                await self.media(media_root).write(relative, content)
                 update = {"status": "ready", "video_path": relative, "error": None}
                 await self._log(
                     clip["product_id"], "clip", "ok", "Clip downloaded", clip["shot_index"]
@@ -718,7 +719,7 @@ class ProductCatalogService:
             "attempts": (previous or {}).get("attempts", 0) + 1,
         }
         delivery = str(shot.get("delivery") or "narrated")
-        frame = (Path(media_root) / keyframe["image_path"]).read_bytes()
+        frame = await self.media(media_root).read(keyframe["image_path"])
         prompt = (
             f"{shot.get('motion_prompt') or 'Slow gentle camera push-in.'} "
             "Keep the product's exact shape, color and details; do not add or change objects. "
@@ -790,12 +791,14 @@ class ProductCatalogService:
             )
             for shot in shots
         ]
-        folder = Path(media_root) / "videos" / product_id
+        store = self.media(media_root)
+        folder = store.path(f"videos/{product_id}")
         folder.mkdir(parents=True, exist_ok=True)
-        for old in folder.glob("voiceover.*"):
-            old.unlink()
+        for extension in VOICEOVER_TYPES.values():
+            await store.remove(f"videos/{product_id}/voiceover.{extension}")
         try:
             lengths = await make_voiceover(self._speaker, segments, folder / "voiceover.mp3", voice)
+            await store.push(f"videos/{product_id}/voiceover.mp3")
         except SpeechError as error:
             raise KeyframeUnavailable(f"The voice-over could not be made: {error}") from error
         too_long = [
@@ -822,15 +825,16 @@ class ProductCatalogService:
             raise KeyframeUnavailable("Text-to-speech is not configured (AIC_TTS_MODEL)")
         if voice not in VOICES:
             raise KeyframeUnavailable(f"Unknown voice {voice}")
-        target = Path(media_root) / "voice_samples" / f"{voice.removesuffix('.mp3')}.mp3"
-        if not target.is_file():
+        relative = f"voice_samples/{voice.removesuffix('.mp3')}.mp3"
+        store = self.media(media_root)
+        found = await store.fetch(relative)
+        if found is None:
             try:
                 audio = await self._speaker.speak(SAMPLE_TEXT, voice)
             except SpeechError as error:
                 raise KeyframeUnavailable(f"The sample could not be made: {error}") from error
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_bytes(audio)
-        return target
+            found = await store.write(relative, audio)
+        return found
 
     async def build_video(
         self, product_id: str, media_root: Path, captions: bool = False
@@ -855,10 +859,18 @@ class ProductCatalogService:
                 raise StitchUnavailable(f"The clip for shot {index + 1} is not ready yet")
             duration = min(float(shot.get("duration_seconds") or clip["seconds"]), clip["seconds"])
             caption = str(shot.get("on_screen_text") or "") if captions else ""
-            parts.append(StitchClip(Path(media_root) / clip["video_path"], duration, caption))
+            local = await self.media(media_root).fetch(clip["video_path"])
+            if local is None:
+                raise StitchUnavailable(f"The clip file for shot {index + 1} is missing")
+            parts.append(StitchClip(local, duration, caption))
         relative = f"videos/{product_id}/video.mp4"
+        store = self.media(media_root)
+        await store.fetch_first(
+            [f"videos/{product_id}/voiceover.{ext}" for ext in VOICEOVER_TYPES.values()]
+        )
         voice = find_voiceover(media_root, product_id)
-        await stitch(parts, Path(media_root) / relative, voice)
+        await stitch(parts, store.path(relative), voice)
+        await store.push(relative)
         await self._log(
             product_id,
             "video",
