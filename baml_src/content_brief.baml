@@ -103,7 +103,9 @@ function DraftContentBrief(
     two or three sentences describing the action over the 15 seconds as timed beats (for
     example "0 to 5s: slow push-in; 5 to 10s: a hand folds the basket; 10 to 15s: camera settles"),
     one continuous camera path in the same place with no scene cuts and no new objects, for
-    animating the keyframe),
+    animating the keyframe; the clips are silent, because the voice-over is recorded separately
+    and laid over the finished video, so describe only what is seen: nobody talks, lips are
+    closed or relaxed, and no sound, music or dialogue is mentioned),
     duration_seconds, on_screen_text (a short Vietnamese caption, or an empty string) and
     voiceover (one Vietnamese sentence).
 

@@ -658,7 +658,8 @@ class ProductCatalogService:
         frame = (Path(media_root) / keyframe["image_path"]).read_bytes()
         prompt = (
             f"{shot.get('motion_prompt') or 'Slow gentle camera push-in.'} "
-            "Keep the product's exact shape, color and details; do not add or change objects."
+            "Keep the product's exact shape, color and details; do not add or change objects. "
+            "Silent clip: nobody speaks, no lip-sync, no dialogue, no music, no text on screen."
         )
         try:
             job_id, job_model = await self._videographer.submit(prompt, frame, seconds)
