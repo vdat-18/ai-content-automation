@@ -159,6 +159,15 @@ def test_parsing_helpers_and_rich_description() -> None:
     assert [item["product_id"] for item in parse_feed_payload(components)] == ["7"]
 
 
+_COMPLETE_REVIEW = {
+    "usable": True,
+    "setting": "room",
+    "lighting": "soft",
+    "camera": "eye level",
+    "placement": "shelf",
+}
+
+
 async def test_reference_image_reviewer_handles_failures() -> None:
     import httpx
     from baml_py.baml_py import BamlClientError
@@ -169,7 +178,7 @@ async def test_reference_image_reviewer_handles_failures() -> None:
         async def ReviewReferenceImage(self, product_type, image):
             if product_type == "lỗi":
                 raise BamlClientError("429", "429", "429")
-            return SimpleNamespace(model_dump=lambda: {"usable": True})
+            return SimpleNamespace(model_dump=lambda: dict(_COMPLETE_REVIEW))
 
     def handler(request: httpx.Request) -> httpx.Response:
         if "missing" in request.url.path:
@@ -183,4 +192,4 @@ async def test_reference_image_reviewer_handles_failures() -> None:
     ]
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
         reviews = await ReferenceImageReviewer(_Client()).review_all(images, http)
-    assert reviews == {"ok": {"usable": True}, "gone": None, "rate": None}
+    assert reviews == {"ok": _COMPLETE_REVIEW, "gone": None, "rate": None}

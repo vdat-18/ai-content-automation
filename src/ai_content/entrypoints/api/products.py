@@ -139,6 +139,18 @@ async def reference_queue(
     return await service.reference_queue(limit)
 
 
+@router.post("/reference-images/redescribe")
+async def redescribe_reference_images(
+    limit: int = Query(30, ge=1, le=200),
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> dict[str, int]:
+    """Give images reviewed before detailed reviews existed a full description."""
+    try:
+        return await service.redescribe_images(limit)
+    except ProfileGenerationError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+
+
 @router.post("/reference-images/recheck-duplicates")
 async def recheck_duplicates(
     service: ProductCatalogService = Depends(get_product_catalog_service),

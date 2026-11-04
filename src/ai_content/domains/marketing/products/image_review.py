@@ -16,6 +16,8 @@ from ai_content.domains.marketing.products.adapters.baml_client.async_client imp
 from ai_content.domains.marketing.products.adapters.baml_registry import build_client_registry
 
 _CONCURRENCY = 2
+# a complete review of a usable image has at least these
+_REQUIRED_DETAIL = ("setting", "lighting", "camera", "placement")
 _DOWNLOAD_TIMEOUT = 30
 
 
@@ -40,7 +42,7 @@ class ReferenceImageReviewer:
             api_key=api_key,
             reasoning_effort=None,
             temperature=0,
-            max_output_tokens=800,
+            max_output_tokens=4096,
         )
         return cls(b.with_options(client_registry=registry))
 
@@ -67,7 +69,12 @@ class ReferenceImageReviewer:
                 except (httpx.HTTPError, BamlError) as error:
                     logger.warning("Reference image review failed: {}", str(error)[:300])
                     return image["image_id"], None
-                return image["image_id"], result.model_dump()
+                review = result.model_dump()
+                if review["usable"] and not any(review.get(key) for key in _REQUIRED_DETAIL):
+                    # a reply cut off half way still parses; never let it through as a full review
+                    logger.warning("Reference image review was cut short: {}", image["image_id"])
+                    return image["image_id"], None
+                return image["image_id"], review
 
         try:
             return dict(await asyncio.gather(*(review(image) for image in images)))

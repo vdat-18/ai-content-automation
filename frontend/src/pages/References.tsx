@@ -6,7 +6,37 @@ import { useI18n } from "../hooks/useI18n";
 import { deleteJson, getJson, postJson, putJson } from "../services/http";
 
 export type ReferenceProfile = { product_type: string; keywords: string[]; status: string };
-type Screening = { usable: boolean; description?: string; scene_description?: string };
+type Screening = {
+  usable: boolean;
+  description?: string;
+  scene_description?: string;
+  reject_reason?: string | null;
+  setting?: string | null;
+  surface_and_props?: string[] | null;
+  lighting?: string | null;
+  color_palette?: string[] | null;
+  style?: string[] | null;
+  camera?: string | null;
+  people?: string | null;
+  placement?: string | null;
+  suits?: string[] | null;
+  motion_ideas?: string[] | null;
+  quality?: number | null;
+};
+
+const DETAILS: { key: keyof Screening; label: string }[] = [
+  { key: "setting", label: "Setting" },
+  { key: "surface_and_props", label: "Props" },
+  { key: "lighting", label: "Light" },
+  { key: "color_palette", label: "Colors" },
+  { key: "style", label: "Style" },
+  { key: "camera", label: "Camera" },
+  { key: "people", label: "People" },
+  { key: "placement", label: "Product spot" },
+  { key: "suits", label: "Fits shots" },
+  { key: "motion_ideas", label: "Motion ideas" },
+];
+const detailText = (value: unknown) => (Array.isArray(value) ? value.join(", ") : String(value ?? ""));
 type ReferenceImage = { image_id: string; product_type: string; query: string; image_url: string; pin_url: string; title: string; status: string; screening: Screening | null };
 type ScreenReport = { reviewed: number; usable: number; rejected: number; failed: number };
 
@@ -105,6 +135,10 @@ function ReferenceImages() {
     mutationFn: () => postJson<{ checked: number; marked_duplicate: number }>(`${API}/reference-images/recheck-duplicates`),
     onSuccess: () => client.invalidateQueries({ queryKey: ["reference-images"] }),
   });
+  const redescribe = useMutation({
+    mutationFn: () => postJson<{ described: number; failed: number; left: number }>(`${API}/reference-images/redescribe?limit=30`),
+    onSuccess: () => client.invalidateQueries({ queryKey: ["reference-images"] }),
+  });
   const screen = useMutation({
     mutationFn: () => postJson<ScreenReport>(`${API}/reference-images/screen?limit=30`),
     onSuccess: () => client.invalidateQueries({ queryKey: ["reference-images"] }),
@@ -118,6 +152,11 @@ function ReferenceImages() {
           <p>{t("Images crawled from Pinterest that Gemini accepted as scenes to borrow, newest first. Remove the ones you do not want.")}</p>
         </div>
         <div className="reference-review">
+          {(images.data ?? []).some((image) => image.screening && !image.screening.setting) && (
+            <button className="secondary-button" disabled={redescribe.isPending} onClick={() => redescribe.mutate()} title={t("Ask the vision model for a full description of images reviewed before details were saved")}>
+              {redescribe.isPending ? t("Describing…") : t("Describe in detail")}
+            </button>
+          )}
           <button className="secondary-button" disabled={recheck.isPending} onClick={() => recheck.mutate()} title={t("Mark images that look like an earlier one (80% similar or more) as duplicates")}>
             {recheck.isPending ? t("Checking…") : t("Re-check duplicates")}
           </button>
@@ -130,6 +169,8 @@ function ReferenceImages() {
       {screen.error && <p role="alert">{screen.error.message}</p>}
       {recheck.data && <p role="status">{`${t("Checked")} ${recheck.data.checked} · ${t("new duplicates")} ${recheck.data.marked_duplicate}`}</p>}
       {recheck.error && <p role="alert">{recheck.error.message}</p>}
+      {redescribe.data && <p role="status">{`${t("Described")} ${redescribe.data.described} · ${t("failed")} ${redescribe.data.failed}${redescribe.data.left ? ` · ${t("more left, press again")}` : ""}`}</p>}
+      {redescribe.error && <p role="alert">{redescribe.error.message}</p>}
       <div className="products-filters">
         <label className="pf-field">
           <span>{t("Product type")}</span>
@@ -164,6 +205,20 @@ function ReferenceImages() {
                   <small title={image.screening.description ?? image.screening.scene_description}>
                     {`${image.screening.usable ? "" : "✕ "}${image.screening.description ?? image.screening.scene_description ?? ""}`}
                   </small>
+                )}
+                {image.screening && DETAILS.some(({ key }) => image.screening?.[key]) && (
+                  <details className="reference-card__details">
+                    <summary>{image.screening.quality ? `${t("Details")} · ${image.screening.quality}/5` : t("Details")}</summary>
+                    <dl>
+                      {DETAILS.filter(({ key }) => image.screening?.[key]).map(({ key, label }) => (
+                        <div key={key}>
+                          <dt>{t(label)}</dt>
+                          <dd>{detailText(image.screening?.[key])}</dd>
+                        </div>
+                      ))}
+                      {image.screening.reject_reason && <div><dt>{t("Rejected because")}</dt><dd>{image.screening.reject_reason}</dd></div>}
+                    </dl>
+                  </details>
                 )}
                 <div>
                   <button type="button" className="pt-button" disabled={remove.isPending || image.status === "removed"} onClick={() => remove.mutate(image.image_id)}>{t("Remove")}</button>

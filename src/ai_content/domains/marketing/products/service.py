@@ -377,6 +377,27 @@ class ProductCatalogService:
             counts["usable" if usable else "rejected"] += 1
         return counts
 
+    async def redescribe_images(self, limit: int) -> dict[str, int]:
+        """Describe in full the images reviewed before reviews carried detail; their status stays."""
+        if self._reviewer is None:
+            raise ProfileGenerationError("LLM is not configured (AIC_SCREENING_API_KEY)")
+        images = [
+            image
+            for image in await self._repository.list_reference_images(None, None)
+            if image["status"] in ("live", "rejected")
+            and image["screening"] is not None
+            and not image["screening"].get("setting")
+        ][:limit]
+        reviews = await self._reviewer.review_all(images)
+        counts = {"described": 0, "failed": 0, "left": max(0, len(images) - limit)}
+        for image_id, review in reviews.items():
+            if review is None:
+                counts["failed"] += 1
+                continue
+            await self._repository.set_image_screening(image_id, review, None)
+            counts["described"] += 1
+        return counts
+
     async def create_brief(
         self, product_id: str, user_idea: str = "", video_seconds: int = CLIP_SECONDS
     ) -> dict[str, Any] | None:

@@ -301,7 +301,7 @@ class ReferenceImageReviewAst:
     def __init__(self, tb: type_builder.TypeBuilder):
         _tb = tb._tb # type: ignore (we know how to use this private attribute)
         self._bldr = _tb.class_("ReferenceImageReview")
-        self._properties: typing.Set[str] = set([  "usable",  "description",  ])
+        self._properties: typing.Set[str] = set([  "usable",  "description",  "reject_reason",  "setting",  "surface_and_props",  "lighting",  "color_palette",  "style",  "camera",  "people",  "placement",  "suits",  "motion_ideas",  "quality",  ])
         self._props = ReferenceImageReviewProperties(self._bldr, self._properties)
 
     def type(self) -> baml_py.FieldType:
@@ -336,6 +336,54 @@ class ReferenceImageReviewProperties:
     @property
     def description(self) -> type_builder.ClassPropertyViewer:
         return type_builder.ClassPropertyViewer(self.__bldr.property("description"))
+    
+    @property
+    def reject_reason(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("reject_reason"))
+    
+    @property
+    def setting(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("setting"))
+    
+    @property
+    def surface_and_props(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("surface_and_props"))
+    
+    @property
+    def lighting(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("lighting"))
+    
+    @property
+    def color_palette(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("color_palette"))
+    
+    @property
+    def style(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("style"))
+    
+    @property
+    def camera(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("camera"))
+    
+    @property
+    def people(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("people"))
+    
+    @property
+    def placement(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("placement"))
+    
+    @property
+    def suits(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("suits"))
+    
+    @property
+    def motion_ideas(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("motion_ideas"))
+    
+    @property
+    def quality(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("quality"))
     
     
 

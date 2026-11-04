@@ -57,10 +57,32 @@ def product_facts(product: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+_DETAIL_LABELS = (
+    ("setting", "Setting"),
+    ("surface_and_props", "Props"),
+    ("lighting", "Light"),
+    ("color_palette", "Colors"),
+    ("style", "Style"),
+    ("camera", "Camera"),
+    ("people", "People"),
+    ("placement", "Product spot"),
+    ("suits", "Fits shots"),
+    ("motion_ideas", "Motion ideas"),
+)
+
+
 def _note(image: dict[str, Any]) -> str:
+    """Everything the review saw in the picture, as text the brief writer can compare."""
     screening = image.get("screening") or {}
     if screening.get("description"):
-        return str(screening["description"])
+        details = []
+        for key, label in _DETAIL_LABELS:
+            value = screening.get(key)
+            if isinstance(value, list):
+                value = ", ".join(str(item) for item in value)
+            if value:
+                details.append(f"{label}: {value}")
+        return " ".join([str(screening["description"]), *(f"{item}." for item in details)])
     parts = [screening.get("scene_description"), screening.get("placement_note")]
     return " ".join(part for part in parts if part)
 
