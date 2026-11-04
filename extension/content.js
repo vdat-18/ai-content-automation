@@ -112,6 +112,8 @@
       return;
     }
     await scrollLikeReader();
+    // the description is folded behind "Xem thêm"; open it so the page holds the whole text
+    for (let i = 0; i < 3 && clickByText("Xem thêm"); i += 1) await wait(1500);
     await waitForHuman();
     snapshot("walker");
     for (let page = 2; page <= REVIEW_PAGES; page += 1) {
