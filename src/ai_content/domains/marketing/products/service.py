@@ -73,6 +73,7 @@ BRIEF_FIELDS = (
     "script",
     "scene",
     "product_placement",
+    "product_size",
     "selling_angle",
     "target_audience",
     "style",
@@ -471,11 +472,12 @@ class ProductCatalogService:
         master = (
             (Path(media_root) / existing[0]["image_path"]).read_bytes() if master_ready else None
         )
+        size = str(record["brief"].get("product_size") or "")
         for index in wanted:
             await self._make_keyframe(
                 product_id,
                 index,
-                shots[index],
+                {**shots[index], "product_size": size},
                 existing.get(index),
                 media_root,
                 photos,
@@ -583,6 +585,8 @@ class ProductCatalogService:
         if self._checker is None:
             return None
         description = str(shot.get("description") or shot["keyframe_prompt"])
+        if shot.get("product_size"):
+            description = f"{description} Real size of the product: {shot['product_size']}"
         return await self._checker.check(description, photos, image, master, persona, before)
 
     async def clips(self, product_id: str, media_root: Path) -> list[dict[str, Any]]:

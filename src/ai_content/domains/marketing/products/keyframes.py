@@ -26,9 +26,17 @@ _PRODUCT_RULE = (
 _NO_PEOPLE = "Do not show any human face; hands, the product and the space are enough."
 _PERSONA_RULE = (
     "is the character, a synthetic person who does not exist: keep exactly the same face, hair, "
-    "skin tone, body and clothes in every shot, with natural hands and no extra fingers. "
-    "The person does not speak to the camera."
+    "skin tone, body and clothes in every shot, with natural hands and no extra fingers."
 )
+
+
+def _size_note(shot: dict[str, Any]) -> str:
+    size = str(shot.get("product_size") or "").strip()
+    return (
+        f"Real size of the product, keep this scale next to the person and the room: {size}."
+        if size
+        else ""
+    )
 
 
 def _fix_note(problem: str) -> str:
@@ -155,7 +163,7 @@ class KeyframeGenerator:
                 "styling, never its objects, brand, text or people."
             )
         parts += [_PRODUCT_RULE, "" if persona is not None else _NO_PEOPLE]
-        parts += ["Shot to create:", str(shot["keyframe_prompt"])]
+        parts += [_size_note(shot), "Shot to create:", str(shot["keyframe_prompt"])]
         if fix:
             parts.append(_fix_note(fix))
         return await self._client.generate("\n".join(p for p in parts if p), images)
@@ -180,6 +188,7 @@ class KeyframeGenerator:
         parts.append("The remaining images are the real product photos.")
         parts += [_PRODUCT_RULE, "" if persona is not None else _NO_PEOPLE]
         parts += [
+            _size_note(shot),
             "Change the camera angle, framing, action and, when the shot says so, the spot in "
             "the same home. Shot to create:",
             str(shot["keyframe_prompt"]),

@@ -16,15 +16,15 @@ _TIMEOUT = 120
 _TRIES = 3
 _RETRY_STATUSES = {429, 500, 502, 503, 504}
 _RETRY_DELAY = 4.0
-MAX_SPEEDUP = 1.35
+MAX_SPEEDUP = 1.5
 
 
 def tts_speed() -> float:
     """Pace the voice-over is read at (AIC_TTS_SPEED); ad voice-overs are brisk."""
     try:
-        return min(max(float(os.environ.get("AIC_TTS_SPEED", "1.15")), 1.0), MAX_SPEEDUP)
+        return min(max(float(os.environ.get("AIC_TTS_SPEED", "1.3")), 1.0), MAX_SPEEDUP)
     except ValueError:
-        return 1.15
+        return 1.3
 
 
 _DEFAULT_VOICE = "auto"
@@ -115,7 +115,7 @@ async def make_voiceover(
     """Read each text so it starts with its shot, and join the readings into one mp3.
 
     Every reading is sped up to the brisk pace of AIC_TTS_SPEED, and one longer than its shot
-    further, to at most 1.35x, and then cut; a shorter one is
+    further, to at most 1.5x, and then cut; a shorter one is
     padded with silence, so every shot's words begin where the shot begins. Returns the natural
     length of each reading so a caller can tell which shots need shorter text.
     """

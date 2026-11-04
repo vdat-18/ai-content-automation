@@ -20,7 +20,8 @@ function CheckKeyframe(
 
     passed=true only when all of these hold: the product in the keyframe is clearly the same
     product as in the photos (same shape, color, proportions, material, label and printed text,
-    same number of items); it has no extra or missing parts, no warped geometry and no
+    same number of items); its size next to the person, the furniture and the room matches the
+    real size stated in the shot description (not oversized, not tiny); it has no extra or missing parts, no warped geometry and no
     unreadable or invented text or logos; the picture shows what the shot description asks for;
     when a master keyframe is given, the light and color palette match it; when the previous
     shot's keyframe is given, the same person wears the same outfit in the same kind of room and

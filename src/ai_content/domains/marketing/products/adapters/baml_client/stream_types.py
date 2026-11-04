@@ -35,6 +35,7 @@ class ContentBrief(BaseModel):
     reference_rationale: typing.Optional[str] = None
     scene: typing.Optional[str] = None
     product_placement: typing.Optional[str] = None
+    product_size: typing.Optional[str] = None
     selling_angle: typing.Optional[str] = None
     target_audience: typing.Optional[str] = None
     style: typing.List[str]

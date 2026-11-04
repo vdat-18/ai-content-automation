@@ -7,6 +7,7 @@ import pytest
 from ai_content.domains.marketing.products import service as service_module
 from ai_content.domains.marketing.products.keyframes import (
     KeyframeGenerationError,
+    KeyframeGenerator,
     KeyframeImageClient,
 )
 from ai_content.domains.marketing.products.repositories import SqliteProductRepository
@@ -311,3 +312,34 @@ async def test_prompts_name_the_person_only_when_there_is_one() -> None:
     assert (
         portrait[1] == 0 and "does not exist" in portrait[0] and portrait[0].endswith("woman, 28")
     )
+
+
+async def test_the_real_product_size_reaches_the_image_prompt_and_the_checker(tmp_path) -> None:
+    prompts: list[str] = []
+
+    class _Client:
+        async def generate(self, prompt, images):
+            prompts.append(prompt)
+            return PNG + b"img"
+
+    seen: list[str] = []
+
+    class _SizeChecker:
+        async def check(
+            self, description, photos, keyframe, master=None, persona=None, previous=None
+        ):
+            seen.append(description)
+            return ""
+
+    repository = SqliteProductRepository(tmp_path / "s.db")
+    service = ProductCatalogService(
+        repository, keyframer=KeyframeGenerator(_Client()), checker=_SizeChecker()
+    )
+    await repository.upsert_detail(
+        {"product_id": PRODUCT_ID, "title": "Giỏ", "images": ["https://img.example/1.jpg"]}
+    )
+    brief = {"title": "b", "product_size": "about 60 cm tall, knee height", "shots": SHOTS[:1]}
+    await repository.save_brief(PRODUCT_ID, "", brief, "approved")
+    await service.generate_keyframes(PRODUCT_ID, tmp_path)
+    assert "about 60 cm tall, knee height" in prompts[0]
+    assert "about 60 cm tall, knee height" in seen[0]

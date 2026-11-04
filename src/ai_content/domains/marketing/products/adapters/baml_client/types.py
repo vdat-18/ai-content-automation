@@ -53,6 +53,7 @@ class ContentBrief(BaseModel):
     reference_rationale: str
     scene: str
     product_placement: str
+    product_size: str
     selling_angle: str
     target_audience: str
     style: typing.List[str]

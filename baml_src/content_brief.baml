@@ -24,6 +24,7 @@ class ContentBrief {
   reference_rationale string
   scene string
   product_placement string
+  product_size string
   selling_angle string
   target_audience string
   style string[]
@@ -76,7 +77,10 @@ function DraftContentBrief(
     Ground every claim in the product facts and the product photos. Take the product's real
     color, shape and details from the product photos, never from the references. Do not invent
     features, certifications or prices.
-    selling_angle: the single strongest reason to buy, in Vietnamese. target_audience: who buys it
+    product_size: the real size of the product in English, worked out from the title, the
+    attributes and the photos (for example "about 40 x 40 x 60 cm, knee height on a standing adult,
+    about as tall as a seated adult's chest"), written so the scale against a person and the room
+    is clear. selling_angle: the single strongest reason to buy, in Vietnamese. target_audience: who buys it
     and why, in Vietnamese. style: up to 4 short words. colors: up to 4 color names. title: a
     short Vietnamese name for the brief.
 
@@ -106,7 +110,8 @@ function DraftContentBrief(
     ending on the call to action. For every shot: description (Vietnamese, what the viewer sees), keyframe_prompt
     (a complete, self-contained English prompt for an image model: "the person from the character
     image" doing the action of this shot with the real product as the clear hero, the shared scene, camera angle, lighting, style and colors, and an explicit instruction
-    that the product keeps its real shape, color, proportions and label), motion_prompt (English,
+    that the product keeps its real shape, color, proportions and label, and that it keeps its
+    real size from product_size next to the person and the room, never enlarged or shrunk), motion_prompt (English,
     four or five sentences describing the action over the 15 seconds as timed beats of about 3
     seconds, each beat a new, clearly visible action or camera move (for example "0 to 3s: she
     grabs the basket and swings it open; 3 to 6s: quick push-in as she stuffs clothes inside; 6
