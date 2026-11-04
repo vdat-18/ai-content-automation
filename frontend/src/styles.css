@@ -996,12 +996,44 @@ body.column-resizing * { cursor: col-resize !important; user-select: none !impor
 
 .mkt-muted { color: var(--muted); font-size: 13px; line-height: 1.6; }
 
-.products-filters { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 12px; }
+.products-filters {
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+  padding: 10px 12px; margin-bottom: 12px;
+  background: var(--surface-soft); border: 1px solid var(--line); border-radius: 12px;
+}
+.products-filters input, .products-filters select {
+  height: 36px; padding: 0 10px; border: 1px solid var(--line-strong); border-radius: 9px;
+  background: var(--paper); color: var(--ink); font: inherit; font-size: 13px;
+}
+.products-filters input:focus-visible, .products-filters select:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 1px; }
 .products-filters input[type="number"] { width: 90px; }
-.products-table { width: 100%; border-collapse: collapse; }
-.products-table th, .products-table td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border, #ddd); vertical-align: middle; }
-.products-table small { display: block; opacity: 0.7; }
-.products-table img { object-fit: cover; border-radius: 6px; }
+.pf-search { position: relative; flex: 1 1 240px; min-width: 200px; display: block; }
+.pf-search svg { position: absolute; left: 11px; top: 50%; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
+.pf-search input { width: 100%; padding-left: 34px; }
+.pf-field { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); font-size: 12px; font-weight: 600; }
+.pf-count {
+  padding: 4px 10px; border-radius: 999px; background: var(--paper); border: 1px solid var(--line);
+  color: var(--muted); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums;
+}
+.pf-scroll { margin-left: auto; display: inline-flex; gap: 6px; }
+.pf-scroll .icon-button { width: 36px; height: 36px; display: grid; place-items: center; border: 1px solid var(--line-strong); border-radius: 9px; background: var(--paper); color: var(--ink); cursor: pointer; }
+.pf-scroll .icon-button:hover { background: var(--surface); }
+
+.products-scroll { max-height: 68vh; overflow: auto; border: 1px solid var(--line); border-radius: 12px; scroll-behavior: smooth; }
+.products-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 13px; }
+.products-table thead th {
+  position: sticky; top: 0; z-index: 1; background: var(--surface-soft);
+  color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+  border-bottom: 1px solid var(--line-strong);
+}
+.products-table th, .products-table td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.products-table tbody tr:hover { background: var(--surface-soft); }
+.products-table tbody tr:last-child td { border-bottom: 0; }
+.products-table td:nth-child(n+3):nth-child(-n+6) { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.products-table td a { color: var(--ink); font-weight: 600; text-decoration: none; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.products-table td a:hover { color: var(--brand-blue); text-decoration: underline; }
+.products-table small { display: block; color: var(--muted); margin-top: 2px; }
+.products-table img { object-fit: cover; border-radius: 8px; border: 1px solid var(--line); }
 
 .reference-profile { border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 14px; display: grid; gap: 12px; }
 .reference-profile__head { display: flex; align-items: center; gap: 10px; text-transform: capitalize; }

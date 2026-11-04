@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Download, Film, Package } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ArrowDownToLine, ArrowUpToLine, Download, Film, Package, Search } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
 import { EmptyState, PageHeader, Panel, SkeletonPage } from "../components/ui";
 import { useI18n } from "../hooks/useI18n";
 import { getJson, postJson } from "../services/http";
@@ -34,6 +34,7 @@ type SortKey = keyof typeof SORTS;
 export function ProductsPage() {
   const { t } = useI18n();
   const [search, setSearch] = useState("");
+  const listRef = useRef<HTMLDivElement>(null);
   const [sortKey, setSortKey] = useState<SortKey>("sold");
   const [minSold, setMinSold] = useState(0);
   const query = useQuery({ queryKey: ["products"], queryFn: ({ signal }) => getJson<Product[]>(API, signal), refetchInterval: 10000 });
@@ -86,18 +87,30 @@ export function ProductsPage() {
       {select.error && <p role="alert">{select.error.message}</p>}
       <Panel>
         <div className="products-filters">
-          <input type="search" placeholder={t("Search title or shop")} value={search} onChange={(event) => setSearch(event.target.value)} />
-          <label>{t("Sort by")}{" "}
+          <label className="pf-search">
+            <Search size={15} aria-hidden="true" />
+            <input type="search" placeholder={t("Search title or shop")} value={search} onChange={(event) => setSearch(event.target.value)} />
+          </label>
+          <label className="pf-field">
+            <span>{t("Sort by")}</span>
             <select value={sortKey} onChange={(event) => setSortKey(event.target.value as SortKey)}>
               <option value="sold">{t("Sold")}</option>
               <option value="reviews">{t("Reviews")}</option>
               <option value="rating">{t("Rating")}</option>
             </select>
           </label>
-          <label>{t("Min sold")} <input type="number" min={0} value={minSold} onChange={(event) => setMinSold(Number(event.target.value) || 0)} /></label>
-          <span>{rows.length} / {query.data.length}</span>
+          <label className="pf-field">
+            <span>{t("Min sold")}</span>
+            <input type="number" min={0} value={minSold} onChange={(event) => setMinSold(Number(event.target.value) || 0)} />
+          </label>
+          <span className="pf-count">{`${rows.length} / ${query.data.length}`}</span>
+          <span className="pf-scroll">
+            <button type="button" className="icon-button" aria-label={t("Scroll to top")} title={t("Scroll to top")} onClick={() => listRef.current?.scrollTo({ top: 0, behavior: "smooth" })}><ArrowUpToLine size={16} /></button>
+            <button type="button" className="icon-button" aria-label={t("Scroll to bottom")} title={t("Scroll to bottom")} onClick={() => listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" })}><ArrowDownToLine size={16} /></button>
+          </span>
         </div>
         {rows.length ? (
+          <div className="products-scroll" ref={listRef}>
           <table className="products-table">
             <thead>
               <tr><th></th><th>{t("Product")}</th><th>{t("Price")}</th><th>{t("Sold")}</th><th>{t("Reviews")}</th><th>{t("Rating")}</th><th></th></tr>
@@ -125,6 +138,7 @@ export function ProductsPage() {
               ))}
             </tbody>
           </table>
+          </div>
         ) : (
           <EmptyState icon={<Package />} title="No products" text="Run the extension on TikTok Shop to collect products." />
         )}
