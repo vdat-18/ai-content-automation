@@ -167,20 +167,30 @@
   };
 
   // Scroll a feed page (home, category, search) so the page itself loads more products.
-  const harvestFeed = async (rounds) => {
+  // With `auto` it keeps going until no new product shows up, then tells the background worker,
+  // which reads every product page.
+  const productCount = () => new Set(Array.from(document.querySelectorAll("a[href*='/pdp/']")).map((a) => a.pathname)).size;
+  const FEED_IDLE_ROUNDS = 5;
+  const harvestFeed = async (rounds, auto) => {
     state.harvest = true;
-    for (let i = 0; i < rounds; i += 1) {
+    let idle = 0;
+    let last = productCount();
+    for (let i = 0; i < rounds && (!auto || idle < FEED_IDLE_ROUNDS); i += 1) {
       await waitForHuman();
       window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "smooth" });
       await wait(1200);
       clickByText("Xem thêm");
-      banner(`AIC Collector: lấy danh sách ${i + 1}/${rounds}`);
+      banner(`AIC Collector: lấy danh sách ${i + 1}/${rounds}, ${last} sản phẩm`);
       send({ type: "heartbeat" });
       await wait(2200 + Math.random() * 1500);
+      const now = productCount();
+      idle = now > last ? 0 : idle + 1;
+      last = now;
     }
     state.harvest = false;
     window.scrollTo({ top: 0, behavior: "smooth" });
-    banner("AIC Collector: xong, đã gửi danh sách sản phẩm");
+    banner(auto ? `AIC Collector: có ${last} sản phẩm, bắt đầu lấy chi tiết` : "AIC Collector: xong, đã gửi danh sách sản phẩm");
+    if (auto) send({ type: "harvest-done", auto });
   };
 
   window.addEventListener("message", (event) => {
@@ -207,7 +217,7 @@
   });
   chrome.runtime.onMessage.addListener((message) => {
     if (message?.type === "harvest") {
-      harvestFeed(Number(message.rounds) || 15);
+      harvestFeed(Number(message.rounds) || 15, message.auto || null);
     }
     if (message?.type === "capture-now") {
       if (challengeReason()) banner("AIC Collector: đang có kiểm tra bảo mật, hãy xử lý trước");

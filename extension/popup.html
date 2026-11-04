@@ -13,6 +13,13 @@
   </head>
   <body>
     <label><input type="checkbox" id="enabled" /> Thu thập khi tôi tự duyệt</label>
+    <b>Tự động</b>
+    <div style="margin:4px 0 6px;color:#444">Đăng nhập và giải captcha trên trang TikTok Shop trước, rồi bấm nút dưới.</div>
+    <label>Số tab chạy song song: <input type="number" id="auto-tabs" value="3" min="1" max="5" /></label>
+    <label>Số sản phẩm tối đa: <input type="number" id="auto-limit" value="50" min="1" max="500" /></label>
+    <button id="auto">Tự cuộn lấy hết danh sách rồi cào chi tiết</button>
+    <div id="auto-note"></div>
+    <hr />
     <button id="capture">Capture trang này</button>
     <div id="status"></div>
     <button id="harvest">Cuộn trang danh sách này để lấy thêm sản phẩm</button>

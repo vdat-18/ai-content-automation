@@ -8,12 +8,13 @@ const sendToTab = (tabId, message) =>
   });
 
 const refresh = () =>
-  chrome.storage.local.get({ enabled: false, sent: 0, error: "", walker: null }, (s) => {
+  chrome.storage.local.get({ enabled: false, sent: 0, error: "", walker: null, autoNote: "" }, (s) => {
+    document.getElementById("auto-note").textContent = s.autoNote;
     enabled.checked = Boolean(s.enabled);
     status.textContent = s.error ? `Lỗi gửi: ${s.error}` : `Đã gửi ${s.sent} gói về collector`;
     const w = s.walker;
     walkerBox.textContent = w
-      ? `${w.running ? (w.paused ? "TẠM DỪNG - cần bạn" : "Đang chạy") : "Không chạy"}: ${w.index}/${w.queue.length} | OK ${w.done} | lỗi ${w.failed} | ${w.note}`
+      ? `${w.running ? (w.paused ? "TẠM DỪNG - cần bạn" : "Đang chạy") : "Không chạy"}: ${w.done + w.failed}/${w.queue.length} | ${Object.keys(w.active || {}).length} tab | OK ${w.done} | lỗi ${w.failed} | ${w.note}`
       : "";
   });
 
@@ -21,6 +22,16 @@ enabled.addEventListener("change", () => chrome.storage.local.set({ enabled: ena
 document.getElementById("capture").addEventListener("click", () => {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     if (tabs[0]?.id) sendToTab(tabs[0].id, { type: "capture-now" });
+  });
+});
+document.getElementById("auto").addEventListener("click", () => {
+  const auto = {
+    concurrency: Number(document.getElementById("auto-tabs").value) || 3,
+    limit: Number(document.getElementById("auto-limit").value) || 50,
+  };
+  chrome.storage.local.set({ autoNote: "Đang cuộn lấy danh sách..." });
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    if (tabs[0]?.id) sendToTab(tabs[0].id, { type: "harvest", rounds: 80, auto });
   });
 });
 document.getElementById("harvest").addEventListener("click", () => {
