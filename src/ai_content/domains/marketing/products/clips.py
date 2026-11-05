@@ -16,7 +16,6 @@ from loguru import logger
 
 CLIP_SECONDS = 15
 ASPECT = "9:16"
-QUALITY = "720p"  # the highest the video model offers (480p or 720p)
 _TIMEOUT = 120
 _OUTPUT_SIZE = "1080:1920"  # TikTok vertical spec
 _FPS = "24"
@@ -73,7 +72,6 @@ class VideoClient:
             "prompt": prompt,
             "seconds": seconds,
             "size": ASPECT,
-            "quality": QUALITY,
             "image": frame,
             "input_reference": frame,
             "image_url": frame,
