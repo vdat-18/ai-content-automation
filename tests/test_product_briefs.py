@@ -118,13 +118,21 @@ async def test_writer_maps_labels_and_skips_failed_downloads() -> None:
             "screening": {"scene_description": "s"},
         },
     ]
-    product = {"images": ["https://x/p1.jpg", "https://x/gone-p.jpg", "https://x/p3.jpg"]}
+    product = {
+        "images": [
+            "https://x/p1.jpg",
+            "https://x/gone-p.jpg",
+            "https://x/p3.jpg",
+            "https://x/p4.jpg",
+            "https://x/p5.jpg",
+        ]
+    }
     client = _FakeBamlClient()
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
         brief = await ContentBriefWriter(client).write(product, "", references, http)
     assert brief["selected_reference_ids"] == ["id-2"]
     assert "selected_reference_labels" not in brief
-    assert client.seen == [(1, 1)]
+    assert client.seen == [(3, 1)]  # only the first four photos are tried
 
 
 async def test_writer_errors() -> None:
@@ -156,7 +164,7 @@ def test_product_facts_are_compact() -> None:
     )
     assert facts["price_vnd"] == "99000"
     assert len(facts["specifications"]) == 20 and len(facts["variants"]) == 10
-    assert len(facts["description"]) == 1500
+    assert len(facts["description"]) == 3000
 
 
 class _CapturingWriter:

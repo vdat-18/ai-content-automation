@@ -18,7 +18,7 @@ from loguru import logger
 CLIP_SECONDS = 15
 ASPECT = "9:16"
 _TIMEOUT = 120
-_OUTPUT_SIZE = "720:1280"
+_OUTPUT_SIZE = "1080:1920"  # TikTok vertical spec
 _FPS = "24"
 TRIM_SECONDS = 0.125
 _CAPTION_FONTS = (
@@ -208,7 +208,8 @@ async def stitch(clips: list[StitchClip], output: Path, voiceover: Path | None =
             await _run(
                 "ffmpeg", "-v", "error", "-y", "-ss", f"{TRIM_SECONDS:g}", "-i", str(clip.path),
                 "-t", f"{_source_seconds(clip.duration):.3f}", "-an", "-vf", filters,
-                "-c:v", "libx264", "-pix_fmt", "yuv420p", part.name,
+                "-c:v", "libx264", "-crf", "18", "-maxrate", "12M", "-bufsize", "24M",
+                "-pix_fmt", "yuv420p", part.name,
                 cwd=output.parent,
             )  # fmt: skip
             parts.append(part)
@@ -220,14 +221,14 @@ async def stitch(clips: list[StitchClip], output: Path, voiceover: Path | None =
             scratch.append(silent)
         await _run(
             "ffmpeg", "-v", "error", "-y", "-f", "concat", "-safe", "0", "-i", listing.name,
-            "-c", "copy", silent.name, cwd=output.parent,
+            "-c", "copy", "-movflags", "+faststart", silent.name, cwd=output.parent,
         )  # fmt: skip
         if voiceover is not None:
             await _run(
                 "ffmpeg", "-v", "error", "-y", "-i", silent.name, "-i", str(voiceover),
                 "-map", "0:v", "-map", "1:a", "-af", "loudnorm=I=-16:LRA=11:TP=-1.5",
                 "-c:v", "copy", "-c:a", "aac", "-ar", "44100", "-ac", "2", "-shortest",
-                output.name, cwd=output.parent,
+                "-movflags", "+faststart", output.name, cwd=output.parent,
             )  # fmt: skip
     finally:
         for path in scratch:

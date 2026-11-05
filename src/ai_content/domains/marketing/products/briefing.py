@@ -19,7 +19,7 @@ from ai_content.domains.marketing.products.adapters.baml_registry import build_c
 _CONCURRENCY = 2
 _DOWNLOAD_TIMEOUT = 30
 MAX_REFERENCES = 8
-_PRODUCT_PHOTOS = 2
+_PRODUCT_PHOTOS = 4
 
 
 class BriefGenerationError(RuntimeError):
@@ -53,7 +53,7 @@ def product_facts(product: dict[str, Any]) -> dict[str, Any]:
         "review_count": product.get("review_count"),
         "specifications": dict(list((product.get("specifications") or {}).items())[:20]),
         "variants": [v.get("variant") for v in (product.get("variants") or [])[:10]],
-        "description": (product.get("description") or "")[:1_500],
+        "description": (product.get("description") or "")[:3_000],
     }
 
 
