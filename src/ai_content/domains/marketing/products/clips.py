@@ -6,7 +6,6 @@ import asyncio
 import base64
 import os
 import shutil
-import tempfile
 import textwrap
 from dataclasses import dataclass
 from pathlib import Path
@@ -17,6 +16,7 @@ from loguru import logger
 
 CLIP_SECONDS = 15
 ASPECT = "9:16"
+QUALITY = "720p"  # the highest the video model offers (480p or 720p)
 _TIMEOUT = 120
 _OUTPUT_SIZE = "1080:1920"  # TikTok vertical spec
 _FPS = "24"
@@ -73,6 +73,7 @@ class VideoClient:
             "prompt": prompt,
             "seconds": seconds,
             "size": ASPECT,
+            "quality": QUALITY,
             "image": frame,
             "input_reference": frame,
             "image_url": frame,
@@ -160,19 +161,6 @@ def _caption_filter(font: Path, textfile: str, end: float) -> str:
         f":box=1:boxcolor=black@0.55:boxborderw=24:line_spacing=0:x=(w-text_w)/2:y=h*0.64"
         f":enable='between(t,0.3,{end:.2f})'"
     )
-
-
-async def sample_frames(video: Path, seconds: float, count: int) -> list[bytes]:
-    """Evenly spaced still frames from a video that lasts `seconds`, for a visual review."""
-    if shutil.which("ffmpeg") is None:
-        raise StitchUnavailable("ffmpeg is not installed on this machine")
-    with tempfile.TemporaryDirectory() as folder:
-        await _run(
-            "ffmpeg", "-v", "error", "-y", "-i", str(video),
-            "-vf", f"fps={count / max(seconds, 1.0):.4f},scale=360:-2", "-frames:v", str(count),
-            "-q:v", "4", "frame_%02d.jpg", cwd=Path(folder),
-        )  # fmt: skip
-        return [path.read_bytes() for path in sorted(Path(folder).glob("frame_*.jpg"))]
 
 
 async def stitch(clips: list[StitchClip], output: Path, voiceover: Path | None = None) -> None:

@@ -41,7 +41,7 @@ def all_succeeded(checks: typing.Dict[CheckName, Check]) -> bool:
 # #########################################################################
 
 # #########################################################################
-# Generated classes (9)
+# Generated classes (8)
 # #########################################################################
 
 class ContentBrief(BaseModel):
@@ -107,17 +107,13 @@ class StoryboardShot(BaseModel):
     on_screen_text: str
     voiceover: str
 
-class VideoReview(BaseModel):
-    passed: bool
-    problems: typing.List[str]
-
 # #########################################################################
 # Generated type aliases (0)
 # #########################################################################
 
 
 # #########################################################################
-# Model rebuilds (9)
+# Model rebuilds (8)
 # #########################################################################
 # Resolve string forward references now that every model above is defined so
 # class declaration order never breaks Pydantic construction (issue #793).
@@ -131,4 +127,3 @@ ReferenceImageReview.model_rebuild()
 ReferenceSearchProfileDraft.model_rebuild()
 StoryboardReview.model_rebuild()
 StoryboardShot.model_rebuild()
-VideoReview.model_rebuild()

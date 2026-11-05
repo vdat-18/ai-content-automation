@@ -23,7 +23,7 @@ class StreamState(BaseModel, typing.Generic[StreamStateValueT]):
     value: StreamStateValueT
     state: typing_extensions.Literal["Pending", "Incomplete", "Complete"]
 # #########################################################################
-# Generated classes (9)
+# Generated classes (8)
 # #########################################################################
 
 class ContentBrief(BaseModel):
@@ -89,17 +89,13 @@ class StoryboardShot(BaseModel):
     on_screen_text: typing.Optional[str] = None
     voiceover: typing.Optional[str] = None
 
-class VideoReview(BaseModel):
-    passed: typing.Optional[bool] = None
-    problems: typing.List[str]
-
 # #########################################################################
 # Generated type aliases (0)
 # #########################################################################
 
 
 # #########################################################################
-# Model rebuilds (9)
+# Model rebuilds (8)
 # #########################################################################
 # Resolve string forward references now that every model above is defined so
 # class declaration order never breaks Pydantic construction (issue #793).
@@ -113,4 +109,3 @@ ReferenceImageReview.model_rebuild()
 ReferenceSearchProfileDraft.model_rebuild()
 StoryboardReview.model_rebuild()
 StoryboardShot.model_rebuild()
-VideoReview.model_rebuild()

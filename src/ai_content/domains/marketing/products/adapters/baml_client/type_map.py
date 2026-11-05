@@ -40,8 +40,5 @@ type_map = {
     "types.StoryboardShot": types.StoryboardShot,
     "stream_types.StoryboardShot": stream_types.StoryboardShot,
 
-    "types.VideoReview": types.VideoReview,
-    "stream_types.VideoReview": stream_types.VideoReview,
-
 
 }

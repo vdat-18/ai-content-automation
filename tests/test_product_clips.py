@@ -149,7 +149,12 @@ async def test_video_client_submits_polls_and_downloads() -> None:
     client = _client(handler)
     assert await client.submit("p", b"\x89PNG....", 15) == ("v1", "xai/model")
     body = seen[0].content.decode()
-    assert '"seconds":15' in body and '"size":"9:16"' in body and "data:image/png" in body
+    assert (
+        '"seconds":15' in body
+        and '"size":"9:16"' in body
+        and '"quality":"720p"' in body
+        and "data:image/png" in body
+    )
     state = await client.status("v1", "xai/model")
     assert (state.status, state.video_url) == (
         "completed",
