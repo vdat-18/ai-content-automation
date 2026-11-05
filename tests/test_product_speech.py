@@ -152,6 +152,48 @@ async def test_a_talking_shot_needs_its_clip_before_the_voice(tmp_path) -> None:
         await service.create_voiceover(PRODUCT_ID, tmp_path)
 
 
+@needs_ffmpeg
+async def test_a_clip_without_speech_is_reported_not_crashed(tmp_path) -> None:
+    repository = SqliteProductRepository(tmp_path / "s.db")
+    shots = [{"voiceover": "Xin chào", "duration_seconds": 15, "delivery": "talking"}]
+    await repository.save_brief(PRODUCT_ID, "", {"shots": shots}, "approved")
+    keyframe = {
+        "product_id": PRODUCT_ID,
+        "shot_index": 0,
+        "status": "approved",
+        "prompt": "p",
+        "image_path": "k.jpg",
+        "attempts": 1,
+        "error": None,
+        "qa_problem": "",
+    }
+    await repository.save_keyframe(keyframe)
+    silent = tmp_path / "clips" / PRODUCT_ID / "shot_0.wav"
+    silent.parent.mkdir(parents=True)
+    _write_wav(silent, [], 3.0)
+    await repository.save_clip(
+        {
+            "product_id": PRODUCT_ID,
+            "shot_index": 0,
+            "status": "ready",
+            "job_id": "j",
+            "job_model": "m",
+            "video_path": f"clips/{PRODUCT_ID}/shot_0.wav",
+            "seconds": 15,
+            "attempts": 1,
+            "error": None,
+        }
+    )
+
+    class _Fake:
+        async def speak(self, text, voice=None):
+            return _tone(3.0)
+
+    service = ProductCatalogService(repository, speaker=_Fake())  # type: ignore[arg-type]
+    with pytest.raises(KeyframeUnavailable, match="no speech to follow"):
+        await service.create_voiceover(PRODUCT_ID, tmp_path)
+
+
 async def test_service_needs_the_speaker_and_an_approved_keyframe(tmp_path) -> None:
     repository = SqliteProductRepository(tmp_path / "s.db")
     shots = [{"voiceover": "Xin chào", "duration_seconds": 15}]

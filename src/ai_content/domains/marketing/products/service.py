@@ -940,7 +940,7 @@ class ProductCatalogService:
         try:
             lengths = await make_voiceover(self._speaker, segments, folder / "voiceover.mp3", voice)
             await store.push(f"videos/{product_id}/voiceover.mp3")
-        except SpeechError as error:
+        except (SpeechError, StitchUnavailable) as error:
             raise KeyframeUnavailable(f"The voice-over could not be made: {error}") from error
         too_long = [
             i + 1
