@@ -156,8 +156,8 @@ def caption_font() -> Path | None:
 def _caption_filter(font: Path, textfile: str, end: float) -> str:
     font_path = font.as_posix().replace(":", r"\:")
     return (
-        f"drawtext=fontfile='{font_path}':textfile='{textfile}':fontcolor=white:fontsize=46"
-        f":box=1:boxcolor=black@0.55:boxborderw=16:line_spacing=0:x=(w-text_w)/2:y=h*0.64"
+        f"drawtext=fontfile='{font_path}':textfile='{textfile}':fontcolor=white:fontsize=69"
+        f":box=1:boxcolor=black@0.55:boxborderw=24:line_spacing=0:x=(w-text_w)/2:y=h*0.64"
         f":enable='between(t,0.3,{end:.2f})'"
     )
 
