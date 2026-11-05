@@ -111,9 +111,10 @@ function DraftContentBrief(
     script: the whole voice-over of the video as one continuous Vietnamese text that tells
     a single story in this order: a hook, a problem shoppers know, the product solving it, one or
     two concrete benefits from the product facts, and a call to open the product link. Write the
-    script first. Each shot plays for only about 11 seconds in the finished video, so keep every
-    shot's voiceover to 35 words at most (count them) and the whole script to 35 words times the
-    number of shots at most. Then cut it into consecutive parts, one per shot, so reading every shot's
+    script first. Each shot plays for about 11 seconds in the finished video and the narrator speaks
+    fast, about 4 words per second, so write 40 to 46 words for every shot's voiceover (count
+    them) so that the voice fills the shot, and a script of that many words times the number of
+    shots. Then cut it into consecutive parts, one per shot, so reading every shot's
     voiceover in order gives the script again with nothing added or repeated. Each shot must
     follow from the one before it (cause and effect), never start a new topic.
 
