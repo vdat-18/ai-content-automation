@@ -13,6 +13,7 @@ from loguru import logger
 from openpyxl import Workbook
 from openpyxl.styles import Font
 
+from .brief_quality import brief_quality_problems
 from .briefing import (
     MAX_REFERENCES,
     BriefGenerationError,
@@ -431,14 +432,26 @@ class ProductCatalogService:
                 f"No usable reference image of type '{product_type}' yet; crawl Pinterest first"
             )
         shot_count = video_seconds // CLIP_SECONDS
+        fixes = ""
+        attempts = 0
         for _ in range(BRIEF_ATTEMPTS):
-            brief = await self._briefer.write(detail, user_idea, references, shot_count=shot_count)
-            if "shots" not in brief or len(brief["shots"]) == shot_count:
+            attempts += 1
+            brief = await self._briefer.write(
+                detail, f"{user_idea}{fixes}", references, shot_count=shot_count
+            )
+            count_ok = "shots" not in brief or len(brief["shots"]) == shot_count
+            problems = brief_quality_problems(brief)
+            if count_ok and not problems:
                 break
-        else:
+            wanted = [] if count_ok else [f"Write exactly {shot_count} shots."]
+            fixes = "\n\nRewrite the storyboard and fix these problems:\n- " + "\n- ".join(
+                wanted + problems
+            )
+        if not count_ok:
             raise BriefGenerationError(
                 f"The model wrote {len(brief['shots'])} shots instead of {shot_count}; try again"
             )
+        brief["quality_problems"] = problems
         brief["warnings"] = brief_warnings(brief)
         if brief.get("persona"):
             brief["persona"] = {
@@ -451,9 +464,10 @@ class ProductCatalogService:
         await self._log(
             product_id,
             "brief",
-            "ok",
-            f"Wrote a {video_seconds}s brief with {len(brief.get('shots') or [])} shot(s): "
-            f"{brief.get('title', '')}",
+            "flagged" if problems else "ok",
+            f"Wrote a {video_seconds}s brief with {len(brief.get('shots') or [])} shot(s) in "
+            f"{attempts} attempt(s): {brief.get('title', '')}"
+            + (f". Still open: {'; '.join(problems)}" if problems else ""),
         )
         return await self._repository.get_brief(product_id)
 
@@ -488,6 +502,7 @@ class ProductCatalogService:
             return None
         brief = {**current["brief"], **{k: v for k, v in changes.items() if k in BRIEF_FIELDS}}
         brief["warnings"] = brief_warnings(brief)
+        brief["quality_problems"] = brief_quality_problems(brief)
         await self._repository.save_brief(product_id, current["user_idea"], brief, status)
         return await self._repository.get_brief(product_id)
 

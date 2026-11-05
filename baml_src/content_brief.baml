@@ -119,7 +119,10 @@ function DraftContentBrief(
     one move; 12 to 15s: she holds it up and smiles to the camera"). The pace is quick and
     energetic like a TikTok ad: brisk natural movements, never slow motion or a slow drift, no
     long pauses. Keep one continuous camera path in the same place with no scene cuts and no new
-    objects, for animating the keyframe; the clips are silent, so describe only what is seen and mention
+    objects, for animating the keyframe; vary the shot size (close-up, medium, wide,
+    over-the-shoulder, overhead) and the camera move (push-in, pull-back, pan, tilt, tracking,
+    orbit, handheld) from shot to shot and name both; the clips are silent, so describe only what
+    is seen and mention
     no sound, music or dialogue; for a narrated shot nobody talks and lips stay closed or
     relaxed, for a talking shot the person talks naturally with small expressions and gestures),
     delivery (narrated or talking),

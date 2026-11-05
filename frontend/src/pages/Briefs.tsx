@@ -22,6 +22,7 @@ type Brief = {
   script?: string;
   format?: string;
   warnings?: string[];
+  quality_problems?: string[];
   reference_rationale: string;
   scene: string;
   product_placement: string;
@@ -196,6 +197,12 @@ function BriefCard({
             <span>{t("Script (voice-over of the whole video; each shot reads one part)")}</span>
             <textarea name="script" rows={5} defaultValue={record.brief.script ?? ""} />
           </label>
+          {!!record.brief.quality_problems?.length && (
+            <div role="alert" className="compliance-warning">
+              <strong>{t("The storyboard check found problems. Fix them before making images:")}</strong>
+              <ul>{record.brief.quality_problems.map((problem) => <li key={problem}>{problem}</li>)}</ul>
+            </div>
+          )}
           {!!record.brief.warnings?.length && (
             <div role="alert" className="compliance-warning">
               <strong>{t("TikTok may flag these words. Rewrite them before posting:")}</strong>
