@@ -16,7 +16,7 @@ _TRIES = 3
 _RETRY_STATUSES = {429, 500, 502, 503, 504}
 _RETRY_DELAY = 5.0
 _DOWNLOAD_TIMEOUT = 40
-_MAX_PRODUCT_PHOTOS = 3
+_MAX_PRODUCT_PHOTOS = 6
 
 _PRODUCT_RULE = (
     "The product photos show the real product: keep its exact shape, color, proportions, "

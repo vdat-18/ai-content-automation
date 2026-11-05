@@ -19,7 +19,7 @@ from ai_content.domains.marketing.products.adapters.baml_registry import build_c
 _CONCURRENCY = 2
 _DOWNLOAD_TIMEOUT = 30
 MAX_REFERENCES = 8
-_PRODUCT_PHOTOS = 4
+_PRODUCT_PHOTOS = 9
 
 
 class BriefGenerationError(RuntimeError):
