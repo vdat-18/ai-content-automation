@@ -11,6 +11,7 @@ from ai_content.domains.marketing.products.clips import (
     StitchUnavailable,
     VideoClient,
     caption_font,
+    cover_frame,
     stitch,
 )
 from ai_content.domains.marketing.products.repositories import SqliteProductRepository
@@ -214,6 +215,15 @@ async def test_stitch_joins_trimmed_clips_without_the_clips_own_audio(tmp_path) 
     assert 3.3 < float(_probe(output, "format=duration")) < 3.8
     assert _probe(output, "stream=codec_type").split() == ["video"]
     assert sorted(p.name for p in output.parent.iterdir()) == ["out.mp4"]
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg is not installed")
+async def test_cover_is_a_jpeg_frame_of_the_video(tmp_path) -> None:
+    clip = tmp_path / "c.mp4"
+    _make_clip(clip, "blue", seconds=3, audio=False)
+    cover = tmp_path / "cover.jpg"
+    await cover_frame(clip, cover)
+    assert cover.read_bytes()[:2] == b"\xff\xd8"
 
 
 @pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg is not installed")

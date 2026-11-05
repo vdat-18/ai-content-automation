@@ -514,6 +514,23 @@ async def final_video(
     )
 
 
+@router.get("/{product_id}/cover")
+async def cover_image(
+    product_id: str,
+    download: bool = False,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> FileResponse:
+    path = await service.media(_media_root()).fetch(f"videos/{product_id}/cover.jpg")
+    if path is None:
+        raise HTTPException(status_code=404, detail="No cover yet; stitch the video first")
+    return FileResponse(
+        path,
+        media_type="image/jpeg",
+        headers={"Cache-Control": "no-cache"},
+        filename=f"{product_id}.jpg" if download else None,
+    )
+
+
 @router.post("/{product_id}/post-package")
 async def create_post_package(
     product_id: str,

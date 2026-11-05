@@ -372,6 +372,9 @@ def test_clip_endpoints(
     (media / "videos" / PRODUCT_ID).mkdir(parents=True)
     (media / "videos" / PRODUCT_ID / "video.mp4").write_bytes(b"final")
     assert client.get(f"{base}/video").content == b"final"
+    assert client.get(f"{base}/cover").status_code == 404
+    (media / "videos" / PRODUCT_ID / "cover.jpg").write_bytes(b"cover")
+    assert client.get(f"{base}/cover").content == b"cover"
 
 
 def test_post_package_and_download(tmp_path: Path, client: TestClient) -> None:

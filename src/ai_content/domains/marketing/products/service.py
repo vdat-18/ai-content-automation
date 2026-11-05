@@ -26,6 +26,7 @@ from .clips import (
     StitchClip,
     StitchUnavailable,
     VideoClient,
+    cover_frame,
     shot_seconds,
     stitch,
 )
@@ -990,6 +991,9 @@ class ProductCatalogService:
         voice = find_voiceover(media_root, product_id)
         await stitch(parts, store.path(relative), voice)
         await store.push(relative)
+        cover = f"videos/{product_id}/cover.jpg"
+        await cover_frame(store.path(relative), store.path(cover))
+        await store.push(cover)
         await self._log(
             product_id,
             "video",

@@ -161,6 +161,16 @@ def _caption_filter(font: Path, textfile: str, end: float) -> str:
     )
 
 
+async def cover_frame(video: Path, output: Path) -> None:
+    """Save the frame one second into the video as its cover picture."""
+    if shutil.which("ffmpeg") is None:
+        raise StitchUnavailable("ffmpeg is not installed on this machine")
+    await _run(
+        "ffmpeg", "-v", "error", "-y", "-ss", "1", "-i", str(video),
+        "-frames:v", "1", "-q:v", "2", output.name, cwd=output.parent,
+    )  # fmt: skip
+
+
 async def stitch(clips: list[StitchClip], output: Path, voiceover: Path | None = None) -> None:
     """Join the clips into one silent mp4, burn in captions, and lay one voice-over on top.
 

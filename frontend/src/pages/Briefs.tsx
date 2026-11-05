@@ -438,6 +438,9 @@ function Keyframes({ productId, shots, postPackage, persona, t }: { productId: s
           <a className="secondary-button" href={`${API}/${productId}/video?download=true`}>
             <Download size={14} /> {t("Download video")}
           </a>
+          <a className="secondary-button" href={`${API}/${productId}/cover?download=true`}>
+            <Download size={14} /> {t("Download cover picture")}
+          </a>
           <button className="secondary-button" disabled={writePackage.isPending} onClick={() => writePackage.mutate()}>
             {writePackage.isPending ? t("Writing…") : postPackage ? t("Rewrite caption and hashtags") : t("Write caption and hashtags")}
           </button>
