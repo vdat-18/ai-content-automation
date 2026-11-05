@@ -118,5 +118,9 @@ async def test_editing_a_brief_reviews_it_again(tmp_path) -> None:
     service = await _service(tmp_path, _Writer(), judge)
     await service.create_brief(PRODUCT_ID, video_seconds=30)
     judge.bad, judge.calls = 99, 0
+    # a title is not worth a review
     record = await service.update_brief(PRODUCT_ID, {"title": "New"}, "draft")
+    assert judge.calls == 0 and record["brief"]["quality_problems"] == []
+    changed = [{**SHOT, "voiceover": "edited"}] * 3
+    record = await service.update_brief(PRODUCT_ID, {"shots": changed}, "draft")
     assert record["brief"]["quality_problems"] == ["Shot 1: add visible action."]

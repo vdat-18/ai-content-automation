@@ -519,8 +519,13 @@ class ProductCatalogService:
             return None
         brief = {**current["brief"], **{k: v for k, v in changes.items() if k in BRIEF_FIELDS}}
         brief["warnings"] = brief_warnings(brief)
-        detail = await self._repository.get_detail(product_id)
-        brief["quality_problems"] = await self._review_storyboard(detail, brief) if detail else []
+        brief.setdefault("quality_problems", [])
+        if brief.get("shots") != current["brief"].get("shots"):
+            # only a changed storyboard is worth a new review, which takes a minute
+            detail = await self._repository.get_detail(product_id)
+            brief["quality_problems"] = (
+                await self._review_storyboard(detail, brief) if detail else []
+            )
         await self._repository.save_brief(product_id, current["user_idea"], brief, status)
         return await self._repository.get_brief(product_id)
 
