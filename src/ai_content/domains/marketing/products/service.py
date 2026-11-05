@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+from datetime import UTC, datetime
 from io import BytesIO
 from pathlib import Path
 from typing import Any
@@ -945,6 +946,9 @@ class ProductCatalogService:
         try:
             lengths = await make_voiceover(self._speaker, segments, folder / "voiceover.mp3", voice)
             await store.push(f"videos/{product_id}/voiceover.mp3")
+            await self.note_voice(
+                product_id, media_root, VOICES.get(voice or "", voice or "default")
+            )
         except (SpeechError, StitchUnavailable) as error:
             raise KeyframeUnavailable(f"The voice-over could not be made: {error}") from error
         too_long = [
@@ -997,6 +1001,7 @@ class ProductCatalogService:
         clips = {c["shot_index"]: c for c in await self.clips(product_id, media_root)}
         keyframes = {k["shot_index"]: k for k in await self._repository.list_keyframes(product_id)}
         parts: list[StitchClip] = []
+        used: dict[int, int] = {}
         for index, shot in enumerate(shots):
             if keyframes.get(index, {}).get("status") != "approved":
                 continue
@@ -1009,6 +1014,7 @@ class ProductCatalogService:
             if local is None:
                 raise StitchUnavailable(f"The clip file for shot {index + 1} is missing")
             parts.append(StitchClip(local, duration, caption))
+            used[index] = clip["attempts"]
         relative = f"videos/{product_id}/video.mp4"
         store = self.media(media_root)
         await store.fetch_first(
@@ -1020,6 +1026,17 @@ class ProductCatalogService:
         cover = f"videos/{product_id}/cover.jpg"
         await cover_frame(store.path(relative), store.path(cover))
         await store.push(cover)
+        await self._write_json(
+            media_root,
+            f"videos/{product_id}/video.json",
+            {
+                "built_at": datetime.now(UTC).isoformat(),
+                "captions": captions,
+                "seconds": round(sum(shot_seconds(p.duration) for p in parts), 1),
+                "clip_attempts": used,
+                "voice": await self._read_json(media_root, f"videos/{product_id}/voiceover.json"),
+            },
+        )
         await self._log(
             product_id,
             "video",
@@ -1028,6 +1045,120 @@ class ProductCatalogService:
             f"captions {'yes' if captions else 'no'}",
         )
         return relative
+
+    async def _write_json(self, media_root: Path, relative: str, data: dict[str, Any]) -> None:
+        await self.media(media_root).write(relative, json.dumps(data, ensure_ascii=False).encode())
+
+    async def _read_json(self, media_root: Path, relative: str) -> dict[str, Any] | None:
+        try:
+            return json.loads(await self.media(media_root).read(relative))
+        except FileNotFoundError:
+            return None
+
+    async def note_voice(self, product_id: str, media_root: Path, voice: str) -> None:
+        """Remember which voice read the voice-over, for the page that shows what a video is made of."""
+        await self._write_json(
+            media_root,
+            f"videos/{product_id}/voiceover.json",
+            {"voice": voice, "made_at": datetime.now(UTC).isoformat()},
+        )
+
+    async def list_outputs(self, media_root: Path) -> list[dict[str, Any]]:
+        """The finished videos, newest first."""
+        store = self.media(media_root)
+        outputs = []
+        for record in await self._repository.list_briefs():
+            product_id = record["product_id"]
+            if not await store.exists(f"videos/{product_id}/video.mp4"):
+                continue
+            detail = await self._repository.get_detail(product_id) or {}
+            built = await self._read_json(media_root, f"videos/{product_id}/video.json") or {}
+            outputs.append(
+                {
+                    "product_id": product_id,
+                    "title": record["brief"].get("title"),
+                    "product_title": detail.get("title"),
+                    "image": next(iter(detail.get("images") or []), None),
+                    "built_at": built.get("built_at"),
+                    "seconds": built.get("seconds"),
+                    "shots": len(built.get("clip_attempts") or record["brief"].get("shots") or []),
+                    "voice": (built.get("voice") or {}).get("voice"),
+                    "has_cover": await store.exists(f"videos/{product_id}/cover.jpg"),
+                }
+            )
+        return sorted(outputs, key=lambda item: item["built_at"] or "", reverse=True)
+
+    async def get_output(self, product_id: str, media_root: Path) -> dict[str, Any] | None:
+        """What a finished video is made from: product, photos, references, person and shots."""
+        record = await self._repository.get_brief(product_id)
+        if record is None:
+            return None
+        brief = record["brief"]
+        detail = await self._repository.get_detail(product_id) or {}
+        built = await self._read_json(media_root, f"videos/{product_id}/video.json") or {}
+        voice = built.get("voice") or await self._read_json(
+            media_root, f"videos/{product_id}/voiceover.json"
+        )
+        chosen = set(brief.get("selected_reference_ids") or [])
+        references = [
+            {key: image.get(key) for key in ("image_id", "image_url", "pin_url", "title")}
+            for image in await self._repository.list_reference_images(None, None)
+            if image["image_id"] in chosen
+        ]
+        keyframes = {k["shot_index"]: k for k in await self._repository.list_keyframes(product_id)}
+        clips = {c["shot_index"]: c for c in await self._repository.list_clips(product_id)}
+        in_video = {int(index) for index in built.get("clip_attempts") or {}}
+        shots = [
+            {
+                "index": index,
+                "role": shot.get("role"),
+                "delivery": shot.get("delivery") or "narrated",
+                "description": shot.get("description"),
+                "voiceover": shot.get("voiceover"),
+                "on_screen_text": shot.get("on_screen_text"),
+                "has_keyframe": bool(keyframes.get(index, {}).get("image_path")),
+                "keyframe_attempts": keyframes.get(index, {}).get("attempts"),
+                "has_clip": clips.get(index, {}).get("status") == "ready",
+                "clip_attempts": clips.get(index, {}).get("attempts"),
+                "in_video": index in in_video,
+            }
+            for index, shot in enumerate(brief.get("shots") or [])
+        ]
+        persona = brief.get("persona") or {}
+        return {
+            "product": {
+                "product_id": product_id,
+                "title": detail.get("title"),
+                "url": detail.get("url"),
+                "image": next(iter(detail.get("images") or []), None),
+            },
+            "brief": {
+                "title": brief.get("title"),
+                "status": record["status"],
+                "format": brief.get("format"),
+                "user_idea": record["user_idea"],
+                "selling_angle": brief.get("selling_angle"),
+                "target_audience": brief.get("target_audience"),
+                "product_size": brief.get("product_size"),
+            },
+            "product_photos": brief.get("product_photo_urls") or [],
+            "references": references,
+            "persona": {
+                "description": persona.get("description"),
+                "has_image": bool(persona.get("image_path")),
+            }
+            if persona.get("description")
+            else None,
+            "shots": shots,
+            "video": {
+                "built_at": built.get("built_at"),
+                "seconds": built.get("seconds"),
+                "captions": built.get("captions"),
+                "voice": (voice or {}).get("voice"),
+                "has_cover": await self.media(media_root).exists(f"videos/{product_id}/cover.jpg"),
+                "exists": await self.media(media_root).exists(f"videos/{product_id}/video.mp4"),
+            },
+        }
 
     async def delete_product(self, product_id: str, media_root: Path) -> bool:
         """Delete a product with its brief, images, clips and video; it is not collected again."""

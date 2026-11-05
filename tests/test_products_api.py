@@ -414,7 +414,7 @@ def test_voiceover_upload_replaces_the_previous_file(tmp_path: Path, client: Tes
     assert client.put(url, content=b"wav", headers={"content-type": "audio/wav"}).json() == {
         "voiceover": "wav"
     }
-    assert [p.name for p in folder.iterdir()] == ["voiceover.wav"]
+    assert sorted(p.name for p in folder.iterdir()) == ["voiceover.json", "voiceover.wav"]
 
 
 def test_persona_endpoints(
@@ -471,3 +471,73 @@ def test_deleting_a_product_removes_it_and_what_was_made_from_it(
     _capture_product(client)
     assert client.get("/api/v1/products").json() == []
     assert PRODUCT_ID not in client.get("/api/v1/products/queue").text
+
+
+def test_outputs_list_the_videos_and_say_what_each_is_made_from(
+    tmp_path: Path, client: TestClient, repository: SqliteProductRepository
+) -> None:
+    base = f"/api/v1/products/{PRODUCT_ID}"
+    assert client.get("/api/v1/products/outputs").json() == []
+    assert client.get(f"{base}/output").status_code == 404
+    _capture_product(client)
+    shots = [
+        {"role": "hook", "delivery": "talking", "voiceover": "Xin chào", "description": "d"},
+        {"role": "call_to_action", "voiceover": "Mua ngay"},
+    ]
+    brief = {
+        "title": "Giỏ",
+        "shots": shots,
+        "selected_reference_ids": ["r1"],
+        "product_photo_urls": ["https://img.example/1.jpg"],
+        "persona": {"description": "A woman", "image_path": "persona/p.jpg"},
+    }
+    asyncio.run(repository.save_brief(PRODUCT_ID, "ý tưởng", brief, "approved"))
+    reference = {
+        "image_id": "r1",
+        "image_url": "https://i/r1.jpg",
+        "pin_url": "/pin/1/",
+        "title": "t",
+    }
+    asyncio.run(repository.add_reference_images("áo thun", "q", [reference]))
+    asyncio.run(
+        repository.save_keyframe(
+            {
+                "product_id": PRODUCT_ID,
+                "shot_index": 0,
+                "status": "approved",
+                "prompt": "p",
+                "image_path": "k.jpg",
+                "attempts": 3,
+                "error": None,
+                "qa_problem": "",
+            }
+        )
+    )
+    assert client.get("/api/v1/products/outputs").json() == []
+
+    folder = tmp_path / "media" / "videos" / PRODUCT_ID
+    folder.mkdir(parents=True)
+    (folder / "video.mp4").write_bytes(b"final")
+    (folder / "video.json").write_text(
+        '{"built_at": "2026-11-05T10:00:00+00:00", "seconds": 23.6, "captions": false, '
+        '"clip_attempts": {"0": 1}, "voice": {"voice": "Kim Oanh"}}',
+        encoding="utf-8",
+    )
+    [item] = client.get("/api/v1/products/outputs").json()
+    assert (item["title"], item["seconds"], item["shots"], item["voice"]) == (
+        "Giỏ",
+        23.6,
+        1,
+        "Kim Oanh",
+    )
+
+    output = client.get(f"{base}/output").json()
+    assert output["product"]["title"] == "Áo thun"
+    assert output["brief"]["user_idea"] == "ý tưởng"
+    assert output["product_photos"] == ["https://img.example/1.jpg"]
+    assert [r["image_url"] for r in output["references"]] == ["https://i/r1.jpg"]
+    assert output["persona"] == {"description": "A woman", "has_image": True}
+    first, second = output["shots"]
+    assert (first["has_keyframe"], first["keyframe_attempts"], first["in_video"]) == (True, 3, True)
+    assert (second["delivery"], second["in_video"]) == ("narrated", False)
+    assert output["video"]["voice"] == "Kim Oanh" and output["video"]["exists"] is True

@@ -1,3 +1,4 @@
+import json
 import shutil
 import subprocess
 
@@ -265,6 +266,36 @@ def test_voiceover_is_found_beside_the_video(tmp_path) -> None:
     folder.mkdir(parents=True)
     (folder / "voiceover.m4a").write_bytes(b"x")
     assert find_voiceover(tmp_path, "p1") == folder / "voiceover.m4a"
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg is not installed")
+async def test_building_the_video_records_how_it_was_made(tmp_path) -> None:
+    service = await _service(tmp_path, _FakeVideo())
+    clip = tmp_path / "clips" / PRODUCT_ID / "shot_0.mp4"
+    clip.parent.mkdir(parents=True)
+    _make_clip(clip, "red", seconds=4, audio=False)
+    await service._repository.save_clip(
+        {
+            "product_id": PRODUCT_ID,
+            "shot_index": 0,
+            "status": "ready",
+            "job_id": "j",
+            "job_model": "m",
+            "video_path": f"clips/{PRODUCT_ID}/shot_0.mp4",
+            "seconds": 5,
+            "attempts": 2,
+            "error": None,
+        }
+    )
+    await service.note_voice(PRODUCT_ID, tmp_path, "Kim Oanh")
+    await service.build_video(PRODUCT_ID, tmp_path)
+    folder = tmp_path / "videos" / PRODUCT_ID
+    built = json.loads((folder / "video.json").read_text(encoding="utf-8"))
+    assert built["clip_attempts"] == {"0": 2} and built["captions"] is False
+    assert built["voice"]["voice"] == "Kim Oanh" and built["seconds"] > 0
+    assert (folder / "cover.jpg").is_file()
+    [output] = await service.list_outputs(tmp_path)
+    assert (output["shots"], output["voice"], output["has_cover"]) == (1, "Kim Oanh", True)
 
 
 async def test_clip_prompt_follows_the_shots_delivery(tmp_path) -> None:

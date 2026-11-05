@@ -308,6 +308,14 @@ async def select_errors() -> dict[str, str]:
     return dict(_select_errors)
 
 
+@router.get("/outputs")
+async def list_outputs(
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> list[dict[str, Any]]:
+    """The finished videos."""
+    return await service.list_outputs(_media_root())
+
+
 @router.get("/export")
 async def export_products(
     format: str = Query("json", pattern="^(json|xlsx)$"),
@@ -531,6 +539,18 @@ async def cover_image(
     )
 
 
+@router.get("/{product_id}/output")
+async def get_output(
+    product_id: str,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> dict[str, Any]:
+    """What this product's video is made from."""
+    output = await service.get_output(product_id, _media_root())
+    if output is None:
+        raise HTTPException(status_code=404, detail="No brief for this product")
+    return output
+
+
 @router.post("/{product_id}/post-package")
 async def create_post_package(
     product_id: str,
@@ -566,6 +586,7 @@ async def upload_voiceover(
     for old in VOICEOVER_TYPES.values():
         await store.remove(f"videos/{product_id}/voiceover.{old}")
     await store.write(f"videos/{product_id}/voiceover.{extension}", content)
+    await service.note_voice(product_id, _media_root(), "uploaded file")
     return {"voiceover": extension}
 
 
