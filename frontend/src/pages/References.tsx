@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Package } from "lucide-react";
+import { Package, X } from "lucide-react";
 import { useState } from "react";
 import { EmptyState, PageHeader, Panel } from "../components/ui";
 import { useI18n } from "../hooks/useI18n";
@@ -161,7 +161,7 @@ function ReferenceImages() {
       <div className="panel-header">
         <div>
           <h2>{t("Reference images")}</h2>
-          <p>{t("Images crawled from Pinterest that Gemini accepted as scenes to borrow, newest first. Remove the ones you do not want.")}</p>
+          <p>{t("Images crawled from Pinterest that Gemini accepted as scenes to borrow, newest first. Press the ✕ on a picture to remove the ones you do not want.")}</p>
         </div>
         <div className="reference-review">
           {(images.data ?? []).some((image) => image.screening && !image.screening.setting) && (
@@ -211,6 +211,11 @@ function ReferenceImages() {
               <a href={`https://www.pinterest.com${image.pin_url}`} target="_blank" rel="noreferrer">
                 <img src={image.image_url} alt={image.title} loading="lazy" referrerPolicy="no-referrer" />
               </a>
+              {image.status !== "removed" && (
+                <button type="button" className="reference-card__remove" aria-label={t("Remove")} title={t("Remove")} disabled={remove.isPending} onClick={() => remove.mutate(image.image_id)}>
+                  <X size={14} />
+                </button>
+              )}
               <figcaption>
                 <span className="reference-card__query">{image.query}</span>
                 {image.screening && (
@@ -232,9 +237,6 @@ function ReferenceImages() {
                     </dl>
                   </details>
                 )}
-                <div>
-                  <button type="button" className="pt-button" disabled={remove.isPending || image.status === "removed"} onClick={() => remove.mutate(image.image_id)}>{t("Remove")}</button>
-                </div>
               </figcaption>
             </figure>
           ))}

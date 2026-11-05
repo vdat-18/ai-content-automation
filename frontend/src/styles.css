@@ -1057,6 +1057,14 @@ body.column-resizing * { cursor: col-resize !important; user-select: none !impor
   display: grid; align-content: start; transition: box-shadow .15s, transform .15s;
 }
 .reference-card:hover { box-shadow: var(--shadow-sm); transform: translateY(-2px); }
+.reference-card { position: relative; }
+.reference-card__remove {
+  position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; display: grid; place-items: center;
+  border: 0; border-radius: 50%; background: rgba(23, 25, 28, 0.62); color: #fff; cursor: pointer;
+  transition: background 0.15s;
+}
+.reference-card__remove:hover { background: var(--red); }
+.reference-card__remove:disabled { opacity: 0.5; cursor: default; }
 .reference-card img { width: 100%; aspect-ratio: 3 / 4; object-fit: cover; display: block; background: var(--surface); }
 .reference-card figcaption { display: grid; gap: 6px; padding: 10px; }
 .reference-card figcaption small {
