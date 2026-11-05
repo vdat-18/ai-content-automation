@@ -23,8 +23,8 @@ function ReviewStoryboard(product_json: string, brief_json: string) -> Storyboar
       visibly different actions across the whole clip;
     - a keyframe_prompt or motion_prompt is vague or generic (for example only mood words) instead
       of saying what is seen;
-    - a voiceover is too short or too long to be spoken naturally during its 15 second shot, or does
-      not match what the shot shows;
+    - a voiceover has more than 35 words or fewer than 20 (count the words; each shot is heard for
+      about 11 seconds in the finished video), or does not match what the shot shows;
     - the story has no clear flow from hook to product benefit to call to action;
     - it contradicts the product facts (size, use, features) or invents claims.
 
