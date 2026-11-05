@@ -19,16 +19,17 @@ function CheckKeyframe(
     response schema.
 
     passed=true only when all of these hold: the product in the keyframe is clearly the same
-    product as in the photos (same shape, color, proportions, material, label and printed text,
+    product as in the photos (same shape, color, proportions, material, label layout,
     same number of items); its size next to the person, the furniture and the room matches the
-    real size stated in the shot description (not oversized, not tiny); it has no extra or missing parts, no warped geometry and no
-    unreadable or invented text or logos; the picture shows what the shot description asks for;
+    real size stated in the shot description (not oversized, not tiny); it has no extra or missing parts and no warped geometry; the picture shows what the shot description asks for;
     when a master keyframe is given, the light and color palette match it; when the previous
     shot's keyframe is given, the same person wears the same outfit in the same kind of room and
     light, so the two shots could be cut together without a jarring jump; when a character image
     is given, the person in the keyframe is clearly the same person (face, hair, skin tone,
     clothes) and has natural hands and limbs with no extra or missing fingers. Ignore
-    background text and small decoration unless it contradicts the product.
+    all text and logos, on the product label, the packaging and the clothes alike: image models
+    cannot draw small text, so never fail an image because text is garbled, mirrored or rotated.
+    Ignore background decoration unless it contradicts the product.
 
     problem: empty when passed. Otherwise one or two short English sentences naming what is
     wrong and what to change, written as an instruction for the image model.
