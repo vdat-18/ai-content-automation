@@ -21,6 +21,8 @@ function ReviewStoryboard(product_json: string, brief_json: string) -> Storyboar
       shot only drifts slowly with no visible action;
     - a shot's motion_prompt is too thin to animate: it does not describe a sequence of timed,
       visibly different actions across the whole clip;
+    - the real product is not clearly visible in a shot (its keyframe_prompt or motion_prompt
+      does not keep it in frame for the whole shot): the product must be in every shot;
     - a keyframe_prompt or motion_prompt is vague or generic (for example only mood words) instead
       of saying what is seen;
     - a voiceover has more than 48 words or fewer than 38 (count the words; the narrator speaks about

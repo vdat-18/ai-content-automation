@@ -18,7 +18,8 @@ function CheckKeyframe(
     generated keyframe with the real product photos and return JSON only, exactly matching the
     response schema.
 
-    passed=true only when all of these hold: the product in the keyframe is clearly the same
+    passed=true only when all of these hold: the product is clearly visible in the keyframe and
+    not hidden, cut off or tiny; the product in the keyframe is clearly the same
     product as in the photos (same shape, color, proportions, material, label layout,
     same number of items); its size next to the person, the furniture and the room matches the
     real size stated in the shot description (not oversized, not tiny); it has no extra or missing parts and no warped geometry; the picture shows what the shot description asks for;
