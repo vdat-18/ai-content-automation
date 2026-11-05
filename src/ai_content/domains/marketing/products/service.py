@@ -52,6 +52,7 @@ from .speech import (
     MAX_SPEEDUP,
     SAMPLE_TEXT,
     VOICES,
+    Reading,
     SpeechClient,
     SpeechError,
     make_voiceover,
@@ -839,14 +840,23 @@ class ProductCatalogService:
             "attempts": (previous or {}).get("attempts", 0) + 1,
         }
         delivery = str(shot.get("delivery") or "narrated")
+        if delivery == "talking":
+            sound = (
+                f"{_DELIVERY_RULE[True]} The person says in Vietnamese, in one go: "
+                f'"{shot.get("voiceover") or ""}" No music, no text on screen.'
+            )
+        else:
+            sound = (
+                f"{_DELIVERY_RULE[False]} The clip has no sound: no dialogue, no music, "
+                "no text on screen."
+            )
         frame = await self.media(media_root).read(keyframe["image_path"])
         prompt = (
             f"{shot.get('motion_prompt') or 'Slow gentle camera push-in.'} "
             "Keep the product's exact shape, color and details; do not add or change objects. "
             "Energetic TikTok pace: brisk natural movement and quick camera moves, "
             "never slow motion, no long pauses. "
-            f"{_DELIVERY_RULE[shot.get('delivery') == 'talking']} "
-            "The clip has no sound: no dialogue, no music, no text on screen."
+            f"{sound}"
         )
         try:
             job_id, job_model = await self._videographer.submit(prompt, frame, seconds)
@@ -895,22 +905,33 @@ class ProductCatalogService:
         if voice and voice not in VOICES:
             raise KeyframeUnavailable(f"Unknown voice {voice}")
         keyframes = {k["shot_index"]: k for k in await self._repository.list_keyframes(product_id)}
-        shots = [
-            shot
-            for index, shot in enumerate(record["brief"].get("shots") or [])
-            if keyframes.get(index, {}).get("status") == "approved"
+        shots = record["brief"].get("shots") or []
+        approved = [
+            i for i in range(len(shots)) if keyframes.get(i, {}).get("status") == "approved"
         ]
-        if not shots:
+        if not approved:
             raise KeyframeUnavailable("Approve at least one keyframe first")
-        segments = [
-            (
-                str(shot.get("voiceover") or ""),
-                shot_seconds(
-                    min(float(shot.get("duration_seconds") or CLIP_SECONDS), CLIP_SECONDS)
-                ),
-            )
-            for shot in shots
-        ]
+        talking = any(shots[i].get("delivery") == "talking" for i in approved)
+        clips = (
+            {c["shot_index"]: c for c in await self.clips(product_id, media_root)}
+            if talking
+            else {}
+        )
+        segments: list[Reading] = []
+        for index in approved:
+            shot = shots[index]
+            guide = None
+            if shot.get("delivery") == "talking":
+                clip = clips.get(index)
+                if clip is not None and clip["status"] == "ready":
+                    guide = await self.media(media_root).fetch(clip["video_path"])
+                if guide is None:
+                    raise KeyframeUnavailable(
+                        f"Make the clip for shot {index + 1} first: its voice follows the "
+                        "speech Grok made with the clip"
+                    )
+            seconds = min(float(shot.get("duration_seconds") or CLIP_SECONDS), CLIP_SECONDS)
+            segments.append(Reading(str(shot.get("voiceover") or ""), shot_seconds(seconds), guide))
         store = self.media(media_root)
         folder = store.path(f"videos/{product_id}")
         folder.mkdir(parents=True, exist_ok=True)
@@ -923,8 +944,8 @@ class ProductCatalogService:
             raise KeyframeUnavailable(f"The voice-over could not be made: {error}") from error
         too_long = [
             i + 1
-            for i, (n, (_, limit)) in enumerate(zip(lengths, segments, strict=True))
-            if n > limit * MAX_SPEEDUP
+            for i, (n, reading) in enumerate(zip(lengths, segments, strict=True))
+            if n > reading.seconds * MAX_SPEEDUP
         ]
         await self._log(
             product_id,

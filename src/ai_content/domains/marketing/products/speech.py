@@ -5,12 +5,14 @@ from __future__ import annotations
 import asyncio
 import os
 import shutil
+from dataclasses import dataclass
 from pathlib import Path
 
 import httpx
 from loguru import logger
 
-from .clips import StitchUnavailable, _run
+from .clips import TRIM_SECONDS, StitchUnavailable, _run, clip_speed
+from .lip_alignment import align_to_guide
 
 _TIMEOUT = 120
 _TRIES = 3
@@ -106,9 +108,16 @@ async def _probe_seconds(path: Path) -> float:
         raise StitchUnavailable("ffprobe could not read the voice-over audio") from error
 
 
+@dataclass(frozen=True)
+class Reading:
+    text: str
+    seconds: float  # how long the shot plays in the finished video
+    guide: Path | None = None  # the clip whose own speech sets the pace of a talking shot
+
+
 async def make_voiceover(
     client: SpeechClient,
-    segments: list[tuple[str, float]],
+    segments: list[Reading],
     output: Path,
     voice: str | None = None,
 ) -> list[float]:
@@ -116,8 +125,10 @@ async def make_voiceover(
 
     Every reading is sped up to the brisk pace of AIC_TTS_SPEED, and one longer than its shot
     further, to at most 1.5x, and then cut; a shorter one is
-    padded with silence, so every shot's words begin where the shot begins. Returns the natural
-    length of each reading so a caller can tell which shots need shorter text.
+    padded with silence, so every shot's words begin where the shot begins. A talking shot has a
+    guide clip: its reading is read at the natural pace and bent to follow the speech in the clip,
+    so the mouth in the picture fits the voice. Returns the natural length of each reading so a
+    caller can tell which shots need shorter text.
     """
     if shutil.which("ffmpeg") is None or shutil.which("ffprobe") is None:
         raise StitchUnavailable("ffmpeg is not installed on this machine")
@@ -128,7 +139,9 @@ async def make_voiceover(
     lengths: list[float] = []
     parts: list[Path] = []
     try:
-        for index, (text, seconds) in enumerate(segments):
+        for index, (text, seconds, guide) in enumerate(
+            (r.text, r.seconds, r.guide) for r in segments
+        ):
             part = output.parent / f"voice_part_{index}.wav"
             scratch.append(part)
             parts.append(part)
@@ -145,10 +158,22 @@ async def make_voiceover(
             raw.write_bytes(await client.speak(text.strip(), voice))
             length = await _probe_seconds(raw)
             lengths.append(length)
-            speed = min(max(length / seconds, tts_speed()), MAX_SPEEDUP)
+            if guide is None:
+                speed = min(max(length / seconds, tts_speed()), MAX_SPEEDUP)
+                await _run(
+                    "ffmpeg", "-v", "error", "-y", "-i", raw.name,
+                    "-af", f"atempo={speed:.4f},apad=whole_dur={seconds:.3f}",
+                    "-t", f"{seconds:.3f}", "-ar", "24000", "-ac", "1", part.name,
+                    cwd=output.parent,
+                )  # fmt: skip
+                continue
+            aligned = output.parent / f"voice_aligned_{index}.wav"
+            scratch.append(aligned)
+            await align_to_guide(raw, guide, aligned)
+            # the clip is trimmed and sped up in the video, so the voice gets the same treatment
             await _run(
-                "ffmpeg", "-v", "error", "-y", "-i", raw.name,
-                "-af", f"atempo={speed:.4f},apad=whole_dur={seconds:.3f}",
+                "ffmpeg", "-v", "error", "-y", "-ss", f"{TRIM_SECONDS:g}", "-i", aligned.name,
+                "-af", f"atempo={clip_speed():.4f},apad=whole_dur={seconds:.3f}",
                 "-t", f"{seconds:.3f}", "-ar", "24000", "-ac", "1", part.name,
                 cwd=output.parent,
             )  # fmt: skip

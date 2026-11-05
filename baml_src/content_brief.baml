@@ -114,7 +114,8 @@ function DraftContentBrief(
     script first. Each shot plays for about 11 seconds in the finished video and the narrator speaks
     fast, about 4 words per second, so write 40 to 46 words for every shot's voiceover (count
     them) so that the voice fills the shot, and a script of that many words times the number of
-    shots. Then cut it into consecutive parts, one per shot, so reading every shot's
+    shots. A shot with delivery talking is spoken by the person on camera in one 15 second clip,
+    so its voiceover has 36 to 40 words. Then cut it into consecutive parts, one per shot, so reading every shot's
     voiceover in order gives the script again with nothing added or repeated. Each shot must
     follow from the one before it (cause and effect), never start a new topic.
 

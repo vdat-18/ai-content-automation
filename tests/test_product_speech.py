@@ -9,7 +9,12 @@ from ai_content.domains.marketing.products.service import (
     KeyframeUnavailable,
     ProductCatalogService,
 )
-from ai_content.domains.marketing.products.speech import SpeechClient, SpeechError, make_voiceover
+from ai_content.domains.marketing.products.speech import (
+    Reading,
+    SpeechClient,
+    SpeechError,
+    make_voiceover,
+)
 
 PRODUCT_ID = "1730000000000000001"
 needs_ffmpeg = pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg is not installed")
@@ -20,6 +25,25 @@ def _tone(seconds: float) -> bytes:
         ["ffmpeg", "-v", "error", "-f", "lavfi", "-i", f"sine=frequency=300:duration={seconds}", "-f", "mp3", "-"],
         capture_output=True, check=True,
     ).stdout  # fmt: skip
+
+
+def _write_wav(path, bursts, seconds: float) -> None:
+    """Silence with a harmonic tone burst for each (start, end, pitch)."""
+    import wave
+
+    import numpy as np
+
+    rate = 16_000
+    samples = np.zeros(int(seconds * rate))
+    for start, end, pitch in bursts:
+        t = np.arange(int((end - start) * rate)) / rate
+        tone = sum(np.sin(2 * np.pi * pitch * k * t) / k for k in (1, 2, 3, 4))
+        samples[int(start * rate) : int(start * rate) + len(t)] = 0.2 * tone * np.hanning(len(t))
+    with wave.open(str(path), "wb") as out:
+        out.setnchannels(1)
+        out.setsampwidth(2)
+        out.setframerate(rate)
+        out.writeframes((samples * 32767).astype(np.int16).tobytes())
 
 
 def _client(handler) -> SpeechClient:
@@ -76,7 +100,8 @@ async def test_each_reading_is_fitted_to_its_shot(tmp_path) -> None:
             return _tone(lengths[text])
 
     output = tmp_path / "videos" / "voiceover.mp3"
-    result = await make_voiceover(_Fake(), [("ngắn", 3.0), ("", 2.0), ("dài", 4.0)], output)  # type: ignore[arg-type]
+    readings = [Reading("ngắn", 3.0), Reading("", 2.0), Reading("dài", 4.0)]
+    result = await make_voiceover(_Fake(), readings, output)  # type: ignore[arg-type]
     assert [round(n) for n in result] == [1, 0, 6]
     duration = subprocess.run(
         ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(output)],
@@ -84,6 +109,47 @@ async def test_each_reading_is_fitted_to_its_shot(tmp_path) -> None:
     ).stdout  # fmt: skip
     assert 8.8 < float(duration) < 9.4
     assert sorted(p.name for p in output.parent.iterdir()) == ["voiceover.mp3"]
+
+
+@needs_ffmpeg
+async def test_a_talking_shot_follows_the_speech_of_its_clip(tmp_path) -> None:
+    guide = tmp_path / "guide.wav"
+    _write_wav(guide, [(0.5, 1.3, 150), (2.2, 3.2, 220), (4.0, 4.6, 300)], 5.5)
+
+    class _Fake:
+        async def speak(self, text, voice=None):
+            return _tone(3.0)
+
+    output = tmp_path / "videos" / "voiceover.mp3"
+    readings = [Reading("nói", 4.0, guide), Reading("kể", 2.0)]
+    await make_voiceover(_Fake(), readings, output)  # type: ignore[arg-type]
+    duration = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(output)],
+        capture_output=True, text=True, check=True,
+    ).stdout  # fmt: skip
+    assert 5.8 < float(duration) < 6.3
+    assert sorted(p.name for p in output.parent.iterdir()) == ["voiceover.mp3"]
+
+
+async def test_a_talking_shot_needs_its_clip_before_the_voice(tmp_path) -> None:
+    repository = SqliteProductRepository(tmp_path / "s.db")
+    shots = [{"voiceover": "Xin chào", "duration_seconds": 15, "delivery": "talking"}]
+    await repository.save_brief(PRODUCT_ID, "", {"shots": shots}, "approved")
+    await repository.save_keyframe(
+        {
+            "product_id": PRODUCT_ID,
+            "shot_index": 0,
+            "status": "approved",
+            "prompt": "p",
+            "image_path": "k.jpg",
+            "attempts": 1,
+            "error": None,
+            "qa_problem": "",
+        }
+    )
+    service = ProductCatalogService(repository, speaker=object())  # type: ignore[arg-type]
+    with pytest.raises(KeyframeUnavailable, match="Make the clip for shot 1 first"):
+        await service.create_voiceover(PRODUCT_ID, tmp_path)
 
 
 async def test_service_needs_the_speaker_and_an_approved_keyframe(tmp_path) -> None:

@@ -271,13 +271,16 @@ async def test_clip_prompt_follows_the_shots_delivery(tmp_path) -> None:
     video = _FakeVideo()
     service = await _service(tmp_path, video)
     record = await service._repository.get_brief(PRODUCT_ID)
-    shots = [{**record["brief"]["shots"][0], "delivery": "talking"}]
+    shots = [
+        {**record["brief"]["shots"][0], "delivery": "talking", "voiceover": "Xin chào các bạn"}
+    ]
     await service._repository.save_brief(
         PRODUCT_ID, "", {**record["brief"], "shots": shots}, "approved"
     )
     await service.generate_clips(PRODUCT_ID, tmp_path)
     assert "speaks naturally to the camera" in video.submitted[0][0]
-    assert "no dialogue" in video.submitted[0][0]
+    assert 'says in Vietnamese, in one go: "Xin chào các bạn"' in video.submitted[0][0]
+    assert "no dialogue" not in video.submitted[0][0]
 
     shots[0]["delivery"] = "narrated"
     await service._repository.save_brief(
@@ -285,6 +288,7 @@ async def test_clip_prompt_follows_the_shots_delivery(tmp_path) -> None:
     )
     await service.generate_clips(PRODUCT_ID, tmp_path, shot_index=0)
     assert "Nobody speaks" in video.submitted[1][0]
+    assert "no dialogue" in video.submitted[1][0] and "Xin chào" not in video.submitted[1][0]
 
 
 def test_clips_play_faster_by_the_configured_speed(monkeypatch) -> None:
