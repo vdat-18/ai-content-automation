@@ -63,7 +63,7 @@ function DraftContentBrief(
     Every shot is first made as a still keyframe image and later animated into a 15 second clip.
     The video follows one recurring person who uses the real product, and every shot shows that
     same person doing something concrete with it (picking it up, using it, trying it, comparing
-    before and after,     The product is the star: it is clearly visible and recognisable in every shot, from the
+    before and after, reacting). The product is the star: it is clearly visible and recognisable in every shot, from the
     first frame to the last, held, worn or placed in frame while the person acts (a close-up of
     skin or a face still has the product in the picture). Make the shots differ: change the camera angle and distance, the
     action and, where the story needs it, the spot inside the same home or place. Avoid shots that
