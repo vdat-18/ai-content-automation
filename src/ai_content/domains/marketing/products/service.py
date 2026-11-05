@@ -14,6 +14,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font
 
 from .briefing import (
+    MAX_PRODUCT_PHOTOS,
     MAX_REFERENCES,
     BriefGenerationError,
     BriefUnavailable,
@@ -94,6 +95,12 @@ BRIEF_FIELDS = (
     "colors",
     "shots",
 )
+
+
+def _product_photo_urls(brief: dict[str, Any], detail: dict[str, Any]) -> list[str]:
+    """The product photos the brief picked; the first photos of the product if it picked none."""
+    urls = brief.get("product_photo_urls") or [u for u in detail.get("images") or [] if u]
+    return urls[:MAX_PRODUCT_PHOTOS]
 
 
 def _clean_pins(pins: list[dict[str, Any]]) -> list[dict[str, str]]:
@@ -609,7 +616,7 @@ class ProductCatalogService:
                 raise KeyframeUnavailable("Approve the person's portrait first")
             persona_image = await self.media(media_root).read(persona["image_path"])
         detail = await self._repository.get_detail(product_id)
-        photos = await fetch_images([u for u in (detail or {}).get("images") or [] if u])
+        photos = await fetch_images(_product_photo_urls(record["brief"], detail or {}))
         if not photos:
             raise KeyframeUnavailable("No product photo could be downloaded")
         scene = await self._primary_scene(record["brief"]) if 0 in wanted else None

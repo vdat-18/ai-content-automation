@@ -50,6 +50,7 @@ class ContentBrief(BaseModel):
     script: str
     persona: str
     selected_reference_labels: typing.List[str]
+    product_photo_numbers: typing.List[int]
     reference_rationale: str
     scene: str
     product_placement: str
@@ -64,10 +65,9 @@ class KeyframeCheck(BaseModel):
     passed: bool
     problem: str
 
-class LabeledReferenceImage(BaseModel):
+class LabeledReference(BaseModel):
     label: str
     note: str
-    content: baml_py.Image
 
 class PostingPackage(BaseModel):
     captions: typing.List[str]
@@ -121,7 +121,7 @@ class StoryboardShot(BaseModel):
 # eagerly rebuilding them can recurse).
 ContentBrief.model_rebuild()
 KeyframeCheck.model_rebuild()
-LabeledReferenceImage.model_rebuild()
+LabeledReference.model_rebuild()
 PostingPackage.model_rebuild()
 ReferenceImageReview.model_rebuild()
 ReferenceSearchProfileDraft.model_rebuild()

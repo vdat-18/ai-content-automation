@@ -108,7 +108,7 @@ class BamlSyncClient:
                 "shot_description": shot_description,"product_photos": product_photos,"master_keyframe": master_keyframe,"keyframe": keyframe,"character": character,"previous_keyframe": previous_keyframe,
             })
             return typing.cast(types.KeyframeCheck, __result__.cast_to(types, types, stream_types, False, __runtime__))
-    def DraftContentBrief(self, product_json: str,user_idea: str,shot_count: int,product_images: typing.List[baml_py.Image],references: typing.List["types.LabeledReferenceImage"],
+    def DraftContentBrief(self, product_json: str,user_idea: str,shot_count: int,product_images: typing.List[baml_py.Image],references: typing.List["types.LabeledReference"],
         baml_options: BamlCallOptions = {},
     ) -> types.ContentBrief:
         # Check if on_tick is provided
@@ -199,7 +199,7 @@ class BamlStreamClient:
           lambda x: typing.cast(types.KeyframeCheck, x.cast_to(types, types, stream_types, False, __runtime__)),
           __ctx__,
         )
-    def DraftContentBrief(self, product_json: str,user_idea: str,shot_count: int,product_images: typing.List[baml_py.Image],references: typing.List["types.LabeledReferenceImage"],
+    def DraftContentBrief(self, product_json: str,user_idea: str,shot_count: int,product_images: typing.List[baml_py.Image],references: typing.List["types.LabeledReference"],
         baml_options: BamlCallOptions = {},
     ) -> baml_py.BamlSyncStream[stream_types.ContentBrief, types.ContentBrief]:
         __ctx__, __result__ = self.__options.merge_options(baml_options).create_sync_stream(function_name="DraftContentBrief", args={
@@ -274,7 +274,7 @@ class BamlHttpRequestClient:
             "shot_description": shot_description,"product_photos": product_photos,"master_keyframe": master_keyframe,"keyframe": keyframe,"character": character,"previous_keyframe": previous_keyframe,
         }, mode="request")
         return __result__
-    def DraftContentBrief(self, product_json: str,user_idea: str,shot_count: int,product_images: typing.List[baml_py.Image],references: typing.List["types.LabeledReferenceImage"],
+    def DraftContentBrief(self, product_json: str,user_idea: str,shot_count: int,product_images: typing.List[baml_py.Image],references: typing.List["types.LabeledReference"],
         baml_options: BamlCallOptions = {},
     ) -> baml_py.baml_py.HTTPRequest:
         __result__ = self.__options.merge_options(baml_options).create_http_request_sync(function_name="DraftContentBrief", args={
@@ -324,7 +324,7 @@ class BamlHttpStreamRequestClient:
             "shot_description": shot_description,"product_photos": product_photos,"master_keyframe": master_keyframe,"keyframe": keyframe,"character": character,"previous_keyframe": previous_keyframe,
         }, mode="stream")
         return __result__
-    def DraftContentBrief(self, product_json: str,user_idea: str,shot_count: int,product_images: typing.List[baml_py.Image],references: typing.List["types.LabeledReferenceImage"],
+    def DraftContentBrief(self, product_json: str,user_idea: str,shot_count: int,product_images: typing.List[baml_py.Image],references: typing.List["types.LabeledReference"],
         baml_options: BamlCallOptions = {},
     ) -> baml_py.baml_py.HTTPRequest:
         __result__ = self.__options.merge_options(baml_options).create_http_request_sync(function_name="DraftContentBrief", args={

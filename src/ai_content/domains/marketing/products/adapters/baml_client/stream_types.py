@@ -32,6 +32,7 @@ class ContentBrief(BaseModel):
     script: typing.Optional[str] = None
     persona: typing.Optional[str] = None
     selected_reference_labels: typing.List[str]
+    product_photo_numbers: typing.List[int]
     reference_rationale: typing.Optional[str] = None
     scene: typing.Optional[str] = None
     product_placement: typing.Optional[str] = None
@@ -46,10 +47,9 @@ class KeyframeCheck(BaseModel):
     passed: typing.Optional[bool] = None
     problem: typing.Optional[str] = None
 
-class LabeledReferenceImage(BaseModel):
+class LabeledReference(BaseModel):
     label: typing.Optional[str] = None
     note: typing.Optional[str] = None
-    content: typing.Optional[baml_py.Image] = None
 
 class PostingPackage(BaseModel):
     captions: typing.List[str]
@@ -103,7 +103,7 @@ class StoryboardShot(BaseModel):
 # eagerly rebuilding them can recurse).
 ContentBrief.model_rebuild()
 KeyframeCheck.model_rebuild()
-LabeledReferenceImage.model_rebuild()
+LabeledReference.model_rebuild()
 PostingPackage.model_rebuild()
 ReferenceImageReview.model_rebuild()
 ReferenceSearchProfileDraft.model_rebuild()

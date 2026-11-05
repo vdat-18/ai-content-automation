@@ -89,61 +89,72 @@ async def test_brief_edits_keep_known_fields_and_can_be_approved(tmp_path) -> No
 
 
 class _FakeBamlClient:
-    def __init__(self, fail: bool = False) -> None:
+    def __init__(self, fail: bool = False, numbers: list[int] | None = None) -> None:
         self.fail = fail
-        self.seen: list[tuple[int, int]] = []
+        self.numbers = numbers if numbers is not None else [2, 2, 1, 40]
+        self.seen: list[tuple[int, list[str]]] = []
 
     async def DraftContentBrief(
         self, product_json, user_idea, shot_count, product_images, references
     ):
         if self.fail:
             raise BamlClientError("503", "503", "503")
-        self.seen.append((len(product_images), len(references)))
+        self.seen.append((len(product_images), [ref.label for ref in references]))
         return SimpleNamespace(
-            model_dump=lambda: {"title": "T", "selected_reference_labels": ["ref_2", "ref_9"]}
+            model_dump=lambda: {
+                "title": "T",
+                "selected_reference_labels": ["ref_2", "ref_1", "ref_9"],
+                "product_photo_numbers": list(self.numbers),
+            }
         )
 
 
-async def test_writer_maps_labels_and_skips_failed_downloads() -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        if "gone" in request.url.path:
-            return httpx.Response(404)
-        return httpx.Response(200, content=b"img", headers={"content-type": "image/png"})
+def _photo_server(request: httpx.Request) -> httpx.Response:
+    if "gone" in request.url.path:
+        return httpx.Response(404)
+    return httpx.Response(200, content=b"img", headers={"content-type": "image/png"})
 
+
+async def test_writer_picks_one_scene_and_maps_photo_numbers_to_urls() -> None:
     references = [
-        {"image_id": "id-1", "image_url": "https://x/gone.jpg"},
-        {
-            "image_id": "id-2",
-            "image_url": "https://x/ok.jpg",
-            "screening": {"scene_description": "s"},
-        },
+        {"image_id": "id-1", "image_url": "https://x/a.jpg"},
+        {"image_id": "id-2", "image_url": "https://x/b.jpg", "screening": {"description": "s"}},
     ]
     product = {
         "images": ["https://x/p1.jpg", "https://x/gone-p.jpg"]
         + [f"https://x/p{i}.jpg" for i in range(3, 12)]
     }
     client = _FakeBamlClient()
-    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
+    async with httpx.AsyncClient(transport=httpx.MockTransport(_photo_server)) as http:
         brief = await ContentBriefWriter(client).write(product, "", references, http)
+    # only the first nine photos are tried and one is gone: the model sees eight of them
+    assert client.seen == [(8, ["ref_1", "ref_2"])]
+    # the first label wins and the others are dropped; the reference images are never downloaded
     assert brief["selected_reference_ids"] == ["id-2"]
-    assert "selected_reference_labels" not in brief
-    assert client.seen == [(8, 1)]  # only the first nine photos are tried, one of them gone
+    assert "selected_reference_labels" not in brief and "product_photo_numbers" not in brief
+    # numbers count the photos the model saw: 2 is p3 because p2 is gone; repeats and 40 are dropped
+    assert brief["product_photo_urls"] == ["https://x/p3.jpg", "https://x/p1.jpg"]
+
+
+async def test_writer_uses_the_first_photos_when_the_model_picks_none() -> None:
+    product = {"images": [f"https://x/p{i}.jpg" for i in range(1, 9)]}
+    async with httpx.AsyncClient(transport=httpx.MockTransport(_photo_server)) as http:
+        brief = await ContentBriefWriter(_FakeBamlClient(numbers=[])).write(
+            product, "", [{"image_id": "a"}], http
+        )
+    assert brief["product_photo_urls"] == [f"https://x/p{i}.jpg" for i in range(1, 6)]
 
 
 async def test_writer_errors() -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        if "gone" in request.url.path:
-            return httpx.Response(404)
-        return httpx.Response(200, content=b"i")
-
-    async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
+    reference = [{"image_id": "a"}]
+    async with httpx.AsyncClient(transport=httpx.MockTransport(_photo_server)) as http:
         with pytest.raises(BriefGenerationError, match="could be downloaded"):
             await ContentBriefWriter(_FakeBamlClient()).write(
-                {}, "", [{"image_id": "a", "image_url": "https://x/gone.jpg"}], http
+                {"images": ["https://x/gone.jpg"]}, "", reference, http
             )
         with pytest.raises(BriefGenerationError):
             await ContentBriefWriter(_FakeBamlClient(fail=True)).write(
-                {}, "", [{"image_id": "a", "image_url": "https://x/ok.jpg"}], http
+                {"images": ["https://x/ok.jpg"]}, "", reference, http
             )
 
 

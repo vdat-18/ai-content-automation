@@ -16,7 +16,6 @@ _TRIES = 3
 _RETRY_STATUSES = {429, 500, 502, 503, 504}
 _RETRY_DELAY = 5.0
 _DOWNLOAD_TIMEOUT = 40
-_MAX_PRODUCT_PHOTOS = 6
 
 _PRODUCT_RULE = (
     "The product photos show the real product: keep its exact shape, color, proportions, "
@@ -213,8 +212,6 @@ async def fetch_images(urls: list[str], http: httpx.AsyncClient | None = None) -
                 continue
             if response.content not in found:
                 found.append(response.content)
-            if len(found) == _MAX_PRODUCT_PHOTOS:
-                break
     finally:
         if owned:
             await http.aclose()

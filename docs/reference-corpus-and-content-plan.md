@@ -58,7 +58,7 @@ Frontend: bỏ nút Duyệt/Loại, chỉ còn **Xóa** (đánh dấu xóa mềm
    `điểm = a·liên quan(ý tưởng, sản phẩm) + b·chất lượng − c·đã dùng cho sản phẩm này`
    rồi chọn lần lượt kiểu **MMR** (mỗi ảnh được chọn làm giảm điểm các ảnh gần nó) để ứng viên đã đa dạng.
 2. **Lập kế hoạch (một lần gọi LLM, chỉ chữ).** Nhận thông tin sản phẩm, ý tưởng của người dùng và mô tả ngắn từng ứng viên. Trả về N kế hoạch: góc bán, đối tượng, câu móc (hook), ảnh chính và ảnh phụ, cách biến tấu bối cảnh. Ràng buộc: không hai kế hoạch trùng góc bán hoặc trùng ảnh chính.
-3. **Viết brief (N lần gọi song song).** Mỗi kế hoạch được viết thành brief đầy đủ, lần này LLM nhìn ảnh sản phẩm thật và ảnh tham chiếu của riêng kế hoạch đó (đúng như bản hiện tại).
+3. **Viết brief (N lần gọi song song).** Mỗi kế hoạch được viết thành brief đầy đủ, lần này LLM nhìn ảnh sản phẩm thật (tự chọn tối đa 5 ảnh để sinh ảnh) và đọc mô tả chữ của ảnh tham chiếu để chọn đúng 1 bối cảnh.
 4. **Ghi nhận đã dùng.** Mỗi ảnh tham chiếu đã dùng cho sản phẩm nào được lưu lại, lần sau ưu tiên ảnh chưa dùng. Dùng lại giữa các sản phẩm khác nhau thì được.
 
 Ý tưởng người dùng: nếu có nhiều ý thì mỗi ý neo một kế hoạch; nếu ít hơn N thì các kế hoạch còn lại agent tự chọn hướng, nhưng vẫn khác các ý đã có.

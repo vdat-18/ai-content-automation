@@ -20,7 +20,7 @@ from .globals import DO_NOT_USE_DIRECTLY_UNLESS_YOU_KNOW_WHAT_YOURE_DOING_RUNTIM
 class TypeBuilder(type_builder.TypeBuilder):
     def __init__(self):
         super().__init__(classes=set(
-          ["ContentBrief","KeyframeCheck","LabeledReferenceImage","PostingPackage","ReferenceImageReview","ReferenceSearchProfileDraft","StoryboardReview","StoryboardShot",]
+          ["ContentBrief","KeyframeCheck","LabeledReference","PostingPackage","ReferenceImageReview","ReferenceSearchProfileDraft","StoryboardReview","StoryboardShot",]
         ), enums=set(
           []
         ), runtime=DO_NOT_USE_DIRECTLY_UNLESS_YOU_KNOW_WHAT_YOURE_DOING_RUNTIME)
@@ -43,8 +43,8 @@ class TypeBuilder(type_builder.TypeBuilder):
         return KeyframeCheckViewer(self)
 
     @property
-    def LabeledReferenceImage(self) -> "LabeledReferenceImageViewer":
-        return LabeledReferenceImageViewer(self)
+    def LabeledReference(self) -> "LabeledReferenceViewer":
+        return LabeledReferenceViewer(self)
 
     @property
     def PostingPackage(self) -> "PostingPackageViewer":
@@ -81,7 +81,7 @@ class ContentBriefAst:
     def __init__(self, tb: type_builder.TypeBuilder):
         _tb = tb._tb # type: ignore (we know how to use this private attribute)
         self._bldr = _tb.class_("ContentBrief")
-        self._properties: typing.Set[str] = set([  "title",  "format",  "script",  "persona",  "selected_reference_labels",  "reference_rationale",  "scene",  "product_placement",  "product_size",  "selling_angle",  "target_audience",  "style",  "colors",  "shots",  ])
+        self._properties: typing.Set[str] = set([  "title",  "format",  "script",  "persona",  "selected_reference_labels",  "product_photo_numbers",  "reference_rationale",  "scene",  "product_placement",  "product_size",  "selling_angle",  "target_audience",  "style",  "colors",  "shots",  ])
         self._props = ContentBriefProperties(self._bldr, self._properties)
 
     def type(self) -> baml_py.FieldType:
@@ -128,6 +128,10 @@ class ContentBriefProperties:
     @property
     def selected_reference_labels(self) -> type_builder.ClassPropertyViewer:
         return type_builder.ClassPropertyViewer(self.__bldr.property("selected_reference_labels"))
+    
+    @property
+    def product_photo_numbers(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("product_photo_numbers"))
     
     @property
     def reference_rationale(self) -> type_builder.ClassPropertyViewer:
@@ -211,22 +215,22 @@ class KeyframeCheckProperties:
     
 
 
-class LabeledReferenceImageAst:
+class LabeledReferenceAst:
     def __init__(self, tb: type_builder.TypeBuilder):
         _tb = tb._tb # type: ignore (we know how to use this private attribute)
-        self._bldr = _tb.class_("LabeledReferenceImage")
-        self._properties: typing.Set[str] = set([  "label",  "note",  "content",  ])
-        self._props = LabeledReferenceImageProperties(self._bldr, self._properties)
+        self._bldr = _tb.class_("LabeledReference")
+        self._properties: typing.Set[str] = set([  "label",  "note",  ])
+        self._props = LabeledReferenceProperties(self._bldr, self._properties)
 
     def type(self) -> baml_py.FieldType:
         return self._bldr.field()
 
     @property
-    def props(self) -> "LabeledReferenceImageProperties":
+    def props(self) -> "LabeledReferenceProperties":
         return self._props
 
 
-class LabeledReferenceImageViewer(LabeledReferenceImageAst):
+class LabeledReferenceViewer(LabeledReferenceAst):
     def __init__(self, tb: type_builder.TypeBuilder):
         super().__init__(tb)
 
@@ -236,7 +240,7 @@ class LabeledReferenceImageViewer(LabeledReferenceImageAst):
     
 
 
-class LabeledReferenceImageProperties:
+class LabeledReferenceProperties:
     def __init__(self, bldr: baml_py.ClassBuilder, properties: typing.Set[str]):
         self.__bldr = bldr
         self.__properties = properties # type: ignore (we know how to use this private attribute) # noqa: F821
@@ -250,10 +254,6 @@ class LabeledReferenceImageProperties:
     @property
     def note(self) -> type_builder.ClassPropertyViewer:
         return type_builder.ClassPropertyViewer(self.__bldr.property("note"))
-    
-    @property
-    def content(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("content"))
     
     
 

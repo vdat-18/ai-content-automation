@@ -19,7 +19,8 @@ from ai_content.domains.marketing.products.adapters.baml_registry import build_c
 _CONCURRENCY = 2
 _DOWNLOAD_TIMEOUT = 30
 MAX_REFERENCES = 8
-_PRODUCT_PHOTOS = 9
+PHOTOS_SEEN = 9  # the crawl keeps at most this many photos of a product
+MAX_PRODUCT_PHOTOS = 5  # photos the image model gets, picked by the brief
 
 
 class BriefGenerationError(RuntimeError):
@@ -37,7 +38,7 @@ class _BamlBriefClient(Protocol):
         user_idea: str,
         shot_count: int,
         product_images: list[BamlImage],
-        references: list[baml_types.LabeledReferenceImage],
+        references: list[baml_types.LabeledReference],
     ) -> baml_types.ContentBrief: ...
 
 
@@ -114,7 +115,11 @@ class ContentBriefWriter:
         http: httpx.AsyncClient | None = None,
         shot_count: int = 1,
     ) -> dict[str, Any]:
-        """Return the brief as a dict; selected references are reported as image ids."""
+        """Return the brief as a dict.
+
+        The model sees the product photos and only the text of the reference scenes. It picks one
+        scene (reported as an image id) and the photos the image model will use (reported as urls).
+        """
         semaphore = asyncio.Semaphore(_CONCURRENCY)
         owned = http is None
         http = http or httpx.AsyncClient(timeout=_DOWNLOAD_TIMEOUT, follow_redirects=True)
@@ -130,49 +135,37 @@ class ContentBriefWriter:
             media_type = response.headers.get("content-type", "image/jpeg").split(";")[0]
             return BamlImage.from_base64(media_type, base64.b64encode(response.content).decode())
 
-        async def load(index: int, image: dict[str, Any]) -> tuple[str, str, Any] | None:
-            content = await fetch(image["image_url"])
-            if content is None:
-                return None
-            label = f"ref_{index + 1}"
-            return (
-                label,
-                image["image_id"],
-                baml_types.LabeledReferenceImage(label=label, note=_note(image), content=content),
-            )
-
+        urls = [url for url in (product.get("images") or [])[:PHOTOS_SEEN] if url]
         try:
-            loaded = [
-                item
-                for item in await asyncio.gather(
-                    *(load(i, image) for i, image in enumerate(references))
-                )
-                if item is not None
-            ]
-            photos = [
-                photo
-                for photo in await asyncio.gather(
-                    *(fetch(url) for url in (product.get("images") or [])[:_PRODUCT_PHOTOS] if url)
-                )
-                if photo is not None
-            ]
+            downloaded = await asyncio.gather(*(fetch(url) for url in urls))
         finally:
             if owned:
                 await http.aclose()
-        if not loaded:
-            raise BriefGenerationError("None of the reference images could be downloaded")
+        photos = [
+            (url, photo) for url, photo in zip(urls, downloaded, strict=True) if photo is not None
+        ]
+        if not photos:
+            raise BriefGenerationError("None of the product photos could be downloaded")
+        labeled = {f"ref_{index + 1}": image["image_id"] for index, image in enumerate(references)}
         try:
             draft = await self._client.DraftContentBrief(
                 json.dumps(product_facts(product), ensure_ascii=False),
                 user_idea.strip(),
                 shot_count,
-                photos,
-                [item[2] for item in loaded],
+                [photo for _, photo in photos],
+                [
+                    baml_types.LabeledReference(label=label, note=_note(image))
+                    for label, image in zip(labeled, references, strict=True)
+                ],
             )
         except BamlError as error:
             raise BriefGenerationError(str(error)) from error
-        by_label = {label: image_id for label, image_id, _ in loaded}
         brief = draft.model_dump()
         labels = brief.pop("selected_reference_labels")
-        brief["selected_reference_ids"] = [by_label[label] for label in labels if label in by_label]
+        brief["selected_reference_ids"] = [labeled[label] for label in labels if label in labeled][
+            :1
+        ]
+        numbers = dict.fromkeys(brief.pop("product_photo_numbers"))
+        chosen = [photos[number - 1][0] for number in numbers if 1 <= number <= len(photos)]
+        brief["product_photo_urls"] = (chosen or [url for url, _ in photos])[:MAX_PRODUCT_PHOTOS]
         return brief

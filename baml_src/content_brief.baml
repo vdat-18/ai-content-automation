@@ -1,7 +1,6 @@
-class LabeledReferenceImage {
+class LabeledReference {
   label string
   note string
-  content image
 }
 
 class StoryboardShot {
@@ -21,6 +20,7 @@ class ContentBrief {
   script string
   persona string
   selected_reference_labels string[]
+  product_photo_numbers int[]
   reference_rationale string
   scene string
   product_placement string
@@ -37,7 +37,7 @@ function DraftContentBrief(
   user_idea: string,
   shot_count: int,
   product_images: image[],
-  references: LabeledReferenceImage[]
+  references: LabeledReference[]
 ) -> ContentBrief {
   client OrchestrationModel
   prompt #"
@@ -46,11 +46,18 @@ function DraftContentBrief(
     excellent brief for a product photo that sells the product to Vietnamese shoppers. Return JSON
     only and exactly match the response schema.
 
-    The reference images are approved scenes whose background, setting and styling we borrow. Look
-    at them, pick the 1 to 3 that suit this product best, and put their labels in
-    selected_reference_labels. Explain the choice in reference_rationale. Describe the scene to
+    The references are text descriptions of approved scenes whose background, setting and styling
+    we borrow. Pick the ONE that suits this product best and put its label alone in
+    selected_reference_labels: that single scene photo is later given to the image model, so write
+    scene from its description. Explain the choice in reference_rationale. Describe the scene to
     recreate in scene and say exactly where and how the product sits in product_placement. Never
     copy a reference literally and never reuse another brand's product, logo or text from it.
+
+    The product photos are numbered. Put in product_photo_numbers the numbers of the at most 5
+    photos the image model should look at, most useful first: the main photo, other angles and
+    photos that show the size or real use. A photo that is a collage or carries text is fine when
+    it shows the product or real facts such as a size chart. Read sizes and materials from all
+    photos, including size charts, and use them in product_size and the prompts.
 
     The brief is a storyboard for one vertical ad video made of exactly {{ shot_count }} shot(s).
     Every shot is first made as a still keyframe image and later animated into a 15 second clip.
@@ -142,13 +149,13 @@ function DraftContentBrief(
 
     Product photos:
     {% for photo in product_images %}
+    Photo {{ loop.index }}:
     {{ photo }}
     {% endfor %}
 
-    Reference images:
+    Reference scenes:
     {% for reference in references %}
     {{ reference.label }}: {{ reference.note }}
-    {{ reference.content }}
     {% endfor %}
 
     {{ ctx.output_format }}

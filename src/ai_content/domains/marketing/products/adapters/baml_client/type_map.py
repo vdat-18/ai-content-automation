@@ -22,8 +22,8 @@ type_map = {
     "types.KeyframeCheck": types.KeyframeCheck,
     "stream_types.KeyframeCheck": stream_types.KeyframeCheck,
 
-    "types.LabeledReferenceImage": types.LabeledReferenceImage,
-    "stream_types.LabeledReferenceImage": stream_types.LabeledReferenceImage,
+    "types.LabeledReference": types.LabeledReference,
+    "stream_types.LabeledReference": stream_types.LabeledReference,
 
     "types.PostingPackage": types.PostingPackage,
     "stream_types.PostingPackage": stream_types.PostingPackage,

@@ -85,6 +85,22 @@ async def test_master_comes_first_then_other_shots_after_approval(tmp_path) -> N
     assert keyframer.calls == [("master", 2, ""), ("follow_up", 2, ""), ("follow_up", 2, "")]
 
 
+async def test_keyframes_use_the_photos_the_brief_picked_at_most_five(tmp_path) -> None:
+    urls = [f"https://img.example/{i}.jpg" for i in range(1, 9)]
+    keyframer = _FakeKeyframer()
+    service = await _service(tmp_path, keyframer)
+    await service._repository.upsert_detail(
+        {"product_id": PRODUCT_ID, "title": "Giỏ", "images": urls}
+    )
+    # no pick yet: the first five photos of the product
+    await service.generate_keyframes(PRODUCT_ID, tmp_path)
+    assert keyframer.calls[-1][1] == 5
+    brief = {"title": "b", "shots": SHOTS, "product_photo_urls": [urls[6], urls[1]]}
+    await service._repository.save_brief(PRODUCT_ID, "", brief, "approved")
+    await service.generate_keyframes(PRODUCT_ID, tmp_path, shot_index=0)
+    assert keyframer.calls[-1][1] == 2
+
+
 async def test_failed_generation_is_recorded_and_attempts_count_up(tmp_path) -> None:
     service = await _service(tmp_path, _FakeKeyframer(fail=True))
     [failed] = await service.generate_keyframes(PRODUCT_ID, tmp_path)
