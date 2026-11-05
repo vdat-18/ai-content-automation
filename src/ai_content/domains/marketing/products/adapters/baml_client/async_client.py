@@ -127,6 +127,21 @@ class BamlAsyncClient:
                 "product_json": product_json,
             })
             return typing.cast(types.ReferenceSearchProfileDraft, __result__.cast_to(types, types, stream_types, False, __runtime__))
+    async def ReviewFinalVideo(self, product_json: str,storyboard_json: str,product_photos: typing.List[baml_py.Image],frames: typing.List[baml_py.Image],
+        baml_options: BamlCallOptions = {},
+    ) -> types.VideoReview:
+        # Check if on_tick is provided
+        if 'on_tick' in baml_options:
+            # Use streaming internally when on_tick is provided
+            __stream__ = self.stream.ReviewFinalVideo(product_json=product_json,storyboard_json=storyboard_json,product_photos=product_photos,frames=frames,
+                baml_options=baml_options)
+            return await __stream__.get_final_response()
+        else:
+            # Original non-streaming code
+            __result__ = await self.__options.merge_options(baml_options).call_function_async(function_name="ReviewFinalVideo", args={
+                "product_json": product_json,"storyboard_json": storyboard_json,"product_photos": product_photos,"frames": frames,
+            })
+            return typing.cast(types.VideoReview, __result__.cast_to(types, types, stream_types, False, __runtime__))
     async def ReviewReferenceImage(self, product_type: str,image: baml_py.Image,
         baml_options: BamlCallOptions = {},
     ) -> types.ReferenceImageReview:
@@ -217,6 +232,18 @@ class BamlStreamClient:
           lambda x: typing.cast(types.ReferenceSearchProfileDraft, x.cast_to(types, types, stream_types, False, __runtime__)),
           __ctx__,
         )
+    def ReviewFinalVideo(self, product_json: str,storyboard_json: str,product_photos: typing.List[baml_py.Image],frames: typing.List[baml_py.Image],
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.BamlStream[stream_types.VideoReview, types.VideoReview]:
+        __ctx__, __result__ = self.__options.merge_options(baml_options).create_async_stream(function_name="ReviewFinalVideo", args={
+            "product_json": product_json,"storyboard_json": storyboard_json,"product_photos": product_photos,"frames": frames,
+        })
+        return baml_py.BamlStream[stream_types.VideoReview, types.VideoReview](
+          __result__,
+          lambda x: typing.cast(stream_types.VideoReview, x.cast_to(types, types, stream_types, True, __runtime__)),
+          lambda x: typing.cast(types.VideoReview, x.cast_to(types, types, stream_types, False, __runtime__)),
+          __ctx__,
+        )
     def ReviewReferenceImage(self, product_type: str,image: baml_py.Image,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.BamlStream[stream_types.ReferenceImageReview, types.ReferenceImageReview]:
@@ -282,6 +309,13 @@ class BamlHttpRequestClient:
             "product_json": product_json,
         }, mode="request")
         return __result__
+    async def ReviewFinalVideo(self, product_json: str,storyboard_json: str,product_photos: typing.List[baml_py.Image],frames: typing.List[baml_py.Image],
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.baml_py.HTTPRequest:
+        __result__ = await self.__options.merge_options(baml_options).create_http_request_async(function_name="ReviewFinalVideo", args={
+            "product_json": product_json,"storyboard_json": storyboard_json,"product_photos": product_photos,"frames": frames,
+        }, mode="request")
+        return __result__
     async def ReviewReferenceImage(self, product_type: str,image: baml_py.Image,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.baml_py.HTTPRequest:
@@ -330,6 +364,13 @@ class BamlHttpStreamRequestClient:
     ) -> baml_py.baml_py.HTTPRequest:
         __result__ = await self.__options.merge_options(baml_options).create_http_request_async(function_name="DraftReferenceSearchProfile", args={
             "product_json": product_json,
+        }, mode="stream")
+        return __result__
+    async def ReviewFinalVideo(self, product_json: str,storyboard_json: str,product_photos: typing.List[baml_py.Image],frames: typing.List[baml_py.Image],
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.baml_py.HTTPRequest:
+        __result__ = await self.__options.merge_options(baml_options).create_http_request_async(function_name="ReviewFinalVideo", args={
+            "product_json": product_json,"storyboard_json": storyboard_json,"product_photos": product_photos,"frames": frames,
         }, mode="stream")
         return __result__
     async def ReviewReferenceImage(self, product_type: str,image: baml_py.Image,

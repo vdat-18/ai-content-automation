@@ -32,6 +32,7 @@ from ai_content.domains.marketing.products.repositories import SqliteProductRepo
 from ai_content.domains.marketing.products.service import ProductCatalogService
 from ai_content.domains.marketing.products.speech import SpeechClient
 from ai_content.domains.marketing.products.storyboard_review import StoryboardReviewer
+from ai_content.domains.marketing.products.video_review import VideoReviewer
 from ai_content.entrypoints.postgres_runtime import PostgresRuntimeContainer
 from ai_content.platform.ai_usage import AIUsageRepository, SqliteAIUsageRepository
 from ai_content.platform.database import Database
@@ -349,6 +350,16 @@ def _storyboard_reviewer(settings: ApiRuntimeSettings) -> StoryboardReviewer | N
     )
 
 
+def _video_reviewer(settings: ApiRuntimeSettings) -> VideoReviewer | None:
+    if not settings.screening_api_key:
+        return None
+    return VideoReviewer.from_settings(
+        base_url=settings.screening_base_url,
+        api_key=settings.screening_api_key,
+        model=settings.screening_model,
+    )
+
+
 def _profile_generator(settings: ApiRuntimeSettings) -> ReferenceProfileGenerator | None:
     if not settings.screening_api_key:
         return None
@@ -382,6 +393,7 @@ async def product_catalog_scope(postgres: Any) -> AsyncIterator[ProductCatalogSe
             _speech_client(settings),
             _remote_media(settings),
             _storyboard_reviewer(settings),
+            _video_reviewer(settings),
         )
     finally:
         if postgres is None:

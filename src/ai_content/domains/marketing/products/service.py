@@ -25,6 +25,7 @@ from .clips import (
     StitchClip,
     StitchUnavailable,
     VideoClient,
+    sample_frames,
     shot_seconds,
     stitch,
 )
@@ -55,6 +56,7 @@ from .speech import (
     make_voiceover,
 )
 from .storyboard_review import StoryboardReviewer
+from .video_review import VideoReviewer
 
 _PINTEREST_SEARCH = "https://www.pinterest.com/search/pins/?q="
 _SCREEN_BATCH = 200
@@ -79,6 +81,7 @@ _DELIVERY_RULE = {
 }
 VIDEO_LENGTHS = (15, 30, 45, 60, 75, 90)
 BRIEF_ATTEMPTS = 3
+REVIEW_FRAMES = 12
 PERSONA_STATUSES = frozenset({"ready", "approved", "rejected"})
 KEYFRAME_REVIEW_STATUSES = frozenset({"approved", "ready", "rejected"})
 BRIEF_FIELDS = (
@@ -177,6 +180,7 @@ class ProductCatalogService:
         speaker: SpeechClient | None = None,
         remote_media: RemoteMedia | None = None,
         storyboard_reviewer: StoryboardReviewer | None = None,
+        video_reviewer: VideoReviewer | None = None,
     ) -> None:
         self._repository = repository
         self._generator = generator
@@ -190,6 +194,7 @@ class ProductCatalogService:
         self._speaker = speaker
         self._remote_media = remote_media
         self._storyboard_reviewer = storyboard_reviewer
+        self._video_reviewer = video_reviewer
 
     async def ingest(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Store whatever a captured page or feed response contains."""
@@ -990,7 +995,29 @@ class ProductCatalogService:
             f"Stitched {len(parts)} clip(s), voice-over {'yes' if voice else 'no'}, "
             f"captions {'yes' if captions else 'no'}",
         )
+        await self._review_video(product_id, record["brief"], parts, store.path(relative))
         return relative
+
+    async def _review_video(
+        self, product_id: str, brief: dict[str, Any], parts: list[StitchClip], video: Path
+    ) -> None:
+        """Let the reviewer look at frames of the finished video; the verdict goes to the log."""
+        if self._video_reviewer is None:
+            return
+        detail = await self._repository.get_detail(product_id) or {}
+        photos = await fetch_images([u for u in detail.get("images") or [] if u])
+        seconds = sum(shot_seconds(part.duration) for part in parts)
+        frames = await sample_frames(video, seconds, REVIEW_FRAMES)
+        problems = await self._video_reviewer.review(detail, brief, photos, frames)
+        if problems is None:
+            await self._log(product_id, "video_review", "skipped", "The review could not run")
+        else:
+            await self._log(
+                product_id,
+                "video_review",
+                "flagged" if problems else "ok",
+                "; ".join(problems) if problems else "The reviewer found no problems",
+            )
 
     async def delete_product(self, product_id: str, media_root: Path) -> bool:
         """Delete a product with its brief, images, clips and video; it is not collected again."""
