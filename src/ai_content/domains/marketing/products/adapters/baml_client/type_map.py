@@ -34,6 +34,9 @@ type_map = {
     "types.ReferenceSearchProfileDraft": types.ReferenceSearchProfileDraft,
     "stream_types.ReferenceSearchProfileDraft": stream_types.ReferenceSearchProfileDraft,
 
+    "types.StoryboardReview": types.StoryboardReview,
+    "stream_types.StoryboardReview": stream_types.StoryboardReview,
+
     "types.StoryboardShot": types.StoryboardShot,
     "stream_types.StoryboardShot": stream_types.StoryboardShot,
 

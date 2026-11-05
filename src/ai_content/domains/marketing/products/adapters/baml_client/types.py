@@ -41,7 +41,7 @@ def all_succeeded(checks: typing.Dict[CheckName, Check]) -> bool:
 # #########################################################################
 
 # #########################################################################
-# Generated classes (7)
+# Generated classes (8)
 # #########################################################################
 
 class ContentBrief(BaseModel):
@@ -93,6 +93,10 @@ class ReferenceSearchProfileDraft(BaseModel):
     product_type: str
     keywords: typing.List[str]
 
+class StoryboardReview(BaseModel):
+    passed: bool
+    problems: typing.List[str]
+
 class StoryboardShot(BaseModel):
     role: typing.Union[typing_extensions.Literal['hook'], typing_extensions.Literal['problem'], typing_extensions.Literal['demo'], typing_extensions.Literal['benefit'], typing_extensions.Literal['call_to_action']]
     description: str
@@ -109,7 +113,7 @@ class StoryboardShot(BaseModel):
 
 
 # #########################################################################
-# Model rebuilds (7)
+# Model rebuilds (8)
 # #########################################################################
 # Resolve string forward references now that every model above is defined so
 # class declaration order never breaks Pydantic construction (issue #793).
@@ -121,4 +125,5 @@ LabeledReferenceImage.model_rebuild()
 PostingPackage.model_rebuild()
 ReferenceImageReview.model_rebuild()
 ReferenceSearchProfileDraft.model_rebuild()
+StoryboardReview.model_rebuild()
 StoryboardShot.model_rebuild()

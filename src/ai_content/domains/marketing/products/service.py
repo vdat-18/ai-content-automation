@@ -13,7 +13,6 @@ from loguru import logger
 from openpyxl import Workbook
 from openpyxl.styles import Font
 
-from .brief_quality import brief_quality_problems
 from .briefing import (
     MAX_REFERENCES,
     BriefGenerationError,
@@ -55,6 +54,7 @@ from .speech import (
     SpeechError,
     make_voiceover,
 )
+from .storyboard_review import StoryboardReviewer
 
 _PINTEREST_SEARCH = "https://www.pinterest.com/search/pins/?q="
 _SCREEN_BATCH = 200
@@ -176,6 +176,7 @@ class ProductCatalogService:
         poster: PostingPackageWriter | None = None,
         speaker: SpeechClient | None = None,
         remote_media: RemoteMedia | None = None,
+        storyboard_reviewer: StoryboardReviewer | None = None,
     ) -> None:
         self._repository = repository
         self._generator = generator
@@ -188,6 +189,7 @@ class ProductCatalogService:
         self._poster = poster
         self._speaker = speaker
         self._remote_media = remote_media
+        self._storyboard_reviewer = storyboard_reviewer
 
     async def ingest(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Store whatever a captured page or feed response contains."""
@@ -440,7 +442,7 @@ class ProductCatalogService:
                 detail, f"{user_idea}{fixes}", references, shot_count=shot_count
             )
             count_ok = "shots" not in brief or len(brief["shots"]) == shot_count
-            problems = brief_quality_problems(brief)
+            problems = await self._review_storyboard(detail, brief) if count_ok else []
             if count_ok and not problems:
                 break
             wanted = [] if count_ok else [f"Write exactly {shot_count} shots."]
@@ -470,6 +472,12 @@ class ProductCatalogService:
             + (f". Still open: {'; '.join(problems)}" if problems else ""),
         )
         return await self._repository.get_brief(product_id)
+
+    async def _review_storyboard(self, product: dict[str, Any], brief: dict[str, Any]) -> list[str]:
+        """Problems the reviewer found; none when there is no reviewer or the review failed."""
+        if self._storyboard_reviewer is None or not brief.get("shots"):
+            return []
+        return await self._storyboard_reviewer.review(product, brief) or []
 
     def media(self, media_root: Path) -> MediaStore:
         """The store of generated files: the local folder plus the remote copy, when set up."""
@@ -502,7 +510,8 @@ class ProductCatalogService:
             return None
         brief = {**current["brief"], **{k: v for k, v in changes.items() if k in BRIEF_FIELDS}}
         brief["warnings"] = brief_warnings(brief)
-        brief["quality_problems"] = brief_quality_problems(brief)
+        detail = await self._repository.get_detail(product_id)
+        brief["quality_problems"] = await self._review_storyboard(detail, brief) if detail else []
         await self._repository.save_brief(product_id, current["user_idea"], brief, status)
         return await self._repository.get_brief(product_id)
 
