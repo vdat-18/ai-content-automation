@@ -1,6 +1,12 @@
+class StoryboardProblem {
+  where string
+  problem string
+  fix string
+}
+
 class StoryboardReview {
   passed bool
-  problems string[]
+  problems StoryboardProblem[]
 }
 
 function ReviewStoryboard(product_json: string, brief_json: string) -> StoryboardReview {
@@ -22,8 +28,11 @@ function ReviewStoryboard(product_json: string, brief_json: string) -> Storyboar
     - the story has no clear flow from hook to product benefit to call to action;
     - it contradicts the product facts (size, use, features) or invents claims.
 
-    problems: empty when passed. Otherwise one short English instruction per problem, naming the
-    shot number and what to change, written for the person who rewrites the storyboard.
+    problems: empty when passed. Otherwise one entry per problem. where: the shot number and the
+    field, for example "shot 3 motion_prompt". problem: what is wrong, quoting the words or beats
+    concerned. fix: the concrete replacement text or the exact change to make. List a problem only
+    when you can give its fix. After finding one problem, look for the same mistake in the other
+    shots and list each place. Do not repeat a problem the storyboard does not have.
 
     {{ _.role("user") }}
     Product facts:

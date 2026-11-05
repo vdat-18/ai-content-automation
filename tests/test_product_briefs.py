@@ -222,7 +222,11 @@ def test_reference_note_prefers_the_description() -> None:
     assert _note({}) == ""
 
 
-async def test_video_length_sets_the_shot_count_in_whole_clips(tmp_path) -> None:
+async def test_video_length_sets_the_shot_count_from_the_finished_length(
+    tmp_path, monkeypatch
+) -> None:
+    # a 15 second clip is trimmed and sped up, so it plays for about 11.8 seconds
+    monkeypatch.setenv("AIC_CLIP_SPEED", "1.25")
     seen: list[int] = []
 
     class _Counting(_FakeWriter):
@@ -236,13 +240,16 @@ async def test_video_length_sets_the_shot_count_in_whole_clips(tmp_path) -> None
     await service.create_brief(PRODUCT_ID)
     await service.create_brief(PRODUCT_ID, video_seconds=60)
     await service.create_brief(PRODUCT_ID, video_seconds=90)
-    assert seen == [1, 4, 6]
+    assert seen == [1, 5, 8]
     with pytest.raises(BriefUnavailable, match="Video length"):
         await service.create_brief(PRODUCT_ID, video_seconds=20)
 
 
-async def test_brief_is_rewritten_until_it_has_the_requested_number_of_shots(tmp_path) -> None:
-    counts = [1, 1, 2]
+async def test_brief_is_rewritten_until_it_has_the_requested_number_of_shots(
+    tmp_path, monkeypatch
+) -> None:
+    monkeypatch.setenv("AIC_CLIP_SPEED", "1.25")  # 30 seconds is 3 shots
+    counts = [1, 1, 3]
 
     class _Wrong(_FakeWriter):
         async def write(self, product, user_idea, references, shot_count=1):
@@ -252,8 +259,8 @@ async def test_brief_is_rewritten_until_it_has_the_requested_number_of_shots(tmp
     await service._repository.select_product(PRODUCT_ID, "áo thun")
     await _make_reference_live(service)
     record = await service.create_brief(PRODUCT_ID, video_seconds=30)
-    assert record is not None and len(record["brief"]["shots"]) == 2 and counts == []
+    assert record is not None and len(record["brief"]["shots"]) == 3 and counts == []
 
-    counts[:] = [3, 3, 3]
-    with pytest.raises(BriefGenerationError, match="3 shots instead of 2"):
+    counts[:] = [4, 4, 4]
+    with pytest.raises(BriefGenerationError, match="4 shots instead of 3"):
         await service.create_brief(PRODUCT_ID, video_seconds=30)

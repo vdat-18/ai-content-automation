@@ -440,7 +440,7 @@ class ProductCatalogService:
             raise BriefUnavailable(
                 f"No usable reference image of type '{product_type}' yet; crawl Pinterest first"
             )
-        shot_count = video_seconds // CLIP_SECONDS
+        shot_count = max(1, round(video_seconds / shot_seconds(CLIP_SECONDS)))
         fixes = ""
         attempts = 0
         for _ in range(BRIEF_ATTEMPTS):

@@ -212,7 +212,7 @@ async def stitch(clips: list[StitchClip], output: Path, voiceover: Path | None =
         if voiceover is not None:
             await _run(
                 "ffmpeg", "-v", "error", "-y", "-i", silent.name, "-i", str(voiceover),
-                "-map", "0:v", "-map", "1:a", "-af", "loudnorm=I=-16:LRA=11:TP=-1.5",
+                "-map", "0:v", "-map", "1:a", "-af", "loudnorm=I=-14:LRA=11:TP=-1",
                 "-c:v", "copy", "-c:a", "aac", "-ar", "44100", "-ac", "2", "-shortest",
                 "-movflags", "+faststart", output.name, cwd=output.parent,
             )  # fmt: skip

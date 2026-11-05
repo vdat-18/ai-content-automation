@@ -98,8 +98,13 @@ function DraftContentBrief(
     suits the product and the idea.
 
     The first 3 seconds of the first shot must hook: start on a close-up of the product or on a
-    problem shoppers know, and put a short on-screen question or claim in the first shot's
-    on_screen_text. Write on_screen_text and voiceover in everyday Vietnamese shoppers use. Never
+    problem shoppers know, with movement already in the very first frame (never a still or empty
+    opening), and put a short on-screen question or claim in the first shot's on_screen_text.
+    Give the shots these roles in order: hook, problem, demo, benefit, call_to_action (with fewer
+    shots merge neighbours, with more shots repeat demo or benefit), so every shot moves the story
+    one step. The last shot ends on a frame close to the opening one (the same close-up of the
+    product) so the video loops when it repeats. Write on_screen_text and voiceover in everyday
+    Vietnamese shoppers use. Never
     use absolute claims (tốt nhất, rẻ nhất, số 1, 100%, chắc chắn), never name other shopping or
     social platforms and never promise medical results.
 
@@ -118,9 +123,14 @@ function DraftContentBrief(
     (a complete, self-contained English prompt for an image model: "the person from the character
     image" doing the action of this shot with the real product as the clear hero, the shared scene, camera angle, lighting, style and colors, and an explicit instruction
     that the product keeps its real shape, color, proportions and label, and that it keeps its
-    real size from product_size next to the person and the room, never enlarged or shrunk), motion_prompt (English,
-    four or five sentences describing the action over the 15 seconds as timed beats of about 3
-    seconds, each beat a new, clearly visible action or camera move (for example "0 to 3s: she
+    real size from product_size next to the person and the room, never enlarged or shrunk), motion_prompt (English.
+    Name the subject in a few words and describe only motion, because the keyframe already shows
+    how everything looks: never re-describe the face, outfit or product. Say the shot size and the
+    camera height and name every camera move with its exact term: a dolly moves the camera, a
+    zoom changes the lens, a pan turns it in place, tracking follows the subject; write static
+    only when nothing at all moves. Replace mood words such as cinematic, epic or stunning with
+    what is seen. Write four or five sentences describing the action over the 15 seconds as timed
+    beats of about 3 seconds, each beat a new, clearly visible action or camera move (for example "0 to 3s: she
     grabs the basket and swings it open; 3 to 6s: quick push-in as she stuffs clothes inside; 6
     to 9s: camera swings around to her side while she lifts it; 9 to 12s: she folds it flat in
     one move; 12 to 15s: she holds it up and smiles to the camera"). The pace is quick and

@@ -25,9 +25,14 @@ async def test_a_passing_review_has_no_problems() -> None:
     assert await reviewer.review({}, {"shots": [SHOT]}) == []
 
 
-async def test_a_failing_review_returns_the_instructions() -> None:
-    reviewer = _reviewer({"passed": False, "problems": [" Shot 2 only drifts. ", ""]})
-    assert await reviewer.review({}, {"shots": [SHOT]}) == ["Shot 2 only drifts."]
+async def test_a_failing_review_says_where_what_and_how_to_fix() -> None:
+    problem = SimpleNamespace(
+        where=" shot 2 motion_prompt ", problem=" Only drifts. ", fix=" Add a 3 to 6s beat. "
+    )
+    reviewer = _reviewer({"passed": False, "problems": [problem]})
+    assert await reviewer.review({}, {"shots": [SHOT]}) == [
+        "shot 2 motion_prompt: Only drifts. Fix: Add a 3 to 6s beat."
+    ]
 
 
 async def test_a_rejection_without_reasons_still_counts_as_a_failure() -> None:

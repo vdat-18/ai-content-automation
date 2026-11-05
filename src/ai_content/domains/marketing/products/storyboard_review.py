@@ -52,7 +52,10 @@ class StoryboardReviewer:
         except BamlError as error:
             logger.warning("Storyboard review failed: {}", str(error)[:300])
             return None
-        problems = [problem.strip() for problem in result.problems if problem.strip()]
-        if not result.passed and not problems:
-            return ["The reviewer rejected the storyboard without saying why."]
-        return [] if result.passed else problems
+        if result.passed:
+            return []
+        problems = [
+            f"{item.where.strip()}: {item.problem.strip()} Fix: {item.fix.strip()}"
+            for item in result.problems
+        ]
+        return problems or ["The reviewer rejected the storyboard without saying why."]

@@ -145,10 +145,10 @@ function BriefCard({
         <textarea rows={2} value={idea} onChange={(event) => setIdea(event.target.value)} placeholder={t("e.g. sunny balcony, tidy feeling for small apartments")} />
       </label>
       <label className="brief-field">
-        <span>{t("Video length (each shot is one 15 second clip)")}</span>
+        <span>{t("Video length (about; each shot is one clip)")}</span>
         <select value={videoSeconds} onChange={(event) => setVideoSeconds(Number(event.target.value))}>
           {[15, 30, 45, 60, 75, 90].map((seconds) => (
-            <option key={seconds} value={seconds}>{`${seconds}s · ${seconds / 15} ${seconds === 15 ? t("shot") : t("shots")}`}</option>
+            <option key={seconds} value={seconds}>{`${seconds}s`}</option>
           ))}
         </select>
       </label>

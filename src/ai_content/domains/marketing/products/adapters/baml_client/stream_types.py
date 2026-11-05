@@ -23,7 +23,7 @@ class StreamState(BaseModel, typing.Generic[StreamStateValueT]):
     value: StreamStateValueT
     state: typing_extensions.Literal["Pending", "Incomplete", "Complete"]
 # #########################################################################
-# Generated classes (8)
+# Generated classes (9)
 # #########################################################################
 
 class ContentBrief(BaseModel):
@@ -75,9 +75,14 @@ class ReferenceSearchProfileDraft(BaseModel):
     product_type: typing.Optional[str] = None
     keywords: typing.List[str]
 
+class StoryboardProblem(BaseModel):
+    where: typing.Optional[str] = None
+    problem: typing.Optional[str] = None
+    fix: typing.Optional[str] = None
+
 class StoryboardReview(BaseModel):
     passed: typing.Optional[bool] = None
-    problems: typing.List[str]
+    problems: typing.List["StoryboardProblem"]
 
 class StoryboardShot(BaseModel):
     role: typing.Optional[typing.Union[typing_extensions.Literal['hook'], typing_extensions.Literal['problem'], typing_extensions.Literal['demo'], typing_extensions.Literal['benefit'], typing_extensions.Literal['call_to_action']]] = None
@@ -95,7 +100,7 @@ class StoryboardShot(BaseModel):
 
 
 # #########################################################################
-# Model rebuilds (8)
+# Model rebuilds (9)
 # #########################################################################
 # Resolve string forward references now that every model above is defined so
 # class declaration order never breaks Pydantic construction (issue #793).
@@ -107,5 +112,6 @@ LabeledReference.model_rebuild()
 PostingPackage.model_rebuild()
 ReferenceImageReview.model_rebuild()
 ReferenceSearchProfileDraft.model_rebuild()
+StoryboardProblem.model_rebuild()
 StoryboardReview.model_rebuild()
 StoryboardShot.model_rebuild()
