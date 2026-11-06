@@ -3,6 +3,7 @@ import { Check, Clapperboard, Copy, Download, FileText, ImageIcon, RotateCcw, Sp
 import { useState } from "react";
 import { EmptyState, PageHeader, Panel, SkeletonPage } from "../components/ui";
 import { useI18n } from "../hooks/useI18n";
+import { useLightbox } from "../hooks/useLightbox";
 import { getJson, postJson, putFile, putJson } from "../services/http";
 
 type Persona = { description: string; image_path: string | null; status: "none" | "ready" | "approved" | "rejected"; attempts: number };
@@ -284,11 +285,15 @@ function BriefForm({
   error: string | undefined;
   t: (key: string) => string;
 }) {
+  const lightbox = useLightbox();
   const { brief } = record;
   const shots = brief.shots ?? [];
+  const photos = (brief.product_photo_urls ?? []).map((src) => ({ src }));
+  const scenes = brief.selected_reference_ids.flatMap((id) => (imageById.get(id) ? [{ src: imageById.get(id) as string }] : []));
   const problems = brief.quality_problems ?? [];
   const warnings = brief.warnings ?? [];
   return (
+    <>
     <form
       key={`${record.product_id}-${record.status}-${brief.title}`}
       className="brief-form"
@@ -345,7 +350,7 @@ function BriefForm({
             <>
               <h4>{t("Product photos the image model sees")}</h4>
               <div className="brief-thumbs">
-                {brief.product_photo_urls.map((url) => <img key={url} src={url} alt="" width={44} height={44} referrerPolicy="no-referrer" />)}
+                {photos.map((photo, index) => <img key={photo.src} src={photo.src} alt="" width={44} height={44} referrerPolicy="no-referrer" {...lightbox.zoom(photos, index)} />)}
               </div>
             </>
           )}
@@ -353,7 +358,7 @@ function BriefForm({
             <>
               <h4>{t("Scene reference")}</h4>
               <div className="brief-thumbs">
-                {brief.selected_reference_ids.map((id) => imageById.get(id) && <img key={id} src={imageById.get(id)} alt="" width={44} height={58} referrerPolicy="no-referrer" />)}
+                {scenes.map((scene, index) => <img key={scene.src} src={scene.src} alt="" width={44} height={58} referrerPolicy="no-referrer" {...lightbox.zoom(scenes, index)} />)}
               </div>
               <p className="brief-note">{brief.reference_rationale}</p>
             </>
@@ -461,6 +466,8 @@ function BriefForm({
       </div>
       {error && <p role="alert">{error}</p>}
     </form>
+    {lightbox.node}
+    </>
   );
 }
 
@@ -488,6 +495,7 @@ function Pipeline({
   t: (key: string) => string;
 }) {
   const client = useQueryClient();
+  const lightbox = useLightbox();
   const refresh = () => client.invalidateQueries({ queryKey: ["keyframes", productId] });
   const generate = useMutation({
     mutationFn: (shotIndex: number | null) => postJson<Keyframe[]>(`${API}/${productId}/keyframes`, { shot_index: shotIndex }),
@@ -572,6 +580,12 @@ function Pipeline({
   const masterApproved = byShot.get(0)?.status === "approved";
   const allApproved = shots.length > 0 && shots.every((_, index) => byShot.get(index)?.status === "approved");
   const next = !byShot.has(0) || !masterApproved ? t("Generate master keyframe") : t("Generate the other shots");
+  const frames = shots.flatMap((shot, index) => {
+    const keyframe = byShot.get(index);
+    return keyframe && keyframe.status !== "failed"
+      ? [{ index, src: `${API}/${productId}/keyframes/${index}/image?v=${keyframe.attempts}`, label: `${index + 1}. ${shot.role.replaceAll("_", " ")}` }]
+      : [];
+  });
 
   return (
     <section className="keyframes">
@@ -581,7 +595,7 @@ function Pipeline({
           <p className="brief-note">{t("A synthetic person; one portrait is reused in every shot.")}</p>
           {persona?.description ? (
             <div className="persona-body">
-              {persona.image_path && <img src={`${API}/${productId}/persona/image?v=${persona.attempts}`} alt="" width={120} />}
+              {persona.image_path && <img src={`${API}/${productId}/persona/image?v=${persona.attempts}`} alt="" width={120} {...lightbox.zoom([{ src: `${API}/${productId}/persona/image?v=${persona.attempts}` }], 0)} />}
               <div>
                 <textarea rows={3} value={personaText} onChange={(event) => setPersonaText(event.target.value)} />
                 <div className="brief-actions">
@@ -636,7 +650,7 @@ function Pipeline({
                   {step === "clips" && clip?.status === "ready" ? (
                     <video src={`${API}/${productId}/clips/${index}/video?v=${clip.attempts}`} controls playsInline preload="metadata" />
                   ) : keyframe && keyframe.status !== "failed" ? (
-                    <img src={`${API}/${productId}/keyframes/${index}/image?v=${keyframe.attempts}`} alt={shot.description} loading="lazy" />
+                    <img src={`${API}/${productId}/keyframes/${index}/image?v=${keyframe.attempts}`} alt={shot.description} loading="lazy" {...lightbox.zoom(frames, frames.findIndex((frame) => frame.index === index))} />
                   ) : (
                     <div className="keyframe-empty">{keyframe?.error ?? t("Not generated yet")}</div>
                   )}
@@ -756,6 +770,7 @@ function Pipeline({
           )}
         </>
       )}
+      {lightbox.node}
     </section>
   );
 }

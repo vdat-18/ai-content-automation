@@ -3,6 +3,7 @@ import { Package, X } from "lucide-react";
 import { useState } from "react";
 import { EmptyState, PageHeader, Panel } from "../components/ui";
 import { useI18n } from "../hooks/useI18n";
+import { useLightbox } from "../hooks/useLightbox";
 import { deleteJson, getJson, postJson, putJson } from "../services/http";
 
 export type ReferenceProfile = { product_type: string; keywords: string[]; status: string };
@@ -110,6 +111,7 @@ function ReferenceProfiles() {
 
 function ReferenceImages() {
   const { t } = useI18n();
+  const lightbox = useLightbox();
   const client = useQueryClient();
   const [productType, setProductType] = useState("");
   const [status, setStatus] = useState("live");
@@ -206,11 +208,18 @@ function ReferenceImages() {
       </div>
       {images.data?.length ? (
         <div className="reference-grid">
-          {images.data.map((image) => (
+          {images.data.map((image, index) => (
             <figure key={image.image_id} className="reference-card">
-              <a href={`https://www.pinterest.com${image.pin_url}`} target="_blank" rel="noreferrer">
-                <img src={image.image_url} alt={image.title} loading="lazy" referrerPolicy="no-referrer" />
-              </a>
+              <img
+                src={image.image_url}
+                alt={image.title}
+                loading="lazy"
+                referrerPolicy="no-referrer"
+                {...lightbox.zoom(
+                  images.data.map((item) => ({ src: item.image_url, label: item.title, href: `https://www.pinterest.com${item.pin_url}` })),
+                  index,
+                )}
+              />
               {image.status !== "removed" && (
                 <button type="button" className="reference-card__remove" aria-label={t("Remove")} title={t("Remove")} disabled={remove.isPending} onClick={() => remove.mutate(image.image_id)}>
                   <X size={14} />

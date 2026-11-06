@@ -3,6 +3,7 @@ import { Download, Film } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { EmptyState, PageHeader, Panel, SkeletonPage } from "../components/ui";
 import { useI18n } from "../hooks/useI18n";
+import { useLightbox } from "../hooks/useLightbox";
 import { getJson } from "../services/http";
 
 type OutputItem = {
@@ -75,10 +76,22 @@ function OutputList() {
 
 function OutputDetailView({ productId }: { productId: string }) {
   const { t } = useI18n();
+  const lightbox = useLightbox();
   const output = useQuery({ queryKey: ["output", productId], queryFn: ({ signal }) => getJson<OutputDetail>(`${API}/${productId}/output`, signal) });
   if (output.isLoading) return <SkeletonPage />;
   if (!output.data) return <EmptyState icon={<Film />} title="Output not found" text="This product has no brief or video yet." />;
   const { product, brief, video, shots } = output.data;
+  const photos = output.data.product_photos.map((src) => ({ src }));
+  const references = output.data.references.map((image) => ({
+    src: image.image_url,
+    label: image.title ?? undefined,
+    href: image.pin_url ? `https://www.pinterest.com${image.pin_url}` : undefined,
+  }));
+  const frames = shots.filter((shot) => shot.has_keyframe).map((shot) => ({
+    index: shot.index,
+    src: `${API}/${productId}/keyframes/${shot.index}/image?v=${shot.keyframe_attempts ?? 0}`,
+    label: `${shot.index + 1}. ${(shot.role ?? "").replaceAll("_", " ")}`,
+  }));
   const made = [
     video.seconds ? `${Math.round(video.seconds)}s` : null,
     video.built_at ? when(video.built_at) : null,
@@ -113,7 +126,7 @@ function OutputDetailView({ productId }: { productId: string }) {
             <section className="output-block">
               <h3>{t("Product")}</h3>
               <div className="output-row">
-                {product.image && <img src={product.image} alt="" width={56} height={56} referrerPolicy="no-referrer" />}
+                {product.image && <img src={product.image} alt="" width={56} height={56} referrerPolicy="no-referrer" {...lightbox.zoom([{ src: product.image }], 0)} />}
                 <div>
                   <strong>{product.title ?? productId}</strong>
                   {product.url && <p><a href={product.url} target="_blank" rel="noreferrer">{t("Open the product page")}</a></p>}
@@ -126,7 +139,7 @@ function OutputDetailView({ productId }: { productId: string }) {
                 <>
                   <p className="brief-note">{t("Product photos the image model saw")}</p>
                   <div className="output-thumbs">
-                    {output.data.product_photos.map((url) => <img key={url} src={url} alt="" width={56} height={56} referrerPolicy="no-referrer" />)}
+                    {photos.map((photo, index) => <img key={photo.src} src={photo.src} alt="" width={56} height={56} referrerPolicy="no-referrer" {...lightbox.zoom(photos, index)} />)}
                   </div>
                 </>
               )}
@@ -134,10 +147,8 @@ function OutputDetailView({ productId }: { productId: string }) {
                 <>
                   <p className="brief-note">{t("Scene reference")}</p>
                   <div className="output-thumbs">
-                    {output.data.references.map((image) => (
-                      <a key={image.image_id} href={image.pin_url ? `https://www.pinterest.com${image.pin_url}` : image.image_url} target="_blank" rel="noreferrer">
-                        <img src={image.image_url} alt={image.title ?? ""} width={56} height={74} referrerPolicy="no-referrer" />
-                      </a>
+                    {references.map((image, index) => (
+                      <img key={image.src} src={image.src} alt={image.label ?? ""} width={56} height={74} referrerPolicy="no-referrer" {...lightbox.zoom(references, index)} />
                     ))}
                   </div>
                 </>
@@ -148,7 +159,7 @@ function OutputDetailView({ productId }: { productId: string }) {
               <section className="output-block">
                 <h3>{t("Person")}</h3>
                 <div className="output-row">
-                  {output.data.persona.has_image && <img src={`${API}/${productId}/persona/image`} alt="" width={64} height={114} />}
+                  {output.data.persona.has_image && <img src={`${API}/${productId}/persona/image`} alt="" width={64} height={114} {...lightbox.zoom([{ src: `${API}/${productId}/persona/image`, label: t("Person") }], 0)} />}
                   <p>{output.data.persona.description}</p>
                 </div>
               </section>
@@ -175,7 +186,7 @@ function OutputDetailView({ productId }: { productId: string }) {
               <div className="output-shots">
                 {shots.map((shot) => (
                   <div key={shot.index} className={`output-shot${shot.in_video ? "" : " output-shot--unused"}`}>
-                    {shot.has_keyframe ? <img src={`${API}/${productId}/keyframes/${shot.index}/image?v=${shot.keyframe_attempts ?? 0}`} alt="" loading="lazy" /> : <span />}
+                    {shot.has_keyframe ? <img src={`${API}/${productId}/keyframes/${shot.index}/image?v=${shot.keyframe_attempts ?? 0}`} alt="" loading="lazy" {...lightbox.zoom(frames, frames.findIndex((frame) => frame.index === shot.index))} /> : <span />}
                     {shot.has_clip ? <video src={`${API}/${productId}/clips/${shot.index}/video?v=${shot.clip_attempts ?? 0}`} controls playsInline preload="metadata" /> : <span />}
                     <div>
                       <strong>{`${shot.index + 1}. ${(shot.role ?? "").replaceAll("_", " ")}`}</strong>
@@ -192,6 +203,7 @@ function OutputDetailView({ productId }: { productId: string }) {
           </div>
         </div>
       </Panel>
+      {lightbox.node}
     </>
   );
 }
