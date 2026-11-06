@@ -21,10 +21,11 @@ function ChooseShotReference(
     place; the product and the person come from other pictures. Return JSON only, exactly
     matching the response schema.
 
-    Look at each candidate photo, not only its note. Choose the label of the one that fits what
-    this shot shows: the same kind of action, framing and distance, a place that suits the
-    product, and a casual real-life look. Return "none" when no candidate really fits the shot
-    (a wrong reference is worse than none).
+    Look at each candidate photo, not only its note. Choose the label of the one that is closest
+    to what this shot shows: a similar kind of action, framing and distance, a place that could
+    suit the product, and a casual real-life look. It does not have to match exactly, because
+    only the pose, framing and camera angle are borrowed. Return "none" only when every
+    candidate is clearly unrelated to the shot (a different kind of scene altogether).
 
     {{ _.role("user") }}
     Product facts:

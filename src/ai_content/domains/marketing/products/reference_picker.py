@@ -91,5 +91,6 @@ class ShotReferencePicker:
         except BamlError as error:
             logger.warning("Choosing a shot reference failed: {}", str(error)[:300])
             return None
+        logger.info("Shot reference: model chose {!r} among {}", result.choice, list(labeled))
         found = labeled.get(result.choice.strip())
         return found[0]["image_id"] if found else None

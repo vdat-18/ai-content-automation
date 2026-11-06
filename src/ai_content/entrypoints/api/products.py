@@ -212,6 +212,18 @@ class BriefUpdate(BaseModel):
     status: Literal["draft", "approved"] = "draft"
 
 
+@router.post("/{product_id}/references/match")
+async def match_references(
+    product_id: str,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> dict[str, Any]:
+    """Choose the reference photo of every shot again, without rewriting the storyboard."""
+    record = await service.match_references(product_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="No brief for this product")
+    return record
+
+
 @router.get("/briefs")
 async def list_briefs(
     service: ProductCatalogService = Depends(get_product_catalog_service),

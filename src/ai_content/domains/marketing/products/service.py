@@ -552,6 +552,24 @@ class ProductCatalogService:
         )
         return result
 
+    async def match_references(self, product_id: str) -> dict[str, Any] | None:
+        """Choose the reference of each shot again for the stored storyboard."""
+        record = await self._repository.get_brief(product_id)
+        detail = await self._repository.get_detail(product_id)
+        product_type = (await self._repository.selections()).get(product_id)
+        if record is None or detail is None or not product_type:
+            return None
+        live = await self.reference_images("live", product_type)
+        brief = dict(record["brief"])
+        brief["shot_references"] = await self._pick_shot_references(
+            product_id, detail, brief, live, product_type
+        )
+        brief["selected_reference_ids"] = list(
+            dict.fromkeys(item for item in brief["shot_references"] if item)
+        )
+        await self._repository.save_brief(product_id, record["user_idea"], brief, record["status"])
+        return await self._repository.get_brief(product_id)
+
     async def _review_storyboard(self, product: dict[str, Any], brief: dict[str, Any]) -> list[str]:
         """Problems the reviewer found; none when there is no reviewer or the review failed."""
         if self._storyboard_reviewer is None or not brief.get("shots"):
