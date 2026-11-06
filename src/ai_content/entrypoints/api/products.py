@@ -614,6 +614,36 @@ async def make_persona(
     return persona
 
 
+IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
+MAX_PERSONA_BYTES = 10 * 1024 * 1024
+
+
+@router.put("/{product_id}/persona/image")
+async def upload_persona_image(
+    product_id: str,
+    request: Request,
+    rights: str = Query(default=""),
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> dict[str, Any]:
+    """Use the user's own photo as the person in every shot (the user confirms the rights)."""
+    if rights != "confirmed":
+        raise HTTPException(
+            status_code=422, detail="Confirm that you have the right to use this person's image"
+        )
+    kind = request.headers.get("content-type", "").split(";")[0].strip()
+    if kind not in IMAGE_TYPES:
+        raise HTTPException(status_code=415, detail=f"Use one of {sorted(IMAGE_TYPES)}")
+    content = await request.body()
+    if not content:
+        raise HTTPException(status_code=422, detail="The file is empty")
+    if len(content) > MAX_PERSONA_BYTES:
+        raise HTTPException(status_code=413, detail="The photo is larger than 10 MB")
+    persona = await service.upload_persona(product_id, _media_root(), content)
+    if persona is None:
+        raise HTTPException(status_code=404, detail="No brief for this product")
+    return persona
+
+
 @router.put("/{product_id}/persona")
 async def review_persona(
     product_id: str,

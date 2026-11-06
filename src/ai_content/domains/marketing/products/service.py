@@ -577,6 +577,28 @@ class ProductCatalogService:
         )
         return persona
 
+    async def upload_persona(
+        self, product_id: str, media_root: Path, content: bytes
+    ) -> dict[str, Any] | None:
+        """Use a photo the user supplies as the person in the ad; the user still approves it."""
+        record = await self._repository.get_brief(product_id)
+        if record is None:
+            return None
+        previous = dict(record["brief"].get("persona") or {})
+        relative = f"persona/{product_id}/persona.jpg"
+        await self.media(media_root).write(relative, content)
+        persona = {
+            "description": "The person in the uploaded photo.",
+            "image_path": relative,
+            "status": "ready",
+            "attempts": int(previous.get("attempts") or 0) + 1,
+            "source": "uploaded",
+        }
+        brief = {**record["brief"], "persona": persona}
+        await self._repository.save_brief(product_id, record["user_idea"], brief, record["status"])
+        await self._log(product_id, "persona", "ok", "Person photo uploaded by the user")
+        return persona
+
     async def set_persona_status(self, product_id: str, status: str) -> bool:
         if status not in PERSONA_STATUSES:
             raise ValueError(f"Person status must be one of {sorted(PERSONA_STATUSES)}")

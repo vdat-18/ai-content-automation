@@ -27,6 +27,7 @@ type Brief = {
   reference_rationale: string;
   scene: string;
   product_placement: string;
+  product_variant?: string;
   product_size?: string;
   selling_angle: string;
   target_audience: string;
@@ -54,9 +55,10 @@ const STEPS: { id: Step; label: string }[] = [
   { id: "voice", label: "Voice and video" },
   { id: "post", label: "Post" },
 ];
-const TEXT_FIELDS: { key: "scene" | "product_placement" | "product_size" | "selling_angle" | "target_audience"; label: string; rows: number }[] = [
+const TEXT_FIELDS: { key: "scene" | "product_placement" | "product_variant" | "product_size" | "selling_angle" | "target_audience"; label: string; rows: number }[] = [
   { key: "scene", label: "Scene", rows: 3 },
   { key: "product_placement", label: "Product placement", rows: 3 },
+  { key: "product_variant", label: "Product version shown (one color/size in the whole video)", rows: 2 },
   { key: "product_size", label: "Real product size (keeps the scale in the images)", rows: 2 },
   { key: "selling_angle", label: "Selling angle", rows: 2 },
   { key: "target_audience", label: "Target audience", rows: 2 },
@@ -573,6 +575,11 @@ function Pipeline({
     mutationFn: (status: Persona["status"]) => putJson(`${API}/${productId}/persona`, { status }),
     onSuccess: refreshBriefs,
   });
+  const [rights, setRights] = useState(false);
+  const uploadPersona = useMutation({
+    mutationFn: (file: File) => putFile<Persona>(`${API}/${productId}/persona/image?rights=confirmed`, file),
+    onSuccess: refreshBriefs,
+  });
   const personaPending = !!persona?.description && persona.status !== "approved";
   const clipByShot = new Map(clips.map((clip) => [clip.shot_index, clip]));
   const approvedShots = shots.filter((_, index) => byShot.get(index)?.status === "approved").length;
@@ -592,7 +599,23 @@ function Pipeline({
       {step === "person" && (
         <div className="persona">
           <h3>{t("Person in the video")}</h3>
-          <p className="brief-note">{t("A synthetic person; one portrait is reused in every shot.")}</p>
+          <p className="brief-note">{t("One portrait is reused in every shot: make a synthetic person or upload your own photo.")}</p>
+          <div className="brief-actions">
+            <label>
+              <input type="checkbox" checked={rights} onChange={(event) => setRights(event.target.checked)} /> {t("I have the right to use this person's image in ads")}
+            </label>
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              disabled={!rights || uploadPersona.isPending}
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) uploadPersona.mutate(file);
+                event.target.value = "";
+              }}
+            />
+          </div>
+          {uploadPersona.error && <p role="alert">{uploadPersona.error.message}</p>}
           {persona?.description ? (
             <div className="persona-body">
               {persona.image_path && <img src={`${API}/${productId}/persona/image?v=${persona.attempts}`} alt="" width={120} {...lightbox.zoom([{ src: `${API}/${productId}/persona/image?v=${persona.attempts}` }], 0)} />}

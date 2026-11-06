@@ -113,8 +113,6 @@ def metrics_asgi_app():
     return make_asgi_app(registry=REGISTRY)
 
 
-
-
 __all__ = [
     "AI_GENERATED_OUTPUT_BYTES",
     "AI_GENERATED_OUTPUTS",

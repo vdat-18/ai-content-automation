@@ -541,3 +541,29 @@ def test_outputs_list_the_videos_and_say_what_each_is_made_from(
     assert (first["has_keyframe"], first["keyframe_attempts"], first["in_video"]) == (True, 3, True)
     assert (second["delivery"], second["in_video"]) == ("narrated", False)
     assert output["video"]["voice"] == "Kim Oanh" and output["video"]["exists"] is True
+
+
+def test_user_photo_becomes_the_person_after_rights_are_confirmed(
+    tmp_path: Path, client: TestClient, repository: SqliteProductRepository
+) -> None:
+    url = f"/api/v1/products/{PRODUCT_ID}/persona/image"
+    jpeg = {"content-type": "image/jpeg"}
+    assert client.put(f"{url}?rights=confirmed", content=b"x", headers=jpeg).status_code == 404
+    _capture_product(client)
+    asyncio.run(repository.save_brief(PRODUCT_ID, "", {"title": "b"}, "approved"))
+    assert client.put(url, content=b"photo", headers=jpeg).status_code == 422
+    confirmed = f"{url}?rights=confirmed"
+    assert (
+        client.put(confirmed, content=b"x", headers={"content-type": "text/plain"}).status_code
+        == 415
+    )
+    assert client.put(confirmed, content=b"", headers=jpeg).status_code == 422
+    saved = client.put(confirmed, content=b"photo", headers=jpeg).json()
+    assert saved["status"] == "ready" and saved["source"] == "uploaded"
+    assert client.get(url).content == b"photo"
+    assert (
+        client.put(
+            f"/api/v1/products/{PRODUCT_ID}/persona", json={"status": "approved"}
+        ).status_code
+        == 200
+    )
