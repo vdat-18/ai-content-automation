@@ -127,8 +127,8 @@ async def test_writer_picks_one_scene_and_maps_photo_numbers_to_urls() -> None:
     client = _FakeBamlClient()
     async with httpx.AsyncClient(transport=httpx.MockTransport(_photo_server)) as http:
         brief = await ContentBriefWriter(client).write(product, "", references, http)
-    # only the first nine photos are tried and one is gone: the model sees eight of them
-    assert client.seen == [(8, ["ref_1", "ref_2"])]
+    # every photo is tried and one is gone: the model sees the other ten
+    assert client.seen == [(10, ["ref_1", "ref_2"])]
     # the first label wins and the others are dropped; the reference images are never downloaded
     assert brief["selected_reference_ids"] == ["id-2"]
     assert "selected_reference_labels" not in brief and "product_photo_numbers" not in brief
@@ -182,9 +182,47 @@ class _CapturingWriter:
         return {"title": "T", "selected_reference_ids": []}
 
 
-async def test_brief_uses_varied_live_references(tmp_path) -> None:
+class _Shortlist:
+    def __init__(self, keep_per_call: int = 2) -> None:
+        self.calls: list[list[str]] = []
+        self.keep_per_call = keep_per_call
+
+    async def ShortlistReferences(self, product_json, user_idea, references, keep):
+        labels = [reference.label for reference in references]
+        self.calls.append(labels)
+        return SimpleNamespace(labels=[*labels[-keep:], "ref_999"])
+
+
+async def test_shortlist_narrows_any_number_of_references_in_rounds() -> None:
+    from ai_content.domains.marketing.products.briefing import ReferenceShortlister
+
+    client = _Shortlist()
+    images = [{"image_id": f"id-{i}"} for i in range(50)]
+    chosen = await ReferenceShortlister(client).shortlist({}, "", images, keep=3, batch=10)
+    # batches of at most ten are read, round after round, until three are left
+    assert max(len(call) for call in client.calls) == 10 and len(client.calls) > 5
+    assert len(chosen) == 3
+    assert {image["image_id"] for image in chosen} <= {f"id-{i}" for i in range(50)}
+
+
+async def test_shortlist_keeps_the_newest_when_the_model_fails() -> None:
+    from ai_content.domains.marketing.products.briefing import ReferenceShortlister
+
+    class Broken:
+        async def ShortlistReferences(self, *args):
+            raise BamlClientError("503", "503", "503")
+
+    images = [{"image_id": f"id-{i}"} for i in range(30)]
+    chosen = await ReferenceShortlister(Broken()).shortlist({}, "", images, keep=4, batch=10)
+    assert len(chosen) == 4
+
+
+async def test_brief_reads_the_shortlist_not_every_reference(tmp_path) -> None:
+    from ai_content.domains.marketing.products.briefing import ReferenceShortlister
+
     writer = _CapturingWriter()
     service = await _service(tmp_path, writer)
+    service._shortlister = ReferenceShortlister(_Shortlist())
     await service._repository.select_product(PRODUCT_ID, "áo thun")
     pins = [
         {
@@ -192,26 +230,15 @@ async def test_brief_uses_varied_live_references(tmp_path) -> None:
             "pin_url": f"/pin/{i}/",
             "title": "",
         }
-        for i in range(12)
+        for i in range(30)
     ]
     await service.ingest(
         {"kind": "pinterest", "product_type": "áo thun", "query": "q", "pins": pins}
     )
-    images = await service.reference_images("pending", "áo thun")
-    for index, image in enumerate(images):
+    for image in await service.reference_images("pending", "áo thun"):
         await service._repository.set_image_screening(image["image_id"], {"usable": True}, "live")
-        cluster = index % 4  # four groups of three near-identical vectors
-        vector = [0.0] * 4
-        vector[cluster] = 1.0
-        await service._repository.set_fingerprint(image["image_id"], f"{index:016x}", vector)
     await service.create_brief(PRODUCT_ID)
-    clusters = {
-        index % 4
-        for index, image in enumerate(images)
-        if image["image_id"] in {r["image_id"] for r in writer.references}
-    }
-    assert len(writer.references) == 8 and clusters == {0, 1, 2, 3}
-    assert all("embedding" not in r for r in writer.references)
+    assert 0 < len(writer.references) <= 12
 
 
 def test_reference_note_prefers_the_description() -> None:

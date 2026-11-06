@@ -12,7 +12,6 @@ class ReferenceImageReview {
   placement string?
   suits string[]?
   motion_ideas string[]?
-  quality int?
 }
 
 function ReviewReferenceImage(product_type: string, image: image) -> ReferenceImageReview {
@@ -55,8 +54,6 @@ function ReviewReferenceImage(product_type: string, image: image) -> ReferenceIm
     call_to_action, flat_lay, in_hand, unboxing, before_after.
     motion_ideas: one to three simple movements that could animate this scene (for example "hand
     reaches in and places the bottle", "slow push-in on the shelf").
-    quality: 1 to 5 for sharpness, composition, how appealing it is and how much it looks like an
-    everyday photo taken on a phone rather than an ad or a render.
 
     {{ _.role("user") }}
     Product type: {{ product_type }}

@@ -16,7 +16,10 @@ from ai_content.domains.marketing.creative_knowledge.repositories import (
     SqliteCreativeKnowledgeRepository,
 )
 from ai_content.domains.marketing.creative_knowledge.service import CreativeKnowledgeService
-from ai_content.domains.marketing.products.briefing import ContentBriefWriter
+from ai_content.domains.marketing.products.briefing import (
+    ContentBriefWriter,
+    ReferenceShortlister,
+)
 from ai_content.domains.marketing.products.clips import VideoClient
 from ai_content.domains.marketing.products.embedding import ImageEmbedder
 from ai_content.domains.marketing.products.image_review import ReferenceImageReviewer
@@ -339,6 +342,16 @@ def _brief_writer(settings: ApiRuntimeSettings) -> ContentBriefWriter | None:
     )
 
 
+def _shortlister(settings: ApiRuntimeSettings) -> ReferenceShortlister | None:
+    if not settings.screening_api_key:
+        return None
+    return ReferenceShortlister.from_settings(
+        base_url=settings.screening_base_url,
+        api_key=settings.screening_api_key,
+        model=settings.screening_model,
+    )
+
+
 def _storyboard_reviewer(settings: ApiRuntimeSettings) -> StoryboardReviewer | None:
     if not settings.screening_api_key:
         return None
@@ -382,6 +395,7 @@ async def product_catalog_scope(postgres: Any) -> AsyncIterator[ProductCatalogSe
             _speech_client(settings),
             _remote_media(settings),
             _storyboard_reviewer(settings),
+            _shortlister(settings),
         )
     finally:
         if postgres is None:

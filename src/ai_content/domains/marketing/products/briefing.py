@@ -18,9 +18,8 @@ from ai_content.domains.marketing.products.adapters.baml_registry import build_c
 
 _CONCURRENCY = 2
 _DOWNLOAD_TIMEOUT = 30
-MAX_REFERENCES = 8
-PHOTOS_SEEN = 9  # the crawl keeps at most this many photos of a product
-MAX_PRODUCT_PHOTOS = PHOTOS_SEEN  # photos the image model gets, picked by the brief
+SHORTLIST_SIZE = 12  # references the brief writer finally reads
+SHORTLIST_BATCH = 80  # references one shortlist call reads
 
 
 class BriefGenerationError(RuntimeError):
@@ -88,6 +87,77 @@ def _note(image: dict[str, Any]) -> str:
     return " ".join(part for part in parts if part)
 
 
+class _BamlShortlistClient(Protocol):
+    async def ShortlistReferences(
+        self,
+        product_json: str,
+        user_idea: str,
+        references: list[baml_types.LabeledReference],
+        keep: int,
+    ) -> baml_types.ReferenceShortlist: ...
+
+
+class ReferenceShortlister:
+    """Narrow any number of reference scenes down to a few that suit one product.
+
+    A model reads the written descriptions in batches and keeps the best of each batch; the
+    survivors are read again until few enough are left, so thousands of references still work.
+    """
+
+    def __init__(self, client: _BamlShortlistClient) -> None:
+        self._client = client
+
+    @classmethod
+    def from_settings(cls, *, base_url: str, api_key: str, model: str) -> ReferenceShortlister:
+        registry = build_client_registry(
+            name="ReferenceShortlist",
+            base_url=base_url,
+            model=model,
+            api_key=api_key,
+            reasoning_effort=None,
+            temperature=0,
+            max_output_tokens=2000,
+        )
+        return cls(b.with_options(client_registry=registry))
+
+    async def shortlist(
+        self,
+        product: dict[str, Any],
+        user_idea: str,
+        references: list[dict[str, Any]],
+        keep: int = SHORTLIST_SIZE,
+        batch: int = SHORTLIST_BATCH,
+    ) -> list[dict[str, Any]]:
+        facts = json.dumps(product_facts(product), ensure_ascii=False)
+        pool = list(references)
+        while len(pool) > keep:
+            groups = [pool[start : start + batch] for start in range(0, len(pool), batch)]
+            picked = await asyncio.gather(
+                *(self._pick(facts, user_idea, group, keep) for group in groups)
+            )
+            pool = [image for group in picked for image in group]
+        return pool
+
+    async def _pick(
+        self, facts: str, user_idea: str, group: list[dict[str, Any]], keep: int
+    ) -> list[dict[str, Any]]:
+        if len(group) <= keep:
+            return group
+        labeled = {f"ref_{index + 1}": image for index, image in enumerate(group)}
+        try:
+            result = await self._client.ShortlistReferences(
+                facts,
+                user_idea.strip(),
+                [baml_types.LabeledReference(label=k, note=_note(v)) for k, v in labeled.items()],
+                keep,
+            )
+        except BamlError as error:
+            logger.warning("Reference shortlist failed, keeping the newest: {}", str(error)[:200])
+            return group[:keep]
+        chosen = [labeled[label] for label in dict.fromkeys(result.labels) if label in labeled]
+        return chosen[:keep] or group[:keep]
+
+
 class ContentBriefWriter:
     """Download reference images and ask the BAML model for a single brief."""
 
@@ -135,7 +205,7 @@ class ContentBriefWriter:
             media_type = response.headers.get("content-type", "image/jpeg").split(";")[0]
             return BamlImage.from_base64(media_type, base64.b64encode(response.content).decode())
 
-        urls = [url for url in (product.get("images") or [])[:PHOTOS_SEEN] if url]
+        urls = [url for url in (product.get("images") or []) if url]
         try:
             downloaded = await asyncio.gather(*(fetch(url) for url in urls))
         finally:
@@ -167,5 +237,5 @@ class ContentBriefWriter:
         ]
         numbers = dict.fromkeys(brief.pop("product_photo_numbers"))
         chosen = [photos[number - 1][0] for number in numbers if 1 <= number <= len(photos)]
-        brief["product_photo_urls"] = (chosen or [url for url, _ in photos])[:MAX_PRODUCT_PHOTOS]
+        brief["product_photo_urls"] = chosen or [url for url, _ in photos]
         return brief

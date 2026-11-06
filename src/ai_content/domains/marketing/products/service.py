@@ -15,11 +15,11 @@ from openpyxl import Workbook
 from openpyxl.styles import Font
 
 from .briefing import (
-    MAX_PRODUCT_PHOTOS,
-    MAX_REFERENCES,
+    SHORTLIST_SIZE,
     BriefGenerationError,
     BriefUnavailable,
     ContentBriefWriter,
+    ReferenceShortlister,
 )
 from .clips import (
     CLIP_SECONDS,
@@ -101,10 +101,13 @@ BRIEF_FIELDS = (
 )
 
 
+IMAGE_MODEL_PHOTOS = 28  # the image model takes 30 pictures; two are kept for the person and scene
+
+
 def _product_photo_urls(brief: dict[str, Any], detail: dict[str, Any]) -> list[str]:
     """The product photos the brief picked; the first photos of the product if it picked none."""
     urls = brief.get("product_photo_urls") or [u for u in detail.get("images") or [] if u]
-    return urls[:MAX_PRODUCT_PHOTOS]
+    return urls[:IMAGE_MODEL_PHOTOS]
 
 
 def _clean_pins(pins: list[dict[str, Any]]) -> list[dict[str, str]]:
@@ -129,27 +132,6 @@ def _clean_pins(pins: list[dict[str, Any]]) -> list[dict[str, str]]:
             },
         )
     return list(cleaned.values())
-
-
-def _diverse(images: list[dict[str, Any]], count: int) -> list[dict[str, Any]]:
-    """Pick images that differ most from each other, newest first, using stored embeddings.
-
-    Images without an embedding are only used to fill the remaining slots.
-    """
-    embedded = [image for image in images if image.get("embedding")]
-    chosen: list[dict[str, Any]] = embedded[:1]
-    while len(chosen) < min(count, len(embedded)):
-        taken = {image["image_id"] for image in chosen}
-        rest = [image for image in embedded if image["image_id"] not in taken]
-        chosen.append(
-            min(
-                rest,
-                key=lambda image: max(cosine(image["embedding"], c["embedding"]) for c in chosen),
-            )
-        )
-    taken = {image["image_id"] for image in chosen}
-    filler = [image for image in images if image["image_id"] not in taken]
-    return (chosen + filler)[:count]
 
 
 VOICEOVER_TYPES = {
@@ -188,6 +170,7 @@ class ProductCatalogService:
         speaker: SpeechClient | None = None,
         remote_media: RemoteMedia | None = None,
         storyboard_reviewer: StoryboardReviewer | None = None,
+        shortlister: ReferenceShortlister | None = None,
     ) -> None:
         self._repository = repository
         self._generator = generator
@@ -201,6 +184,7 @@ class ProductCatalogService:
         self._speaker = speaker
         self._remote_media = remote_media
         self._storyboard_reviewer = storyboard_reviewer
+        self._shortlister = shortlister
 
     async def ingest(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Store whatever a captured page or feed response contains."""
@@ -431,19 +415,15 @@ class ProductCatalogService:
         if not product_type:
             raise BriefUnavailable("Select this product for content before writing a brief")
         live = await self.reference_images("live", product_type)
-        vectors = {
-            item["image_id"]: item["embedding"]
-            for item in await self._repository.fingerprints(product_type)
-        }
-        varied = _diverse(
-            [{**image, "embedding": vectors.get(image["image_id"])} for image in live],
-            MAX_REFERENCES,
-        )
-        references = [{k: v for k, v in image.items() if k != "embedding"} for image in varied]
-        if not references:
+        if not live:
             raise BriefUnavailable(
                 f"No usable reference image of type '{product_type}' yet; crawl Pinterest first"
             )
+        references = (
+            await self._shortlister.shortlist(detail, user_idea, live)
+            if self._shortlister
+            else live[:SHORTLIST_SIZE]
+        )
         shot_count = max(1, round(video_seconds / shot_seconds(CLIP_SECONDS)))
         fixes = ""
         attempts = 0

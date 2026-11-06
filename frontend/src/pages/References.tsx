@@ -22,7 +22,6 @@ type Screening = {
   placement?: string | null;
   suits?: string[] | null;
   motion_ideas?: string[] | null;
-  quality?: number | null;
 };
 
 const DETAILS: { key: keyof Screening; label: string }[] = [
@@ -234,7 +233,7 @@ function ReferenceImages() {
                 )}
                 {image.screening && DETAILS.some(({ key }) => image.screening?.[key]) && (
                   <details className="reference-card__details">
-                    <summary>{image.screening.quality ? `${t("Details")} · ${image.screening.quality}/5` : t("Details")}</summary>
+                    <summary>{t("Details")}</summary>
                     <dl>
                       {DETAILS.filter(({ key }) => image.screening?.[key]).map(({ key, label }) => (
                         <div key={key}>
