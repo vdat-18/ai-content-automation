@@ -137,7 +137,7 @@ function DraftContentBrief(
     call_to_action; when there is only one shot it does both, hooking in the first seconds and
     ending on the call to action. For every shot: description (Vietnamese, what the viewer sees), keyframe_prompt
     (a complete, self-contained English prompt for an image model: "the person from the character
-    image" doing the action of this shot with the real product as the clear hero, the shared scene, camera angle, lighting, style and colors, and an explicit instruction
+    image" (never describe her age, face, hair, skin or clothes; the character image gives them) doing the action of this shot with the real product as the clear hero, the shared scene, camera angle, lighting, style and colors, and an explicit instruction
     that the product, in the version of product_variant, keeps its real shape, color, proportions and label, and that it keeps its
     real size from product_size next to the person and the room, never enlarged or shrunk. Write it
     as the description of an ordinary photo taken on a phone: natural window or room light, a

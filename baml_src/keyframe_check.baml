@@ -28,7 +28,7 @@ function CheckKeyframe(
     when a master keyframe is given, the light and color palette match it; when the previous
     shot's keyframe is given, the same person wears the same outfit in the same kind of room and
     light, so the two shots could be cut together without a jarring jump; when a character image
-    is given, the person in the keyframe is clearly the same person (face, hair, skin tone,
+    is given, the person in the keyframe is clearly the same person (face shape, eyes, hair length and colour, skin tone,
     clothes) and has natural hands and limbs with no extra or missing fingers. Ignore
     all text and logos, on the product label, the packaging and the clothes alike: image models
     cannot draw small text, so never fail an image because text is garbled, mirrored or rotated.

@@ -24,8 +24,9 @@ _PRODUCT_RULE = (
 )
 _NO_PEOPLE = "Do not show any human face; hands, the product and the space are enough."
 _PERSONA_RULE = (
-    "is the person in the ad: keep exactly the same face, hair, skin tone, body and clothes in "
-    "every shot, with natural hands and no extra fingers."
+    "is the person in the ad. Copy her face, hair length and colour, skin tone, body and clothes "
+    "exactly from this image in every shot and ignore any other description of her looks in the "
+    "text below; she must be recognisable as the same real person. Natural hands, no extra fingers."
 )
 _REAL_PHOTO = (
     "Make it look like an ordinary photo taken with a phone: natural light, a little grain, "
