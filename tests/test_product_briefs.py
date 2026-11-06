@@ -26,11 +26,11 @@ PIN = {"image_url": "https://i.pinimg.com/236x/ab/cd/ef.jpg", "pin_url": "/pin/1
 
 
 class _FakeWriter:
-    async def write(self, product, user_idea, references, shot_count=1):
+    async def write(self, product, user_idea, shot_count=1):
         return {
             "title": "Brief",
             "scene": "Phòng giặt",
-            "selected_reference_ids": [references[0]["image_id"]],
+            "shots": [{"role": "hook", "keyframe_prompt": "a hand applies lotion"}] * shot_count,
         }
 
 
@@ -60,11 +60,11 @@ async def test_brief_needs_selection_and_live_references(tmp_path) -> None:
     with pytest.raises(BriefUnavailable, match="No usable reference image"):
         await service.create_brief(PRODUCT_ID)
 
-    image_id = await _make_reference_live(service)
+    await _make_reference_live(service)
     record = await service.create_brief(PRODUCT_ID, "  ý tưởng của tôi ")
     assert record is not None
     assert (record["status"], record["user_idea"]) == ("draft", "ý tưởng của tôi")
-    assert record["brief"]["selected_reference_ids"] == [image_id]
+    assert record["brief"]["selected_reference_ids"] == []  # no embedding model is set up
 
 
 async def test_brief_without_llm_reports_configuration_error(tmp_path) -> None:
@@ -94,16 +94,13 @@ class _FakeBamlClient:
         self.numbers = numbers if numbers is not None else [2, 2, 1, 40]
         self.seen: list[tuple[int, list[str]]] = []
 
-    async def DraftContentBrief(
-        self, product_json, user_idea, shot_count, product_images, references
-    ):
+    async def DraftContentBrief(self, product_json, user_idea, shot_count, product_images):
         if self.fail:
             raise BamlClientError("503", "503", "503")
-        self.seen.append((len(product_images), [ref.label for ref in references]))
+        self.seen.append(len(product_images))
         return SimpleNamespace(
             model_dump=lambda: {
                 "title": "T",
-                "selected_reference_labels": ["ref_2", "ref_1", "ref_9"],
                 "product_photo_numbers": list(self.numbers),
             }
         )
@@ -115,46 +112,37 @@ def _photo_server(request: httpx.Request) -> httpx.Response:
     return httpx.Response(200, content=b"img", headers={"content-type": "image/png"})
 
 
-async def test_writer_picks_one_scene_and_maps_photo_numbers_to_urls() -> None:
-    references = [
-        {"image_id": "id-1", "image_url": "https://x/a.jpg"},
-        {"image_id": "id-2", "image_url": "https://x/b.jpg", "screening": {"description": "s"}},
-    ]
+async def test_writer_maps_photo_numbers_to_urls() -> None:
     product = {
         "images": ["https://x/p1.jpg", "https://x/gone-p.jpg"]
         + [f"https://x/p{i}.jpg" for i in range(3, 12)]
     }
     client = _FakeBamlClient()
     async with httpx.AsyncClient(transport=httpx.MockTransport(_photo_server)) as http:
-        brief = await ContentBriefWriter(client).write(product, "", references, http)
+        brief = await ContentBriefWriter(client).write(product, "", http)
     # every photo is tried and one is gone: the model sees the other ten
-    assert client.seen == [(10, ["ref_1", "ref_2"])]
-    # the first label wins and the others are dropped; the reference images are never downloaded
-    assert brief["selected_reference_ids"] == ["id-2"]
-    assert "selected_reference_labels" not in brief and "product_photo_numbers" not in brief
+    assert client.seen == [10]
+    assert "product_photo_numbers" not in brief and "selected_reference_ids" not in brief
     # numbers count the photos the model saw: 2 is p3 because p2 is gone; repeats and 40 are dropped
     assert brief["product_photo_urls"] == ["https://x/p3.jpg", "https://x/p1.jpg"]
 
 
-async def test_writer_uses_the_first_photos_when_the_model_picks_none() -> None:
+async def test_writer_uses_all_photos_when_the_model_picks_none() -> None:
     product = {"images": [f"https://x/p{i}.jpg" for i in range(1, 9)]}
     async with httpx.AsyncClient(transport=httpx.MockTransport(_photo_server)) as http:
-        brief = await ContentBriefWriter(_FakeBamlClient(numbers=[])).write(
-            product, "", [{"image_id": "a"}], http
-        )
+        brief = await ContentBriefWriter(_FakeBamlClient(numbers=[])).write(product, "", http)
     assert brief["product_photo_urls"] == [f"https://x/p{i}.jpg" for i in range(1, 9)]
 
 
 async def test_writer_errors() -> None:
-    reference = [{"image_id": "a"}]
     async with httpx.AsyncClient(transport=httpx.MockTransport(_photo_server)) as http:
         with pytest.raises(BriefGenerationError, match="could be downloaded"):
             await ContentBriefWriter(_FakeBamlClient()).write(
-                {"images": ["https://x/gone.jpg"]}, "", reference, http
+                {"images": ["https://x/gone.jpg"]}, "", http
             )
         with pytest.raises(BriefGenerationError):
             await ContentBriefWriter(_FakeBamlClient(fail=True)).write(
-                {"images": ["https://x/ok.jpg"]}, "", reference, http
+                {"images": ["https://x/ok.jpg"]}, "", http
             )
 
 
@@ -173,80 +161,136 @@ def test_product_facts_are_compact() -> None:
     assert len(facts["description"]) == 3000
 
 
-class _CapturingWriter:
+class _TwoShots:
+    async def write(self, product, user_idea, shot_count=1):
+        prompts = ["a hand applies lotion", "sitting in a room", "standing in a room"]
+        shots = [{"role": "demo", "keyframe_prompt": prompts[i % 3]} for i in range(shot_count)]
+        return {"title": "T", "shots": shots}
+
+
+class _Embedder:
+    model = "m1"
+
     def __init__(self) -> None:
-        self.references: list[dict] = []
-
-    async def write(self, product, user_idea, references, shot_count=1):
-        self.references = references
-        return {"title": "T", "selected_reference_ids": []}
-
-
-class _Shortlist:
-    def __init__(self, keep_per_call: int = 2) -> None:
         self.calls: list[list[str]] = []
-        self.keep_per_call = keep_per_call
 
-    async def ShortlistReferences(self, product_json, user_idea, references, keep):
-        labels = [reference.label for reference in references]
-        self.calls.append(labels)
-        return SimpleNamespace(labels=[*labels[-keep:], "ref_999"])
+    async def embed(self, texts):
+        self.calls.append(list(texts))
+        return [[1.0, 0.0] if "hand" in text else [0.0, 1.0] for text in texts]
 
 
-async def test_shortlist_narrows_any_number_of_references_in_rounds() -> None:
-    from ai_content.domains.marketing.products.briefing import ReferenceShortlister
+class _Picker:
+    def __init__(self) -> None:
+        self.seen: list[list[str]] = []
 
-    client = _Shortlist()
-    images = [{"image_id": f"id-{i}"} for i in range(50)]
-    chosen = await ReferenceShortlister(client).shortlist({}, "", images, keep=3, batch=10)
-    # batches of at most ten are read, round after round, until three are left
-    assert max(len(call) for call in client.calls) == 10 and len(client.calls) > 5
-    assert len(chosen) == 3
-    assert {image["image_id"] for image in chosen} <= {f"id-{i}" for i in range(50)}
+    async def choose(self, product, shot, candidates):
+        self.seen.append([item["image_id"] for item in candidates])
+        return candidates[0]["image_id"] if candidates else None
 
 
-async def test_shortlist_keeps_the_newest_when_the_model_fails() -> None:
-    from ai_content.domains.marketing.products.briefing import ReferenceShortlister
-
-    class Broken:
-        async def ShortlistReferences(self, *args):
-            raise BamlClientError("503", "503", "503")
-
-    images = [{"image_id": f"id-{i}"} for i in range(30)]
-    chosen = await ReferenceShortlister(Broken()).shortlist({}, "", images, keep=4, batch=10)
-    assert len(chosen) == 4
-
-
-async def test_brief_reads_the_shortlist_not_every_reference(tmp_path) -> None:
-    from ai_content.domains.marketing.products.briefing import ReferenceShortlister
-
-    writer = _CapturingWriter()
-    service = await _service(tmp_path, writer)
-    service._shortlister = ReferenceShortlister(_Shortlist())
-    await service._repository.select_product(PRODUCT_ID, "áo thun")
+async def _two_described_references(service: ProductCatalogService) -> dict[str, str]:
     pins = [
-        {
-            "image_url": f"https://i.pinimg.com/236x/aa/bb/{i}.jpg",
-            "pin_url": f"/pin/{i}/",
-            "title": "",
-        }
-        for i in range(30)
+        {"image_url": "https://i.pinimg.com/236x/aa/bb/1.jpg", "pin_url": "/pin/1/", "title": ""},
+        {"image_url": "https://i.pinimg.com/236x/aa/bb/2.jpg", "pin_url": "/pin/2/", "title": ""},
     ]
     await service.ingest(
         {"kind": "pinterest", "product_type": "áo thun", "query": "q", "pins": pins}
     )
-    for image in await service.reference_images("pending", "áo thun"):
-        await service._repository.set_image_screening(image["image_id"], {"usable": True}, "live")
-    await service.create_brief(PRODUCT_ID)
-    assert 0 < len(writer.references) <= 12
+    found: dict[str, str] = {}
+    for image, text in zip(
+        await service.reference_images("pending", "áo thun"),
+        ("a hand holding a bottle", "a person in a bedroom"),
+        strict=True,
+    ):
+        review = {"usable": True, "description": text}
+        await service._repository.set_image_screening(image["image_id"], review, "live")
+        found[text] = image["image_id"]
+    return found
+
+
+async def test_each_shot_gets_the_reference_that_fits_it(tmp_path) -> None:
+    service = await _service(tmp_path, _TwoShots())
+    embedder, picker = _Embedder(), _Picker()
+    service._text_embedder, service._reference_picker = embedder, picker
+    await service._repository.select_product(PRODUCT_ID, "áo thun")
+    ids = await _two_described_references(service)
+    record = await service.create_brief(PRODUCT_ID, video_seconds=30)
+    brief = record["brief"]
+    # the closest description comes first: the hand shot sees the hand picture first
+    hand, room = ids["a hand holding a bottle"], ids["a person in a bedroom"]
+    assert brief["shot_references"] == [hand, room, None]  # the third shot would repeat the room
+    assert brief["selected_reference_ids"] == [hand, room]
+    # the descriptions were embedded once, then only the shots; a second brief reuses them
+    assert [len(call) for call in embedder.calls] == [2, 3]
+    await service.create_brief(PRODUCT_ID, video_seconds=30)
+    assert [len(call) for call in embedder.calls] == [2, 3, 3]
+
+
+async def test_a_reference_is_not_used_for_two_shots(tmp_path) -> None:
+    class _SameShots(_TwoShots):
+        async def write(self, product, user_idea, shot_count=1):
+            brief = await super().write(product, user_idea, shot_count)
+            for shot in brief["shots"]:
+                shot["keyframe_prompt"] = "a hand pours lotion"
+            return brief
+
+    service = await _service(tmp_path, _SameShots())
+    service._text_embedder, service._reference_picker = _Embedder(), _Picker()
+    await service._repository.select_product(PRODUCT_ID, "áo thun")
+    ids = await _two_described_references(service)
+    record = await service.create_brief(PRODUCT_ID, video_seconds=30)
+    assert record["brief"]["shot_references"] == [ids["a hand holding a bottle"], None, None]
+
+
+async def test_shots_have_no_reference_without_an_embedding_model(tmp_path) -> None:
+    service = await _service(tmp_path, _TwoShots())
+    await service._repository.select_product(PRODUCT_ID, "áo thun")
+    await _two_described_references(service)
+    record = await service.create_brief(PRODUCT_ID, video_seconds=30)
+    assert record["brief"]["shot_references"] == [None, None, None]
+    assert record["brief"]["selected_reference_ids"] == []
+
+
+async def test_text_embedder_sends_batches_and_orders_the_vectors() -> None:
+    import json as jsonlib
+
+    from ai_content.domains.marketing.products.text_embedding import (
+        TextEmbedder,
+        TextEmbeddingError,
+    )
+
+    sizes: list[int] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = jsonlib.loads(request.content)
+        sizes.append(len(body["input"]))
+        rows = [{"index": i, "embedding": [float(len(t))]} for i, t in enumerate(body["input"])]
+        return httpx.Response(200, json={"data": rows[::-1]})
+
+    embedder = TextEmbedder("https://x/v1", "k", "m")
+    original = httpx.AsyncClient
+    httpx.AsyncClient = lambda **kw: original(transport=httpx.MockTransport(handler), **kw)  # type: ignore[assignment,misc]
+    try:
+        vectors = await embedder.embed(["a" * n for n in range(1, 71)])
+        assert sizes == [64, 6] and vectors[0] == [1.0] and vectors[69] == [70.0]
+        httpx.AsyncClient = lambda **kw: original(  # type: ignore[assignment,misc]
+            transport=httpx.MockTransport(lambda r: httpx.Response(500)), **kw
+        )
+        with pytest.raises(TextEmbeddingError):
+            await embedder.embed(["x"])
+    finally:
+        httpx.AsyncClient = original  # type: ignore[misc]
 
 
 def test_reference_note_prefers_the_description() -> None:
-    from ai_content.domains.marketing.products.briefing import _note
+    from ai_content.domains.marketing.products.briefing import reference_note
 
-    assert _note({"screening": {"description": "d", "scene_description": "old"}}) == "d"
-    assert _note({"screening": {"scene_description": "old", "placement_note": "p"}}) == "old p"
-    assert _note({}) == ""
+    assert reference_note({"screening": {"description": "d", "scene_description": "old"}}) == "d"
+    assert (
+        reference_note({"screening": {"scene_description": "old", "placement_note": "p"}})
+        == "old p"
+    )
+    assert reference_note({}) == ""
 
 
 async def test_video_length_sets_the_shot_count_from_the_finished_length(
@@ -257,9 +301,9 @@ async def test_video_length_sets_the_shot_count_from_the_finished_length(
     seen: list[int] = []
 
     class _Counting(_FakeWriter):
-        async def write(self, product, user_idea, references, shot_count=1):
+        async def write(self, product, user_idea, shot_count=1):
             seen.append(shot_count)
-            return await super().write(product, user_idea, references)
+            return await super().write(product, user_idea, shot_count)
 
     service = await _service(tmp_path, _Counting())
     await service._repository.select_product(PRODUCT_ID, "áo thun")
@@ -279,7 +323,7 @@ async def test_brief_is_rewritten_until_it_has_the_requested_number_of_shots(
     counts = [1, 1, 3]
 
     class _Wrong(_FakeWriter):
-        async def write(self, product, user_idea, references, shot_count=1):
+        async def write(self, product, user_idea, shot_count=1):
             return {"title": "T", "shots": [{}] * counts.pop(0)}
 
     service = await _service(tmp_path, _Wrong())

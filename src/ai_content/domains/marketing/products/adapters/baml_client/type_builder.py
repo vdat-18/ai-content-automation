@@ -20,7 +20,7 @@ from .globals import DO_NOT_USE_DIRECTLY_UNLESS_YOU_KNOW_WHAT_YOURE_DOING_RUNTIM
 class TypeBuilder(type_builder.TypeBuilder):
     def __init__(self):
         super().__init__(classes=set(
-          ["ContentBrief","KeyframeCheck","LabeledReference","PostingPackage","ReferenceImageReview","ReferenceSearchProfileDraft","ReferenceShortlist","StoryboardProblem","StoryboardReview","StoryboardShot",]
+          ["ContentBrief","KeyframeCheck","LabeledReference","PostingPackage","ReferenceCandidate","ReferenceImageReview","ReferenceSearchProfileDraft","ShotReferenceChoice","StoryboardProblem","StoryboardReview","StoryboardShot",]
         ), enums=set(
           []
         ), runtime=DO_NOT_USE_DIRECTLY_UNLESS_YOU_KNOW_WHAT_YOURE_DOING_RUNTIME)
@@ -31,7 +31,7 @@ class TypeBuilder(type_builder.TypeBuilder):
 
 
     # #########################################################################
-    # Generated classes 10
+    # Generated classes 11
     # #########################################################################
 
     @property
@@ -51,6 +51,10 @@ class TypeBuilder(type_builder.TypeBuilder):
         return PostingPackageViewer(self)
 
     @property
+    def ReferenceCandidate(self) -> "ReferenceCandidateViewer":
+        return ReferenceCandidateViewer(self)
+
+    @property
     def ReferenceImageReview(self) -> "ReferenceImageReviewViewer":
         return ReferenceImageReviewViewer(self)
 
@@ -59,8 +63,8 @@ class TypeBuilder(type_builder.TypeBuilder):
         return ReferenceSearchProfileDraftViewer(self)
 
     @property
-    def ReferenceShortlist(self) -> "ReferenceShortlistViewer":
-        return ReferenceShortlistViewer(self)
+    def ShotReferenceChoice(self) -> "ShotReferenceChoiceViewer":
+        return ShotReferenceChoiceViewer(self)
 
     @property
     def StoryboardProblem(self) -> "StoryboardProblemViewer":
@@ -82,14 +86,14 @@ class TypeBuilder(type_builder.TypeBuilder):
 
 
 # #########################################################################
-# Generated classes 10
+# Generated classes 11
 # #########################################################################
 
 class ContentBriefAst:
     def __init__(self, tb: type_builder.TypeBuilder):
         _tb = tb._tb # type: ignore (we know how to use this private attribute)
         self._bldr = _tb.class_("ContentBrief")
-        self._properties: typing.Set[str] = set([  "title",  "format",  "script",  "persona",  "selected_reference_labels",  "product_photo_numbers",  "reference_rationale",  "scene",  "product_placement",  "product_variant",  "product_size",  "selling_angle",  "target_audience",  "style",  "colors",  "shots",  ])
+        self._properties: typing.Set[str] = set([  "title",  "format",  "script",  "persona",  "product_photo_numbers",  "scene",  "product_placement",  "product_variant",  "product_size",  "selling_angle",  "target_audience",  "style",  "colors",  "shots",  ])
         self._props = ContentBriefProperties(self._bldr, self._properties)
 
     def type(self) -> baml_py.FieldType:
@@ -134,16 +138,8 @@ class ContentBriefProperties:
         return type_builder.ClassPropertyViewer(self.__bldr.property("persona"))
     
     @property
-    def selected_reference_labels(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("selected_reference_labels"))
-    
-    @property
     def product_photo_numbers(self) -> type_builder.ClassPropertyViewer:
         return type_builder.ClassPropertyViewer(self.__bldr.property("product_photo_numbers"))
-    
-    @property
-    def reference_rationale(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("reference_rationale"))
     
     @property
     def scene(self) -> type_builder.ClassPropertyViewer:
@@ -313,6 +309,53 @@ class PostingPackageProperties:
     
 
 
+class ReferenceCandidateAst:
+    def __init__(self, tb: type_builder.TypeBuilder):
+        _tb = tb._tb # type: ignore (we know how to use this private attribute)
+        self._bldr = _tb.class_("ReferenceCandidate")
+        self._properties: typing.Set[str] = set([  "label",  "note",  "photo",  ])
+        self._props = ReferenceCandidateProperties(self._bldr, self._properties)
+
+    def type(self) -> baml_py.FieldType:
+        return self._bldr.field()
+
+    @property
+    def props(self) -> "ReferenceCandidateProperties":
+        return self._props
+
+
+class ReferenceCandidateViewer(ReferenceCandidateAst):
+    def __init__(self, tb: type_builder.TypeBuilder):
+        super().__init__(tb)
+
+    
+    def list_properties(self) -> typing.List[typing.Tuple[str, type_builder.ClassPropertyViewer]]:
+        return [(name, type_builder.ClassPropertyViewer(self._bldr.property(name))) for name in self._properties]
+    
+
+
+class ReferenceCandidateProperties:
+    def __init__(self, bldr: baml_py.ClassBuilder, properties: typing.Set[str]):
+        self.__bldr = bldr
+        self.__properties = properties # type: ignore (we know how to use this private attribute) # noqa: F821
+
+    
+    
+    @property
+    def label(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("label"))
+    
+    @property
+    def note(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("note"))
+    
+    @property
+    def photo(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("photo"))
+    
+    
+
+
 class ReferenceImageReviewAst:
     def __init__(self, tb: type_builder.TypeBuilder):
         _tb = tb._tb # type: ignore (we know how to use this private attribute)
@@ -443,22 +486,22 @@ class ReferenceSearchProfileDraftProperties:
     
 
 
-class ReferenceShortlistAst:
+class ShotReferenceChoiceAst:
     def __init__(self, tb: type_builder.TypeBuilder):
         _tb = tb._tb # type: ignore (we know how to use this private attribute)
-        self._bldr = _tb.class_("ReferenceShortlist")
-        self._properties: typing.Set[str] = set([  "labels",  ])
-        self._props = ReferenceShortlistProperties(self._bldr, self._properties)
+        self._bldr = _tb.class_("ShotReferenceChoice")
+        self._properties: typing.Set[str] = set([  "choice",  ])
+        self._props = ShotReferenceChoiceProperties(self._bldr, self._properties)
 
     def type(self) -> baml_py.FieldType:
         return self._bldr.field()
 
     @property
-    def props(self) -> "ReferenceShortlistProperties":
+    def props(self) -> "ShotReferenceChoiceProperties":
         return self._props
 
 
-class ReferenceShortlistViewer(ReferenceShortlistAst):
+class ShotReferenceChoiceViewer(ShotReferenceChoiceAst):
     def __init__(self, tb: type_builder.TypeBuilder):
         super().__init__(tb)
 
@@ -468,7 +511,7 @@ class ReferenceShortlistViewer(ReferenceShortlistAst):
     
 
 
-class ReferenceShortlistProperties:
+class ShotReferenceChoiceProperties:
     def __init__(self, bldr: baml_py.ClassBuilder, properties: typing.Set[str]):
         self.__bldr = bldr
         self.__properties = properties # type: ignore (we know how to use this private attribute) # noqa: F821
@@ -476,8 +519,8 @@ class ReferenceShortlistProperties:
     
     
     @property
-    def labels(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("labels"))
+    def choice(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("choice"))
     
     
 

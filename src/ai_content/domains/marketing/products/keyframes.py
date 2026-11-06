@@ -191,6 +191,7 @@ class KeyframeGenerator:
         product_photos: list[bytes],
         fix: str = "",
         persona: bytes | None = None,
+        reference: bytes | None = None,
     ) -> bytes:
         images = [master]
         parts = [
@@ -200,6 +201,13 @@ class KeyframeGenerator:
         if persona is not None:
             images.append(persona)
             parts.append(f"Image {len(images)} {_PERSONA_RULE}")
+        if reference is not None:
+            images.append(reference)
+            parts.append(
+                f"Image {len(images)} is a loose reference for the pose, framing and camera angle "
+                "only: keep the room, light, person and product exactly as in the other images and "
+                "never copy its objects, brand, text or people."
+            )
         images += product_photos
         parts.append("The remaining images are the real product photos.")
         parts += [_PRODUCT_RULE, "" if persona is not None else _NO_PEOPLE]

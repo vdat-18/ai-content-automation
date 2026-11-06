@@ -19,9 +19,7 @@ class ContentBrief {
   format "problem_solution" | "step_by_step" | "before_after" | "unboxing" | "worth_it_text"
   script string
   persona string
-  selected_reference_labels string[]
   product_photo_numbers int[]
-  reference_rationale string
   scene string
   product_placement string
   product_variant string
@@ -37,8 +35,7 @@ function DraftContentBrief(
   product_json: string,
   user_idea: string,
   shot_count: int,
-  product_images: image[],
-  references: LabeledReference[]
+  product_images: image[]
 ) -> ContentBrief {
   client OrchestrationModel
   prompt #"
@@ -47,12 +44,10 @@ function DraftContentBrief(
     excellent brief for a product photo that sells the product to Vietnamese shoppers. Return JSON
     only and exactly match the response schema.
 
-    The references are text descriptions of approved scenes whose background, setting and styling
-    we borrow. Pick the ONE that suits this product best and put its label alone in
-    selected_reference_labels: that single scene photo is later given to the image model, so write
-    scene from its description. Explain the choice in reference_rationale. Describe the scene to
-    recreate in scene and say exactly where and how the product sits in product_placement. Never
-    copy a reference literally and never reuse another brand's product, logo or text from it.
+    Describe in scene the one lived-in place where the whole video happens, suited to the target
+    audience, and say exactly where and how the product sits in product_placement. Reference photos
+    are matched to each shot later, so write every shot's keyframe_prompt on its own: the action,
+    the framing, the distance and the camera angle.
 
     The product photos are numbered. Put in product_photo_numbers the numbers of all the photos
     that show the product, most useful first: the main photo, other angles and photos that show
@@ -166,7 +161,7 @@ function DraftContentBrief(
     voiceover (one Vietnamese sentence).
 
     If the user gave an idea, treat it as the creative direction: keep its intent, make it
-    concrete, fix weak points and enrich it with the best references and product facts. If the
+    concrete, fix weak points and enrich it with the product facts. If the
     idea is empty, choose the direction yourself.
 
     {{ _.role("user") }}
@@ -180,11 +175,6 @@ function DraftContentBrief(
     {% for photo in product_images %}
     Photo {{ loop.index }}:
     {{ photo }}
-    {% endfor %}
-
-    Reference scenes:
-    {% for reference in references %}
-    {{ reference.label }}: {{ reference.note }}
     {% endfor %}
 
     {{ ctx.output_format }}

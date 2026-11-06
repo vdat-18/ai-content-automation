@@ -1240,3 +1240,5 @@ body.column-resizing * { cursor: col-resize !important; user-select: none !impor
 .brief-form .brief-field input, .brief-form .brief-field textarea, .brief-form .brief-field select { min-width: 0; box-sizing: border-box; }
 .brief-more { grid-template-columns: minmax(0, 1fr); }
 .brief-more > summary span { flex: 1; }
+.shot-row__side { display: grid; gap: 6px; }
+.shot-row__reference { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; border: 1px solid var(--line); cursor: zoom-in; }

@@ -36,7 +36,7 @@ class _FakeKeyframer:
             raise KeyframeGenerationError("HTTP 503")
         return PNG + b"master"
 
-    async def follow_up(self, shot, master, photos, fix="", persona=None):
+    async def follow_up(self, shot, master, photos, fix="", persona=None, reference=None):
         self.calls.append(("follow_up", len(photos), fix))
         assert master == PNG + b"master"
         return PNG + b"follow"
@@ -317,7 +317,8 @@ async def test_prompts_name_the_person_only_when_there_is_one() -> None:
     await generator.master(shot, [b"p1"], None)
     await generator.follow_up(shot, b"master", [b"p1"], persona=b"face")
     await generator.persona("woman, 28")
-    with_person, without, follow, portrait = client.calls
+    await generator.follow_up(shot, b"master", [b"p1"], persona=b"face", reference=b"pose")
+    with_person, without, follow, portrait, with_reference = client.calls
     assert with_person[1] == 4 and "Image 3 is the person in the ad" in with_person[0]
     assert (
         "Image 4 is a scene reference" in with_person[0]
@@ -328,6 +329,8 @@ async def test_prompts_name_the_person_only_when_there_is_one() -> None:
     assert (
         portrait[1] == 0 and "does not exist" in portrait[0] and portrait[0].endswith("woman, 28")
     )
+    assert with_reference[1] == 4 and "Image 3 is a loose reference" in with_reference[0]
+    assert "loose reference" not in follow[0]
 
 
 async def test_the_real_product_size_reaches_the_image_prompt_and_the_checker(tmp_path) -> None:

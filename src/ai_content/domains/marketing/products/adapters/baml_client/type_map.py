@@ -28,14 +28,17 @@ type_map = {
     "types.PostingPackage": types.PostingPackage,
     "stream_types.PostingPackage": stream_types.PostingPackage,
 
+    "types.ReferenceCandidate": types.ReferenceCandidate,
+    "stream_types.ReferenceCandidate": stream_types.ReferenceCandidate,
+
     "types.ReferenceImageReview": types.ReferenceImageReview,
     "stream_types.ReferenceImageReview": stream_types.ReferenceImageReview,
 
     "types.ReferenceSearchProfileDraft": types.ReferenceSearchProfileDraft,
     "stream_types.ReferenceSearchProfileDraft": stream_types.ReferenceSearchProfileDraft,
 
-    "types.ReferenceShortlist": types.ReferenceShortlist,
-    "stream_types.ReferenceShortlist": stream_types.ReferenceShortlist,
+    "types.ShotReferenceChoice": types.ShotReferenceChoice,
+    "stream_types.ShotReferenceChoice": stream_types.ShotReferenceChoice,
 
     "types.StoryboardProblem": types.StoryboardProblem,
     "stream_types.StoryboardProblem": stream_types.StoryboardProblem,

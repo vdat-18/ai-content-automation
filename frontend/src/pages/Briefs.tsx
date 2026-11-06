@@ -35,6 +35,7 @@ type Brief = {
   colors: string[];
   shots?: Shot[];
   selected_reference_ids: string[];
+  shot_references?: (string | null)[];
   product_photo_urls?: string[];
   post_package?: PostPackage;
   persona?: Persona;
@@ -368,10 +369,19 @@ function BriefForm({
           {shots.map((shot, index) => {
             const keyframe = keyframeByShot.get(index);
             const src = keyframe && keyframe.status !== "failed" ? `${API}/${record.product_id}/keyframes/${index}/image?v=${keyframe.attempts}` : null;
+            const referenceId = brief.shot_references?.[index];
+            const referenceSrc = referenceId ? imageById.get(referenceId) : undefined;
             return (
               <section className="shot-row" key={`${index}-${shot.keyframe_prompt}`}>
-                <div className="shot-row__image">
-                  {src ? <img src={src} alt="" loading="lazy" {...lightbox.zoom([{ src }], 0)} /> : <span>{t("No image yet")}</span>}
+                <div className="shot-row__side">
+                  <div className="shot-row__image">
+                    {src ? <img src={src} alt="" loading="lazy" {...lightbox.zoom([{ src }], 0)} /> : <span>{t("No image yet")}</span>}
+                  </div>
+                  {referenceSrc ? (
+                    <img className="shot-row__reference" src={referenceSrc} alt="" loading="lazy" referrerPolicy="no-referrer" title={t("Reference photo for this shot")} {...lightbox.zoom([{ src: referenceSrc }], 0)} />
+                  ) : (
+                    <small className="brief-note">{t("No reference")}</small>
+                  )}
                 </div>
                 <div className="shot-row__body">
                   <div className="shot-row__head">

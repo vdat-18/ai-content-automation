@@ -37,6 +37,14 @@ class ApplicationSettings(BaseSettings):
     tts_model: str = Field("", validation_alias="AIC_TTS_MODEL")
     tts_voice: str = Field("", validation_alias="AIC_TTS_VOICE")
 
+    # Text embedding of reference descriptions, used to find references for each shot. The URL
+    # and key fall back to the image settings; an empty model disables reference matching.
+    text_embedding_base_url: str = Field("", validation_alias="AIC_TEXT_EMBEDDING_BASE_URL")
+    text_embedding_api_key: SecretStr | None = Field(
+        None, validation_alias="AIC_TEXT_EMBEDDING_API_KEY"
+    )
+    text_embedding_model: str = Field("", validation_alias="AIC_TEXT_EMBEDDING_MODEL")
+
     # Local ONNX image embedding used to drop duplicate references; empty disables it.
     embedding_model: str = Field("dinov3-vits16", validation_alias="AIC_EMBEDDING_MODEL")
 
@@ -122,6 +130,11 @@ class ApplicationSettings(BaseSettings):
     @property
     def image_api_key_value(self) -> str | None:
         key = self.image_api_key or self.screening_api_key
+        return key.get_secret_value() if key else None
+
+    @property
+    def text_embedding_api_key_value(self) -> str | None:
+        key = self.text_embedding_api_key or self.image_api_key or self.screening_api_key
         return key.get_secret_value() if key else None
 
     @property

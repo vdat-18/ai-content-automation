@@ -29,6 +29,12 @@ class LlmResponseParser:
         __result__ = self.__options.merge_options(baml_options).parse_response(function_name="CheckKeyframe", llm_response=llm_response, mode="request")
         return typing.cast(types.KeyframeCheck, __result__)
 
+    def ChooseShotReference(
+        self, llm_response: str, baml_options: BamlCallOptions = {},
+    ) -> types.ShotReferenceChoice:
+        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="ChooseShotReference", llm_response=llm_response, mode="request")
+        return typing.cast(types.ShotReferenceChoice, __result__)
+
     def DraftContentBrief(
         self, llm_response: str, baml_options: BamlCallOptions = {},
     ) -> types.ContentBrief:
@@ -53,12 +59,6 @@ class LlmResponseParser:
         __result__ = self.__options.merge_options(baml_options).parse_response(function_name="ReviewStoryboard", llm_response=llm_response, mode="request")
         return typing.cast(types.StoryboardReview, __result__)
 
-    def ShortlistReferences(
-        self, llm_response: str, baml_options: BamlCallOptions = {},
-    ) -> types.ReferenceShortlist:
-        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="ShortlistReferences", llm_response=llm_response, mode="request")
-        return typing.cast(types.ReferenceShortlist, __result__)
-
     def WritePostingPackage(
         self, llm_response: str, baml_options: BamlCallOptions = {},
     ) -> types.PostingPackage:
@@ -78,6 +78,12 @@ class LlmStreamParser:
     ) -> stream_types.KeyframeCheck:
         __result__ = self.__options.merge_options(baml_options).parse_response(function_name="CheckKeyframe", llm_response=llm_response, mode="stream")
         return typing.cast(stream_types.KeyframeCheck, __result__)
+
+    def ChooseShotReference(
+        self, llm_response: str, baml_options: BamlCallOptions = {},
+    ) -> stream_types.ShotReferenceChoice:
+        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="ChooseShotReference", llm_response=llm_response, mode="stream")
+        return typing.cast(stream_types.ShotReferenceChoice, __result__)
 
     def DraftContentBrief(
         self, llm_response: str, baml_options: BamlCallOptions = {},
@@ -102,12 +108,6 @@ class LlmStreamParser:
     ) -> stream_types.StoryboardReview:
         __result__ = self.__options.merge_options(baml_options).parse_response(function_name="ReviewStoryboard", llm_response=llm_response, mode="stream")
         return typing.cast(stream_types.StoryboardReview, __result__)
-
-    def ShortlistReferences(
-        self, llm_response: str, baml_options: BamlCallOptions = {},
-    ) -> stream_types.ReferenceShortlist:
-        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="ShortlistReferences", llm_response=llm_response, mode="stream")
-        return typing.cast(stream_types.ReferenceShortlist, __result__)
 
     def WritePostingPackage(
         self, llm_response: str, baml_options: BamlCallOptions = {},

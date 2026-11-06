@@ -16,10 +16,7 @@ from ai_content.domains.marketing.creative_knowledge.repositories import (
     SqliteCreativeKnowledgeRepository,
 )
 from ai_content.domains.marketing.creative_knowledge.service import CreativeKnowledgeService
-from ai_content.domains.marketing.products.briefing import (
-    ContentBriefWriter,
-    ReferenceShortlister,
-)
+from ai_content.domains.marketing.products.briefing import ContentBriefWriter
 from ai_content.domains.marketing.products.clips import VideoClient
 from ai_content.domains.marketing.products.embedding import ImageEmbedder
 from ai_content.domains.marketing.products.image_review import ReferenceImageReviewer
@@ -30,11 +27,13 @@ from ai_content.domains.marketing.products.keyframes import (
 )
 from ai_content.domains.marketing.products.media_store import S3RemoteMedia
 from ai_content.domains.marketing.products.posting import PostingPackageWriter
+from ai_content.domains.marketing.products.reference_picker import ShotReferencePicker
 from ai_content.domains.marketing.products.references import ReferenceProfileGenerator
 from ai_content.domains.marketing.products.repositories import SqliteProductRepository
 from ai_content.domains.marketing.products.service import ProductCatalogService
 from ai_content.domains.marketing.products.speech import SpeechClient
 from ai_content.domains.marketing.products.storyboard_review import StoryboardReviewer
+from ai_content.domains.marketing.products.text_embedding import TextEmbedder
 from ai_content.entrypoints.postgres_runtime import PostgresRuntimeContainer
 from ai_content.platform.ai_usage import AIUsageRepository, SqliteAIUsageRepository
 from ai_content.platform.database import Database
@@ -56,6 +55,9 @@ class ApiRuntimeSettings:
     screening_api_key: str | None = None
     screening_model: str = "gemini-3.8-flash"
     embedding_model: str = ""
+    text_embedding_base_url: str = ""
+    text_embedding_api_key: str | None = None
+    text_embedding_model: str = ""
     image_base_url: str = ""
     image_api_key: str | None = None
     image_model: str = ""
@@ -110,6 +112,11 @@ def get_runtime_settings() -> ApiRuntimeSettings:
         screening_api_key=application.screening_api_key_value,
         screening_model=application.screening_model,
         embedding_model=application.embedding_model,
+        text_embedding_base_url=application.text_embedding_base_url
+        or application.image_base_url
+        or application.screening_base_url,
+        text_embedding_api_key=application.text_embedding_api_key_value,
+        text_embedding_model=application.text_embedding_model,
         image_base_url=application.image_base_url or application.screening_base_url,
         image_api_key=application.image_api_key_value,
         image_model=application.image_model,
@@ -342,10 +349,20 @@ def _brief_writer(settings: ApiRuntimeSettings) -> ContentBriefWriter | None:
     )
 
 
-def _shortlister(settings: ApiRuntimeSettings) -> ReferenceShortlister | None:
+def _text_embedder(settings: ApiRuntimeSettings) -> TextEmbedder | None:
+    if not (settings.text_embedding_model and settings.text_embedding_api_key):
+        return None
+    return TextEmbedder(
+        settings.text_embedding_base_url,
+        settings.text_embedding_api_key,
+        settings.text_embedding_model,
+    )
+
+
+def _reference_picker(settings: ApiRuntimeSettings) -> ShotReferencePicker | None:
     if not settings.screening_api_key:
         return None
-    return ReferenceShortlister.from_settings(
+    return ShotReferencePicker.from_settings(
         base_url=settings.screening_base_url,
         api_key=settings.screening_api_key,
         model=settings.screening_model,
@@ -395,7 +412,8 @@ async def product_catalog_scope(postgres: Any) -> AsyncIterator[ProductCatalogSe
             _speech_client(settings),
             _remote_media(settings),
             _storyboard_reviewer(settings),
-            _shortlister(settings),
+            _text_embedder(settings),
+            _reference_picker(settings),
         )
     finally:
         if postgres is None:

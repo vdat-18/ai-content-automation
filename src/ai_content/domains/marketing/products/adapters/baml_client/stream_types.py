@@ -23,7 +23,7 @@ class StreamState(BaseModel, typing.Generic[StreamStateValueT]):
     value: StreamStateValueT
     state: typing_extensions.Literal["Pending", "Incomplete", "Complete"]
 # #########################################################################
-# Generated classes (10)
+# Generated classes (11)
 # #########################################################################
 
 class ContentBrief(BaseModel):
@@ -31,9 +31,7 @@ class ContentBrief(BaseModel):
     format: typing.Optional[typing.Union[typing_extensions.Literal['problem_solution'], typing_extensions.Literal['step_by_step'], typing_extensions.Literal['before_after'], typing_extensions.Literal['unboxing'], typing_extensions.Literal['worth_it_text']]] = None
     script: typing.Optional[str] = None
     persona: typing.Optional[str] = None
-    selected_reference_labels: typing.List[str]
     product_photo_numbers: typing.List[int]
-    reference_rationale: typing.Optional[str] = None
     scene: typing.Optional[str] = None
     product_placement: typing.Optional[str] = None
     product_variant: typing.Optional[str] = None
@@ -56,6 +54,11 @@ class PostingPackage(BaseModel):
     captions: typing.List[str]
     hashtags: typing.List[str]
 
+class ReferenceCandidate(BaseModel):
+    label: typing.Optional[str] = None
+    note: typing.Optional[str] = None
+    photo: typing.Optional[baml_py.Image] = None
+
 class ReferenceImageReview(BaseModel):
     usable: typing.Optional[bool] = None
     description: typing.Optional[str] = None
@@ -75,8 +78,8 @@ class ReferenceSearchProfileDraft(BaseModel):
     product_type: typing.Optional[str] = None
     keywords: typing.List[str]
 
-class ReferenceShortlist(BaseModel):
-    labels: typing.List[str]
+class ShotReferenceChoice(BaseModel):
+    choice: typing.Optional[str] = None
 
 class StoryboardProblem(BaseModel):
     where: typing.Optional[str] = None
@@ -103,7 +106,7 @@ class StoryboardShot(BaseModel):
 
 
 # #########################################################################
-# Model rebuilds (10)
+# Model rebuilds (11)
 # #########################################################################
 # Resolve string forward references now that every model above is defined so
 # class declaration order never breaks Pydantic construction (issue #793).
@@ -113,9 +116,10 @@ ContentBrief.model_rebuild()
 KeyframeCheck.model_rebuild()
 LabeledReference.model_rebuild()
 PostingPackage.model_rebuild()
+ReferenceCandidate.model_rebuild()
 ReferenceImageReview.model_rebuild()
 ReferenceSearchProfileDraft.model_rebuild()
-ReferenceShortlist.model_rebuild()
+ShotReferenceChoice.model_rebuild()
 StoryboardProblem.model_rebuild()
 StoryboardReview.model_rebuild()
 StoryboardShot.model_rebuild()

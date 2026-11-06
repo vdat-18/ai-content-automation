@@ -64,6 +64,10 @@ class ProductRepository(Protocol):
 
     async def set_fingerprint(self, image_id: str, phash: str, embedding: list[float]) -> None: ...
 
+    async def text_embeddings(self, product_type: str) -> dict[str, dict[str, Any]]: ...
+
+    async def set_text_embedding(self, image_id: str, model: str, vector: list[float]) -> None: ...
+
     async def done_searches(self) -> set[tuple[str, str]]: ...
 
     async def list_reference_images(
@@ -220,7 +224,7 @@ class SqliteProductRepository:
         )
         with contextlib.suppress(sqlite3.OperationalError):
             self._connection.execute("ALTER TABLE reference_images ADD COLUMN screening TEXT")
-        for column in ("phash TEXT", "embedding TEXT", "duplicate_of TEXT"):
+        for column in ("phash TEXT", "embedding TEXT", "duplicate_of TEXT", "text_embedding TEXT"):
             with contextlib.suppress(sqlite3.OperationalError):
                 self._connection.execute(f"ALTER TABLE reference_images ADD COLUMN {column}")
         self._connection.execute(
@@ -569,6 +573,21 @@ class SqliteProductRepository:
             (limit,),
         ).fetchall()
         return [{"image_id": r[0], "image_url": r[1], "status": r[2]} for r in rows]
+
+    async def text_embeddings(self, product_type: str) -> dict[str, dict[str, Any]]:
+        rows = self._connection.execute(
+            "SELECT image_id, text_embedding FROM reference_images "
+            "WHERE product_type=? AND text_embedding IS NOT NULL",
+            (product_type,),
+        ).fetchall()
+        return {row[0]: json.loads(row[1]) for row in rows}
+
+    async def set_text_embedding(self, image_id: str, model: str, vector: list[float]) -> None:
+        self._connection.execute(
+            "UPDATE reference_images SET text_embedding=? WHERE image_id=?",
+            (json.dumps({"model": model, "vector": vector}), image_id),
+        )
+        self._connection.commit()
 
     async def set_fingerprint(self, image_id: str, phash: str, embedding: list[float]) -> None:
         self._connection.execute(
@@ -971,6 +990,24 @@ class PostgresProductRepository:
         async with self._engine.connect() as connection:
             rows = (await connection.execute(statement)).all()
         return [{"image_id": r[0], "image_url": r[1], "status": r[2]} for r in rows]
+
+    async def text_embeddings(self, product_type: str) -> dict[str, dict[str, Any]]:
+        statement = select(reference_images.c.image_id, reference_images.c.text_embedding).where(
+            reference_images.c.product_type == product_type,
+            reference_images.c.text_embedding.is_not(None),
+        )
+        async with self._engine.connect() as connection:
+            rows = (await connection.execute(statement)).all()
+        return {row[0]: row[1] for row in rows}
+
+    async def set_text_embedding(self, image_id: str, model: str, vector: list[float]) -> None:
+        statement = (
+            reference_images.update()
+            .where(reference_images.c.image_id == image_id)
+            .values(text_embedding={"model": model, "vector": vector}, updated_at=func.now())
+        )
+        async with self._engine.begin() as connection:
+            await connection.execute(statement)
 
     async def set_fingerprint(self, image_id: str, phash: str, embedding: list[float]) -> None:
         statement = (

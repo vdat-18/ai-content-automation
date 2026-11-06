@@ -238,7 +238,7 @@ def test_brief_endpoints(client: TestClient, repository: SqliteProductRepository
 
 
 class _FakeWriter:
-    async def write(self, product, user_idea, references, shot_count=1):
+    async def write(self, product, user_idea, shot_count=1):
         return {"title": "T", "idea_seen": user_idea, "selected_reference_ids": []}
 
 

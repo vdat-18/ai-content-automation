@@ -97,19 +97,34 @@ class BamlAsyncClient:
                 "shot_description": shot_description,"product_photos": product_photos,"master_keyframe": master_keyframe,"keyframe": keyframe,"character": character,"previous_keyframe": previous_keyframe,
             })
             return typing.cast(types.KeyframeCheck, __result__.cast_to(types, types, stream_types, False, __runtime__))
-    async def DraftContentBrief(self, product_json: str,user_idea: str,shot_count: int,product_images: typing.List[baml_py.Image],references: typing.List["types.LabeledReference"],
+    async def ChooseShotReference(self, product_json: str,shot_json: str,candidates: typing.List["types.ReferenceCandidate"],
+        baml_options: BamlCallOptions = {},
+    ) -> types.ShotReferenceChoice:
+        # Check if on_tick is provided
+        if 'on_tick' in baml_options:
+            # Use streaming internally when on_tick is provided
+            __stream__ = self.stream.ChooseShotReference(product_json=product_json,shot_json=shot_json,candidates=candidates,
+                baml_options=baml_options)
+            return await __stream__.get_final_response()
+        else:
+            # Original non-streaming code
+            __result__ = await self.__options.merge_options(baml_options).call_function_async(function_name="ChooseShotReference", args={
+                "product_json": product_json,"shot_json": shot_json,"candidates": candidates,
+            })
+            return typing.cast(types.ShotReferenceChoice, __result__.cast_to(types, types, stream_types, False, __runtime__))
+    async def DraftContentBrief(self, product_json: str,user_idea: str,shot_count: int,product_images: typing.List[baml_py.Image],
         baml_options: BamlCallOptions = {},
     ) -> types.ContentBrief:
         # Check if on_tick is provided
         if 'on_tick' in baml_options:
             # Use streaming internally when on_tick is provided
-            __stream__ = self.stream.DraftContentBrief(product_json=product_json,user_idea=user_idea,shot_count=shot_count,product_images=product_images,references=references,
+            __stream__ = self.stream.DraftContentBrief(product_json=product_json,user_idea=user_idea,shot_count=shot_count,product_images=product_images,
                 baml_options=baml_options)
             return await __stream__.get_final_response()
         else:
             # Original non-streaming code
             __result__ = await self.__options.merge_options(baml_options).call_function_async(function_name="DraftContentBrief", args={
-                "product_json": product_json,"user_idea": user_idea,"shot_count": shot_count,"product_images": product_images,"references": references,
+                "product_json": product_json,"user_idea": user_idea,"shot_count": shot_count,"product_images": product_images,
             })
             return typing.cast(types.ContentBrief, __result__.cast_to(types, types, stream_types, False, __runtime__))
     async def DraftReferenceSearchProfile(self, product_json: str,
@@ -157,21 +172,6 @@ class BamlAsyncClient:
                 "product_json": product_json,"brief_json": brief_json,
             })
             return typing.cast(types.StoryboardReview, __result__.cast_to(types, types, stream_types, False, __runtime__))
-    async def ShortlistReferences(self, product_json: str,user_idea: str,references: typing.List["types.LabeledReference"],keep: int,
-        baml_options: BamlCallOptions = {},
-    ) -> types.ReferenceShortlist:
-        # Check if on_tick is provided
-        if 'on_tick' in baml_options:
-            # Use streaming internally when on_tick is provided
-            __stream__ = self.stream.ShortlistReferences(product_json=product_json,user_idea=user_idea,references=references,keep=keep,
-                baml_options=baml_options)
-            return await __stream__.get_final_response()
-        else:
-            # Original non-streaming code
-            __result__ = await self.__options.merge_options(baml_options).call_function_async(function_name="ShortlistReferences", args={
-                "product_json": product_json,"user_idea": user_idea,"references": references,"keep": keep,
-            })
-            return typing.cast(types.ReferenceShortlist, __result__.cast_to(types, types, stream_types, False, __runtime__))
     async def WritePostingPackage(self, product_json: str,brief_json: str,
         baml_options: BamlCallOptions = {},
     ) -> types.PostingPackage:
@@ -208,11 +208,23 @@ class BamlStreamClient:
           lambda x: typing.cast(types.KeyframeCheck, x.cast_to(types, types, stream_types, False, __runtime__)),
           __ctx__,
         )
-    def DraftContentBrief(self, product_json: str,user_idea: str,shot_count: int,product_images: typing.List[baml_py.Image],references: typing.List["types.LabeledReference"],
+    def ChooseShotReference(self, product_json: str,shot_json: str,candidates: typing.List["types.ReferenceCandidate"],
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.BamlStream[stream_types.ShotReferenceChoice, types.ShotReferenceChoice]:
+        __ctx__, __result__ = self.__options.merge_options(baml_options).create_async_stream(function_name="ChooseShotReference", args={
+            "product_json": product_json,"shot_json": shot_json,"candidates": candidates,
+        })
+        return baml_py.BamlStream[stream_types.ShotReferenceChoice, types.ShotReferenceChoice](
+          __result__,
+          lambda x: typing.cast(stream_types.ShotReferenceChoice, x.cast_to(types, types, stream_types, True, __runtime__)),
+          lambda x: typing.cast(types.ShotReferenceChoice, x.cast_to(types, types, stream_types, False, __runtime__)),
+          __ctx__,
+        )
+    def DraftContentBrief(self, product_json: str,user_idea: str,shot_count: int,product_images: typing.List[baml_py.Image],
         baml_options: BamlCallOptions = {},
     ) -> baml_py.BamlStream[stream_types.ContentBrief, types.ContentBrief]:
         __ctx__, __result__ = self.__options.merge_options(baml_options).create_async_stream(function_name="DraftContentBrief", args={
-            "product_json": product_json,"user_idea": user_idea,"shot_count": shot_count,"product_images": product_images,"references": references,
+            "product_json": product_json,"user_idea": user_idea,"shot_count": shot_count,"product_images": product_images,
         })
         return baml_py.BamlStream[stream_types.ContentBrief, types.ContentBrief](
           __result__,
@@ -256,18 +268,6 @@ class BamlStreamClient:
           lambda x: typing.cast(types.StoryboardReview, x.cast_to(types, types, stream_types, False, __runtime__)),
           __ctx__,
         )
-    def ShortlistReferences(self, product_json: str,user_idea: str,references: typing.List["types.LabeledReference"],keep: int,
-        baml_options: BamlCallOptions = {},
-    ) -> baml_py.BamlStream[stream_types.ReferenceShortlist, types.ReferenceShortlist]:
-        __ctx__, __result__ = self.__options.merge_options(baml_options).create_async_stream(function_name="ShortlistReferences", args={
-            "product_json": product_json,"user_idea": user_idea,"references": references,"keep": keep,
-        })
-        return baml_py.BamlStream[stream_types.ReferenceShortlist, types.ReferenceShortlist](
-          __result__,
-          lambda x: typing.cast(stream_types.ReferenceShortlist, x.cast_to(types, types, stream_types, True, __runtime__)),
-          lambda x: typing.cast(types.ReferenceShortlist, x.cast_to(types, types, stream_types, False, __runtime__)),
-          __ctx__,
-        )
     def WritePostingPackage(self, product_json: str,brief_json: str,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.BamlStream[stream_types.PostingPackage, types.PostingPackage]:
@@ -295,11 +295,18 @@ class BamlHttpRequestClient:
             "shot_description": shot_description,"product_photos": product_photos,"master_keyframe": master_keyframe,"keyframe": keyframe,"character": character,"previous_keyframe": previous_keyframe,
         }, mode="request")
         return __result__
-    async def DraftContentBrief(self, product_json: str,user_idea: str,shot_count: int,product_images: typing.List[baml_py.Image],references: typing.List["types.LabeledReference"],
+    async def ChooseShotReference(self, product_json: str,shot_json: str,candidates: typing.List["types.ReferenceCandidate"],
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.baml_py.HTTPRequest:
+        __result__ = await self.__options.merge_options(baml_options).create_http_request_async(function_name="ChooseShotReference", args={
+            "product_json": product_json,"shot_json": shot_json,"candidates": candidates,
+        }, mode="request")
+        return __result__
+    async def DraftContentBrief(self, product_json: str,user_idea: str,shot_count: int,product_images: typing.List[baml_py.Image],
         baml_options: BamlCallOptions = {},
     ) -> baml_py.baml_py.HTTPRequest:
         __result__ = await self.__options.merge_options(baml_options).create_http_request_async(function_name="DraftContentBrief", args={
-            "product_json": product_json,"user_idea": user_idea,"shot_count": shot_count,"product_images": product_images,"references": references,
+            "product_json": product_json,"user_idea": user_idea,"shot_count": shot_count,"product_images": product_images,
         }, mode="request")
         return __result__
     async def DraftReferenceSearchProfile(self, product_json: str,
@@ -321,13 +328,6 @@ class BamlHttpRequestClient:
     ) -> baml_py.baml_py.HTTPRequest:
         __result__ = await self.__options.merge_options(baml_options).create_http_request_async(function_name="ReviewStoryboard", args={
             "product_json": product_json,"brief_json": brief_json,
-        }, mode="request")
-        return __result__
-    async def ShortlistReferences(self, product_json: str,user_idea: str,references: typing.List["types.LabeledReference"],keep: int,
-        baml_options: BamlCallOptions = {},
-    ) -> baml_py.baml_py.HTTPRequest:
-        __result__ = await self.__options.merge_options(baml_options).create_http_request_async(function_name="ShortlistReferences", args={
-            "product_json": product_json,"user_idea": user_idea,"references": references,"keep": keep,
         }, mode="request")
         return __result__
     async def WritePostingPackage(self, product_json: str,brief_json: str,
@@ -352,11 +352,18 @@ class BamlHttpStreamRequestClient:
             "shot_description": shot_description,"product_photos": product_photos,"master_keyframe": master_keyframe,"keyframe": keyframe,"character": character,"previous_keyframe": previous_keyframe,
         }, mode="stream")
         return __result__
-    async def DraftContentBrief(self, product_json: str,user_idea: str,shot_count: int,product_images: typing.List[baml_py.Image],references: typing.List["types.LabeledReference"],
+    async def ChooseShotReference(self, product_json: str,shot_json: str,candidates: typing.List["types.ReferenceCandidate"],
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.baml_py.HTTPRequest:
+        __result__ = await self.__options.merge_options(baml_options).create_http_request_async(function_name="ChooseShotReference", args={
+            "product_json": product_json,"shot_json": shot_json,"candidates": candidates,
+        }, mode="stream")
+        return __result__
+    async def DraftContentBrief(self, product_json: str,user_idea: str,shot_count: int,product_images: typing.List[baml_py.Image],
         baml_options: BamlCallOptions = {},
     ) -> baml_py.baml_py.HTTPRequest:
         __result__ = await self.__options.merge_options(baml_options).create_http_request_async(function_name="DraftContentBrief", args={
-            "product_json": product_json,"user_idea": user_idea,"shot_count": shot_count,"product_images": product_images,"references": references,
+            "product_json": product_json,"user_idea": user_idea,"shot_count": shot_count,"product_images": product_images,
         }, mode="stream")
         return __result__
     async def DraftReferenceSearchProfile(self, product_json: str,
@@ -378,13 +385,6 @@ class BamlHttpStreamRequestClient:
     ) -> baml_py.baml_py.HTTPRequest:
         __result__ = await self.__options.merge_options(baml_options).create_http_request_async(function_name="ReviewStoryboard", args={
             "product_json": product_json,"brief_json": brief_json,
-        }, mode="stream")
-        return __result__
-    async def ShortlistReferences(self, product_json: str,user_idea: str,references: typing.List["types.LabeledReference"],keep: int,
-        baml_options: BamlCallOptions = {},
-    ) -> baml_py.baml_py.HTTPRequest:
-        __result__ = await self.__options.merge_options(baml_options).create_http_request_async(function_name="ShortlistReferences", args={
-            "product_json": product_json,"user_idea": user_idea,"references": references,"keep": keep,
         }, mode="stream")
         return __result__
     async def WritePostingPackage(self, product_json: str,brief_json: str,

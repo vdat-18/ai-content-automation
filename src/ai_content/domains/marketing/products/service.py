@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 from datetime import UTC, datetime
@@ -15,11 +16,10 @@ from openpyxl import Workbook
 from openpyxl.styles import Font
 
 from .briefing import (
-    SHORTLIST_SIZE,
     BriefGenerationError,
     BriefUnavailable,
     ContentBriefWriter,
-    ReferenceShortlister,
+    reference_note,
 )
 from .clips import (
     CLIP_SECONDS,
@@ -47,6 +47,7 @@ from .parsing import (
     parse_product_page,
 )
 from .posting import PostingPackageWriter
+from .reference_picker import ShotReferencePicker
 from .references import ProfileGenerationError, ReferenceProfile, ReferenceProfileGenerator
 from .repositories import ProductRepository
 from .speech import (
@@ -59,6 +60,7 @@ from .speech import (
     make_voiceover,
 )
 from .storyboard_review import StoryboardReviewer
+from .text_embedding import TextEmbedder, TextEmbeddingError
 
 _PINTEREST_SEARCH = "https://www.pinterest.com/search/pins/?q="
 _SCREEN_BATCH = 200
@@ -101,6 +103,7 @@ BRIEF_FIELDS = (
 )
 
 
+REFERENCE_CANDIDATES = 5  # pictures a model compares for one shot
 IMAGE_MODEL_PHOTOS = 28  # the image model takes 30 pictures; two are kept for the person and scene
 
 
@@ -170,7 +173,8 @@ class ProductCatalogService:
         speaker: SpeechClient | None = None,
         remote_media: RemoteMedia | None = None,
         storyboard_reviewer: StoryboardReviewer | None = None,
-        shortlister: ReferenceShortlister | None = None,
+        text_embedder: TextEmbedder | None = None,
+        reference_picker: ShotReferencePicker | None = None,
     ) -> None:
         self._repository = repository
         self._generator = generator
@@ -184,7 +188,8 @@ class ProductCatalogService:
         self._speaker = speaker
         self._remote_media = remote_media
         self._storyboard_reviewer = storyboard_reviewer
-        self._shortlister = shortlister
+        self._text_embedder = text_embedder
+        self._reference_picker = reference_picker
 
     async def ingest(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Store whatever a captured page or feed response contains."""
@@ -419,19 +424,12 @@ class ProductCatalogService:
             raise BriefUnavailable(
                 f"No usable reference image of type '{product_type}' yet; crawl Pinterest first"
             )
-        references = (
-            await self._shortlister.shortlist(detail, user_idea, live)
-            if self._shortlister
-            else live[:SHORTLIST_SIZE]
-        )
         shot_count = max(1, round(video_seconds / shot_seconds(CLIP_SECONDS)))
         fixes = ""
         attempts = 0
         for _ in range(BRIEF_ATTEMPTS):
             attempts += 1
-            brief = await self._briefer.write(
-                detail, f"{user_idea}{fixes}", references, shot_count=shot_count
-            )
+            brief = await self._briefer.write(detail, f"{user_idea}{fixes}", shot_count=shot_count)
             count_ok = "shots" not in brief or len(brief["shots"]) == shot_count
             problems = await self._review_storyboard(detail, brief) if count_ok else []
             if count_ok and not problems:
@@ -446,6 +444,12 @@ class ProductCatalogService:
             )
         brief["quality_problems"] = problems
         brief["warnings"] = brief_warnings(brief)
+        brief["shot_references"] = await self._pick_shot_references(
+            product_id, detail, brief, live, product_type
+        )
+        brief["selected_reference_ids"] = list(
+            dict.fromkeys(item for item in brief["shot_references"] if item)
+        )
         if brief.get("persona"):
             brief["persona"] = {
                 "description": str(brief["persona"]),
@@ -463,6 +467,90 @@ class ProductCatalogService:
             + (f". Still open: {'; '.join(problems)}" if problems else ""),
         )
         return await self._repository.get_brief(product_id)
+
+    async def _reference_vectors(
+        self, product_type: str, live: list[dict[str, Any]]
+    ) -> dict[str, list[float]]:
+        """The embedding of every live reference description; new ones are embedded and kept."""
+        assert self._text_embedder is not None
+        model = self._text_embedder.model
+        stored = await self._repository.text_embeddings(product_type)
+        vectors = {
+            image_id: item["vector"] for image_id, item in stored.items() if item["model"] == model
+        }
+        missing = [
+            (image["image_id"], note)
+            for image in live
+            if image["image_id"] not in vectors and (note := reference_note(image))
+        ]
+        if missing:
+            fresh = await self._text_embedder.embed([note for _, note in missing])
+            for (image_id, _), vector in zip(missing, fresh, strict=True):
+                await self._repository.set_text_embedding(image_id, model, vector)
+                vectors[image_id] = vector
+        return vectors
+
+    async def _pick_shot_references(
+        self,
+        product_id: str,
+        product: dict[str, Any],
+        brief: dict[str, Any],
+        live: list[dict[str, Any]],
+        product_type: str,
+    ) -> list[str | None]:
+        """For every shot, the image id of the reference that fits it best, or None.
+
+        The text of the shot is matched to the written descriptions of the references by
+        embedding; a model then looks at the closest few pictures and keeps one, or none.
+        """
+        shots = brief.get("shots") or []
+        none: list[str | None] = [None] * len(shots)
+        if self._text_embedder is None or self._reference_picker is None:
+            await self._log(
+                product_id,
+                "references",
+                "warning",
+                "No text embedding model: shots have no reference",
+            )
+            return none
+        try:
+            vectors = await self._reference_vectors(product_type, live)
+            queries = await self._text_embedder.embed(
+                [f"{shot.get('role', '')}. {shot.get('keyframe_prompt', '')}" for shot in shots]
+            )
+        except TextEmbeddingError as error:
+            await self._log(product_id, "references", "error", str(error))
+            return none
+        pool = [image for image in live if image["image_id"] in vectors]
+        picker = self._reference_picker
+
+        async def pick(shot: dict[str, Any], query: list[float]) -> str | None:
+            closest = sorted(
+                pool, key=lambda image: cosine(query, vectors[image["image_id"]]), reverse=True
+            )[:REFERENCE_CANDIDATES]
+            return await picker.choose(
+                product,
+                shot,
+                [
+                    {"image_id": i["image_id"], "note": reference_note(i), "url": i["image_url"]}
+                    for i in closest
+                ],
+            )
+
+        picked = await asyncio.gather(*(pick(s, q) for s, q in zip(shots, queries, strict=True)))
+        seen: set[str] = set()
+        result: list[str | None] = []
+        for image_id in picked:  # the same picture is not used twice
+            result.append(image_id if image_id and image_id not in seen else None)
+            if image_id:
+                seen.add(image_id)
+        await self._log(
+            product_id,
+            "references",
+            "ok",
+            f"Matched references to {sum(1 for item in result if item)} of {len(shots)} shot(s)",
+        )
+        return result
 
     async def _review_storyboard(self, product: dict[str, Any], brief: dict[str, Any]) -> list[str]:
         """Problems the reviewer found; none when there is no reviewer or the review failed."""
@@ -630,7 +718,7 @@ class ProductCatalogService:
         photos = await fetch_images(_product_photo_urls(record["brief"], detail or {}))
         if not photos:
             raise KeyframeUnavailable("No product photo could be downloaded")
-        scene = await self._primary_scene(record["brief"]) if 0 in wanted else None
+        references = await self._shot_references(record["brief"], wanted)
         master = (
             await self.media(media_root).read(existing[0]["image_path"]) if master_ready else None
         )
@@ -644,21 +732,28 @@ class ProductCatalogService:
                 existing.get(index),
                 media_root,
                 photos,
-                scene,
+                references.get(index),
                 master,
                 persona_image,
             )
         return await self._repository.list_keyframes(product_id)
 
-    async def _primary_scene(self, brief: dict[str, Any]) -> bytes | None:
-        ids = brief.get("selected_reference_ids") or []
+    async def _shot_references(self, brief: dict[str, Any], wanted: list[int]) -> dict[int, bytes]:
+        """The picture of the reference chosen for each wanted shot, when it has one."""
+        chosen = brief.get("shot_references") or []
+        ids = {index: chosen[index] for index in wanted if index < len(chosen) and chosen[index]}
         if not ids:
-            return None
-        for image in await self._repository.list_reference_images(None, None):
-            if image["image_id"] == ids[0]:
-                found = await fetch_images([image["image_url"]])
-                return found[0] if found else None
-        return None
+            return {}
+        urls = {
+            image["image_id"]: image["image_url"]
+            for image in await self._repository.list_reference_images(None, None)
+            if image["image_id"] in set(ids.values())
+        }
+        found: dict[int, bytes] = {}
+        for index, image_id in ids.items():
+            if image_id in urls and (pictures := await fetch_images([urls[image_id]])):
+                found[index] = pictures[0]
+        return found
 
     async def _make_keyframe(
         self,
@@ -668,7 +763,7 @@ class ProductCatalogService:
         previous: dict[str, Any] | None,
         media_root: Path,
         photos: list[bytes],
-        scene: bytes | None,
+        reference: bytes | None,
         master: bytes | None,
         persona: bytes | None = None,
     ) -> None:
@@ -686,10 +781,12 @@ class ProductCatalogService:
         for _ in range(1 + MAX_KEYFRAME_FIXES):
             try:
                 if index == 0:
-                    candidate = await self._keyframer.master(shot, photos, scene, problem, persona)
+                    candidate = await self._keyframer.master(
+                        shot, photos, reference, problem, persona
+                    )
                 else:
                     candidate = await self._keyframer.follow_up(
-                        shot, master or b"", photos, problem, persona
+                        shot, master or b"", photos, problem, persona, reference
                     )
             except KeyframeGenerationError as error:
                 attempts += 1

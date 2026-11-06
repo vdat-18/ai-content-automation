@@ -18,8 +18,6 @@ from ai_content.domains.marketing.products.adapters.baml_registry import build_c
 
 _CONCURRENCY = 2
 _DOWNLOAD_TIMEOUT = 30
-SHORTLIST_SIZE = 12  # references the brief writer finally reads
-SHORTLIST_BATCH = 80  # references one shortlist call reads
 
 
 class BriefGenerationError(RuntimeError):
@@ -37,7 +35,6 @@ class _BamlBriefClient(Protocol):
         user_idea: str,
         shot_count: int,
         product_images: list[BamlImage],
-        references: list[baml_types.LabeledReference],
     ) -> baml_types.ContentBrief: ...
 
 
@@ -71,7 +68,7 @@ _DETAIL_LABELS = (
 )
 
 
-def _note(image: dict[str, Any]) -> str:
+def reference_note(image: dict[str, Any]) -> str:
     """Everything the review saw in the picture, as text the brief writer can compare."""
     screening = image.get("screening") or {}
     if screening.get("description"):
@@ -85,77 +82,6 @@ def _note(image: dict[str, Any]) -> str:
         return " ".join([str(screening["description"]), *(f"{item}." for item in details)])
     parts = [screening.get("scene_description"), screening.get("placement_note")]
     return " ".join(part for part in parts if part)
-
-
-class _BamlShortlistClient(Protocol):
-    async def ShortlistReferences(
-        self,
-        product_json: str,
-        user_idea: str,
-        references: list[baml_types.LabeledReference],
-        keep: int,
-    ) -> baml_types.ReferenceShortlist: ...
-
-
-class ReferenceShortlister:
-    """Narrow any number of reference scenes down to a few that suit one product.
-
-    A model reads the written descriptions in batches and keeps the best of each batch; the
-    survivors are read again until few enough are left, so thousands of references still work.
-    """
-
-    def __init__(self, client: _BamlShortlistClient) -> None:
-        self._client = client
-
-    @classmethod
-    def from_settings(cls, *, base_url: str, api_key: str, model: str) -> ReferenceShortlister:
-        registry = build_client_registry(
-            name="ReferenceShortlist",
-            base_url=base_url,
-            model=model,
-            api_key=api_key,
-            reasoning_effort=None,
-            temperature=0,
-            max_output_tokens=2000,
-        )
-        return cls(b.with_options(client_registry=registry))
-
-    async def shortlist(
-        self,
-        product: dict[str, Any],
-        user_idea: str,
-        references: list[dict[str, Any]],
-        keep: int = SHORTLIST_SIZE,
-        batch: int = SHORTLIST_BATCH,
-    ) -> list[dict[str, Any]]:
-        facts = json.dumps(product_facts(product), ensure_ascii=False)
-        pool = list(references)
-        while len(pool) > keep:
-            groups = [pool[start : start + batch] for start in range(0, len(pool), batch)]
-            picked = await asyncio.gather(
-                *(self._pick(facts, user_idea, group, keep) for group in groups)
-            )
-            pool = [image for group in picked for image in group]
-        return pool
-
-    async def _pick(
-        self, facts: str, user_idea: str, group: list[dict[str, Any]], keep: int
-    ) -> list[dict[str, Any]]:
-        if len(group) <= keep:
-            return group
-        labeled = {f"ref_{index + 1}": image for index, image in enumerate(group)}
-        try:
-            result = await self._client.ShortlistReferences(
-                facts,
-                user_idea.strip(),
-                [baml_types.LabeledReference(label=k, note=_note(v)) for k, v in labeled.items()],
-                keep,
-            )
-        except BamlError as error:
-            logger.warning("Reference shortlist failed, keeping the newest: {}", str(error)[:200])
-            return group[:keep]
-        chosen = [labeled[label] for label in dict.fromkeys(result.labels) if label in labeled]
-        return chosen[:keep] or group[:keep]
 
 
 class ContentBriefWriter:
@@ -181,14 +107,13 @@ class ContentBriefWriter:
         self,
         product: dict[str, Any],
         user_idea: str,
-        references: list[dict[str, Any]],
         http: httpx.AsyncClient | None = None,
         shot_count: int = 1,
     ) -> dict[str, Any]:
         """Return the brief as a dict.
 
-        The model sees the product photos and only the text of the reference scenes. It picks one
-        scene (reported as an image id) and the photos the image model will use (reported as urls).
+        The model sees every product photo and picks the ones the image model will use (reported
+        as urls). Reference photos are matched to the shots afterwards.
         """
         semaphore = asyncio.Semaphore(_CONCURRENCY)
         owned = http is None
@@ -216,25 +141,16 @@ class ContentBriefWriter:
         ]
         if not photos:
             raise BriefGenerationError("None of the product photos could be downloaded")
-        labeled = {f"ref_{index + 1}": image["image_id"] for index, image in enumerate(references)}
         try:
             draft = await self._client.DraftContentBrief(
                 json.dumps(product_facts(product), ensure_ascii=False),
                 user_idea.strip(),
                 shot_count,
                 [photo for _, photo in photos],
-                [
-                    baml_types.LabeledReference(label=label, note=_note(image))
-                    for label, image in zip(labeled, references, strict=True)
-                ],
             )
         except BamlError as error:
             raise BriefGenerationError(str(error)) from error
         brief = draft.model_dump()
-        labels = brief.pop("selected_reference_labels")
-        brief["selected_reference_ids"] = [labeled[label] for label in labels if label in labeled][
-            :1
-        ]
         numbers = dict.fromkeys(brief.pop("product_photo_numbers"))
         chosen = [photos[number - 1][0] for number in numbers if 1 <= number <= len(photos)]
         brief["product_photo_urls"] = chosen or [url for url, _ in photos]

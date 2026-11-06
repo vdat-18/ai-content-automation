@@ -142,6 +142,7 @@ reference_images = Table(
     Column("screening", JSONB),
     Column("phash", Text),
     Column("embedding", JSONB),
+    Column("text_embedding", JSONB),
     Column("duplicate_of", Text),
     *_timestamps(),
     schema="marketing",

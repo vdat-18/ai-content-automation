@@ -2,7 +2,7 @@ from types import SimpleNamespace
 
 import httpx
 
-from ai_content.domains.marketing.products.briefing import _note
+from ai_content.domains.marketing.products.briefing import reference_note
 from ai_content.domains.marketing.products.image_review import ReferenceImageReviewer
 from ai_content.domains.marketing.products.repositories import SqliteProductRepository
 from ai_content.domains.marketing.products.service import ProductCatalogService
@@ -21,7 +21,6 @@ FULL = {
     "placement": "centre of the shelf, bottle about hand sized",
     "suits": ["flat_lay", "demo"],
     "motion_ideas": ["slow push-in"],
-    "quality": 4,
 }
 
 
@@ -42,7 +41,7 @@ async def test_a_full_review_is_kept_with_all_its_detail() -> None:
     result = await _reviewer(FULL).review_all(
         [{"image_id": "a", "image_url": "https://x/a.jpg", "product_type": "lotion"}], _http()
     )
-    assert result["a"]["setting"] == "bathroom shelf" and result["a"]["quality"] == 4
+    assert result["a"]["setting"] == "bathroom shelf"
 
 
 async def test_a_review_cut_off_half_way_does_not_pass_as_a_review() -> None:
@@ -67,7 +66,7 @@ async def test_an_unusable_image_needs_no_detail() -> None:
 
 
 def test_the_brief_writer_gets_every_detail_of_the_picture() -> None:
-    note = _note({"screening": FULL})
+    note = reference_note({"screening": FULL})
     for expected in (
         "bathroom shelf",
         "soft window light from the left",
@@ -78,7 +77,7 @@ def test_the_brief_writer_gets_every_detail_of_the_picture() -> None:
         "slow push-in",
     ):
         assert expected in note
-    assert _note({"screening": {"description": "old short review"}}) == "old short review"
+    assert reference_note({"screening": {"description": "old short review"}}) == "old short review"
 
 
 async def test_old_reviews_get_their_detail_and_keep_their_status(tmp_path) -> None:
