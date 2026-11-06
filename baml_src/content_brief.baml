@@ -24,6 +24,7 @@ class ContentBrief {
   reference_rationale string
   scene string
   product_placement string
+  product_variant string
   product_size string
   selling_angle string
   target_audience string
@@ -53,11 +54,17 @@ function DraftContentBrief(
     recreate in scene and say exactly where and how the product sits in product_placement. Never
     copy a reference literally and never reuse another brand's product, logo or text from it.
 
-    The product photos are numbered. Put in product_photo_numbers the numbers of the at most 5
-    photos the image model should look at, most useful first: the main photo, other angles and
-    photos that show the size or real use. A photo that is a collage or carries text is fine when
-    it shows the product or real facts such as a size chart. Read sizes and materials from all
-    photos, including size charts, and use them in product_size and the prompts.
+    The product photos are numbered. Put in product_photo_numbers the numbers of all the photos
+    that show the product, most useful first: the main photo, other angles and photos that show
+    the size or real use. A photo that is a collage or carries text is fine when it shows the
+    product or real facts such as a size chart. Read sizes and materials from all photos,
+    including size charts, and use them in product_size and the prompts.
+
+    The product may come in several versions (colors, scents, sizes). Pick exactly ONE version
+    to show in the whole video: the one in the first photos or the best seller. Describe it in
+    product_variant in English (the color, finish, shape and the name on the label as it looks in
+    the photos). Every prompt then shows only that version and names its color; never show or
+    mention the other versions.
 
     The brief is a storyboard for one vertical ad video made of exactly {{ shot_count }} shot(s).
     Every shot is first made as a still keyframe image and later animated into a 15 second clip.
@@ -106,7 +113,11 @@ function DraftContentBrief(
     shots merge neighbours, with more shots repeat demo or benefit), so every shot moves the story
     one step. The last shot ends on a frame close to the opening one (the same close-up of the
     product) so the video loops when it repeats. Write on_screen_text and voiceover in everyday
-    Vietnamese shoppers use. Never
+    Vietnamese shoppers use. The voiceover is read aloud, so write it the way a young
+    Vietnamese seller talks to a friend on TikTok: short sentences, spoken particles such as
+    nha, nè, á, luôn, thật sự, plain everyday words. Avoid written, Sino-Vietnamese or
+    advertising words (cao cấp, sang trọng, đẳng cấp, tối ưu, sở hữu), avoid English words and
+    write every number in words (hai trăm sáu mươi tám mi-li-lít, không 268ml). Never
     use absolute claims (tốt nhất, rẻ nhất, số 1, 100%, chắc chắn), never name other shopping or
     social platforms and never promise medical results.
 
@@ -127,8 +138,11 @@ function DraftContentBrief(
     ending on the call to action. For every shot: description (Vietnamese, what the viewer sees), keyframe_prompt
     (a complete, self-contained English prompt for an image model: "the person from the character
     image" doing the action of this shot with the real product as the clear hero, the shared scene, camera angle, lighting, style and colors, and an explicit instruction
-    that the product keeps its real shape, color, proportions and label, and that it keeps its
-    real size from product_size next to the person and the room, never enlarged or shrunk), motion_prompt (English.
+    that the product, in the version of product_variant, keeps its real shape, color, proportions and label, and that it keeps its
+    real size from product_size next to the person and the room, never enlarged or shrunk. Write it
+    as the description of an ordinary photo taken on a phone: natural window or room light, a
+    little grain, a lived-in Vietnamese home with everyday clutter, natural skin and hair. Never
+    use words such as perfect, flawless, cinematic, stunning, studio, professional, glossy or 8k), motion_prompt (English.
     Name the subject in a few words and describe only motion, because the keyframe already shows
     how everything looks: never re-describe the face, outfit or product. Say the shot size and the
     camera height and name every camera move with its exact term: a dolly moves the camera, a

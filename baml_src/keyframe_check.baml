@@ -23,6 +23,8 @@ function CheckKeyframe(
     product as in the photos (same shape, color, proportions, material, label layout,
     same number of items); its size next to the person, the furniture and the room matches the
     real size stated in the shot description (not oversized, not tiny); it has no extra or missing parts and no warped geometry; the picture shows what the shot description asks for;
+    it looks like an ordinary photo taken on a phone, not an AI render: no plastic or waxy skin,
+    no glossy retouched glow, no impossible light or perfect symmetry;
     when a master keyframe is given, the light and color palette match it; when the previous
     shot's keyframe is given, the same person wears the same outfit in the same kind of room and
     light, so the two shots could be cut together without a jarring jump; when a character image

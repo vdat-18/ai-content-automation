@@ -85,16 +85,16 @@ async def test_master_comes_first_then_other_shots_after_approval(tmp_path) -> N
     assert keyframer.calls == [("master", 2, ""), ("follow_up", 2, ""), ("follow_up", 2, "")]
 
 
-async def test_keyframes_use_the_photos_the_brief_picked_at_most_five(tmp_path) -> None:
+async def test_keyframes_use_the_photos_the_brief_picked(tmp_path) -> None:
     urls = [f"https://img.example/{i}.jpg" for i in range(1, 9)]
     keyframer = _FakeKeyframer()
     service = await _service(tmp_path, keyframer)
     await service._repository.upsert_detail(
         {"product_id": PRODUCT_ID, "title": "Giỏ", "images": urls}
     )
-    # no pick yet: the first five photos of the product
+    # no pick yet: all the photos of the product
     await service.generate_keyframes(PRODUCT_ID, tmp_path)
-    assert keyframer.calls[-1][1] == 5
+    assert keyframer.calls[-1][1] == 8
     brief = {"title": "b", "shots": SHOTS, "product_photo_urls": [urls[6], urls[1]]}
     await service._repository.save_brief(PRODUCT_ID, "", brief, "approved")
     await service.generate_keyframes(PRODUCT_ID, tmp_path, shot_index=0)
@@ -318,13 +318,13 @@ async def test_prompts_name_the_person_only_when_there_is_one() -> None:
     await generator.follow_up(shot, b"master", [b"p1"], persona=b"face")
     await generator.persona("woman, 28")
     with_person, without, follow, portrait = client.calls
-    assert with_person[1] == 4 and "Image 3 is the character" in with_person[0]
+    assert with_person[1] == 4 and "Image 3 is the person in the ad" in with_person[0]
     assert (
         "Image 4 is a scene reference" in with_person[0]
         and "Do not show any human face" not in with_person[0]
     )
     assert without[1] == 1 and "Do not show any human face" in without[0]
-    assert follow[1] == 3 and "Image 2 is the character" in follow[0]
+    assert follow[1] == 3 and "Image 2 is the person in the ad" in follow[0]
     assert (
         portrait[1] == 0 and "does not exist" in portrait[0] and portrait[0].endswith("woman, 28")
     )
@@ -354,11 +354,20 @@ async def test_the_real_product_size_reaches_the_image_prompt_and_the_checker(tm
     await repository.upsert_detail(
         {"product_id": PRODUCT_ID, "title": "Giỏ", "images": ["https://img.example/1.jpg"]}
     )
-    brief = {"title": "b", "product_size": "about 60 cm tall, knee height", "shots": SHOTS[:1]}
+    brief = {
+        "title": "b",
+        "product_size": "about 60 cm tall, knee height",
+        "product_variant": "matte pink bottle",
+        "shots": SHOTS[:1],
+    }
     await repository.save_brief(PRODUCT_ID, "", brief, "approved")
     await service.generate_keyframes(PRODUCT_ID, tmp_path)
     assert "about 60 cm tall, knee height" in prompts[0]
     assert "about 60 cm tall, knee height" in seen[0]
+    # one version of the product, shot like an ordinary phone photo
+    assert "show only this one: matte pink bottle" in prompts[0]
+    assert "matte pink bottle" in seen[0]
+    assert "ordinary photo taken with a phone" in prompts[0]
 
 
 async def test_each_step_is_written_to_the_run_log(tmp_path) -> None:

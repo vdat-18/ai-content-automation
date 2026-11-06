@@ -142,7 +142,7 @@ async def test_writer_uses_the_first_photos_when_the_model_picks_none() -> None:
         brief = await ContentBriefWriter(_FakeBamlClient(numbers=[])).write(
             product, "", [{"image_id": "a"}], http
         )
-    assert brief["product_photo_urls"] == [f"https://x/p{i}.jpg" for i in range(1, 6)]
+    assert brief["product_photo_urls"] == [f"https://x/p{i}.jpg" for i in range(1, 9)]
 
 
 async def test_writer_errors() -> None:

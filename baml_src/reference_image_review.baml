@@ -29,8 +29,10 @@ function ReviewReferenceImage(product_type: string, image: image) -> ReferenceIm
     worth borrowing, and a product of the given type could be placed into or swapped within that
     scene. Set usable=false for plain, white or seamless studio backdrops, products on blank
     backgrounds, infographics, collages, illustrations, screenshots, images with heavy text,
-    logos or watermarks over the picture, low quality images, and scenes where nothing can be
-    borrowed.
+    logos or watermarks over the picture, low quality images, AI-generated or 3D-rendered looking
+    pictures, glossy retouched magazine or advertising shots, and scenes too simple to teach
+    anything (one object on an empty surface, one flat color). Prefer casual, real-life photos
+    that look taken on a phone in a real home or place.
 
     The review is read later by people and by models that choose which reference to give an image
     and video generator, and they cannot see the picture. So describe it completely, in English.
@@ -53,7 +55,8 @@ function ReviewReferenceImage(product_type: string, image: image) -> ReferenceIm
     call_to_action, flat_lay, in_hand, unboxing, before_after.
     motion_ideas: one to three simple movements that could animate this scene (for example "hand
     reaches in and places the bottle", "slow push-in on the shelf").
-    quality: 1 to 5 for sharpness, composition and how appealing it is.
+    quality: 1 to 5 for sharpness, composition, how appealing it is and how much it looks like an
+    everyday photo taken on a phone rather than an ad or a render.
 
     {{ _.role("user") }}
     Product type: {{ product_type }}

@@ -87,6 +87,7 @@ PERSONA_STATUSES = frozenset({"ready", "approved", "rejected"})
 KEYFRAME_REVIEW_STATUSES = frozenset({"approved", "ready", "rejected"})
 BRIEF_FIELDS = (
     "title",
+    "product_variant",
     "format",
     "script",
     "scene",
@@ -632,11 +633,12 @@ class ProductCatalogService:
             await self.media(media_root).read(existing[0]["image_path"]) if master_ready else None
         )
         size = str(record["brief"].get("product_size") or "")
+        variant = str(record["brief"].get("product_variant") or "")
         for index in wanted:
             await self._make_keyframe(
                 product_id,
                 index,
-                {**shots[index], "product_size": size},
+                {**shots[index], "product_size": size, "product_variant": variant},
                 existing.get(index),
                 media_root,
                 photos,
@@ -756,6 +758,10 @@ class ProductCatalogService:
         description = str(shot.get("description") or shot["keyframe_prompt"])
         if shot.get("product_size"):
             description = f"{description} Real size of the product: {shot['product_size']}"
+        if shot.get("product_variant"):
+            description = (
+                f"{description} The product must be this version: {shot['product_variant']}"
+            )
         return await self._checker.check(description, photos, image, master, persona, before)
 
     async def clips(self, product_id: str, media_root: Path) -> list[dict[str, Any]]:

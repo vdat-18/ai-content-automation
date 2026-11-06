@@ -20,7 +20,7 @@ _CONCURRENCY = 2
 _DOWNLOAD_TIMEOUT = 30
 MAX_REFERENCES = 8
 PHOTOS_SEEN = 9  # the crawl keeps at most this many photos of a product
-MAX_PRODUCT_PHOTOS = 5  # photos the image model gets, picked by the brief
+MAX_PRODUCT_PHOTOS = PHOTOS_SEEN  # photos the image model gets, picked by the brief
 
 
 class BriefGenerationError(RuntimeError):
