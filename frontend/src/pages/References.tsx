@@ -253,6 +253,7 @@ function ReferenceImages() {
       ) : (
         <EmptyState icon={<Package />} title="No reference images" text="Approve keywords, then run the Pinterest crawl from the extension." />
       )}
+      {lightbox.node}
     </Panel>
   );
 }
