@@ -155,7 +155,6 @@ function BriefCard({
   const [idea, setIdea] = useState(record?.user_idea ?? "");
   const [videoSeconds, setVideoSeconds] = useState(60);
   const [picked, setPicked] = useState<Step | null>(null);
-  const [selectedShot, setSelectedShot] = useState(0);
   const approved = record?.status === "approved";
   const shots = record?.brief.shots ?? [];
   const keyframes = useKeyframes(productId, !!record);
@@ -219,7 +218,7 @@ function BriefCard({
               <textarea rows={2} value={idea} onChange={(event) => setIdea(event.target.value)} placeholder={t("e.g. sunny balcony, tidy feeling for small apartments")} />
             </label>
             <label className="brief-field">
-              <span>{t("Video length (about; each shot is one clip)")}</span>
+              <span>{t("Video length")}</span>
               <select value={videoSeconds} onChange={(event) => setVideoSeconds(Number(event.target.value))}>
                 {[15, 30, 45, 60, 75, 90].map((seconds) => (
                   <option key={seconds} value={seconds}>{`${seconds}s`}</option>
@@ -236,8 +235,6 @@ function BriefCard({
               record={record}
               imageById={imageById}
               keyframeByShot={keyframeByShot}
-              selectedShot={selectedShot}
-              onSelect={setSelectedShot}
               save={(brief, status) => save.mutate({ brief, status })}
               saving={save.isPending}
               error={save.error?.message}
@@ -270,8 +267,6 @@ function BriefForm({
   record,
   imageById,
   keyframeByShot,
-  selectedShot,
-  onSelect,
   save,
   saving,
   error,
@@ -280,8 +275,6 @@ function BriefForm({
   record: BriefRecord;
   imageById: Map<string, string>;
   keyframeByShot: Map<number, Keyframe>;
-  selectedShot: number;
-  onSelect: (index: number) => void;
   save: (brief: Partial<Brief>, status: "draft" | "approved") => void;
   saving: boolean;
   error: string | undefined;
@@ -296,93 +289,71 @@ function BriefForm({
   const warnings = brief.warnings ?? [];
   return (
     <>
-    <form
-      key={`${record.product_id}-${record.status}-${brief.title}`}
-      className="brief-form"
-      onSubmit={(event) => {
-        event.preventDefault();
-        const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
-        const data = new FormData(event.currentTarget);
-        const next: Partial<Brief> = {
-          title: String(data.get("title")),
-          format: String(data.get("format")),
-          style: words(String(data.get("style"))),
-          colors: words(String(data.get("colors"))),
-        };
-        for (const field of TEXT_FIELDS) Object.assign(next, { [field.key]: String(data.get(field.key)) });
-        const edited = shots.map((shot, index) => {
-          const changed: Shot = { ...shot, duration_seconds: Number(data.get(`shot_${index}_duration`)) || shot.duration_seconds };
-          for (const field of SHOT_FIELDS) changed[field.key] = String(data.get(`shot_${index}_${field.key}`));
-          changed.delivery = data.get(`shot_${index}_delivery`) === "talking" ? "talking" : "narrated";
-          return changed;
-        });
-        next.shots = edited;
-        next.script = edited.map((shot) => shot.voiceover.trim()).filter(Boolean).join(" ");
-        save(next, submitter?.value === "approved" ? "approved" : "draft");
-      }}
-    >
-      {!!problems.length && (
-        <details className="brief-issues brief-issues--problem">
-          <summary>{`${problems.length} ${t("storyboard issues found. Fix them before making images")}`}</summary>
-          <ul>{problems.map((problem) => <li key={problem}>{problem}</li>)}</ul>
-        </details>
-      )}
-      {!!warnings.length && (
-        <details className="brief-issues">
-          <summary>{`${warnings.length} ${t("words TikTok may flag. Rewrite them before posting")}`}</summary>
-          <ul>{warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul>
-        </details>
-      )}
-      <div className="brief-layout">
-        <aside className="brief-summary">
-          <h3>{brief.title}</h3>
-          <dl>
-            <dt>{t("Selling angle")}</dt>
-            <dd>{brief.selling_angle}</dd>
-            <dt>{t("Target audience")}</dt>
-            <dd>{brief.target_audience}</dd>
-            {brief.product_size && (
-              <>
-                <dt>{t("Real product size")}</dt>
-                <dd>{brief.product_size}</dd>
-              </>
-            )}
-          </dl>
-          {!!brief.product_photo_urls?.length && (
-            <>
-              <h4>{t("Product photos the image model sees")}</h4>
-              <div className="brief-thumbs">
-                {photos.map((photo, index) => <img key={photo.src} src={photo.src} alt="" width={44} height={44} referrerPolicy="no-referrer" {...lightbox.zoom(photos, index)} />)}
-              </div>
-            </>
-          )}
-          {!!brief.selected_reference_ids.length && (
-            <>
-              <h4>{t("Scene reference")}</h4>
-              <div className="brief-thumbs">
-                {scenes.map((scene, index) => <img key={scene.src} src={scene.src} alt="" width={44} height={58} referrerPolicy="no-referrer" {...lightbox.zoom(scenes, index)} />)}
-              </div>
-              <p className="brief-note">{brief.reference_rationale}</p>
-            </>
-          )}
-          <details className="brief-edit">
-            <summary>{t("Edit brief details")}</summary>
-            <label className="brief-field">
-              <span>{t("Title")}</span>
-              <input name="title" defaultValue={brief.title} />
-            </label>
-            <label className="brief-field">
-              <span>{t("Video format")}</span>
-              <select name="format" defaultValue={brief.format ?? FORMATS[0]}>
-                {FORMATS.map((format) => <option key={format} value={format}>{format.replaceAll("_", " ")}</option>)}
-              </select>
-            </label>
+      <form
+        key={`${record.product_id}-${record.status}-${brief.title}`}
+        className="brief-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
+          const data = new FormData(event.currentTarget);
+          const next: Partial<Brief> = {
+            title: String(data.get("title")),
+            format: String(data.get("format")),
+            style: words(String(data.get("style"))),
+            colors: words(String(data.get("colors"))),
+          };
+          for (const field of TEXT_FIELDS) Object.assign(next, { [field.key]: String(data.get(field.key)) });
+          const edited = shots.map((shot, index) => {
+            const changed: Shot = { ...shot, duration_seconds: Number(data.get(`shot_${index}_duration`)) || shot.duration_seconds };
+            for (const field of SHOT_FIELDS) changed[field.key] = String(data.get(`shot_${index}_${field.key}`));
+            changed.delivery = data.get(`shot_${index}_delivery`) === "talking" ? "talking" : "narrated";
+            return changed;
+          });
+          next.shots = edited;
+          next.script = edited.map((shot) => shot.voiceover.trim()).filter(Boolean).join(" ");
+          save(next, submitter?.value === "approved" ? "approved" : "draft");
+        }}
+      >
+        <div className="brief-title">
+          <input name="title" defaultValue={brief.title} aria-label={t("Title")} />
+        </div>
+        {problems.length ? (
+          <details className="brief-status brief-status--problem" open>
+            <summary>{`${problems.length} ${t("storyboard issues found. Fix them before making images")}`}</summary>
+            <ul>{problems.map((problem) => <li key={problem}>{problem}</li>)}</ul>
+          </details>
+        ) : (
+          <p className="brief-status brief-status--ok">{t("The storyboard passed the review.")}</p>
+        )}
+        {!!warnings.length && (
+          <details className="brief-status">
+            <summary>{`${warnings.length} ${t("words TikTok may flag. Rewrite them before posting")}`}</summary>
+            <ul>{warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul>
+          </details>
+        )}
+        <details className="brief-more">
+          <summary>
+            <strong>{t("Product and scene")}</strong>
+            <span>{[brief.product_variant, brief.selling_angle].filter(Boolean).join(" · ")}</span>
+          </summary>
+          <div className="brief-thumbs">
+            {photos.map((photo, index) => <img key={photo.src} src={photo.src} alt="" width={44} height={44} referrerPolicy="no-referrer" {...lightbox.zoom(photos, index)} />)}
+            {scenes.map((scene, index) => <img key={scene.src} src={scene.src} alt="" width={44} height={58} referrerPolicy="no-referrer" {...lightbox.zoom(scenes, index)} />)}
+          </div>
+          {brief.reference_rationale && <p className="brief-note">{brief.reference_rationale}</p>}
+          <div className="brief-grid">
             {TEXT_FIELDS.map((field) => (
               <label className="brief-field" key={field.key}>
                 <span>{t(field.label)}</span>
                 <textarea name={field.key} rows={field.rows} defaultValue={String(brief[field.key] ?? "")} />
               </label>
             ))}
+            <label className="brief-field">
+              <span>{t("Video format")}</span>
+              <select name="format" defaultValue={brief.format ?? FORMATS[0]}>
+                {FORMATS.map((format) => <option key={format} value={format}>{format.replaceAll("_", " ")}</option>)}
+              </select>
+            </label>
             <label className="brief-field">
               <span>{t("Style (comma separated)")}</span>
               <input name="style" defaultValue={brief.style.join(", ")} />
@@ -391,84 +362,75 @@ function BriefForm({
               <span>{t("Colors (comma separated)")}</span>
               <input name="colors" defaultValue={brief.colors.join(", ")} />
             </label>
-          </details>
-        </aside>
-        <div className="brief-main">
-          <h3>{t("Storyboard")}</h3>
-          <div className="storyboard">
-            {shots.map((shot, index) => {
-              const keyframe = keyframeByShot.get(index);
-              return (
-                <button key={index} type="button" className={`shot-card${index === selectedShot ? " shot-card--on" : ""}`} onClick={() => onSelect(index)}>
-                  <span className="shot-card__role">{`${index + 1}. ${shot.role.replaceAll("_", " ")}`}</span>
-                  {keyframe && keyframe.status !== "failed" ? (
-                    <img src={`${API}/${record.product_id}/keyframes/${index}/image?v=${keyframe.attempts}`} alt="" loading="lazy" />
-                  ) : (
-                    <span className="shot-card__empty">{t("No image yet")}</span>
-                  )}
-                  <span className="shot-card__text">{shot.description}</span>
-                  <span className="shot-card__chips">
+          </div>
+        </details>
+        <div className="shot-list">
+          {shots.map((shot, index) => {
+            const keyframe = keyframeByShot.get(index);
+            const src = keyframe && keyframe.status !== "failed" ? `${API}/${record.product_id}/keyframes/${index}/image?v=${keyframe.attempts}` : null;
+            return (
+              <section className="shot-row" key={`${index}-${shot.keyframe_prompt}`}>
+                <div className="shot-row__image">
+                  {src ? <img src={src} alt="" loading="lazy" {...lightbox.zoom([{ src }], 0)} /> : <span>{t("No image yet")}</span>}
+                </div>
+                <div className="shot-row__body">
+                  <div className="shot-row__head">
+                    <strong>{`${index + 1}. ${shot.role.replaceAll("_", " ")}`}</strong>
                     <span className="chip">{shot.delivery === "talking" ? t("Talking") : t("Narrated")}</span>
                     <span className="chip">{`${wordCount(shot.voiceover)} ${t("words")}`}</span>
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-          {shots.map((shot, index) => (
-            <section className="shot-editor" key={`${index}-${shot.keyframe_prompt}`} hidden={index !== selectedShot}>
-              <h4>{`${index + 1}. ${shot.role.replaceAll("_", " ")}`}</h4>
-              <label className="brief-field">
-                <span>{t("Voice-over")}</span>
-                <textarea name={`shot_${index}_voiceover`} rows={4} defaultValue={shot.voiceover} />
-              </label>
-              <label className="brief-field">
-                <span>{t("Text on screen")}</span>
-                <input name={`shot_${index}_on_screen_text`} defaultValue={shot.on_screen_text} />
-              </label>
-              <label className="brief-field">
-                <span>{t("What the viewer sees")}</span>
-                <textarea name={`shot_${index}_description`} rows={2} defaultValue={shot.description} />
-              </label>
-              <div className="brief-row">
-                <label className="brief-field">
-                  <span>{t("Delivery")}</span>
-                  <select name={`shot_${index}_delivery`} defaultValue={shot.delivery ?? "narrated"}>
-                    <option value="narrated">{t("Narrated (voice-over, mouth not shown speaking)")}</option>
-                    <option value="talking">{t("Talking (person speaks to the camera, voice follows the mouth)")}</option>
-                  </select>
-                </label>
-                <label className="brief-field">
-                  <span>{t("Seconds")}</span>
-                  <input name={`shot_${index}_duration`} type="number" min={1} max={15} defaultValue={shot.duration_seconds} />
-                </label>
-              </div>
-              <details className="brief-edit">
-                <summary>{t("Prompts for the models")}</summary>
-                <label className="brief-field">
-                  <span>{t("Keyframe image prompt")}</span>
-                  <textarea name={`shot_${index}_keyframe_prompt`} rows={5} defaultValue={shot.keyframe_prompt} />
-                </label>
-                <label className="brief-field">
-                  <span>{t("Motion prompt")}</span>
-                  <textarea name={`shot_${index}_motion_prompt`} rows={4} defaultValue={shot.motion_prompt} />
-                </label>
-              </details>
-            </section>
-          ))}
+                  </div>
+                  <label className="brief-field">
+                    <span>{t("Voice-over")}</span>
+                    <textarea name={`shot_${index}_voiceover`} rows={3} defaultValue={shot.voiceover} />
+                  </label>
+                  <label className="brief-field">
+                    <span>{t("Text on screen")}</span>
+                    <input name={`shot_${index}_on_screen_text`} defaultValue={shot.on_screen_text} />
+                  </label>
+                  <details className="brief-more brief-more--small">
+                    <summary>{t("More about this shot")}</summary>
+                    <label className="brief-field">
+                      <span>{t("What the viewer sees")}</span>
+                      <textarea name={`shot_${index}_description`} rows={2} defaultValue={shot.description} />
+                    </label>
+                    <div className="brief-row">
+                      <label className="brief-field">
+                        <span>{t("Delivery")}</span>
+                        <select name={`shot_${index}_delivery`} defaultValue={shot.delivery ?? "narrated"}>
+                          <option value="narrated">{t("Narrated (voice-over, mouth not shown speaking)")}</option>
+                          <option value="talking">{t("Talking (person speaks to the camera, voice follows the mouth)")}</option>
+                        </select>
+                      </label>
+                      <label className="brief-field">
+                        <span>{t("Seconds")}</span>
+                        <input name={`shot_${index}_duration`} type="number" min={1} max={15} defaultValue={shot.duration_seconds} />
+                      </label>
+                    </div>
+                    <label className="brief-field">
+                      <span>{t("Keyframe image prompt")}</span>
+                      <textarea name={`shot_${index}_keyframe_prompt`} rows={4} defaultValue={shot.keyframe_prompt} />
+                    </label>
+                    <label className="brief-field">
+                      <span>{t("Motion prompt")}</span>
+                      <textarea name={`shot_${index}_motion_prompt`} rows={4} defaultValue={shot.motion_prompt} />
+                    </label>
+                  </details>
+                </div>
+              </section>
+            );
+          })}
           {!shots.length && <p>{t("This brief has no storyboard yet. Regenerate it.")}</p>}
         </div>
-      </div>
-      <div className="brief-bar">
-        <span>{record.status === "approved" ? t("Approved. Pick the next step above.") : t("Approve the brief to make the person and the images.")}</span>
-        <div className="brief-actions">
-          <button className="secondary-button" type="submit" value="draft" disabled={saving}>{t("Save draft")}</button>
-          <button className="primary-button" type="submit" value="approved" disabled={saving}>{t("Approve brief")}</button>
+        <div className="brief-bar">
+          <span>{record.status === "approved" ? t("Approved. Pick the next step above.") : t("Approve the brief to make the person and the images.")}</span>
+          <div className="brief-actions">
+            <button className="secondary-button" type="submit" value="draft" disabled={saving}>{t("Save draft")}</button>
+            <button className="primary-button" type="submit" value="approved" disabled={saving}>{t("Approve brief")}</button>
+          </div>
         </div>
-      </div>
-      {error && <p role="alert">{error}</p>}
-    </form>
-    {lightbox.node}
+        {error && <p role="alert">{error}</p>}
+      </form>
+      {lightbox.node}
     </>
   );
 }

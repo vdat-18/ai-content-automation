@@ -165,17 +165,20 @@ function ReferenceImages() {
           <p>{t("Images crawled from Pinterest that Gemini accepted as scenes to borrow, newest first. Press the ✕ on a picture to remove the ones you do not want.")}</p>
         </div>
         <div className="reference-review">
-          {(images.data ?? []).some((image) => image.screening && !image.screening.setting) && (
-            <button className="secondary-button" disabled={redescribe.isPending} onClick={() => redescribe.mutate()} title={t("Ask the vision model for a full description of images reviewed before details were saved")}>
-              {redescribe.isPending ? t("Describing…") : t("Describe in detail")}
-            </button>
-          )}
-          <button className="secondary-button" disabled={recheck.isPending} onClick={() => recheck.mutate()} title={t("Mark images that look like an earlier one (80% similar or more) as duplicates")}>
-            {recheck.isPending ? t("Checking…") : t("Re-check duplicates")}
-          </button>
           <button className="primary-button" disabled={screen.isPending || !pending.data?.length} onClick={() => screen.mutate()}>
             {screen.isPending ? t("Reviewing…") : `${t("Review pending")} (${pending.data?.length ?? 0})`}
           </button>
+          <details className="reference-tools">
+            <summary>{t("More tools")}</summary>
+          {(images.data ?? []).some((image) => image.screening && !image.screening.setting) && (
+              <button className="secondary-button" disabled={redescribe.isPending} onClick={() => redescribe.mutate()} title={t("Ask the vision model for a full description of images reviewed before details were saved")}>
+                {redescribe.isPending ? t("Describing…") : t("Describe in detail")}
+              </button>
+            )}
+            <button className="secondary-button" disabled={recheck.isPending} onClick={() => recheck.mutate()} title={t("Mark images that look like an earlier one (80% similar or more) as duplicates")}>
+              {recheck.isPending ? t("Checking…") : t("Re-check duplicates")}
+            </button>
+          </details>
         </div>
       </div>
       {screen.data && <p role="status">{`${t("Reviewed")} ${screen.data.reviewed} · ${t("usable")} ${screen.data.usable} · ${t("rejected")} ${screen.data.rejected} · ${t("failed")} ${screen.data.failed}`}</p>}
