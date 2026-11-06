@@ -378,7 +378,7 @@ function BriefForm({
                     {src ? <img src={src} alt="" loading="lazy" {...lightbox.zoom([{ src }], 0)} /> : <span>{t("No image yet")}</span>}
                   </div>
                   {referenceSrc ? (
-                    <img className="shot-row__reference" src={referenceSrc} alt="" loading="lazy" referrerPolicy="no-referrer" title={t("Reference photo for this shot")} {...lightbox.zoom([{ src: referenceSrc }], 0)} />
+                    <div className="shot-row__reference"><img src={referenceSrc} alt="" loading="lazy" referrerPolicy="no-referrer" title={t("Reference photo for this shot")} {...lightbox.zoom([{ src: referenceSrc }], 0)} /></div>
                   ) : (
                     <small className="brief-note">{t("No reference")}</small>
                   )}

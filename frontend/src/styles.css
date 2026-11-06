@@ -1241,4 +1241,5 @@ body.column-resizing * { cursor: col-resize !important; user-select: none !impor
 .brief-more { grid-template-columns: minmax(0, 1fr); }
 .brief-more > summary span { flex: 1; }
 .shot-row__side { display: grid; gap: 6px; }
-.shot-row__reference { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 6px; border: 1px solid var(--line); cursor: zoom-in; }
+.shot-row__reference { aspect-ratio: 1; border-radius: 6px; overflow: hidden; border: 1px solid var(--line); }
+.shot-row__reference img { width: 100%; height: 100%; object-fit: cover; cursor: zoom-in; }
