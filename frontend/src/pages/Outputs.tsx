@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
-import { Download, Film } from "lucide-react";
+import { Download, Film, Sparkles, Video, Layers, Image as ImageIcon, ExternalLink, ArrowLeft } from "lucide-react";
+import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { EmptyState, PageHeader, Panel, SkeletonPage } from "../components/ui";
 import { useI18n } from "../hooks/useI18n";
@@ -60,10 +61,18 @@ function OutputList() {
         <div className="output-grid">
           {outputs.data.map((item) => (
             <Link key={item.product_id} className="output-card" to={`?product=${item.product_id}`}>
-              <img src={item.has_cover ? `${API}/${item.product_id}/cover` : (item.image ?? "")} alt="" loading="lazy" referrerPolicy="no-referrer" />
-              <strong>{item.title ?? item.product_title ?? item.product_id}</strong>
-              <small>{[item.seconds ? `${Math.round(item.seconds)}s` : null, `${item.shots} ${t("shots")}`, item.voice].filter(Boolean).join(" · ")}</small>
-              {item.built_at && <small>{when(item.built_at)}</small>}
+              <div className="output-card__thumb">
+                <img src={item.has_cover ? `${API}/${item.product_id}/cover` : (item.image ?? "")} alt="" loading="lazy" referrerPolicy="no-referrer" />
+                {item.seconds && <span className="output-card__duration">{Math.round(item.seconds)}s</span>}
+              </div>
+              <div className="output-card__meta">
+                <strong>{item.title ?? item.product_title ?? item.product_id}</strong>
+                <div className="output-card__tags">
+                  <span className="chip chip--sm">{item.shots} {t("shots")}</span>
+                  {item.voice && <span className="chip chip--sm">{item.voice}</span>}
+                </div>
+                {item.built_at && <small className="output-card__date">{when(item.built_at)}</small>}
+              </div>
             </Link>
           ))}
         </div>
@@ -77,9 +86,12 @@ function OutputList() {
 function OutputDetailView({ productId }: { productId: string }) {
   const { t } = useI18n();
   const lightbox = useLightbox();
+  const [activeTab, setActiveTab] = useState<"shots" | "specs">("shots");
   const output = useQuery({ queryKey: ["output", productId], queryFn: ({ signal }) => getJson<OutputDetail>(`${API}/${productId}/output`, signal) });
+
   if (output.isLoading) return <SkeletonPage />;
   if (!output.data) return <EmptyState icon={<Film />} title="Output not found" text="This product has no brief or video yet." />;
+
   const { product, brief, video, shots } = output.data;
   const photos = output.data.product_photos.map((src) => ({ src }));
   const references = output.data.references.map((image) => ({
@@ -92,26 +104,57 @@ function OutputDetailView({ productId }: { productId: string }) {
     src: `${API}/${productId}/keyframes/${shot.index}/image?v=${shot.keyframe_attempts ?? 0}`,
     label: `${shot.index + 1}. ${(shot.role ?? "").replaceAll("_", " ")}`,
   }));
+
   const made = [
     video.seconds ? `${Math.round(video.seconds)}s` : null,
     video.built_at ? when(video.built_at) : null,
   ].filter(Boolean);
+
   return (
     <>
       <PageHeader
         eyebrow="Outputs"
         title={brief.title ?? product.title ?? productId}
         variant="operator"
-        actions={<Link className="secondary-button" to="/outputs">{t("Back to outputs")}</Link>}
+        actions={<Link className="secondary-button" to="/outputs"><ArrowLeft size={14} /> {t("Back to outputs")}</Link>}
       />
-      <Panel>
-        <div className="output-detail">
-          <div className="output-player">
-            {video.exists ? <video src={`${API}/${productId}/video`} poster={video.has_cover ? `${API}/${productId}/cover` : undefined} controls playsInline /> : <p>{t("The video file is missing.")}</p>}
-            <div className="brief-actions">
-              <a className="secondary-button" href={`${API}/${productId}/video?download=true`}><Download size={14} /> {t("Download video")}</a>
-              {video.has_cover && <a className="secondary-button" href={`${API}/${productId}/cover?download=true`}><Download size={14} /> {t("Download cover picture")}</a>}
+      <div className="output-studio">
+        {/* Left Column: Phone Mockup Frame & Main Actions */}
+        <aside className="output-studio__stage">
+          <div className="phone-mockup">
+            <div className="phone-mockup__notch" />
+            <div className="phone-mockup__screen">
+              {video.exists ? (
+                <video
+                  src={`${API}/${productId}/video`}
+                  poster={video.has_cover ? `${API}/${productId}/cover` : undefined}
+                  controls
+                  playsInline
+                />
+              ) : (
+                <div className="phone-mockup__empty">
+                  <Film size={36} />
+                  <p>{t("The video file is missing.")}</p>
+                </div>
+              )}
             </div>
+          </div>
+
+          <div className="output-studio__actions">
+            <a className="primary-button output-studio__btn-main" href={`${API}/${productId}/video?download=true`}>
+              <Download size={16} /> {t("Download video")}
+            </a>
+            {video.has_cover && (
+              <a className="secondary-button" href={`${API}/${productId}/cover?download=true`}>
+                <ImageIcon size={14} /> {t("Download cover picture")}
+              </a>
+            )}
+            <Link className="secondary-button" to="/briefs">
+              <Sparkles size={14} /> {t("Open in Briefs")}
+            </Link>
+          </div>
+
+          <div className="output-specs-card">
             <dl className="output-facts">
               <dt>{t("Made")}</dt>
               <dd>{made.join(" · ") || t("unknown")}</dd>
@@ -120,89 +163,190 @@ function OutputDetailView({ productId }: { productId: string }) {
               <dt>{t("On-screen text burned in")}</dt>
               <dd>{video.captions === null ? t("unknown") : video.captions ? t("yes") : t("no")}</dd>
             </dl>
-            <Link className="secondary-button" to="/briefs">{t("Open in Briefs")}</Link>
           </div>
-          <div className="output-flow">
-            <section className="output-block">
-              <h3>{t("Product")}</h3>
-              <div className="output-row">
-                {product.image && <img src={product.image} alt="" width={56} height={56} referrerPolicy="no-referrer" {...lightbox.zoom([{ src: product.image }], 0)} />}
-                <div>
-                  <strong>{product.title ?? productId}</strong>
-                  {product.url && <p><a href={product.url} target="_blank" rel="noreferrer">{t("Open the product page")}</a></p>}
-                </div>
-              </div>
-            </section>
-            <section className="output-block">
-              <h3>{t("What the brief looked at")}</h3>
-              {!!output.data.product_photos.length && (
-                <>
-                  <p className="brief-note">{t("Product photos the image model saw")}</p>
-                  <div className="output-thumbs">
-                    {photos.map((photo, index) => <img key={photo.src} src={photo.src} alt="" width={56} height={56} referrerPolicy="no-referrer" {...lightbox.zoom(photos, index)} />)}
-                  </div>
-                </>
-              )}
-              {!!output.data.references.length && (
-                <>
-                  <p className="brief-note">{t("Scene reference")}</p>
-                  <div className="output-thumbs">
-                    {references.map((image, index) => (
-                      <img key={image.src} src={image.src} alt={image.label ?? ""} width={56} height={74} referrerPolicy="no-referrer" {...lightbox.zoom(references, index)} />
-                    ))}
-                  </div>
-                </>
-              )}
-              {brief.user_idea && <p><span className="brief-note">{t("Your idea")}:</span> {brief.user_idea}</p>}
-            </section>
-            {output.data.persona && (
-              <section className="output-block">
-                <h3>{t("Person")}</h3>
-                <div className="output-row">
-                  {output.data.persona.has_image && <img src={`${API}/${productId}/persona/image`} alt="" width={64} height={114} {...lightbox.zoom([{ src: `${API}/${productId}/persona/image`, label: t("Person") }], 0)} />}
-                  <p>{output.data.persona.description}</p>
-                </div>
-              </section>
+        </aside>
+
+        {/* Right Column: Organized Workspace */}
+        <main className="output-studio__content">
+          {/* Product Banner */}
+          <section className="output-hero-product">
+            {product.image && (
+              <img
+                src={product.image}
+                alt=""
+                width={64}
+                height={64}
+                referrerPolicy="no-referrer"
+                {...lightbox.zoom([{ src: product.image }], 0)}
+              />
             )}
-            <section className="output-block">
-              <h3>{t("Brief")}</h3>
-              <dl className="output-facts">
-                <dt>{t("Format")}</dt>
-                <dd>{(brief.format ?? "").replaceAll("_", " ")}</dd>
-                <dt>{t("Selling angle")}</dt>
-                <dd>{brief.selling_angle}</dd>
-                <dt>{t("Target audience")}</dt>
-                <dd>{brief.target_audience}</dd>
-                {brief.product_size && (
-                  <>
-                    <dt>{t("Real product size")}</dt>
-                    <dd>{brief.product_size}</dd>
-                  </>
-                )}
-              </dl>
-            </section>
-            <section className="output-block">
-              <h3>{t("Images, clips and voice-over of each shot")}</h3>
-              <div className="output-shots">
-                {shots.map((shot) => (
-                  <div key={shot.index} className={`output-shot${shot.in_video ? "" : " output-shot--unused"}`}>
-                    {shot.has_keyframe ? <img src={`${API}/${productId}/keyframes/${shot.index}/image?v=${shot.keyframe_attempts ?? 0}`} alt="" loading="lazy" {...lightbox.zoom(frames, frames.findIndex((frame) => frame.index === shot.index))} /> : <span />}
-                    {shot.has_clip ? <video src={`${API}/${productId}/clips/${shot.index}/video?v=${shot.clip_attempts ?? 0}`} controls playsInline preload="metadata" /> : <span />}
-                    <div>
-                      <strong>{`${shot.index + 1}. ${(shot.role ?? "").replaceAll("_", " ")}`}</strong>
-                      <span className="chip">{shot.delivery === "talking" ? t("Talking") : t("Narrated")}</span>
-                      {!shot.in_video && <span className="chip">{t("not in the video")}</span>}
-                      <p>{shot.voiceover}</p>
-                      {shot.on_screen_text && <p className="brief-note">{`${t("Text on screen")}: ${shot.on_screen_text}`}</p>}
-                      <p className="brief-note">{`${t("Image tries")}: ${shot.keyframe_attempts ?? 0} · ${t("Clip tries")}: ${shot.clip_attempts ?? 0}`}</p>
+            <div className="output-hero-product__info">
+              <span className="eyebrow">{t("Product")}</span>
+              <strong>{product.title ?? productId}</strong>
+              {product.url && (
+                <a href={product.url} target="_blank" rel="noreferrer" className="output-hero-product__link">
+                  {t("Open the product page")} <ExternalLink size={12} />
+                </a>
+              )}
+            </div>
+          </section>
+
+          {/* Navigation Tabs */}
+          <nav className="output-tabs" aria-label="Output views">
+            <button
+              type="button"
+              className={`output-tab${activeTab === "shots" ? " output-tab--active" : ""}`}
+              onClick={() => setActiveTab("shots")}
+            >
+              <Layers size={14} /> {t("Images, clips and voice-over of each shot")} ({shots.length})
+            </button>
+            <button
+              type="button"
+              className={`output-tab${activeTab === "specs" ? " output-tab--active" : ""}`}
+              onClick={() => setActiveTab("specs")}
+            >
+              <Sparkles size={14} /> {t("What the brief looked at")}
+            </button>
+          </nav>
+
+          {/* Tab 1: Shots Timeline */}
+          {activeTab === "shots" && (
+            <section className="output-shots-timeline">
+              {shots.map((shot) => (
+                <div key={shot.index} className={`output-shot-card${shot.in_video ? "" : " output-shot-card--unused"}`}>
+                  <div className="output-shot-card__media">
+                    {shot.has_keyframe ? (
+                      <img
+                        src={`${API}/${productId}/keyframes/${shot.index}/image?v=${shot.keyframe_attempts ?? 0}`}
+                        alt=""
+                        loading="lazy"
+                        {...lightbox.zoom(frames, frames.findIndex((frame) => frame.index === shot.index))}
+                      />
+                    ) : (
+                      <div className="output-shot-card__placeholder">{t("No image yet")}</div>
+                    )}
+                    {shot.has_clip ? (
+                      <video src={`${API}/${productId}/clips/${shot.index}/video?v=${shot.clip_attempts ?? 0}`} controls playsInline preload="metadata" />
+                    ) : null}
+                  </div>
+                  <div className="output-shot-card__body">
+                    <div className="output-shot-card__head">
+                      <span className="output-shot-card__index">{shot.index + 1}</span>
+                      <strong>{(shot.role ?? "").replaceAll("_", " ")}</strong>
+                      <span className="chip chip--accent">{shot.delivery === "talking" ? t("Talking") : t("Narrated")}</span>
+                      {!shot.in_video && <span className="chip chip--warning">{t("not in the video")}</span>}
+                    </div>
+                    <p className="output-shot-card__voiceover">{shot.voiceover}</p>
+                    {shot.on_screen_text && (
+                      <div className="output-shot-card__subtitle">
+                        <span className="chip chip--outline">{t("Text on screen")}</span>
+                        <span>{shot.on_screen_text}</span>
+                      </div>
+                    )}
+                    <div className="output-shot-card__stats">
+                      <span>{`${t("Image tries")}: ${shot.keyframe_attempts ?? 0}`}</span>
+                      <span>·</span>
+                      <span>{`${t("Clip tries")}: ${shot.clip_attempts ?? 0}`}</span>
                     </div>
                   </div>
-                ))}
-              </div>
+                </div>
+              ))}
             </section>
-          </div>
-        </div>
-      </Panel>
+          )}
+
+          {/* Tab 2: Specs & Source Brief */}
+          {activeTab === "specs" && (
+            <div className="output-specs-view">
+              <section className="panel-section">
+                <h3>{t("Brief")}</h3>
+                <dl className="output-facts-grid">
+                  <div>
+                    <dt>{t("Format")}</dt>
+                    <dd>{(brief.format ?? "").replaceAll("_", " ")}</dd>
+                  </div>
+                  <div>
+                    <dt>{t("Selling angle")}</dt>
+                    <dd>{brief.selling_angle}</dd>
+                  </div>
+                  <div>
+                    <dt>{t("Target audience")}</dt>
+                    <dd>{brief.target_audience}</dd>
+                  </div>
+                  {brief.product_size && (
+                    <div>
+                      <dt>{t("Real product size")}</dt>
+                      <dd>{brief.product_size}</dd>
+                    </div>
+                  )}
+                </dl>
+              </section>
+
+              {!!output.data.product_photos.length && (
+                <section className="panel-section">
+                  <h3>{t("Product photos the image model saw")}</h3>
+                  <div className="output-gallery">
+                    {photos.map((photo, index) => (
+                      <img
+                        key={photo.src}
+                        src={photo.src}
+                        alt=""
+                        width={80}
+                        height={80}
+                        referrerPolicy="no-referrer"
+                        {...lightbox.zoom(photos, index)}
+                      />
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {!!output.data.references.length && (
+                <section className="panel-section">
+                  <h3>{t("Scene reference")}</h3>
+                  <div className="output-gallery">
+                    {references.map((image, index) => (
+                      <img
+                        key={image.src}
+                        src={image.src}
+                        alt={image.label ?? ""}
+                        width={80}
+                        height={106}
+                        referrerPolicy="no-referrer"
+                        {...lightbox.zoom(references, index)}
+                      />
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {output.data.persona && (
+                <section className="panel-section">
+                  <h3>{t("Person")}</h3>
+                  <div className="output-row">
+                    {output.data.persona.has_image && (
+                      <img
+                        src={`${API}/${productId}/persona/image`}
+                        alt=""
+                        width={72}
+                        height={128}
+                        {...lightbox.zoom([{ src: `${API}/${productId}/persona/image`, label: t("Person") }], 0)}
+                      />
+                    )}
+                    <p>{output.data.persona.description}</p>
+                  </div>
+                </section>
+              )}
+
+              {brief.user_idea && (
+                <section className="panel-section">
+                  <h3>{t("Your idea")}</h3>
+                  <p>{brief.user_idea}</p>
+                </section>
+              )}
+            </div>
+          )}
+        </main>
+      </div>
       {lightbox.node}
     </>
   );
