@@ -20,7 +20,7 @@ _HOP = 160  # 10 ms
 _WINDOW = 400
 _MELS = 40
 _COEFFICIENTS = 20
-_KNOT = 40  # frames between two stretch points, 0.4 s
+_KNOT = 25  # frames between two stretch points, 0.25 s (finer granularity for Vietnamese syllables)
 _MIN_RATE, _MAX_RATE = 0.65, 1.5  # a piece stretched further sounds unnatural
 _QUIET = 0.06  # a frame this much quieter than the loudest one is not speech
 

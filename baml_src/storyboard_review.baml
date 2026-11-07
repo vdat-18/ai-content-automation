@@ -25,8 +25,7 @@ function ReviewStoryboard(product_json: string, brief_json: string) -> Storyboar
       does not keep it in frame for the whole shot): the product must be in every shot;
     - a keyframe_prompt or motion_prompt is vague or generic (for example only mood words) instead
       of saying what is seen;
-    - a voiceover has more than 48 words or fewer than 38 (count the words; the narrator speaks about
-      4 words per second and each shot lasts about 11 seconds, so the voice should fill the shot; a talking shot has 36 to 40 words), or does not match what the shot shows;
+    - a voiceover has more than 48 words or fewer than 38 for a narrated shot, or more than 25 words or fewer than 15 words for a talking shot (count the words; a narrated shot should fill the 11 seconds with 40 to 46 words, while a talking shot must be concise with 16 to 22 words so the speaker's lip-sync looks natural without drifting), or does not match what the shot shows;
     - a voiceover does not sound like a young Vietnamese seller talking to a friend: it reads like
       written text or an advertisement, uses Sino-Vietnamese or marketing words (cao cấp, sang
       trọng, đẳng cấp, tối ưu), English words or digits that a speaker would have to read out;

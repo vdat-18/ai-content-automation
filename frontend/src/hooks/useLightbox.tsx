@@ -19,5 +19,5 @@ export function useLightbox() {
     },
   });
   const node = shown ? <Lightbox images={shown.images} index={shown.index} onIndex={(index) => setShown({ ...shown, index })} onClose={() => setShown(null)} /> : null;
-  return { zoom, node };
+  return { open, zoom, node };
 }

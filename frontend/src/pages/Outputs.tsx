@@ -215,19 +215,38 @@ function OutputDetailView({ productId }: { productId: string }) {
               {shots.map((shot) => (
                 <div key={shot.index} className={`output-shot-card${shot.in_video ? "" : " output-shot-card--unused"}`}>
                   <div className="output-shot-card__media">
-                    {shot.has_keyframe ? (
-                      <img
-                        src={`${API}/${productId}/keyframes/${shot.index}/image?v=${shot.keyframe_attempts ?? 0}`}
-                        alt=""
-                        loading="lazy"
-                        {...lightbox.zoom(frames, frames.findIndex((frame) => frame.index === shot.index))}
-                      />
-                    ) : (
-                      <div className="output-shot-card__placeholder">{t("No image yet")}</div>
-                    )}
                     {shot.has_clip ? (
-                      <video src={`${API}/${productId}/clips/${shot.index}/video?v=${shot.clip_attempts ?? 0}`} controls playsInline preload="metadata" />
-                    ) : null}
+                      <div className="output-shot-card__video-wrap">
+                        <video
+                          src={`${API}/${productId}/clips/${shot.index}/video?v=${shot.clip_attempts ?? 0}`}
+                          controls
+                          playsInline
+                          preload="metadata"
+                        />
+                        {shot.has_keyframe && (
+                          <button
+                            type="button"
+                            className="output-shot-card__kf-badge"
+                            title={t("View draft keyframe image")}
+                            onClick={() => lightbox.open(frames, frames.findIndex((frame) => frame.index === shot.index))}
+                          >
+                            <ImageIcon size={11} /> {t("Keyframe")}
+                          </button>
+                        )}
+                      </div>
+                    ) : shot.has_keyframe ? (
+                      <div className="output-shot-card__video-wrap">
+                        <img
+                          src={`${API}/${productId}/keyframes/${shot.index}/image?v=${shot.keyframe_attempts ?? 0}`}
+                          alt=""
+                          loading="lazy"
+                          {...lightbox.zoom(frames, frames.findIndex((frame) => frame.index === shot.index))}
+                        />
+                        <span className="output-shot-card__kf-tag">{t("Keyframe only")}</span>
+                      </div>
+                    ) : (
+                      <div className="output-shot-card__placeholder">{t("No media yet")}</div>
+                    )}
                   </div>
                   <div className="output-shot-card__body">
                     <div className="output-shot-card__head">

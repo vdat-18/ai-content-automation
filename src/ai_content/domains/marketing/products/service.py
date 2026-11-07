@@ -78,9 +78,12 @@ DUPLICATE_COSINE = _duplicate_similarity()
 DUPLICATE_HAMMING = 4
 MAX_KEYFRAME_FIXES = 2
 # The voice-over is added later, so the picture only has to look right: a talking shot shows
-# natural speaking, a narrated shot keeps the mouth closed so no words seem out of sync.
+# natural subtle speaking without exaggerated mouth movements, a narrated shot keeps lips closed.
 _DELIVERY_RULE = {
-    True: "The person speaks naturally to the camera, mouth moving like in conversation.",
+    True: (
+        "The person speaks naturally to the camera, subtle and gentle lip movement, "
+        "relaxed facial expression, mouth does not open wide, no exaggerated mouth shapes."
+    ),
     False: "Nobody speaks: lips stay closed or relaxed, no lip movement.",
 }
 VIDEO_LENGTHS = (15, 30, 45, 60, 75, 90)
@@ -972,11 +975,12 @@ class ProductCatalogService:
         if delivery == "talking":
             sound = (
                 f"{_DELIVERY_RULE[True]} The person says in Vietnamese, in one go: "
-                f'"{shot.get("voiceover") or ""}" No music, no text on screen.'
+                f'"{shot.get("voiceover") or ""}". '
+                "Audio: clear spoken Vietnamese dialogue at a steady pace, no background music, no text on screen."
             )
         else:
             sound = (
-                f"{_DELIVERY_RULE[False]} The clip has no sound: no dialogue, no music, "
+                f"{_DELIVERY_RULE[False]} Audio: no sound, no dialogue, no music, "
                 "no text on screen."
             )
         frame = await self.media(media_root).read(keyframe["image_path"])
