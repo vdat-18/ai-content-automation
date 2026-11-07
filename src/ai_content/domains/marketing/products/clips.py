@@ -25,6 +25,9 @@ _CAPTION_FONTS = (
     "C:/Windows/Fonts/arialbd.ttf",
     "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
 )
+TRANSITION_SECONDS = 0.25
+_COLOR_GRADE = "eq=contrast=1.03:brightness=0.01:saturation=1.05"
+
 
 
 class ClipGenerationError(RuntimeError):
@@ -152,6 +155,22 @@ def caption_font() -> Path | None:
     return None
 
 
+def find_bgm() -> Path | None:
+    """Find the default background music loop if available (AIC_BGM_PATH overrides)."""
+    override = os.environ.get("AIC_BGM_PATH")
+    candidates = [Path(override)] if override else [
+        Path("config/default_bgm.wav"),
+        Path("config/default_bgm.mp3"),
+        Path("/app/config/default_bgm.wav"),
+        Path("/app/config/default_bgm.mp3"),
+    ]
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate.resolve()
+    return None
+
+
+
 def _caption_filter(font: Path, textfile: str, end: float) -> str:
     font_path = font.as_posix().replace(":", r"\:")
     return (
@@ -171,12 +190,19 @@ async def cover_frame(video: Path, output: Path) -> None:
     )  # fmt: skip
 
 
-async def stitch(clips: list[StitchClip], output: Path, voiceover: Path | None = None) -> None:
-    """Join the clips into one silent mp4, burn in captions, and lay one voice-over on top.
+async def stitch(
+    clips: list[StitchClip],
+    output: Path,
+    voiceover: Path | None = None,
+    bgm: Path | None = None,
+) -> None:
+    """Join the clips into one seamless mp4, burn in captions, and lay audio on top.
 
     The clips' own audio is dropped because it changes at every cut. The first and last frames
-    of each clip are trimmed: a generated clip starts at rest and its last frames often freeze,
-    which makes the cut feel stuck.
+    of each clip are trimmed to avoid static or frozen frames.
+    Clips receive subtle color-grading to ensure consistency across AI-generated scenes,
+    and are stitched with soft transitions (xfade) when long enough.
+    Background music is auto-ducked under voice-over speech when available.
     """
     if shutil.which("ffmpeg") is None:
         raise StitchUnavailable("ffmpeg is not installed on this machine")
@@ -185,16 +211,20 @@ async def stitch(clips: list[StitchClip], output: Path, voiceover: Path | None =
     output.parent.mkdir(parents=True, exist_ok=True)
     font = caption_font()
     parts: list[Path] = []
+    part_durations: list[float] = []
     scratch: list[Path] = []
+    bgm_path = bgm or (find_bgm() if voiceover is not None else None)
     try:
         for index, clip in enumerate(clips):
             part = output.parent / f"part_{index}.mp4"
             scratch.append(part)
             seconds = shot_seconds(clip.duration)
+            part_durations.append(seconds)
             filters = (
                 f"setpts=PTS/{clip_speed():.4f},"
                 f"scale={_OUTPUT_SIZE}:force_original_aspect_ratio=increase,"
-                f"crop={_OUTPUT_SIZE},setsar=1,fps={_FPS}"
+                f"crop={_OUTPUT_SIZE},setsar=1,fps={_FPS},"
+                f"{_COLOR_GRADE}"
             )
             if clip.caption.strip() and font is not None:
                 textfile = output.parent / f"caption_{index}.txt"
@@ -209,23 +239,80 @@ async def stitch(clips: list[StitchClip], output: Path, voiceover: Path | None =
                 cwd=output.parent,
             )  # fmt: skip
             parts.append(part)
-        listing = output.parent / "parts.txt"
-        listing.write_text("".join(f"file '{part.name}'\n" for part in parts), encoding="utf-8")
-        scratch.append(listing)
-        silent = output if voiceover is None else output.parent / "silent.mp4"
-        if voiceover is not None:
+
+        # Video concatenation (xfade transition if clips are standard duration >= 4.0s)
+        has_audio = voiceover is not None or bgm_path is not None
+        silent = output.parent / "silent.mp4" if has_audio else output
+        if has_audio:
             scratch.append(silent)
-        await _run(
-            "ffmpeg", "-v", "error", "-y", "-f", "concat", "-safe", "0", "-i", listing.name,
-            "-c", "copy", "-movflags", "+faststart", silent.name, cwd=output.parent,
-        )  # fmt: skip
-        if voiceover is not None:
+
+        can_xfade = len(parts) > 1 and all(d >= 4.0 for d in part_durations)
+        if can_xfade:
+            # Build multi-input xfade filtergraph
+            inputs = []
+            for p in parts:
+                inputs.extend(["-i", p.name])
+            filter_chains = []
+            prev_label = "[0:v]"
+            accum_offset = part_durations[0] - TRANSITION_SECONDS
+            for i in range(1, len(parts)):
+                curr_label = f"[{i}:v]"
+                out_label = f"[v{i}]" if i < len(parts) - 1 else "[vout]"
+                filter_chains.append(
+                    f"{prev_label}{curr_label}xfade=transition=fade:duration={TRANSITION_SECONDS:.2f}:offset={accum_offset:.2f}{out_label}"
+                )
+                prev_label = out_label
+                if i < len(parts) - 1:
+                    accum_offset += part_durations[i] - TRANSITION_SECONDS
+            await _run(
+                "ffmpeg", "-v", "error", "-y", *inputs,
+                "-filter_complex", ";".join(filter_chains),
+                "-map", "[vout]", "-c:v", "libx264", "-crf", "18", "-pix_fmt", "yuv420p",
+                "-movflags", "+faststart", silent.name,
+                cwd=output.parent,
+            )  # fmt: skip
+        else:
+            listing = output.parent / "parts.txt"
+            listing.write_text("".join(f"file '{part.name}'\n" for part in parts), encoding="utf-8")
+            scratch.append(listing)
+            await _run(
+                "ffmpeg", "-v", "error", "-y", "-f", "concat", "-safe", "0", "-i", listing.name,
+                "-c", "copy", "-movflags", "+faststart", silent.name, cwd=output.parent,
+            )  # fmt: skip
+
+        # Audio mix: Voiceover + BGM Auto-Ducking (or voiceover only)
+        if voiceover is not None and bgm_path is not None:
+            # Sidechain compression: Voice ducking BGM
+            audio_filter = (
+                "[1:a]loudnorm=I=-14:LRA=11:TP=-1,asplit=2[voice_main][voice_sc];"
+                "[2:a]volume=0.25[music_base];"
+                "[music_base][voice_sc]sidechaincompress=threshold=0.08:ratio=4:attack=50:release=300[music_ducked];"
+                "[voice_main][music_ducked]amix=inputs=2:duration=first:dropout_transition=2[aout]"
+            )
+            await _run(
+                "ffmpeg", "-v", "error", "-y", "-i", silent.name, "-i", str(voiceover),
+                "-stream_loop", "-1", "-i", str(bgm_path),
+                "-filter_complex", audio_filter,
+                "-map", "0:v", "-map", "[aout]",
+                "-c:v", "copy", "-c:a", "aac", "-ar", "44100", "-ac", "2", "-shortest",
+                "-movflags", "+faststart", output.name, cwd=output.parent,
+            )  # fmt: skip
+        elif voiceover is not None:
             await _run(
                 "ffmpeg", "-v", "error", "-y", "-i", silent.name, "-i", str(voiceover),
                 "-map", "0:v", "-map", "1:a", "-af", "loudnorm=I=-14:LRA=11:TP=-1",
                 "-c:v", "copy", "-c:a", "aac", "-ar", "44100", "-ac", "2", "-shortest",
                 "-movflags", "+faststart", output.name, cwd=output.parent,
             )  # fmt: skip
+        elif bgm_path is not None:
+            await _run(
+                "ffmpeg", "-v", "error", "-y", "-i", silent.name,
+                "-stream_loop", "-1", "-i", str(bgm_path),
+                "-map", "0:v", "-map", "1:a", "-af", "volume=0.35",
+                "-c:v", "copy", "-c:a", "aac", "-ar", "44100", "-ac", "2", "-shortest",
+                "-movflags", "+faststart", output.name, cwd=output.parent,
+            )  # fmt: skip
     finally:
         for path in scratch:
             path.unlink(missing_ok=True)
+
