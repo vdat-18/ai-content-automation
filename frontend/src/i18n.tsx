@@ -4,6 +4,11 @@ import { I18nContext, type I18nValue, type Language } from "./hooks/useI18n";
 const LANGUAGE_KEY = "aic-interface-language";
 
 const vi: Record<string, string> = {
+  "Products": "Sản phẩm",
+  "Create Videos": "Tạo video",
+  "Finished Videos": "Video hoàn chỉnh",
+  "Outputs": "Video hoàn chỉnh",
+  "Briefs": "Tạo video",
   "Today": "Hôm nay",
   "Tools": "Công cụ",
   "Marketing workspace": "Không gian Marketing",
@@ -354,7 +359,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const [language, updateLanguage] = useState<Language>(() => {
     const saved = localStorage.getItem(LANGUAGE_KEY);
     if (saved === "en" || saved === "vi") return saved;
-    return navigator.language.toLowerCase().startsWith("vi") ? "vi" : "en";
+    return "en";
   });
   const locale = language === "vi" ? "vi-VN" : "en-US";
   const setLanguage = useCallback((next: Language) => {

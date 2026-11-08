@@ -1,8 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { Download, Film, Sparkles, Video, Layers, Image as ImageIcon, ExternalLink, ArrowLeft } from "lucide-react";
+import { Download, Film, Sparkles, Layers, Image as ImageIcon, ExternalLink, ArrowLeft } from "lucide-react";
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { EmptyState, PageHeader, Panel, SkeletonPage } from "../components/ui";
+import { EmptyState, PageHeader, SkeletonPage } from "../components/ui";
 import { useI18n } from "../hooks/useI18n";
 import { useLightbox } from "../hooks/useLightbox";
 import { getJson } from "../services/http";
@@ -72,6 +72,16 @@ function OutputList() {
                   {item.voice && <span className="chip chip--sm">{item.voice}</span>}
                 </div>
                 {item.built_at && <small className="output-card__date">{when(item.built_at)}</small>}
+                <div className="output-card__actions">
+                  <a
+                    className="primary-button output-card__btn-download"
+                    href={`${API}/${item.product_id}/video?download=true`}
+                    onClick={(e) => e.stopPropagation()}
+                    title={t("Download video")}
+                  >
+                    <Download size={13} /> {t("Download")}
+                  </a>
+                </div>
               </div>
             </Link>
           ))}

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDownToLine, ArrowUpToLine, Download, Film, Loader2, Package, RotateCcw, Search, Trash2 } from "lucide-react";
+import { ArrowDownToLine, ArrowUpToLine, Download, Film, LayoutGrid, List, Loader2, Package, RotateCcw, Search, Trash2, Chrome, ShoppingBag, Sparkles } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { EmptyState, PageHeader, Panel, SkeletonPage } from "../components/ui";
 import { useI18n } from "../hooks/useI18n";
 import { deleteJson, getJson, postJson } from "../services/http";
@@ -33,10 +34,27 @@ type SortKey = keyof typeof SORTS;
 
 export function ProductsPage() {
   const { t } = useI18n();
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
   const [sortKey, setSortKey] = useState<SortKey>("sold");
   const [minSold, setMinSold] = useState(0);
+  const [viewMode, setViewMode] = useState<"card" | "table">(() => {
+    try {
+      return (window.localStorage.getItem("aic-products-view") as "card" | "table") || "card";
+    } catch {
+      return "card";
+    }
+  });
+
+  const toggleViewMode = (mode: "card" | "table") => {
+    setViewMode(mode);
+    try {
+      window.localStorage.setItem("aic-products-view", mode);
+    } catch {
+      // ignore
+    }
+  };
   const query = useQuery({ queryKey: ["products"], queryFn: ({ signal }) => getJson<Product[]>(API, signal), refetchInterval: 10000 });
   const media = useMutation({ mutationFn: () => postJson<MediaReport>(`${API}/media/download`) });
   const client = useQueryClient();
@@ -54,10 +72,13 @@ export function ProductsPage() {
   const select = useMutation({
     mutationFn: ({ productId, regenerate }: { productId: string; regenerate: boolean }) =>
       postJson<SelectResult>(`${API}/${productId}/select?regenerate=${regenerate}`),
-    onSuccess: () => {
+    onSuccess: (_data, variables) => {
       void client.invalidateQueries({ queryKey: ["product-selections"] });
       void client.invalidateQueries({ queryKey: ["select-errors"] });
       void client.invalidateQueries({ queryKey: ["reference-profiles"] });
+      if (!variables.regenerate) {
+        navigate(`/briefs?product=${encodeURIComponent(variables.productId)}`);
+      }
     },
   });
 
@@ -123,6 +144,26 @@ export function ProductsPage() {
             <input type="number" min={0} value={minSold} onChange={(event) => setMinSold(Number(event.target.value) || 0)} />
           </label>
           <span className="pf-count">{`${rows.length} / ${query.data.length}`}</span>
+          <div className="view-mode-toggle" role="group" aria-label={t("View mode")}>
+            <button
+              type="button"
+              className={`icon-button${viewMode === "card" ? " icon-button--active" : ""}`}
+              onClick={() => toggleViewMode("card")}
+              title={t("Grid view")}
+              aria-label={t("Grid view")}
+            >
+              <LayoutGrid size={16} />
+            </button>
+            <button
+              type="button"
+              className={`icon-button${viewMode === "table" ? " icon-button--active" : ""}`}
+              onClick={() => toggleViewMode("table")}
+              title={t("Table view")}
+              aria-label={t("Table view")}
+            >
+              <List size={16} />
+            </button>
+          </div>
           <span className="pf-scroll">
             <button type="button" className="icon-button" aria-label={t("Scroll to top")} title={t("Scroll to top")} onClick={() => listRef.current?.scrollTo({ top: 0, behavior: "smooth" })}><ArrowUpToLine size={16} /></button>
             <button type="button" className="icon-button" aria-label={t("Scroll to bottom")} title={t("Scroll to bottom")} onClick={() => listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" })}><ArrowDownToLine size={16} /></button>
@@ -130,47 +171,57 @@ export function ProductsPage() {
         </div>
         {rows.length ? (
           <div className="products-scroll" ref={listRef}>
-          <table className="products-table">
-            <thead>
-              <tr><th></th><th>{t("Product")}</th><th>{t("Price")}</th><th>{t("Sold")}</th><th>{t("Reviews")}</th><th>{t("Rating")}</th><th></th></tr>
-            </thead>
-            <tbody>
-              {rows.map((product) => (
-                <tr key={product.product_id}>
-                    <td>{product.images[0] && <img src={product.images[0]} alt="" width={48} height={48} loading="lazy" />}</td>
-                    <td><a href={product.url.split("?")[0]} target="_blank" rel="noreferrer">{product.title}</a><small>{product.seller?.name}</small></td>
-                    <td>{vnd(product.price.sale)}</td>
-                    <td>{toNumber(product.sold_count).toLocaleString("vi-VN")}</td>
-                    <td>{toNumber(product.review_count).toLocaleString("vi-VN")}</td>
-                    <td>{product.rating ?? "-"}</td>
-                    <td>
-                      <div className="pt-actions">
-                        {(() => {
-                          const picked = product.product_id in (selections.data ?? {});
-                          const keyword = selections.data?.[product.product_id];
-                          const failure = selectErrors.data?.[product.product_id];
-                          const queue = () => select.mutate({ productId: product.product_id, regenerate: true });
-                          if (!picked) {
-                            return <button type="button" className="pt-button" onClick={() => select.mutate({ productId: product.product_id, regenerate: false })}>{t("Select for content")}</button>;
-                          }
-                          if (keyword) {
-                            return (
-                              <>
-                                <span className="pt-keyword" title={t("Keyword used to find reference images")}>{keyword}</span>
-                                <button type="button" className="pt-icon" aria-label={t("Regenerate keywords")} title={t("Regenerate keywords")} onClick={queue}><RotateCcw size={14} /></button>
-                              </>
-                            );
-                          }
-                          if (failure) {
-                            return (
-                              <>
-                                <span className="pt-error" title={failure}>{t("Keyword failed")}</span>
-                                <button type="button" className="pt-icon" aria-label={t("Try again")} title={`${failure} · ${t("Try again")}`} onClick={queue}><RotateCcw size={14} /></button>
-                              </>
-                            );
-                          }
-                          return <span className="pt-queued"><Loader2 size={13} className="pt-spin" aria-hidden="true" />{t("Making keyword…")}</span>;
-                        })()}
+            {viewMode === "card" ? (
+              <div className="product-cards-grid">
+                {rows.map((product) => {
+                  const picked = product.product_id in (selections.data ?? {});
+                  const keyword = selections.data?.[product.product_id];
+                  const failure = selectErrors.data?.[product.product_id];
+                  const queue = () => select.mutate({ productId: product.product_id, regenerate: true });
+                  return (
+                    <div key={product.product_id} className="product-card">
+                      <div className="product-card__thumb">
+                        {product.images[0] ? (
+                          <img src={product.images[0]} alt="" loading="lazy" />
+                        ) : (
+                          <div className="product-card__placeholder"><Package size={28} /></div>
+                        )}
+                        <span className="product-card__price">{vnd(product.price.sale)}</span>
+                      </div>
+                      <div className="product-card__meta">
+                        <a href={product.url.split("?")[0]} target="_blank" rel="noreferrer" className="product-card__title" title={product.title ?? ""}>
+                          {product.title}
+                        </a>
+                        <small className="product-card__seller">{product.seller?.name || t("Unknown shop")}</small>
+                        <div className="product-card__stats">
+                          <span>{t("Sold")}: <strong>{toNumber(product.sold_count).toLocaleString("vi-VN")}</strong></span>
+                          <span>·</span>
+                          <span>⭐ {product.rating ?? "-"}</span>
+                        </div>
+                      </div>
+                      <div className="product-card__footer">
+                        {!picked ? (
+                          <button
+                            type="button"
+                            className="primary-button product-card__btn-main"
+                            disabled={select.isPending}
+                            onClick={() => select.mutate({ productId: product.product_id, regenerate: false })}
+                          >
+                            <Sparkles size={14} /> {t("Select for content")}
+                          </button>
+                        ) : keyword ? (
+                          <div className="product-card__keyword-box">
+                            <span className="pt-keyword" title={t("Keyword used to find reference images")}>{keyword}</span>
+                            <button type="button" className="pt-icon" aria-label={t("Regenerate keywords")} title={t("Regenerate keywords")} onClick={queue}><RotateCcw size={14} /></button>
+                          </div>
+                        ) : failure ? (
+                          <div className="product-card__keyword-box">
+                            <span className="pt-error" title={failure}>{t("Keyword failed")}</span>
+                            <button type="button" className="pt-icon" aria-label={t("Try again")} title={`${failure} · ${t("Try again")}`} onClick={queue}><RotateCcw size={14} /></button>
+                          </div>
+                        ) : (
+                          <span className="pt-queued"><Loader2 size={13} className="pt-spin" aria-hidden="true" />{t("Making keyword…")}</span>
+                        )}
                         <button
                           type="button"
                           className="pt-icon pt-icon--danger"
@@ -182,14 +233,98 @@ export function ProductsPage() {
                           }}
                         ><Trash2 size={14} /></button>
                       </div>
-                    </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <table className="products-table">
+                <thead>
+                  <tr><th></th><th>{t("Product")}</th><th>{t("Price")}</th><th>{t("Sold")}</th><th>{t("Reviews")}</th><th>{t("Rating")}</th><th></th></tr>
+                </thead>
+                <tbody>
+                  {rows.map((product) => (
+                    <tr key={product.product_id}>
+                        <td>{product.images[0] && <img src={product.images[0]} alt="" width={48} height={48} loading="lazy" />}</td>
+                        <td><a href={product.url.split("?")[0]} target="_blank" rel="noreferrer">{product.title}</a><small>{product.seller?.name}</small></td>
+                        <td>{vnd(product.price.sale)}</td>
+                        <td>{toNumber(product.sold_count).toLocaleString("vi-VN")}</td>
+                        <td>{toNumber(product.review_count).toLocaleString("vi-VN")}</td>
+                        <td>{product.rating ?? "-"}</td>
+                        <td>
+                          <div className="pt-actions">
+                            {(() => {
+                              const picked = product.product_id in (selections.data ?? {});
+                              const keyword = selections.data?.[product.product_id];
+                              const failure = selectErrors.data?.[product.product_id];
+                              const queue = () => select.mutate({ productId: product.product_id, regenerate: true });
+                              if (!picked) {
+                                return <button type="button" className="pt-button" onClick={() => select.mutate({ productId: product.product_id, regenerate: false })}>{t("Select for content")}</button>;
+                              }
+                              if (keyword) {
+                                return (
+                                  <>
+                                    <span className="pt-keyword" title={t("Keyword used to find reference images")}>{keyword}</span>
+                                    <button type="button" className="pt-icon" aria-label={t("Regenerate keywords")} title={t("Regenerate keywords")} onClick={queue}><RotateCcw size={14} /></button>
+                                  </>
+                                );
+                              }
+                              if (failure) {
+                                return (
+                                  <>
+                                    <span className="pt-error" title={failure}>{t("Keyword failed")}</span>
+                                    <button type="button" className="pt-icon" aria-label={t("Try again")} title={`${failure} · ${t("Try again")}`} onClick={queue}><RotateCcw size={14} /></button>
+                                  </>
+                                );
+                              }
+                              return <span className="pt-queued"><Loader2 size={13} className="pt-spin" aria-hidden="true" />{t("Making keyword…")}</span>;
+                            })()}
+                            <button
+                              type="button"
+                              className="pt-icon pt-icon--danger"
+                              aria-label={t("Delete product")}
+                              title={t("Delete product")}
+                              disabled={remove.isPending}
+                              onClick={() => {
+                                if (window.confirm(t("Delete this product and its brief, images, clips and video? It will not be collected again."))) remove.mutate(product.product_id);
+                              }}
+                            ><Trash2 size={14} /></button>
+                          </div>
+                        </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         ) : (
-          <EmptyState icon={<Package />} title="No products" text="Run the extension on TikTok Shop to collect products." />
+          <div className="onboarding-guide">
+            <div className="onboarding-guide__hero">
+              <Package size={32} />
+              <h3>{t("No products yet")}</h3>
+              <p>{t("Follow 3 simple steps to collect products and create high-converting affiliate videos.")}</p>
+            </div>
+            <div className="onboarding-guide__steps">
+              <div className="onboarding-step">
+                <span className="onboarding-step__num">1</span>
+                <div className="onboarding-step__icon"><Chrome size={20} /></div>
+                <strong>{t("Install Chrome Extension")}</strong>
+                <p>{t("Load the extension from the extensions folder into your Chrome browser.")}</p>
+              </div>
+              <div className="onboarding-step">
+                <span className="onboarding-step__num">2</span>
+                <div className="onboarding-step__icon"><ShoppingBag size={20} /></div>
+                <strong>{t("Browse TikTok Shop")}</strong>
+                <p>{t("Open TikTok Shop product pages or search results you want to promote.")}</p>
+              </div>
+              <div className="onboarding-step">
+                <span className="onboarding-step__num">3</span>
+                <div className="onboarding-step__icon"><Sparkles size={20} /></div>
+                <strong>{t("Collect & Create")}</strong>
+                <p>{t("Click 'Collect' on the extension, then select products here to generate video briefs.")}</p>
+              </div>
+            </div>
+          </div>
         )}
       </Panel>
     </>

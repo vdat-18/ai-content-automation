@@ -1,9 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Clapperboard, Copy, Download, FileText, ImageIcon, RotateCcw, Sparkles, X } from "lucide-react";
-import { useState } from "react";
+import { Check, Clapperboard, Copy, Download, FileText, Film, ImageIcon, Loader2, Play, RotateCcw, Search, Sparkles, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { SplitHandle } from "../components/SplitHandle";
 import { EmptyState, PageHeader, Panel, SkeletonPage } from "../components/ui";
 import { useI18n } from "../hooks/useI18n";
 import { useLightbox } from "../hooks/useLightbox";
+import { useSplitResize } from "../hooks/useSplitResize";
 import { getJson, postJson, putFile, putJson } from "../services/http";
 
 type Persona = { description: string; image_path: string | null; status: "none" | "ready" | "approved" | "rejected"; attempts: number };
@@ -102,6 +105,12 @@ function useVideoInfo(productId: string, enabled: boolean) {
 
 export function BriefsPage() {
   const { t } = useI18n();
+  const [params, setParams] = useSearchParams();
+  const targetProduct = params.get("product");
+  const [search, setSearch] = useState("");
+  const detailPanelRef = useRef<HTMLElement>(null);
+  const split = useSplitResize("aic-studio-split", 520, 1100, detailPanelRef);
+
   const selections = useQuery({ queryKey: ["product-selections"], queryFn: ({ signal }) => getJson<Record<string, string | null>>(`${API}/selections`, signal) });
   const products = useQuery({ queryKey: ["products"], queryFn: ({ signal }) => getJson<Product[]>(API, signal) });
   const briefs = useQuery({ queryKey: ["briefs"], queryFn: ({ signal }) => getJson<BriefRecord[]>(`${API}/briefs`, signal) });
@@ -116,23 +125,97 @@ export function BriefsPage() {
   const briefById = new Map((briefs.data ?? []).map((record) => [record.product_id, record]));
   const imageById = new Map((references.data ?? []).map((image) => [image.image_id, image.image_url]));
 
+  const activeProductId = targetProduct && selectedIds.includes(targetProduct)
+    ? targetProduct
+    : selectedIds[0] ?? null;
+
+  const selectProduct = (id: string) => {
+    setParams({ product: id });
+  };
+
+  const filteredSelectedIds = selectedIds.filter((id) => {
+    if (!search.trim()) return true;
+    const prod = productById.get(id);
+    const title = prod?.title ?? id;
+    return title.toLowerCase().includes(search.trim().toLowerCase());
+  });
+
   return (
     <>
-      <PageHeader eyebrow="Affiliate content" title="Briefs" variant="operator" />
-      {selectedIds.length === 0 && (
+      <PageHeader eyebrow="Affiliate content" title="Video Studio" variant="operator" />
+      {selectedIds.length === 0 ? (
         <EmptyState icon={<FileText />} title="No products selected" text="Select products for content on the Products page first." />
+      ) : (
+        <div className={`studio-layout${split.active ? " split-active" : ""}`} style={split.style}>
+          {/* Left panel: Product selection list */}
+          <aside className="studio-sidebar">
+            <div className="studio-sidebar__head">
+              <span className="studio-sidebar__count">{`${selectedIds.length} ${t("products in studio")}`}</span>
+              <label className="studio-sidebar__search">
+                <Search size={14} aria-hidden="true" />
+                <input
+                  type="search"
+                  placeholder={t("Filter products…")}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </label>
+            </div>
+            <div className="studio-product-list">
+              {filteredSelectedIds.map((productId) => {
+                const prod = productById.get(productId);
+                const rec = briefById.get(productId);
+                const pType = selections.data?.[productId];
+                const isSelected = activeProductId === productId;
+                return (
+                  <button
+                    key={productId}
+                    type="button"
+                    className={`studio-product-item${isSelected ? " studio-product-item--active" : ""}`}
+                    onClick={() => selectProduct(productId)}
+                  >
+                    <div className="studio-product-item__thumb">
+                      {prod?.images[0] ? (
+                        <img src={prod.images[0]} alt="" referrerPolicy="no-referrer" />
+                      ) : (
+                        <Film size={20} />
+                      )}
+                    </div>
+                    <div className="studio-product-item__info">
+                      <strong title={prod?.title ?? productId}>{prod?.title ?? productId}</strong>
+                      <div className="studio-product-item__meta">
+                        <small>{pType ?? t("Keywords pending")}</small>
+                        {rec && (
+                          <span className={`badge badge--${rec.status === "approved" ? "success" : "warning"}`}>
+                            {rec.status}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </aside>
+
+          {/* Right panel: Studio workspace */}
+          {activeProductId && (
+            <main ref={detailPanelRef} className="studio-main">
+              <SplitHandle label="Resize studio layout" {...split.handleProps} />
+              <BriefCard
+                key={activeProductId}
+                productId={activeProductId}
+                productType={selections.data?.[activeProductId] ?? null}
+                product={productById.get(activeProductId)}
+                record={briefById.get(activeProductId)}
+                imageById={imageById}
+                isTarget={true}
+                t={t}
+              />
+            </main>
+          )}
+        </div>
       )}
-      {selectedIds.map((productId) => (
-        <BriefCard
-          key={productId}
-          productId={productId}
-          productType={selections.data?.[productId] ?? null}
-          product={productById.get(productId)}
-          record={briefById.get(productId)}
-          imageById={imageById}
-          t={t}
-        />
-      ))}
     </>
   );
 }
@@ -143,6 +226,7 @@ function BriefCard({
   product,
   record,
   imageById,
+  isTarget,
   t,
 }: {
   productId: string;
@@ -150,12 +234,103 @@ function BriefCard({
   product: Product | undefined;
   record: BriefRecord | undefined;
   imageById: Map<string, string>;
+  isTarget?: boolean;
   t: (key: string) => string;
 }) {
+  const cardRef = useRef<HTMLDivElement>(null);
   const client = useQueryClient();
   const [idea, setIdea] = useState(record?.user_idea ?? "");
   const [videoSeconds, setVideoSeconds] = useState(60);
   const [picked, setPicked] = useState<Step | null>(null);
+  const [autoRunning, setAutoRunning] = useState(false);
+  const [autoStatus, setAutoStatus] = useState<string | null>(null);
+  const events = useQuery({
+    queryKey: ["run-log", productId],
+    queryFn: ({ signal }) => getJson<RunEvent[]>(`${API}/${productId}/events`, signal),
+    refetchInterval: autoRunning ? 2000 : 5000,
+  });
+  const latestEvent = events.data?.[events.data.length - 1];
+
+  const runAutoPipeline = async () => {
+    if (autoRunning) return;
+    setAutoRunning(true);
+    setAutoStatus(t("Starting automated creation…"));
+    try {
+      let currentRecord = record;
+      // 1. Create or get brief
+      if (!currentRecord) {
+        setAutoStatus(t("Writing storyboard brief…"));
+        currentRecord = await postJson<BriefRecord>(`${API}/${productId}/brief`, { idea, video_seconds: videoSeconds });
+        await refresh();
+      }
+
+      // 2. Approve brief if draft
+      if (currentRecord.status !== "approved") {
+        setAutoStatus(t("Approving brief…"));
+        currentRecord = await putJson<BriefRecord>(`${API}/${productId}/brief`, { brief: currentRecord.brief, status: "approved" });
+        await refresh();
+      }
+
+      // 3. Approve persona if persona exists
+      if (currentRecord.brief.persona?.description && currentRecord.brief.persona.status !== "approved") {
+        setAutoStatus(t("Approving persona…"));
+        if (!currentRecord.brief.persona.image_path) {
+          await postJson<Persona>(`${API}/${productId}/persona`, { description: currentRecord.brief.persona.description });
+        }
+        await putJson(`${API}/${productId}/persona`, { status: "approved" });
+        await refresh();
+      }
+
+      // 4. Generate Master keyframe (shot 0) if needed
+      setAutoStatus(t("Generating master keyframe…"));
+      await postJson<Keyframe[]>(`${API}/${productId}/keyframes`, { shot_index: 0 });
+      await putJson(`${API}/${productId}/keyframes/0`, { status: "approved" });
+      await client.invalidateQueries({ queryKey: ["keyframes", productId] });
+
+      // 5. Generate remaining keyframes
+      setAutoStatus(t("Generating remaining scene keyframes…"));
+      await postJson<Keyframe[]>(`${API}/${productId}/keyframes`, { shot_index: null });
+      const shotCount = currentRecord.brief.shots?.length ?? 0;
+      for (let i = 1; i < shotCount; i++) {
+        await putJson(`${API}/${productId}/keyframes/${i}`, { status: "approved" });
+      }
+      await client.invalidateQueries({ queryKey: ["keyframes", productId] });
+
+      // 6. Generate clips
+      setAutoStatus(t("Creating video clips (this takes a few minutes)…"));
+      await postJson<Clip[]>(`${API}/${productId}/clips`, { shot_index: null });
+      await client.invalidateQueries({ queryKey: ["clips", productId] });
+
+      // 7. Generate voiceover
+      setAutoStatus(t("Synthesizing voiceover…"));
+      const savedVoice = window.localStorage.getItem("aic-voice") || null;
+      await postJson<{ seconds: number[]; too_long_shots: number[] }>(`${API}/${productId}/voiceover`, { voice: savedVoice });
+
+      // 8. Stitch video
+      setAutoStatus(t("Stitching final video with transitions and music…"));
+      await postJson<{ video: string }>(`${API}/${productId}/video`, { captions: false });
+      await client.invalidateQueries({ queryKey: ["video-info", productId] });
+
+      // 9. Post package
+      setAutoStatus(t("Writing TikTok caption and hashtags…"));
+      await postJson<PostPackage>(`${API}/${productId}/post-package`);
+      await refresh();
+
+      setPicked("voice");
+      setAutoStatus(t("Video completed successfully!"));
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      setAutoStatus(`${t("Automation paused")}: ${message}`);
+    } finally {
+      setAutoRunning(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isTarget && cardRef.current) {
+      cardRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }, [isTarget]);
   const approved = record?.status === "approved";
   const shots = record?.brief.shots ?? [];
   const keyframes = useKeyframes(productId, !!record);
@@ -184,17 +359,50 @@ function BriefCard({
   };
   const suggested = STEPS.find((item) => !done[item.id])?.id ?? "post";
   const step: Step = !record ? "brief" : approved ? (picked ?? suggested) : "brief";
+  const completedStepsCount = STEPS.filter((item) => done[item.id]).length;
+  const progressPercent = Math.round((completedStepsCount / STEPS.length) * 100);
 
   return (
-    <Panel className="brief-card">
-      <div className="brief-head">
+    <Panel className={`brief-card${isTarget ? " brief-card--highlight" : ""}`}>
+      <div ref={cardRef} className="brief-head">
         {product?.images[0] && <img src={product.images[0]} alt="" width={48} height={48} referrerPolicy="no-referrer" />}
         <div>
           <strong title={product?.title ?? productId}>{product?.title ?? productId}</strong>
           <small>{productType ?? t("No product type yet. Regenerate keywords on the Products page.")}</small>
         </div>
-        {record && <span className={`badge badge--${approved ? "success" : "warning"}`}>{record.status}</span>}
+        {record && (
+          <div className="brief-head__status">
+            <span className="brief-progress-label">{`${completedStepsCount}/${STEPS.length} ${t("steps")}`}</span>
+            <span className={`badge badge--${approved ? "success" : "warning"}`}>{record.status}</span>
+            <button
+              type="button"
+              className="primary-button brief-head__btn-auto"
+              disabled={autoRunning || !productType}
+              onClick={runAutoPipeline}
+              title={t("Automatically generate and stitch the entire video in 1 click")}
+            >
+              {autoRunning ? <Loader2 size={13} className="pt-spin" /> : <Play size={13} />}
+              {autoRunning ? t("Processing…") : t("1-Click Auto Pipeline")}
+            </button>
+          </div>
+        )}
       </div>
+      {autoStatus ? (
+        <div className={`brief-auto-status${autoRunning ? " brief-auto-status--running" : ""}`}>
+          {autoRunning && <Loader2 size={14} className="pt-spin" />}
+          <span>{autoStatus}</span>
+        </div>
+      ) : latestEvent && !done.post ? (
+        <div className="brief-auto-status brief-auto-status--live">
+          <span className="live-indicator" />
+          <span><strong>{t("Live progress")}:</strong> {latestEvent.message}</span>
+        </div>
+      ) : null}
+      {record && (
+        <div className="brief-progress-bar-wrap" title={`${progressPercent}% completed`}>
+          <div className="brief-progress-bar" style={{ width: `${progressPercent}%` }} />
+        </div>
+      )}
       {record && (
         <nav className="brief-steps" aria-label={t("Steps")}>
           {STEPS.map((item, index) => (
@@ -229,6 +437,17 @@ function BriefCard({
             <button className="primary-button" disabled={create.isPending || !productType} onClick={() => create.mutate()}>
               <Sparkles size={15} /> {create.isPending ? t("Writing…") : record ? t("Regenerate brief") : t("Create brief")}
             </button>
+            {!record && (
+              <button
+                type="button"
+                className="primary-button brief-btn-auto-large"
+                disabled={autoRunning || !productType}
+                onClick={runAutoPipeline}
+              >
+                {autoRunning ? <Loader2 size={15} className="pt-spin" /> : <Play size={15} />}
+                {autoRunning ? t("Processing…") : t("1-Click Auto Pipeline")}
+              </button>
+            )}
           </div>
           {create.error && <p role="alert">{create.error.message}</p>}
           {record && (
