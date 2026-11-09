@@ -51,6 +51,24 @@ type ReferenceImage = { image_id: string; image_url: string };
 type Step = "brief" | "person" | "images" | "clips" | "voice" | "post";
 
 const API = "/api/v1/products";
+const CLIP_POLL_MS = 5000;
+const CLIP_WAIT_MS = 20 * 60 * 1000;
+
+// Clip jobs run for minutes; each GET also collects the jobs that have finished.
+async function waitForClips(productId: string, shotCount: number): Promise<void> {
+  const deadline = Date.now() + CLIP_WAIT_MS;
+  for (;;) {
+    const clips = await getJson<Clip[]>(`${API}/${productId}/clips`);
+    const failed = clips.filter((clip) => clip.status === "failed");
+    if (failed.length > 0) {
+      const shots = failed.map((clip) => clip.shot_index + 1).join(", ");
+      throw new Error(`The clip of shot ${shots} failed: ${failed[0].error ?? "video job failed"}. Retry it in the Clips step`);
+    }
+    if (clips.filter((clip) => clip.status === "ready").length >= shotCount) return;
+    if (Date.now() > deadline) throw new Error("The clips are still being made; check the Clips step later");
+    await new Promise<void>((resolve) => window.setTimeout(resolve, CLIP_POLL_MS));
+  }
+}
 const STEPS: { id: Step; label: string }[] = [
   { id: "brief", label: "Brief" },
   { id: "person", label: "Person" },
@@ -281,24 +299,48 @@ function BriefCard({
         await refresh();
       }
 
-      // 4. Generate Master keyframe (shot 0) if needed
-      setAutoStatus(t("Generating master keyframe…"));
-      await postJson<Keyframe[]>(`${API}/${productId}/keyframes`, { shot_index: 0 });
-      await putJson(`${API}/${productId}/keyframes/0`, { status: "approved" });
-      await client.invalidateQueries({ queryKey: ["keyframes", productId] });
-
-      // 5. Generate remaining keyframes
-      setAutoStatus(t("Generating remaining scene keyframes…"));
-      await postJson<Keyframe[]>(`${API}/${productId}/keyframes`, { shot_index: null });
       const shotCount = currentRecord.brief.shots?.length ?? 0;
+      const keyframes = await getJson<Keyframe[]>(`${API}/${productId}/keyframes`);
+
+      // 4. Generate the master keyframe (shot 0) unless it is already approved
+      if (keyframes.find((keyframe) => keyframe.shot_index === 0)?.status !== "approved") {
+        setAutoStatus(t("Generating master keyframe…"));
+        const made = await postJson<Keyframe[]>(`${API}/${productId}/keyframes`, { shot_index: 0 });
+        const master = made.find((keyframe) => keyframe.shot_index === 0);
+        if (master?.status !== "ready") {
+          throw new Error(`Master keyframe failed: ${master?.error ?? "no image"}. Retry it in the Images step`);
+        }
+        if (master.qa_problem) {
+          throw new Error(`Master keyframe needs a look (${master.qa_problem}). Review it in the Images step, then run again`);
+        }
+        await putJson(`${API}/${productId}/keyframes/0`, { status: "approved" });
+      }
+
+      // 5. Generate the other keyframes and approve only the clean ones
+      setAutoStatus(t("Generating remaining scene keyframes…"));
+      const rest = await postJson<Keyframe[]>(`${API}/${productId}/keyframes`, { shot_index: null });
+      const toReview: number[] = [];
       for (let i = 1; i < shotCount; i++) {
-        await putJson(`${API}/${productId}/keyframes/${i}`, { status: "approved" });
+        const keyframe = rest.find((item) => item.shot_index === i);
+        if (keyframe?.status === "approved") continue;
+        if (keyframe?.status === "ready" && !keyframe.qa_problem) {
+          await putJson(`${API}/${productId}/keyframes/${i}`, { status: "approved" });
+        } else {
+          toReview.push(i + 1);
+        }
       }
       await client.invalidateQueries({ queryKey: ["keyframes", productId] });
+      if (toReview.length > 0) {
+        throw new Error(`Review the images of shot ${toReview.join(", ")} (failed or flagged by the image check), then run again`);
+      }
 
-      // 6. Generate clips
+      // 6. Start the clips that are not made yet, then wait until every clip is ready
       setAutoStatus(t("Creating video clips (this takes a few minutes)…"));
-      await postJson<Clip[]>(`${API}/${productId}/clips`, { shot_index: null });
+      const started = await getJson<Clip[]>(`${API}/${productId}/clips`);
+      if (started.filter((clip) => clip.status === "ready" || clip.status === "processing").length < shotCount) {
+        await postJson<Clip[]>(`${API}/${productId}/clips`, { shot_index: null });
+      }
+      await waitForClips(productId, shotCount);
       await client.invalidateQueries({ queryKey: ["clips", productId] });
 
       // 7. Generate voiceover
