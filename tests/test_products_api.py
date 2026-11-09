@@ -12,6 +12,7 @@ from openpyxl import load_workbook
 from ai_content.domains.marketing.products.references import ReferenceProfile
 from ai_content.domains.marketing.products.repositories import SqliteProductRepository
 from ai_content.domains.marketing.products.service import ProductCatalogService
+from ai_content.entrypoints.api import products as products_api
 from ai_content.entrypoints.api.dependencies import get_product_catalog_service
 from ai_content.entrypoints.api.products import router
 
@@ -211,6 +212,19 @@ def test_reference_image_review_flow(client: TestClient) -> None:
     again = client.post("/api/v1/products/ingest", json=body).json()
     assert again["added"] == 0
     assert client.post("/api/v1/products/reference-images/screen").status_code == 503
+
+
+def test_pipeline_endpoints_report_state_and_refuse_a_second_run(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    base = "/api/v1/products"
+    assert client.post(f"{base}/missing/pipeline", json={}).status_code == 404
+    assert client.get(f"{base}/{PRODUCT_ID}/pipeline").json()["status"] == "idle"
+    _capture_product(client)
+    run = {"status": "running", "step": "Writing storyboard brief", "message": ""}
+    monkeypatch.setitem(products_api._pipeline_runs, PRODUCT_ID, run)
+    assert client.get(f"{base}/{PRODUCT_ID}/pipeline").json() == run
+    assert client.post(f"{base}/{PRODUCT_ID}/pipeline", json={}).status_code == 409
 
 
 def test_brief_endpoints(client: TestClient, repository: SqliteProductRepository) -> None:

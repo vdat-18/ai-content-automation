@@ -9,10 +9,16 @@ from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import FileResponse
+from loguru import logger
 from pydantic import BaseModel
 
 from ai_content.domains.marketing.products.briefing import BriefGenerationError, BriefUnavailable
 from ai_content.domains.marketing.products.clips import StitchUnavailable
+from ai_content.domains.marketing.products.pipeline import (
+    EXPECTED_STOPS,
+    PipelineStopped,
+    run_pipeline,
+)
 from ai_content.domains.marketing.products.posting import PostingPackageError
 from ai_content.domains.marketing.products.references import (
     ProfileGenerationError,
@@ -312,6 +318,77 @@ async def select_product(
     _select_tasks.add(task)
     task.add_done_callback(_select_tasks.discard)
     return {"product_id": product_id, "queued": True}
+
+
+# The whole video pipeline runs here, not in the browser, so closing the tab does not stop it.
+# A run is remembered in memory only: after a restart the product shows no run, and running
+# again resumes what is already made.
+_pipeline_tasks: set[asyncio.Task[None]] = set()
+_pipeline_runs: dict[str, dict[str, str]] = {}
+
+
+class PipelineRequest(BaseModel):
+    idea: str = ""
+    video_seconds: Literal[15, 30, 45, 60, 75, 90] = 60
+    voice: str | None = None
+
+
+async def _run_pipeline(
+    open_scope: Any, product_id: str, body: PipelineRequest, media_root: Path
+) -> None:
+    run = _pipeline_runs[product_id]
+
+    def report(step: str) -> None:
+        run["step"] = step
+
+    try:
+        async with open_scope() as service:
+            await run_pipeline(
+                service,
+                product_id,
+                media_root,
+                idea=body.idea,
+                video_seconds=body.video_seconds,
+                voice=body.voice,
+                report=report,
+            )
+    except (PipelineStopped, *EXPECTED_STOPS) as error:
+        run.update(status="paused", message=str(error)[:500])
+    except Exception as error:  # noqa: BLE001
+        logger.exception("Pipeline for product {} crashed", product_id)
+        run.update(status="failed", message=str(error)[:300])
+    else:
+        run.update(status="done", step="", message="")
+
+
+@router.post("/{product_id}/pipeline")
+async def start_pipeline(
+    product_id: str,
+    body: PipelineRequest,
+    request: Request,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> dict[str, str]:
+    """Run every stage in the background: brief, person, images, clips, voice, video, post."""
+    if await service.detail(product_id) is None:
+        raise HTTPException(status_code=404, detail="Product not captured")
+    if _pipeline_runs.get(product_id, {}).get("status") == "running":
+        raise HTTPException(status_code=409, detail="This product is already being made")
+    _pipeline_runs[product_id] = {
+        "status": "running",
+        "step": "Starting automated creation",
+        "message": "",
+    }
+    task = asyncio.create_task(
+        _run_pipeline(product_catalog_scope_for(request), product_id, body, _media_root())
+    )
+    _pipeline_tasks.add(task)
+    task.add_done_callback(_pipeline_tasks.discard)
+    return _pipeline_runs[product_id]
+
+
+@router.get("/{product_id}/pipeline")
+async def pipeline_status(product_id: str) -> dict[str, str]:
+    return _pipeline_runs.get(product_id) or {"status": "idle", "step": "", "message": ""}
 
 
 @router.get("/select-errors")

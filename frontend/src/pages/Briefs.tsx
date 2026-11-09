@@ -46,36 +46,12 @@ type Brief = {
 type BriefRecord = { product_id: string; user_idea: string; brief: Brief; status: "draft" | "approved" };
 type Keyframe = { shot_index: number; status: "ready" | "approved" | "rejected" | "failed"; attempts: number; error: string | null; qa_problem: string };
 type Clip = { shot_index: number; status: "processing" | "ready" | "failed"; seconds: number; attempts: number; error: string | null; qa_problem: string };
+type PipelineRun = { status: "idle" | "running" | "paused" | "failed" | "done"; step: string; message: string };
 type Product = { product_id: string; title: string | null; images: string[] };
 type ReferenceImage = { image_id: string; image_url: string };
 type Step = "brief" | "person" | "images" | "clips" | "voice" | "post";
 
 const API = "/api/v1/products";
-const CLIP_POLL_MS = 5000;
-const CLIP_WAIT_MS = 20 * 60 * 1000;
-
-// Clip jobs run for minutes; each GET also collects the jobs that have finished.
-async function waitForClips(productId: string, shotCount: number): Promise<void> {
-  const deadline = Date.now() + CLIP_WAIT_MS;
-  for (;;) {
-    const clips = await getJson<Clip[]>(`${API}/${productId}/clips`);
-    const failed = clips.filter((clip) => clip.status === "failed");
-    if (failed.length > 0) {
-      const shots = failed.map((clip) => clip.shot_index + 1).join(", ");
-      throw new Error(`The clip of shot ${shots} failed: ${failed[0].error ?? "video job failed"}. Retry it in the Clips step`);
-    }
-    if (clips.filter((clip) => clip.status === "ready").length >= shotCount) {
-      const flagged = clips.filter((clip) => clip.qa_problem);
-      if (flagged.length > 0) {
-        const shots = flagged.map((clip) => clip.shot_index + 1).join(", ");
-        throw new Error(`The clip of shot ${shots} looks wrong (${flagged[0].qa_problem}). Make it again in the Clips step, or continue from the Voice and video step`);
-      }
-      return;
-    }
-    if (Date.now() > deadline) throw new Error("The clips are still being made; check the Clips step later");
-    await new Promise<void>((resolve) => window.setTimeout(resolve, CLIP_POLL_MS));
-  }
-}
 const STEPS: { id: Step; label: string }[] = [
   { id: "brief", label: "Brief" },
   { id: "person", label: "Person" },
@@ -267,8 +243,21 @@ function BriefCard({
   const [idea, setIdea] = useState(record?.user_idea ?? "");
   const [videoSeconds, setVideoSeconds] = useState(60);
   const [picked, setPicked] = useState<Step | null>(null);
-  const [autoRunning, setAutoRunning] = useState(false);
-  const [autoStatus, setAutoStatus] = useState<string | null>(null);
+  const pipeline = useQuery({
+    queryKey: ["pipeline", productId],
+    queryFn: ({ signal }) => getJson<PipelineRun>(`${API}/${productId}/pipeline`, signal),
+    refetchInterval: (query) => (query.state.data?.status === "running" ? 2000 : false),
+  });
+  const run = pipeline.data;
+  const autoRunning = run?.status === "running";
+  const autoStatus =
+    run?.status === "running"
+      ? t(`${run.step}…`)
+      : run?.status === "done"
+        ? t("Video completed successfully!")
+        : run?.status === "paused" || run?.status === "failed"
+          ? `${t("Automation paused")}: ${run.message}`
+          : null;
   const events = useQuery({
     queryKey: ["run-log", productId],
     queryFn: ({ signal }) => getJson<RunEvent[]>(`${API}/${productId}/events`, signal),
@@ -276,102 +265,31 @@ function BriefCard({
   });
   const latestEvent = events.data?.[events.data.length - 1];
 
+  // The server makes the video; once a run ends, pull in whatever it made.
+  const wasRunning = useRef(false);
+  useEffect(() => {
+    if (run?.status === "running") {
+      wasRunning.current = true;
+    } else if (wasRunning.current) {
+      wasRunning.current = false;
+      void refresh();
+      for (const key of ["keyframes", "clips", "video-info"]) client.invalidateQueries({ queryKey: [key, productId] });
+      if (run?.status === "done") setPicked("voice");
+    }
+  }, [run?.status]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const runAutoPipeline = async () => {
     if (autoRunning) return;
-    setAutoRunning(true);
-    setAutoStatus(t("Starting automated creation…"));
     try {
-      let currentRecord = record;
-      // 1. Create or get brief
-      if (!currentRecord) {
-        setAutoStatus(t("Writing storyboard brief…"));
-        currentRecord = await postJson<BriefRecord>(`${API}/${productId}/brief`, { idea, video_seconds: videoSeconds });
-        await refresh();
-      }
-
-      // 2. Approve brief if draft
-      if (currentRecord.status !== "approved") {
-        setAutoStatus(t("Approving brief…"));
-        currentRecord = await putJson<BriefRecord>(`${API}/${productId}/brief`, { brief: currentRecord.brief, status: "approved" });
-        await refresh();
-      }
-
-      // 3. Approve persona if persona exists
-      if (currentRecord.brief.persona?.description && currentRecord.brief.persona.status !== "approved") {
-        setAutoStatus(t("Approving persona…"));
-        if (!currentRecord.brief.persona.image_path) {
-          await postJson<Persona>(`${API}/${productId}/persona`, { description: currentRecord.brief.persona.description });
-        }
-        await putJson(`${API}/${productId}/persona`, { status: "approved" });
-        await refresh();
-      }
-
-      const shotCount = currentRecord.brief.shots?.length ?? 0;
-      const keyframes = await getJson<Keyframe[]>(`${API}/${productId}/keyframes`);
-
-      // 4. Generate the master keyframe (shot 0) unless it is already approved
-      if (keyframes.find((keyframe) => keyframe.shot_index === 0)?.status !== "approved") {
-        setAutoStatus(t("Generating master keyframe…"));
-        const made = await postJson<Keyframe[]>(`${API}/${productId}/keyframes`, { shot_index: 0 });
-        const master = made.find((keyframe) => keyframe.shot_index === 0);
-        if (master?.status !== "ready") {
-          throw new Error(`Master keyframe failed: ${master?.error ?? "no image"}. Retry it in the Images step`);
-        }
-        if (master.qa_problem) {
-          throw new Error(`Master keyframe needs a look (${master.qa_problem}). Review it in the Images step, then run again`);
-        }
-        await putJson(`${API}/${productId}/keyframes/0`, { status: "approved" });
-      }
-
-      // 5. Generate the other keyframes and approve only the clean ones
-      setAutoStatus(t("Generating remaining scene keyframes…"));
-      const rest = await postJson<Keyframe[]>(`${API}/${productId}/keyframes`, { shot_index: null });
-      const toReview: number[] = [];
-      for (let i = 1; i < shotCount; i++) {
-        const keyframe = rest.find((item) => item.shot_index === i);
-        if (keyframe?.status === "approved") continue;
-        if (keyframe?.status === "ready" && !keyframe.qa_problem) {
-          await putJson(`${API}/${productId}/keyframes/${i}`, { status: "approved" });
-        } else {
-          toReview.push(i + 1);
-        }
-      }
-      await client.invalidateQueries({ queryKey: ["keyframes", productId] });
-      if (toReview.length > 0) {
-        throw new Error(`Review the images of shot ${toReview.join(", ")} (failed or flagged by the image check), then run again`);
-      }
-
-      // 6. Start the clips that are not made yet, then wait until every clip is ready
-      setAutoStatus(t("Creating video clips (this takes a few minutes)…"));
-      const started = await getJson<Clip[]>(`${API}/${productId}/clips`);
-      if (started.filter((clip) => clip.status === "ready" || clip.status === "processing").length < shotCount) {
-        await postJson<Clip[]>(`${API}/${productId}/clips`, { shot_index: null });
-      }
-      await waitForClips(productId, shotCount);
-      await client.invalidateQueries({ queryKey: ["clips", productId] });
-
-      // 7. Generate voiceover
-      setAutoStatus(t("Synthesizing voiceover…"));
-      const savedVoice = window.localStorage.getItem("aic-voice") || null;
-      await postJson<{ seconds: number[]; too_long_shots: number[] }>(`${API}/${productId}/voiceover`, { voice: savedVoice });
-
-      // 8. Stitch video
-      setAutoStatus(t("Stitching final video with transitions and music…"));
-      await postJson<{ video: string }>(`${API}/${productId}/video`, { captions: false });
-      await client.invalidateQueries({ queryKey: ["video-info", productId] });
-
-      // 9. Post package
-      setAutoStatus(t("Writing TikTok caption and hashtags…"));
-      await postJson<PostPackage>(`${API}/${productId}/post-package`);
-      await refresh();
-
-      setPicked("voice");
-      setAutoStatus(t("Video completed successfully!"));
+      const started = await postJson<PipelineRun>(`${API}/${productId}/pipeline`, {
+        idea,
+        video_seconds: videoSeconds,
+        voice: window.localStorage.getItem("aic-voice") || null,
+      });
+      client.setQueryData(["pipeline", productId], started);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
-      setAutoStatus(`${t("Automation paused")}: ${message}`);
-    } finally {
-      setAutoRunning(false);
+      client.setQueryData(["pipeline", productId], { status: "failed", step: "", message } satisfies PipelineRun);
     }
   };
 
