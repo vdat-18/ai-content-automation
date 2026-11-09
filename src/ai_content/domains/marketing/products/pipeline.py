@@ -49,7 +49,12 @@ async def run_pipeline(
     record = await service.get_brief(product_id)
     if record is None:
         report("Writing storyboard brief")
-        record = await service.create_brief(product_id, idea, video_seconds)
+        record = await service.create_brief(
+            product_id,
+            idea,
+            video_seconds,
+            await service.persona_photos(product_id, media_root),
+        )
         if record is None:
             raise PipelineStopped("Product not captured")
     if record["status"] != "approved":
@@ -58,13 +63,6 @@ async def run_pipeline(
         assert record is not None
     brief = record["brief"]
     shot_count = len(brief.get("shots") or [])
-
-    persona = brief.get("persona") or {}
-    if persona.get("description") and persona.get("status") != "approved":
-        report("Approving persona")
-        if not persona.get("image_path"):
-            await service.generate_persona(product_id, media_root, persona["description"])
-        await service.set_persona_status(product_id, "approved")
 
     keyframes = {k["shot_index"]: k for k in await service.list_keyframes(product_id)}
     if keyframes.get(0, {}).get("status") != "approved":

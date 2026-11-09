@@ -20,7 +20,7 @@ class _BamlClipClient(Protocol):
         shot_description: str,
         product_photos: list[BamlImage],
         keyframe: BamlImage,
-        character: BamlImage | None,
+        characters: list[BamlImage],
         clip_frames: list[BamlImage],
     ) -> baml_types.ClipCheck: ...
 
@@ -55,7 +55,7 @@ class ClipChecker:
         product_photos: list[bytes],
         keyframe: bytes,
         frames: list[bytes],
-        persona: bytes | None = None,
+        persona: list[bytes] | None = None,
     ) -> str | None:
         """Return "" when the clip passes, the problem text when it fails, None if unchecked."""
         try:
@@ -63,7 +63,7 @@ class ClipChecker:
                 shot_description,
                 [_image(photo) for photo in product_photos],
                 _image(keyframe),
-                _image(persona) if persona else None,
+                [_image(photo) for photo in persona or []],
                 [_image(frame) for frame in frames],
             )
         except BamlError as error:

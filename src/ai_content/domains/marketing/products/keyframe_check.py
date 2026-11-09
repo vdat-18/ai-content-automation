@@ -21,7 +21,7 @@ class _BamlCheckClient(Protocol):
         product_photos: list[BamlImage],
         master_keyframe: BamlImage | None,
         keyframe: BamlImage,
-        character: BamlImage | None,
+        characters: list[BamlImage],
         previous_keyframe: BamlImage | None,
     ) -> baml_types.KeyframeCheck: ...
 
@@ -56,7 +56,7 @@ class KeyframeChecker:
         product_photos: list[bytes],
         keyframe: bytes,
         master: bytes | None = None,
-        persona: bytes | None = None,
+        persona: list[bytes] | None = None,
         previous: bytes | None = None,
     ) -> str | None:
         """Return "" when the keyframe passes, the problem text when it fails, None if unchecked."""
@@ -66,7 +66,7 @@ class KeyframeChecker:
                 [_image(photo) for photo in product_photos],
                 _image(master) if master else None,
                 _image(keyframe),
-                _image(persona) if persona else None,
+                [_image(photo) for photo in persona or []],
                 _image(previous) if previous else None,
             )
         except BamlError as error:

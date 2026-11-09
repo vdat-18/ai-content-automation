@@ -7,9 +7,8 @@ import { EmptyState, PageHeader, Panel, SkeletonPage } from "../components/ui";
 import { useI18n } from "../hooks/useI18n";
 import { useLightbox } from "../hooks/useLightbox";
 import { useSplitResize } from "../hooks/useSplitResize";
-import { getJson, postJson, putFile, putJson } from "../services/http";
+import { deleteJson, getJson, postJson, putFile, putJson } from "../services/http";
 
-type Persona = { description: string; image_path: string | null; status: "none" | "ready" | "approved" | "rejected"; attempts: number };
 type PostPackage = { captions: string[]; hashtags: string[]; product_url: string; warnings?: string[]; ai_label_reminder?: string };
 type Shot = {
   role: string;
@@ -41,7 +40,7 @@ type Brief = {
   shot_references?: (string | null)[];
   product_photo_urls?: string[];
   post_package?: PostPackage;
-  persona?: Persona;
+  with_person?: boolean;
 };
 type BriefRecord = { product_id: string; user_idea: string; brief: Brief; status: "draft" | "approved" };
 type Keyframe = { shot_index: number; status: "ready" | "approved" | "rejected" | "failed"; attempts: number; error: string | null; qa_problem: string };
@@ -49,12 +48,11 @@ type Clip = { shot_index: number; status: "processing" | "ready" | "failed"; sec
 type PipelineRun = { status: "idle" | "running" | "paused" | "failed" | "done"; step: string; message: string };
 type Product = { product_id: string; title: string | null; images: string[] };
 type ReferenceImage = { image_id: string; image_url: string };
-type Step = "brief" | "person" | "images" | "clips" | "voice" | "post";
+type Step = "brief" | "images" | "clips" | "voice" | "post";
 
 const API = "/api/v1/products";
 const STEPS: { id: Step; label: string }[] = [
   { id: "brief", label: "Brief" },
-  { id: "person", label: "Person" },
   { id: "images", label: "Images" },
   { id: "clips", label: "Clips" },
   { id: "voice", label: "Voice and video" },
@@ -315,10 +313,8 @@ function BriefCard({
   });
 
   const keyframeByShot = new Map((keyframes.data ?? []).map((keyframe) => [keyframe.shot_index, keyframe]));
-  const persona = record?.brief.persona;
   const done: Record<Step, boolean> = {
     brief: approved,
-    person: approved && (!persona?.description || persona.status === "approved"),
     images: shots.length > 0 && shots.every((_, index) => keyframeByShot.get(index)?.status === "approved"),
     clips: shots.length > 0 && (clips.data ?? []).filter((clip) => clip.status === "ready").length >= shots.length,
     voice: !!videoInfo.data?.exists,
@@ -388,6 +384,7 @@ function BriefCard({
       )}
       {step === "brief" && (
         <>
+          <PersonPhotos productId={productId} briefHasPerson={record?.brief.with_person} hasBrief={!!record} t={t} />
           <div className="brief-create">
             <label className="brief-field">
               <span>{t("Your idea (optional)")}</span>
@@ -437,7 +434,6 @@ function BriefCard({
           step={step}
           shots={shots}
           postPackage={record.brief.post_package}
-          persona={persona}
           keyframes={keyframes.data ?? []}
           clips={clips.data ?? []}
           hasVideoFile={!!videoInfo.data?.exists}
@@ -447,6 +443,82 @@ function BriefCard({
       )}
       {record && <RunLog productId={productId} t={t} />}
     </Panel>
+  );
+}
+
+type PersonSummary = { photos: number; attempts: number };
+
+function PersonPhotos({
+  productId,
+  briefHasPerson,
+  hasBrief,
+  t,
+}: {
+  productId: string;
+  briefHasPerson: boolean | undefined;
+  hasBrief: boolean;
+  t: (key: string) => string;
+}) {
+  const client = useQueryClient();
+  const lightbox = useLightbox();
+  const [rights, setRights] = useState(false);
+  const person = useQuery({
+    queryKey: ["persona", productId],
+    queryFn: ({ signal }) => getJson<PersonSummary>(`${API}/${productId}/persona`, signal),
+  });
+  const refresh = () => client.invalidateQueries({ queryKey: ["persona", productId] });
+  const upload = useMutation({
+    // the first photo replaces the person, the others join it
+    mutationFn: async (files: File[]) => {
+      for (const [index, file] of files.entries()) {
+        await putFile(`${API}/${productId}/persona/image?rights=confirmed${index > 0 ? "&add=true" : ""}`, file);
+      }
+    },
+    onSuccess: refresh,
+  });
+  const remove = useMutation({
+    mutationFn: () => deleteJson(`${API}/${productId}/persona`),
+    onSuccess: refresh,
+  });
+  const photos = person.data?.photos ?? 0;
+  const sources = Array.from({ length: photos }, (_, index) => ({ src: `${API}/${productId}/persona/image?n=${index}&v=${person.data?.attempts ?? 0}` }));
+  return (
+    <div className="persona">
+      <h3>{t("Person in the video")}</h3>
+      <p className="brief-note">{t("Upload photos of the person who appears in the video. Without photos the video shows no person.")}</p>
+      <div className="brief-actions">
+        <label>
+          <input type="checkbox" checked={rights} onChange={(event) => setRights(event.target.checked)} /> {t("I have the right to use this person's image in ads")}
+        </label>
+        <input
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          multiple
+          disabled={!rights || upload.isPending}
+          onChange={(event) => {
+            const files = Array.from(event.target.files ?? []);
+            if (files.length > 0) upload.mutate(files);
+            event.target.value = "";
+          }}
+        />
+        {photos > 0 && (
+          <button type="button" className="secondary-button" disabled={remove.isPending} onClick={() => remove.mutate()}>
+            <X size={14} /> {t("Remove photos")}
+          </button>
+        )}
+      </div>
+      {(upload.error || remove.error) && <p role="alert">{(upload.error ?? remove.error)?.message}</p>}
+      {photos > 0 && (
+        <div className="persona-body">
+          {sources.map((source, index) => (
+            <img key={source.src} src={source.src} alt="" width={120} {...lightbox.zoom(sources, index)} />
+          ))}
+        </div>
+      )}
+      {hasBrief && (briefHasPerson ?? false) !== photos > 0 && (
+        <p role="alert">{t("The photos changed after this brief was written. Regenerate the brief.")}</p>
+      )}
+    </div>
   );
 }
 
@@ -636,7 +708,6 @@ function Pipeline({
   step,
   shots,
   postPackage,
-  persona,
   keyframes,
   clips,
   hasVideoFile,
@@ -647,7 +718,6 @@ function Pipeline({
   step: Step;
   shots: Shot[];
   postPackage?: PostPackage;
-  persona?: Persona;
   keyframes: Keyframe[];
   clips: Clip[];
   hasVideoFile: boolean;
@@ -723,22 +793,6 @@ function Pipeline({
     onSuccess: () => client.invalidateQueries({ queryKey: ["briefs"] }),
   });
   const copy = (text: string) => navigator.clipboard?.writeText(text).catch(() => undefined);
-  const [personaText, setPersonaText] = useState(persona?.description ?? "");
-  const refreshBriefs = () => client.invalidateQueries({ queryKey: ["briefs"] });
-  const makePersona = useMutation({
-    mutationFn: () => postJson<Persona>(`${API}/${productId}/persona`, { description: personaText }),
-    onSuccess: refreshBriefs,
-  });
-  const reviewPersona = useMutation({
-    mutationFn: (status: Persona["status"]) => putJson(`${API}/${productId}/persona`, { status }),
-    onSuccess: refreshBriefs,
-  });
-  const [rights, setRights] = useState(false);
-  const uploadPersona = useMutation({
-    mutationFn: (file: File) => putFile<Persona>(`${API}/${productId}/persona/image?rights=confirmed`, file),
-    onSuccess: refreshBriefs,
-  });
-  const personaPending = !!persona?.description && persona.status !== "approved";
   const clipByShot = new Map(clips.map((clip) => [clip.shot_index, clip]));
   const approvedShots = shots.filter((_, index) => byShot.get(index)?.status === "approved").length;
   const readyClips = [...clipByShot.values()].filter((clip) => clip.status === "ready").length;
@@ -754,61 +808,16 @@ function Pipeline({
 
   return (
     <section className="keyframes">
-      {step === "person" && (
-        <div className="persona">
-          <h3>{t("Person in the video")}</h3>
-          <p className="brief-note">{t("One portrait is reused in every shot: make a synthetic person or upload your own photo.")}</p>
-          <div className="brief-actions">
-            <label>
-              <input type="checkbox" checked={rights} onChange={(event) => setRights(event.target.checked)} /> {t("I have the right to use this person's image in ads")}
-            </label>
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              disabled={!rights || uploadPersona.isPending}
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (file) uploadPersona.mutate(file);
-                event.target.value = "";
-              }}
-            />
-          </div>
-          {uploadPersona.error && <p role="alert">{uploadPersona.error.message}</p>}
-          {persona?.description ? (
-            <div className="persona-body">
-              {persona.image_path && <img src={`${API}/${productId}/persona/image?v=${persona.attempts}`} alt="" width={120} {...lightbox.zoom([{ src: `${API}/${productId}/persona/image?v=${persona.attempts}` }], 0)} />}
-              <div>
-                <textarea rows={3} value={personaText} onChange={(event) => setPersonaText(event.target.value)} />
-                <div className="brief-actions">
-                  <button className="secondary-button" disabled={makePersona.isPending || !personaText.trim()} onClick={() => makePersona.mutate()}>
-                    <RotateCcw size={14} /> {makePersona.isPending ? t("Generating…") : persona.image_path ? t("Regenerate portrait") : t("Generate portrait")}
-                  </button>
-                  {persona.image_path && persona.status !== "approved" && (
-                    <button className="primary-button" disabled={reviewPersona.isPending} onClick={() => reviewPersona.mutate("approved")}>
-                      <Check size={14} /> {t("Approve person")}
-                    </button>
-                  )}
-                  {persona.status === "approved" && <span className="badge badge--success">{t("approved")}</span>}
-                </div>
-                {(makePersona.error || reviewPersona.error) && <p role="alert">{(makePersona.error ?? reviewPersona.error)?.message}</p>}
-              </div>
-            </div>
-          ) : (
-            <p>{t("This brief has no person. Images use only the product.")}</p>
-          )}
-        </div>
-      )}
       {(step === "images" || step === "clips") && (
         <>
           {step === "images" ? (
             <>
               <p className="brief-note">{t("The master keyframe (shot 1) sets the scene. Approve it first; the other shots are made from it and cost one image each.")}</p>
               <div className="brief-actions">
-                <button className="primary-button" disabled={generate.isPending || allApproved || personaPending || (byShot.has(0) && !masterApproved)} onClick={() => generate.mutate(null)}>
+                <button className="primary-button" disabled={generate.isPending || allApproved || (byShot.has(0) && !masterApproved)} onClick={() => generate.mutate(null)}>
                   <ImageIcon size={15} /> {generate.isPending ? t("Generating…") : next}
                 </button>
               </div>
-              {personaPending && <p role="alert">{t("Approve the person first.")}</p>}
               {generate.error && <p role="alert">{generate.error.message}</p>}
             </>
           ) : (

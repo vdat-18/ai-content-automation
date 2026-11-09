@@ -94,32 +94,32 @@ class BamlSyncClient:
     def parse_stream(self):
       return self.__llm_stream_parser
 
-    def CheckClip(self, shot_description: str,product_photos: typing.List[baml_py.Image],keyframe: baml_py.Image,character: typing.Optional[baml_py.Image],clip_frames: typing.List[baml_py.Image],
+    def CheckClip(self, shot_description: str,product_photos: typing.List[baml_py.Image],keyframe: baml_py.Image,characters: typing.List[baml_py.Image],clip_frames: typing.List[baml_py.Image],
         baml_options: BamlCallOptions = {},
     ) -> types.ClipCheck:
         # Check if on_tick is provided
         if 'on_tick' in baml_options:
-            __stream__ = self.stream.CheckClip(shot_description=shot_description,product_photos=product_photos,keyframe=keyframe,character=character,clip_frames=clip_frames,
+            __stream__ = self.stream.CheckClip(shot_description=shot_description,product_photos=product_photos,keyframe=keyframe,characters=characters,clip_frames=clip_frames,
                 baml_options=baml_options)
             return __stream__.get_final_response()
         else:
             # Original non-streaming code
             __result__ = self.__options.merge_options(baml_options).call_function_sync(function_name="CheckClip", args={
-                "shot_description": shot_description,"product_photos": product_photos,"keyframe": keyframe,"character": character,"clip_frames": clip_frames,
+                "shot_description": shot_description,"product_photos": product_photos,"keyframe": keyframe,"characters": characters,"clip_frames": clip_frames,
             })
             return typing.cast(types.ClipCheck, __result__.cast_to(types, types, stream_types, False, __runtime__))
-    def CheckKeyframe(self, shot_description: str,product_photos: typing.List[baml_py.Image],master_keyframe: typing.Optional[baml_py.Image],keyframe: baml_py.Image,character: typing.Optional[baml_py.Image] = None,previous_keyframe: typing.Optional[baml_py.Image] = None,
+    def CheckKeyframe(self, shot_description: str,product_photos: typing.List[baml_py.Image],master_keyframe: typing.Optional[baml_py.Image],keyframe: baml_py.Image,characters: typing.List[baml_py.Image],previous_keyframe: typing.Optional[baml_py.Image] = None,
         baml_options: BamlCallOptions = {},
     ) -> types.KeyframeCheck:
         # Check if on_tick is provided
         if 'on_tick' in baml_options:
-            __stream__ = self.stream.CheckKeyframe(shot_description=shot_description,product_photos=product_photos,master_keyframe=master_keyframe,keyframe=keyframe,character=character,previous_keyframe=previous_keyframe,
+            __stream__ = self.stream.CheckKeyframe(shot_description=shot_description,product_photos=product_photos,master_keyframe=master_keyframe,keyframe=keyframe,characters=characters,previous_keyframe=previous_keyframe,
                 baml_options=baml_options)
             return __stream__.get_final_response()
         else:
             # Original non-streaming code
             __result__ = self.__options.merge_options(baml_options).call_function_sync(function_name="CheckKeyframe", args={
-                "shot_description": shot_description,"product_photos": product_photos,"master_keyframe": master_keyframe,"keyframe": keyframe,"character": character,"previous_keyframe": previous_keyframe,
+                "shot_description": shot_description,"product_photos": product_photos,"master_keyframe": master_keyframe,"keyframe": keyframe,"characters": characters,"previous_keyframe": previous_keyframe,
             })
             return typing.cast(types.KeyframeCheck, __result__.cast_to(types, types, stream_types, False, __runtime__))
     def ChooseShotReference(self, product_json: str,shot_json: str,candidates: typing.List["types.ReferenceCandidate"],
@@ -136,18 +136,18 @@ class BamlSyncClient:
                 "product_json": product_json,"shot_json": shot_json,"candidates": candidates,
             })
             return typing.cast(types.ShotReferenceChoice, __result__.cast_to(types, types, stream_types, False, __runtime__))
-    def DraftContentBrief(self, product_json: str,user_idea: str,shot_count: int,product_images: typing.List[baml_py.Image],
+    def DraftContentBrief(self, product_json: str,user_idea: str,shot_count: int,product_images: typing.List[baml_py.Image],with_person: bool,person_images: typing.List[baml_py.Image],
         baml_options: BamlCallOptions = {},
     ) -> types.ContentBrief:
         # Check if on_tick is provided
         if 'on_tick' in baml_options:
-            __stream__ = self.stream.DraftContentBrief(product_json=product_json,user_idea=user_idea,shot_count=shot_count,product_images=product_images,
+            __stream__ = self.stream.DraftContentBrief(product_json=product_json,user_idea=user_idea,shot_count=shot_count,product_images=product_images,with_person=with_person,person_images=person_images,
                 baml_options=baml_options)
             return __stream__.get_final_response()
         else:
             # Original non-streaming code
             __result__ = self.__options.merge_options(baml_options).call_function_sync(function_name="DraftContentBrief", args={
-                "product_json": product_json,"user_idea": user_idea,"shot_count": shot_count,"product_images": product_images,
+                "product_json": product_json,"user_idea": user_idea,"shot_count": shot_count,"product_images": product_images,"with_person": with_person,"person_images": person_images,
             })
             return typing.cast(types.ContentBrief, __result__.cast_to(types, types, stream_types, False, __runtime__))
     def DraftReferenceSearchProfile(self, product_json: str,
@@ -215,11 +215,11 @@ class BamlStreamClient:
     def __init__(self, options: DoNotUseDirectlyCallManager):
         self.__options = options
 
-    def CheckClip(self, shot_description: str,product_photos: typing.List[baml_py.Image],keyframe: baml_py.Image,character: typing.Optional[baml_py.Image],clip_frames: typing.List[baml_py.Image],
+    def CheckClip(self, shot_description: str,product_photos: typing.List[baml_py.Image],keyframe: baml_py.Image,characters: typing.List[baml_py.Image],clip_frames: typing.List[baml_py.Image],
         baml_options: BamlCallOptions = {},
     ) -> baml_py.BamlSyncStream[stream_types.ClipCheck, types.ClipCheck]:
         __ctx__, __result__ = self.__options.merge_options(baml_options).create_sync_stream(function_name="CheckClip", args={
-            "shot_description": shot_description,"product_photos": product_photos,"keyframe": keyframe,"character": character,"clip_frames": clip_frames,
+            "shot_description": shot_description,"product_photos": product_photos,"keyframe": keyframe,"characters": characters,"clip_frames": clip_frames,
         })
         return baml_py.BamlSyncStream[stream_types.ClipCheck, types.ClipCheck](
           __result__,
@@ -227,11 +227,11 @@ class BamlStreamClient:
           lambda x: typing.cast(types.ClipCheck, x.cast_to(types, types, stream_types, False, __runtime__)),
           __ctx__,
         )
-    def CheckKeyframe(self, shot_description: str,product_photos: typing.List[baml_py.Image],master_keyframe: typing.Optional[baml_py.Image],keyframe: baml_py.Image,character: typing.Optional[baml_py.Image] = None,previous_keyframe: typing.Optional[baml_py.Image] = None,
+    def CheckKeyframe(self, shot_description: str,product_photos: typing.List[baml_py.Image],master_keyframe: typing.Optional[baml_py.Image],keyframe: baml_py.Image,characters: typing.List[baml_py.Image],previous_keyframe: typing.Optional[baml_py.Image] = None,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.BamlSyncStream[stream_types.KeyframeCheck, types.KeyframeCheck]:
         __ctx__, __result__ = self.__options.merge_options(baml_options).create_sync_stream(function_name="CheckKeyframe", args={
-            "shot_description": shot_description,"product_photos": product_photos,"master_keyframe": master_keyframe,"keyframe": keyframe,"character": character,"previous_keyframe": previous_keyframe,
+            "shot_description": shot_description,"product_photos": product_photos,"master_keyframe": master_keyframe,"keyframe": keyframe,"characters": characters,"previous_keyframe": previous_keyframe,
         })
         return baml_py.BamlSyncStream[stream_types.KeyframeCheck, types.KeyframeCheck](
           __result__,
@@ -251,11 +251,11 @@ class BamlStreamClient:
           lambda x: typing.cast(types.ShotReferenceChoice, x.cast_to(types, types, stream_types, False, __runtime__)),
           __ctx__,
         )
-    def DraftContentBrief(self, product_json: str,user_idea: str,shot_count: int,product_images: typing.List[baml_py.Image],
+    def DraftContentBrief(self, product_json: str,user_idea: str,shot_count: int,product_images: typing.List[baml_py.Image],with_person: bool,person_images: typing.List[baml_py.Image],
         baml_options: BamlCallOptions = {},
     ) -> baml_py.BamlSyncStream[stream_types.ContentBrief, types.ContentBrief]:
         __ctx__, __result__ = self.__options.merge_options(baml_options).create_sync_stream(function_name="DraftContentBrief", args={
-            "product_json": product_json,"user_idea": user_idea,"shot_count": shot_count,"product_images": product_images,
+            "product_json": product_json,"user_idea": user_idea,"shot_count": shot_count,"product_images": product_images,"with_person": with_person,"person_images": person_images,
         })
         return baml_py.BamlSyncStream[stream_types.ContentBrief, types.ContentBrief](
           __result__,
@@ -319,18 +319,18 @@ class BamlHttpRequestClient:
     def __init__(self, options: DoNotUseDirectlyCallManager):
         self.__options = options
 
-    def CheckClip(self, shot_description: str,product_photos: typing.List[baml_py.Image],keyframe: baml_py.Image,character: typing.Optional[baml_py.Image],clip_frames: typing.List[baml_py.Image],
+    def CheckClip(self, shot_description: str,product_photos: typing.List[baml_py.Image],keyframe: baml_py.Image,characters: typing.List[baml_py.Image],clip_frames: typing.List[baml_py.Image],
         baml_options: BamlCallOptions = {},
     ) -> baml_py.baml_py.HTTPRequest:
         __result__ = self.__options.merge_options(baml_options).create_http_request_sync(function_name="CheckClip", args={
-            "shot_description": shot_description,"product_photos": product_photos,"keyframe": keyframe,"character": character,"clip_frames": clip_frames,
+            "shot_description": shot_description,"product_photos": product_photos,"keyframe": keyframe,"characters": characters,"clip_frames": clip_frames,
         }, mode="request")
         return __result__
-    def CheckKeyframe(self, shot_description: str,product_photos: typing.List[baml_py.Image],master_keyframe: typing.Optional[baml_py.Image],keyframe: baml_py.Image,character: typing.Optional[baml_py.Image] = None,previous_keyframe: typing.Optional[baml_py.Image] = None,
+    def CheckKeyframe(self, shot_description: str,product_photos: typing.List[baml_py.Image],master_keyframe: typing.Optional[baml_py.Image],keyframe: baml_py.Image,characters: typing.List[baml_py.Image],previous_keyframe: typing.Optional[baml_py.Image] = None,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.baml_py.HTTPRequest:
         __result__ = self.__options.merge_options(baml_options).create_http_request_sync(function_name="CheckKeyframe", args={
-            "shot_description": shot_description,"product_photos": product_photos,"master_keyframe": master_keyframe,"keyframe": keyframe,"character": character,"previous_keyframe": previous_keyframe,
+            "shot_description": shot_description,"product_photos": product_photos,"master_keyframe": master_keyframe,"keyframe": keyframe,"characters": characters,"previous_keyframe": previous_keyframe,
         }, mode="request")
         return __result__
     def ChooseShotReference(self, product_json: str,shot_json: str,candidates: typing.List["types.ReferenceCandidate"],
@@ -340,11 +340,11 @@ class BamlHttpRequestClient:
             "product_json": product_json,"shot_json": shot_json,"candidates": candidates,
         }, mode="request")
         return __result__
-    def DraftContentBrief(self, product_json: str,user_idea: str,shot_count: int,product_images: typing.List[baml_py.Image],
+    def DraftContentBrief(self, product_json: str,user_idea: str,shot_count: int,product_images: typing.List[baml_py.Image],with_person: bool,person_images: typing.List[baml_py.Image],
         baml_options: BamlCallOptions = {},
     ) -> baml_py.baml_py.HTTPRequest:
         __result__ = self.__options.merge_options(baml_options).create_http_request_sync(function_name="DraftContentBrief", args={
-            "product_json": product_json,"user_idea": user_idea,"shot_count": shot_count,"product_images": product_images,
+            "product_json": product_json,"user_idea": user_idea,"shot_count": shot_count,"product_images": product_images,"with_person": with_person,"person_images": person_images,
         }, mode="request")
         return __result__
     def DraftReferenceSearchProfile(self, product_json: str,
@@ -383,18 +383,18 @@ class BamlHttpStreamRequestClient:
     def __init__(self, options: DoNotUseDirectlyCallManager):
         self.__options = options
 
-    def CheckClip(self, shot_description: str,product_photos: typing.List[baml_py.Image],keyframe: baml_py.Image,character: typing.Optional[baml_py.Image],clip_frames: typing.List[baml_py.Image],
+    def CheckClip(self, shot_description: str,product_photos: typing.List[baml_py.Image],keyframe: baml_py.Image,characters: typing.List[baml_py.Image],clip_frames: typing.List[baml_py.Image],
         baml_options: BamlCallOptions = {},
     ) -> baml_py.baml_py.HTTPRequest:
         __result__ = self.__options.merge_options(baml_options).create_http_request_sync(function_name="CheckClip", args={
-            "shot_description": shot_description,"product_photos": product_photos,"keyframe": keyframe,"character": character,"clip_frames": clip_frames,
+            "shot_description": shot_description,"product_photos": product_photos,"keyframe": keyframe,"characters": characters,"clip_frames": clip_frames,
         }, mode="stream")
         return __result__
-    def CheckKeyframe(self, shot_description: str,product_photos: typing.List[baml_py.Image],master_keyframe: typing.Optional[baml_py.Image],keyframe: baml_py.Image,character: typing.Optional[baml_py.Image] = None,previous_keyframe: typing.Optional[baml_py.Image] = None,
+    def CheckKeyframe(self, shot_description: str,product_photos: typing.List[baml_py.Image],master_keyframe: typing.Optional[baml_py.Image],keyframe: baml_py.Image,characters: typing.List[baml_py.Image],previous_keyframe: typing.Optional[baml_py.Image] = None,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.baml_py.HTTPRequest:
         __result__ = self.__options.merge_options(baml_options).create_http_request_sync(function_name="CheckKeyframe", args={
-            "shot_description": shot_description,"product_photos": product_photos,"master_keyframe": master_keyframe,"keyframe": keyframe,"character": character,"previous_keyframe": previous_keyframe,
+            "shot_description": shot_description,"product_photos": product_photos,"master_keyframe": master_keyframe,"keyframe": keyframe,"characters": characters,"previous_keyframe": previous_keyframe,
         }, mode="stream")
         return __result__
     def ChooseShotReference(self, product_json: str,shot_json: str,candidates: typing.List["types.ReferenceCandidate"],
@@ -404,11 +404,11 @@ class BamlHttpStreamRequestClient:
             "product_json": product_json,"shot_json": shot_json,"candidates": candidates,
         }, mode="stream")
         return __result__
-    def DraftContentBrief(self, product_json: str,user_idea: str,shot_count: int,product_images: typing.List[baml_py.Image],
+    def DraftContentBrief(self, product_json: str,user_idea: str,shot_count: int,product_images: typing.List[baml_py.Image],with_person: bool,person_images: typing.List[baml_py.Image],
         baml_options: BamlCallOptions = {},
     ) -> baml_py.baml_py.HTTPRequest:
         __result__ = self.__options.merge_options(baml_options).create_http_request_sync(function_name="DraftContentBrief", args={
-            "product_json": product_json,"user_idea": user_idea,"shot_count": shot_count,"product_images": product_images,
+            "product_json": product_json,"user_idea": user_idea,"shot_count": shot_count,"product_images": product_images,"with_person": with_person,"person_images": person_images,
         }, mode="stream")
         return __result__
     def DraftReferenceSearchProfile(self, product_json: str,

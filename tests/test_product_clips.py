@@ -385,3 +385,17 @@ async def test_clip_frames_are_three_stills_in_time_order(tmp_path) -> None:
     frames = await clip_frames(path, 4)
     assert len(frames) == 3 and all(frame[:2] == b"\xff\xd8" for frame in frames)
     assert sorted(p.name for p in tmp_path.iterdir()) == ["clip.mp4"]
+
+
+async def test_a_clip_of_a_brief_without_a_person_forbids_people(tmp_path) -> None:
+    video = _FakeVideo()
+    service = await _service(tmp_path, video)
+    record = await service._repository.get_brief(PRODUCT_ID)
+    brief = {**record["brief"], "with_person": False}
+    await service._repository.save_brief(PRODUCT_ID, "", brief, "approved")
+    await service.generate_clips(PRODUCT_ID, tmp_path)
+    assert "No person appears in the picture" in video.submitted[-1][0]
+
+    await service._repository.save_brief(PRODUCT_ID, "", {**brief, "with_person": True}, "approved")
+    await service.generate_clips(PRODUCT_ID, tmp_path, shot_index=0)
+    assert "No person appears" not in video.submitted[-1][0]

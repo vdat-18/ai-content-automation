@@ -34,7 +34,6 @@ class ContentBrief(BaseModel):
     title: typing.Optional[str] = None
     format: typing.Optional[typing.Union[typing_extensions.Literal['problem_solution'], typing_extensions.Literal['step_by_step'], typing_extensions.Literal['before_after'], typing_extensions.Literal['unboxing'], typing_extensions.Literal['worth_it_text']]] = None
     script: typing.Optional[str] = None
-    persona: typing.Optional[str] = None
     product_photo_numbers: typing.List[int]
     scene: typing.Optional[str] = None
     product_placement: typing.Optional[str] = None

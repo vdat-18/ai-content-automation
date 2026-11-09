@@ -7,7 +7,7 @@ function CheckClip(
   shot_description: string,
   product_photos: image[],
   keyframe: image,
-  character: image?,
+  characters: image[],
   clip_frames: image[]
 ) -> ClipCheck {
   client OrchestrationModel
@@ -21,10 +21,12 @@ function CheckClip(
     passed=true only when all of these hold: the product stays clearly visible in every frame and
     keeps the same shape, color, proportions, material and number of items as in the product
     photos and the keyframe, with no melting, warping, splitting or growing between frames; no
-    object appears from nowhere or vanishes between frames; when a character image is given, the
-    person in every frame is clearly the same person (face shape, hair, skin tone, clothes) as in
-    the character image and the keyframe; hands and limbs look natural with no extra, missing,
-    fused or bent-backwards fingers or arms; the picture still shows what the shot description
+    object appears from nowhere or vanishes between frames; when photos of the person are given,
+    the person in every frame is clearly the same person (face shape, hair, skin tone; the clothes
+    may differ when the shot shows the product worn) as in the photos and the keyframe; hands and limbs look natural with no extra, missing,
+    fused or bent-backwards fingers or arms, and the body stays well proportioned in every frame
+    (a realistic head to body ratio and normal limb length, never stretched or distorted) and the
+    face keeps clear skin with no acne or spots; the picture still shows what the shot description
     asks for and the room and light stay the same as in the keyframe; the frames look like
     footage of a real phone camera, not a glitching render. Ignore all text and logos on the
     product, the packaging and the clothes: video models cannot draw small text, so never fail a
@@ -45,9 +47,11 @@ function CheckClip(
     Keyframe the clip starts from:
     {{ keyframe }}
 
-    {% if character %}
-    Character (the same person must appear):
+    {% if characters %}
+    Photos of the person (the same person must appear):
+    {% for character in characters %}
     {{ character }}
+    {% endfor %}
     {% endif %}
 
     Frames of the generated clip, in time order:

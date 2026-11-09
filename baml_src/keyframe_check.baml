@@ -8,7 +8,7 @@ function CheckKeyframe(
   product_photos: image[],
   master_keyframe: image?,
   keyframe: image,
-  character: image?,
+  characters: image[],
   previous_keyframe: image?
 ) -> KeyframeCheck {
   client OrchestrationModel
@@ -27,9 +27,14 @@ function CheckKeyframe(
     no glossy retouched glow, no impossible light or perfect symmetry;
     when a master keyframe is given, the light and color palette match it; when the previous
     shot's keyframe is given, the same person wears the same outfit in the same kind of room and
-    light, so the two shots could be cut together without a jarring jump; when a character image
-    is given, the person in the keyframe is clearly the same person (face shape, eyes, hair length and colour, skin tone,
-    clothes) and has natural hands and limbs with no extra or missing fingers. Ignore
+    light, so the two shots could be cut together without a jarring jump; when character images
+    are given, the person in the keyframe is clearly the same person as in them (face shape, eyes,
+    hair length and colour, skin tone; the clothes may differ when the shot asks for the product
+    to be worn) and has natural hands and limbs with no extra or missing fingers; any person
+    in the picture has a well proportioned, natural body: a realistic head to body ratio, normal
+    arm and leg length and a believable height next to the furniture and the room, never
+    stretched, elongated or distorted; any face has clear, even skin with no acne, pimples, spots
+    or scars, yet still natural with pores, never waxy or plastic. Ignore
     all text and logos, on the product label, the packaging and the clothes alike: image models
     cannot draw small text, so never fail an image because text is garbled, mirrored or rotated.
     Ignore background decoration unless it contradicts the product.
@@ -55,9 +60,11 @@ function CheckKeyframe(
     {{ previous_keyframe }}
     {% endif %}
 
-    {% if character %}
-    Character (the same person must appear):
+    {% if characters %}
+    Photos of the person (the same person must appear):
+    {% for character in characters %}
     {{ character }}
+    {% endfor %}
     {% endif %}
 
     Generated keyframe to check:

@@ -20,7 +20,6 @@ class _FakeService:
         self.calls: list[str] = []
         self.shots = shots
         self.brief_status = "draft"
-        self.persona: dict | None = {"description": "a woman", "status": "none"}
         self.keyframes: list[dict] = []
         self.made_keyframes = [_keyframe(i, "ready") for i in range(shots)]
         self.clip_states: list[list[dict]] = [[_clip(i, "ready") for i in range(shots)]]
@@ -28,15 +27,16 @@ class _FakeService:
 
     def _record(self) -> dict:
         brief = {"shots": [{}] * self.shots}
-        if self.persona is not None:
-            brief["persona"] = self.persona
         return {"product_id": PRODUCT_ID, "status": self.brief_status, "brief": brief}
 
     async def get_brief(self, product_id):
         return self._record() if self.has_brief else None
 
-    async def create_brief(self, product_id, idea, video_seconds):
-        self.calls.append(f"create_brief:{video_seconds}")
+    async def persona_photos(self, product_id, media_root):
+        return [b"face"]
+
+    async def create_brief(self, product_id, idea, video_seconds, person_photos):
+        self.calls.append(f"create_brief:{video_seconds}:{len(person_photos)}")
         self.has_brief = True
         return self._record()
 
@@ -44,13 +44,6 @@ class _FakeService:
         self.calls.append(f"update_brief:{status}")
         self.brief_status = status
         return self._record()
-
-    async def generate_persona(self, product_id, media_root, description):
-        self.calls.append("generate_persona")
-
-    async def set_persona_status(self, product_id, status):
-        self.calls.append(f"persona:{status}")
-        return True
 
     async def list_keyframes(self, product_id):
         return self.keyframes
@@ -100,10 +93,8 @@ async def test_a_fresh_run_goes_through_every_stage_in_order() -> None:
     steps: list[str] = []
     await _run(service, steps)
     assert service.calls == [
-        "create_brief:30",
+        "create_brief:30:1",
         "update_brief:approved",
-        "generate_persona",
-        "persona:approved",
         "generate_keyframes:0",
         "keyframe:0:approved",
         "generate_keyframes:None",
@@ -122,14 +113,12 @@ async def test_a_repeated_run_keeps_what_is_already_made() -> None:
     service = _FakeService()
     service.has_brief = True
     service.brief_status = "approved"
-    service.persona = {"description": "a woman", "status": "approved"}
     service.keyframes = [_keyframe(0, "approved")]
     service.made_keyframes = [_keyframe(0, "approved"), _keyframe(1, "approved")]
     service.clip_states = [[_clip(0, "ready"), _clip(1, "processing")]]
     service.clip_states.append([_clip(0, "ready"), _clip(1, "ready")])
     await _run(service)
-    assert "create_brief:30" not in service.calls
-    assert "generate_persona" not in service.calls
+    assert not any(call.startswith("create_brief") for call in service.calls)
     assert "generate_clips" not in service.calls
     assert not any(call.startswith("keyframe:") for call in service.calls)
     assert service.calls.count("generate_keyframes:0") == 0

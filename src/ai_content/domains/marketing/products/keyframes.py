@@ -27,9 +27,14 @@ _PRODUCT_RULE = (
 )
 _NO_PEOPLE = "Do not show any human face; hands, the product and the space are enough."
 _PERSONA_RULE = (
-    "is the person in the ad. Copy her face, hair length and colour, skin tone, body and clothes "
-    "exactly from this image in every shot and ignore any other description of her looks in the "
-    "text below; she must be recognisable as the same real person. Natural hands, no extra fingers."
+    "the person in the ad. Copy their face, hair length and colour, skin tone and body exactly "
+    "from these images in every shot and ignore any other description of their looks in the text "
+    "below; they must be recognisable as the same real person. Wear the clothes the shot asks "
+    "for (the product, when it is clothing), otherwise the clothes seen in the images. Natural "
+    "hands, no extra fingers. The body is well proportioned and natural: a realistic head to body "
+    "ratio, normal arm and leg length and a believable height next to the furniture and the "
+    "room, never stretched, elongated or distorted. The face has clear, even skin with no acne, "
+    "pimples, spots or scars, yet still natural with pores, never waxy or plastic."
 )
 _REAL_PHOTO = (
     "Make it look like an ordinary photo taken with a phone: natural light, a little grain, "
@@ -55,6 +60,38 @@ def _variant_note(shot: dict[str, Any]) -> str:
         if variant
         else ""
     )
+
+
+def _persona_note(first: int, last: int) -> str:
+    which = f"Image {first} shows" if first == last else f"Images {first} to {last} show"
+    return f"{which} {_PERSONA_RULE}"
+
+
+def story_note(brief: dict[str, Any], index: int) -> str:
+    """The whole video as context for one shot: its place, look and the order of the shots."""
+    shots = brief.get("shots") or []
+    return "\n".join(
+        [
+            f"This is shot {index + 1} of {len(shots)} of one video: {brief.get('title', '')}.",
+            f"Selling angle: {brief.get('selling_angle', '')}. "
+            f"Audience: {brief.get('target_audience', '')}.",
+            f"Every shot happens in this place: {brief.get('scene', '')}. "
+            f"Where the product sits: {brief.get('product_placement', '')}.",
+            f"Style: {', '.join(brief.get('style') or [])}. "
+            f"Colors: {', '.join(brief.get('colors') or [])}.",
+            f"What is said over this shot: {shots[index].get('voiceover', '')}",
+            "The shots in order:",
+            *(
+                f"{i + 1}. {s.get('role', '')}: {s.get('description', '')}"
+                for i, s in enumerate(shots)
+            ),
+        ]
+    )
+
+
+def _story_part(shot: dict[str, Any]) -> str:
+    story = str(shot.get("story") or "")
+    return f"The whole video, for context:\n{story}" if story else ""
 
 
 def _fix_note(problem: str) -> str:
@@ -163,41 +200,28 @@ class KeyframeGenerator:
     def __init__(self, client: KeyframeImageClient) -> None:
         self._client = client
 
-    async def persona(self, description: str, fix: str = "") -> bytes:
-        """A reference portrait of the recurring person; every keyframe is built around it."""
-        parts = [
-            "A natural, candid phone photo of a synthetic person who does not exist and does not "
-            "resemble any real or famous person, in a relaxed pose, waist-up, in soft daylight "
-            "against a plain light wall, facing the camera with a friendly neutral expression, "
-            "natural skin with pores, not retouched. Vertical 9:16 photo.",
-            f"The person: {description}",
-        ]
-        if fix:
-            parts.append(_fix_note(fix))
-        return await self._client.generate("\n".join(parts), [])
-
     async def master(
         self,
         shot: dict[str, Any],
         product_photos: list[bytes],
         scene: bytes | None,
         fix: str = "",
-        persona: bytes | None = None,
+        persona: list[bytes] | None = None,
     ) -> bytes:
         parts = [f"Images 1 to {len(product_photos)} are the real product photos."]
         images = list(product_photos)
-        if persona is not None:
-            images.append(persona)
-            parts.append(f"Image {len(images)} {_PERSONA_RULE}")
+        if persona:
+            images += persona
+            parts.append(_persona_note(len(images) - len(persona) + 1, len(images)))
         if scene is not None:
             images.append(scene)
             parts.append(
                 f"Image {len(images)} is a scene reference: borrow only its setting, light and "
                 "styling, never its objects, brand, text or people."
             )
-        parts += [_PRODUCT_RULE, "" if persona is not None else _NO_PEOPLE]
+        parts += [_PRODUCT_RULE, "" if persona else _NO_PEOPLE]
         parts += [_variant_note(shot), _size_note(shot), _REAL_PHOTO]
-        parts += ["Shot to create:", str(shot["keyframe_prompt"])]
+        parts += [_story_part(shot), "Shot to create:", str(shot["keyframe_prompt"])]
         if fix:
             parts.append(_fix_note(fix))
         return await self._client.generate("\n".join(p for p in parts if p), images)
@@ -208,7 +232,7 @@ class KeyframeGenerator:
         master: bytes,
         product_photos: list[bytes],
         fix: str = "",
-        persona: bytes | None = None,
+        persona: list[bytes] | None = None,
         reference: bytes | None = None,
     ) -> bytes:
         images = [master]
@@ -216,9 +240,9 @@ class KeyframeGenerator:
             "Image 1 is the approved master keyframe: keep the same product, light, colors and "
             "the same style of place."
         ]
-        if persona is not None:
-            images.append(persona)
-            parts.append(f"Image {len(images)} {_PERSONA_RULE}")
+        if persona:
+            images += persona
+            parts.append(_persona_note(len(images) - len(persona) + 1, len(images)))
         if reference is not None:
             images.append(reference)
             parts.append(
@@ -228,11 +252,12 @@ class KeyframeGenerator:
             )
         images += product_photos
         parts.append("The remaining images are the real product photos.")
-        parts += [_PRODUCT_RULE, "" if persona is not None else _NO_PEOPLE]
+        parts += [_PRODUCT_RULE, "" if persona else _NO_PEOPLE]
         parts += [
             _variant_note(shot),
             _size_note(shot),
             _REAL_PHOTO,
+            _story_part(shot),
             "Change the camera angle, framing, action and, when the shot says so, the spot in "
             "the same home. Shot to create:",
             str(shot["keyframe_prompt"]),

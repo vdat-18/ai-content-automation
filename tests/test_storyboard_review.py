@@ -49,7 +49,7 @@ class _Writer:
     def __init__(self) -> None:
         self.ideas: list[str] = []
 
-    async def write(self, product, user_idea, shot_count=1):
+    async def write(self, product, user_idea, shot_count=1, person_photos=None):
         self.ideas.append(user_idea)
         return {"title": "T", "shots": [SHOT] * shot_count}
 

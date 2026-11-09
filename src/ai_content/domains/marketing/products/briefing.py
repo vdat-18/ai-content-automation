@@ -15,6 +15,7 @@ from loguru import logger
 from ai_content.domains.marketing.products.adapters.baml_client import types as baml_types
 from ai_content.domains.marketing.products.adapters.baml_client.async_client import b
 from ai_content.domains.marketing.products.adapters.baml_registry import build_client_registry
+from ai_content.domains.marketing.products.keyframe_check import _image
 
 _CONCURRENCY = 2
 _DOWNLOAD_TIMEOUT = 30
@@ -35,6 +36,8 @@ class _BamlBriefClient(Protocol):
         user_idea: str,
         shot_count: int,
         product_images: list[BamlImage],
+        with_person: bool,
+        person_images: list[BamlImage],
     ) -> baml_types.ContentBrief: ...
 
 
@@ -109,11 +112,13 @@ class ContentBriefWriter:
         user_idea: str,
         http: httpx.AsyncClient | None = None,
         shot_count: int = 1,
+        person_photos: list[bytes] | None = None,
     ) -> dict[str, Any]:
         """Return the brief as a dict.
 
         The model sees every product photo and picks the ones the image model will use (reported
-        as urls). Reference photos are matched to the shots afterwards.
+        as urls). Reference photos are matched to the shots afterwards. With person photos the
+        storyboard follows that person; without them it shows no person.
         """
         semaphore = asyncio.Semaphore(_CONCURRENCY)
         owned = http is None
@@ -147,6 +152,8 @@ class ContentBriefWriter:
                 user_idea.strip(),
                 shot_count,
                 [photo for _, photo in photos],
+                bool(person_photos),
+                [_image(photo) for photo in person_photos or []],
             )
         except BamlError as error:
             raise BriefGenerationError(str(error)) from error

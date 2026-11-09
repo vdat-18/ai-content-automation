@@ -18,7 +18,6 @@ class ContentBrief {
   title string
   format "problem_solution" | "step_by_step" | "before_after" | "unboxing" | "worth_it_text"
   script string
-  persona string
   product_photo_numbers int[]
   scene string
   product_placement string
@@ -35,7 +34,9 @@ function DraftContentBrief(
   product_json: string,
   user_idea: string,
   shot_count: int,
-  product_images: image[]
+  product_images: image[],
+  with_person: bool,
+  person_images: image[]
 ) -> ContentBrief {
   client OrchestrationModel
   prompt #"
@@ -63,24 +64,35 @@ function DraftContentBrief(
 
     The brief is a storyboard for one vertical ad video made of exactly {{ shot_count }} shot(s).
     Every shot is first made as a still keyframe image and later animated into a 15 second clip.
-    The video follows one recurring person who uses the real product, and every shot shows that
-    same person doing something concrete with it (picking it up, using it, trying it, comparing
-    before and after, reacting). The product is the star: it is clearly visible and recognisable in every shot, from the
-    first frame to the last, held, worn or placed in frame while the person acts (a close-up of
-    skin or a face still has the product in the picture). Make the shots differ: change the camera angle and distance, the
+    {% if with_person %}
+    The video follows one recurring person, the one in the person photos below, who uses the real
+    product, and every shot shows that same person doing something concrete with it (picking it
+    up, using it, trying it, comparing before and after, reacting). Write actions, outfit and
+    setting that suit the person you see in the photos. The product is the star: it is clearly
+    visible and recognisable in every shot, from the first frame to the last, held, worn or placed
+    in frame while the person acts (a close-up of skin or a face still has the product in the
+    picture).
+    {% else %}
+    The video shows no person: no face and no body in any shot, only the real product, the place
+    and, when the action needs it, hands. The product is the star: it is clearly visible and
+    recognisable in every shot, from the first frame to the last, placed, held by hands or shown
+    in use.
+    {% endif %}
+    Make the shots differ: change the camera angle and distance, the
     action and, where the story needs it, the spot inside the same home or place. Avoid shots that
     only zoom or drift. The voice-over is a separate recording laid over the finished video, and the picture never has
-    sound. Each shot has a delivery. narrated: the voice-over is heard while the person is busy
+    sound. Each shot has a delivery.
+    {% if with_person %}
+    narrated: the voice-over is heard while the person is busy
     with the product and nobody is seen speaking, so frame it with the mouth hidden or not the
     focus (seen from behind or the side, hands and product close-up, face turned down or away,
     or small in a wide frame). talking: the person is seen speaking in a relaxed conversation
     to the camera while the voice-over is heard, framed at chest or waist level so the face is
     clear. Use talking for the hook and the call to action and narrated for the middle shots.
-
-    persona: an English description of that person for an image model, suited to the target
-    audience of the product: apparent age, gender, build, hair, a simple everyday outfit that fits
-    the setting and the product, and a friendly natural look. It must describe an invented
-    person, never a real or famous one.
+    {% else %}
+    Every shot is narrated: the voice-over is heard while the picture shows only the product, the
+    place and hands, and nobody is seen speaking. Never use talking.
+    {% endif %}
 
     Every number, percentage, price, material or feature in the text must come from the product
     facts; never invent figures or claims.
@@ -130,8 +142,8 @@ function DraftContentBrief(
     duration_seconds is always 15. The first shot opens with a hook and the last ends with a
     call_to_action; when there is only one shot it does both, hooking in the first seconds and
     ending on the call to action. For every shot: description (Vietnamese, what the viewer sees), keyframe_prompt
-    (a complete, self-contained English prompt for an image model: "the person from the character
-    image" (never describe her age, face, hair, skin or clothes; the character image gives them) doing the action of this shot with the real product as the clear hero, the shared scene, camera angle, lighting, style and colors, and an explicit instruction
+    (a complete, self-contained English prompt for an image model: {% if with_person %}"the person from the character
+    image" (never describe their age, face, hair, skin or clothes; the character image gives them) doing the action of this shot{% else %}the action of this shot with no person in the picture (hands are fine, no face, no body){% endif %} with the real product as the clear hero, the shared scene, camera angle, lighting, style and colors, and an explicit instruction
     that the product, in the version of product_variant, keeps its real shape, color, proportions and label, and that it keeps its
     real size from product_size next to the person and the room, never enlarged or shrunk. Write it
     as the description of an ordinary photo taken on a phone: natural window or room light, a
@@ -169,6 +181,13 @@ function DraftContentBrief(
 
     User idea (may be empty):
     {{ user_idea }}
+
+    {% if with_person %}
+    Person photos (the same real person, shown in every shot):
+    {% for photo in person_images %}
+    {{ photo }}
+    {% endfor %}
+    {% endif %}
 
     Product photos:
     {% for photo in product_images %}

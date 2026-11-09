@@ -36,7 +36,7 @@ type OutputDetail = {
   brief: { title: string | null; status: string; format: string | null; user_idea: string; selling_angle: string | null; target_audience: string | null; product_size: string | null };
   product_photos: string[];
   references: { image_id: string; image_url: string; pin_url: string | null; title: string | null }[];
-  persona: { description: string; has_image: boolean } | null;
+  persona: { photos: number } | null;
   shots: OutputShot[];
   video: { built_at: string | null; seconds: number | null; captions: boolean | null; voice: string | null; has_cover: boolean; exists: boolean };
 };
@@ -352,16 +352,9 @@ function OutputDetailView({ productId }: { productId: string }) {
                 <section className="panel-section">
                   <h3>{t("Person")}</h3>
                   <div className="output-row">
-                    {output.data.persona.has_image && (
-                      <img
-                        src={`${API}/${productId}/persona/image`}
-                        alt=""
-                        width={72}
-                        height={128}
-                        {...lightbox.zoom([{ src: `${API}/${productId}/persona/image`, label: t("Person") }], 0)}
-                      />
-                    )}
-                    <p>{output.data.persona.description}</p>
+                    {Array.from({ length: output.data.persona.photos }, (_, index) => `${API}/${productId}/persona/image?n=${index}`).map((src, index, all) => (
+                      <img key={src} src={src} alt="" width={72} height={128} {...lightbox.zoom(all.map((item) => ({ src: item, label: t("Person") })), index)} />
+                    ))}
                   </div>
                 </section>
               )}

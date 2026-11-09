@@ -2,6 +2,7 @@ import asyncio
 import base64
 import io
 import json
+import re
 
 import httpx
 import pytest
@@ -254,52 +255,67 @@ async def test_later_shots_are_checked_against_the_shot_before_them(tmp_path) ->
 class _PersonaKeyframer(_FakeKeyframer):
     def __init__(self) -> None:
         super().__init__()
-        self.personas: list[bytes | None] = []
-
-    async def persona(self, description, fix=""):
-        return PNG + description.encode()
+        self.personas: list[list[bytes] | None] = []
 
     async def master(self, shot, photos, scene, fix="", persona=None):
         self.personas.append(persona)
         return await super().master(shot, photos, scene, fix, persona)
 
 
-async def test_a_person_must_be_approved_before_keyframes_and_is_passed_to_each_one(
+async def _save_brief(service, with_person: bool) -> None:
+    brief = {"title": "b", "shots": SHOTS, "with_person": with_person}
+    await service._repository.save_brief(PRODUCT_ID, "", brief, "approved")
+
+
+async def test_all_photos_of_the_person_reach_the_image_model_when_the_brief_has_a_person(
     tmp_path,
 ) -> None:
     keyframer = _PersonaKeyframer()
     service = await _service(tmp_path, keyframer)
-    brief = {
-        "title": "b",
-        "shots": SHOTS,
-        "persona": {"description": "woman, 28", "status": "none"},
-    }
-    await service._repository.save_brief(PRODUCT_ID, "", brief, "approved")
+    await _save_brief(service, with_person=True)
 
-    with pytest.raises(KeyframeUnavailable, match="Approve the person"):
+    with pytest.raises(KeyframeUnavailable, match="Upload the photos of the person"):
         await service.generate_keyframes(PRODUCT_ID, tmp_path)
 
-    persona = await service.generate_persona(PRODUCT_ID, tmp_path)
-    assert persona is not None and persona["status"] == "ready" and persona["attempts"] == 1
-    assert (tmp_path / persona["image_path"]).read_bytes() == PNG + b"woman, 28"
-    with pytest.raises(KeyframeUnavailable, match="Approve the person"):
-        await service.generate_keyframes(PRODUCT_ID, tmp_path)
-
-    assert await service.set_persona_status(PRODUCT_ID, "approved")
+    await service.upload_persona(PRODUCT_ID, tmp_path, b"one")
+    await service.upload_persona(PRODUCT_ID, tmp_path, b"two", add=True)
+    await service.upload_persona(PRODUCT_ID, tmp_path, b"three", add=True)
     await service.generate_keyframes(PRODUCT_ID, tmp_path)
-    assert keyframer.personas == [PNG + b"woman, 28"]
-    edited = await service.generate_persona(PRODUCT_ID, tmp_path, "man, 40")
-    assert edited is not None and edited["description"] == "man, 40" and edited["attempts"] == 2
+    assert keyframer.personas == [[b"one", b"two", b"three"]]
 
 
-async def test_person_errors_are_reported(tmp_path) -> None:
+async def test_a_brief_without_a_person_never_gets_one_even_when_photos_exist(tmp_path) -> None:
+    keyframer = _PersonaKeyframer()
+    service = await _service(tmp_path, keyframer)
+    await _save_brief(service, with_person=False)
+    await service.upload_persona(PRODUCT_ID, tmp_path, b"one")
+    await service.generate_keyframes(PRODUCT_ID, tmp_path)
+    assert keyframer.personas == [None]
+
+
+async def test_person_photos_are_kept_per_product_and_can_be_replaced_or_removed(
+    tmp_path,
+) -> None:
     service = await _service(tmp_path, _FakeKeyframer())
-    assert await service.generate_persona("missing", tmp_path) is None
-    with pytest.raises(KeyframeUnavailable, match="no person yet"):
-        await service.generate_persona(PRODUCT_ID, tmp_path)
-    assert not await service.set_persona_status(PRODUCT_ID, "approved")
-    with pytest.raises(ValueError, match="status must be one of"):
-        await service.set_persona_status(PRODUCT_ID, "published")
+    assert await service.upload_persona("missing", tmp_path, b"x") is None
+    assert (await service.get_persona(PRODUCT_ID, tmp_path))["image_paths"] == []
+
+    first = await service.upload_persona(PRODUCT_ID, tmp_path, b"one")
+    await service.upload_persona(PRODUCT_ID, tmp_path, b"two", add=True)
+    third = await service.upload_persona(PRODUCT_ID, tmp_path, b"three", add=True)
+    assert first is not None and third is not None
+    assert (first["attempts"], third["attempts"]) == (1, 3)
+    assert await service.persona_photos(PRODUCT_ID, tmp_path) == [b"one", b"two", b"three"]
+
+    replaced = await service.upload_persona(PRODUCT_ID, tmp_path, b"only")
+    assert replaced is not None and replaced["image_paths"] == [f"persona/{PRODUCT_ID}/photo_0.jpg"]
+    assert sorted(p.name for p in (tmp_path / "persona" / PRODUCT_ID).iterdir()) == [
+        "persona.json",
+        "photo_0.jpg",
+    ]
+
+    await service.delete_persona(PRODUCT_ID, tmp_path)
+    assert await service.persona_photos(PRODUCT_ID, tmp_path) == []
 
 
 class _RecordingClient:
@@ -317,22 +333,20 @@ async def test_prompts_name_the_person_only_when_there_is_one() -> None:
     client = _RecordingClient()
     generator = KeyframeGenerator(client)  # type: ignore[arg-type]
     shot = {"keyframe_prompt": "she folds the basket"}
-    await generator.master(shot, [b"p1", b"p2"], b"room", persona=b"face")
+    await generator.master(shot, [b"p1", b"p2"], b"room", persona=[b"face"])
     await generator.master(shot, [b"p1"], None)
-    await generator.follow_up(shot, b"master", [b"p1"], persona=b"face")
-    await generator.persona("woman, 28")
-    await generator.follow_up(shot, b"master", [b"p1"], persona=b"face", reference=b"pose")
-    with_person, without, follow, portrait, with_reference = client.calls
-    assert with_person[1] == 4 and "Image 3 is the person in the ad" in with_person[0]
+    await generator.follow_up(shot, b"master", [b"p1"], persona=[b"face"])
+    await generator.follow_up(shot, b"master", [b"p1"], persona=[b"face"], reference=b"pose")
+    with_person, without, follow, with_reference = client.calls
+    assert with_person[1] == 4 and "Image 3 shows the person in the ad" in with_person[0]
     assert (
         "Image 4 is a scene reference" in with_person[0]
         and "Do not show any human face" not in with_person[0]
     )
+    assert "well proportioned" in with_person[0] and "no acne" in with_person[0]
+    assert "well proportioned" not in without[0]
     assert without[1] == 1 and "Do not show any human face" in without[0]
-    assert follow[1] == 3 and "Image 2 is the person in the ad" in follow[0]
-    assert (
-        portrait[1] == 0 and "does not exist" in portrait[0] and portrait[0].endswith("woman, 28")
-    )
+    assert follow[1] == 3 and "Image 2 shows the person in the ad" in follow[0]
     assert with_reference[1] == 4 and "Image 3 is a loose reference" in with_reference[0]
     assert "loose reference" not in follow[0]
 
@@ -428,7 +442,7 @@ class _CutChecker:
         self.previous: dict[str, bytes | None] = {}
 
     async def check(self, description, photos, keyframe, master=None, persona=None, previous=None):
-        self.previous[description] = previous
+        self.previous[description.splitlines()[0]] = previous
         return ""
 
 
@@ -463,3 +477,61 @@ def test_large_input_images_are_shrunk_and_the_rest_pass_through() -> None:
 
     big = keyframes_module._shrink(_jpeg((3000, 2000)))
     assert Image.open(io.BytesIO(big)).size == (1792, 1195)
+
+
+async def test_the_prompt_names_every_photo_of_the_person() -> None:
+    from ai_content.domains.marketing.products.keyframes import KeyframeGenerator
+
+    client = _RecordingClient()
+    generator = KeyframeGenerator(client)  # type: ignore[arg-type]
+    shot = {"keyframe_prompt": "he folds the basket"}
+    await generator.master(shot, [b"p1"], None, persona=[b"a", b"b", b"c"])
+    [(prompt, count)] = client.calls
+    assert count == 4 and "Images 2 to 4 show the person in the ad" in prompt
+    assert not re.search(r"\b(she|her)\b", prompt)
+
+
+def test_the_story_note_gives_one_shot_the_whole_video() -> None:
+    brief = {
+        "title": "Giỏ gấp",
+        "selling_angle": "gọn nhà",
+        "target_audience": "người ở trọ",
+        "scene": "phòng trọ nhỏ",
+        "product_placement": "cạnh giường",
+        "style": ["tự nhiên"],
+        "colors": ["trắng"],
+        "shots": [
+            {"role": "hook", "description": "mở đầu", "voiceover": "câu một"},
+            {"role": "demo", "description": "dùng thử", "voiceover": "câu hai"},
+        ],
+    }
+    note = keyframes_module.story_note(brief, 1)
+    assert "shot 2 of 2" in note and "phòng trọ nhỏ" in note and "cạnh giường" in note
+    assert "What is said over this shot: câu hai" in note
+    assert "1. hook: mở đầu" in note and "2. demo: dùng thử" in note
+
+
+async def test_the_story_reaches_the_image_prompt_and_the_checker(tmp_path) -> None:
+    prompts: list[str] = []
+
+    class _Client:
+        async def generate(self, prompt, images):
+            prompts.append(prompt)
+            return PNG
+
+    seen: list[str] = []
+
+    class _Checker:
+        async def check(
+            self, description, photos, keyframe, master=None, persona=None, previous=None
+        ):
+            seen.append(description)
+            return ""
+
+    service = await _service(tmp_path, KeyframeGenerator(_Client()))  # type: ignore[arg-type]
+    service._checker = _Checker()
+    brief = {"title": "b", "scene": "phòng trọ nhỏ", "shots": SHOTS}
+    await service._repository.save_brief(PRODUCT_ID, "", brief, "approved")
+    await service.generate_keyframes(PRODUCT_ID, tmp_path)
+    assert "The whole video, for context:" in prompts[0] and "phòng trọ nhỏ" in prompts[0]
+    assert "phòng trọ nhỏ" in seen[0]

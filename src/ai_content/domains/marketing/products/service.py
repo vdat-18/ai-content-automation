@@ -38,7 +38,7 @@ from .embedding import ImageEmbedder, cosine, dhash, download_images, hamming
 from .identity import PIN_SIZE_DIR, media_source_fingerprint
 from .image_review import ReferenceImageReviewer
 from .keyframe_check import KeyframeChecker
-from .keyframes import KeyframeGenerationError, KeyframeGenerator, fetch_images
+from .keyframes import KeyframeGenerationError, KeyframeGenerator, fetch_images, story_note
 from .media import MediaDownloadReport, download_product_media
 from .media_store import MediaStore, RemoteMedia
 from .parsing import (
@@ -81,6 +81,8 @@ DUPLICATE_HAMMING = 4
 MAX_KEYFRAME_FIXES = 2
 KEYFRAME_CONCURRENCY = 3
 CLIP_CHECK_PHOTOS = 4
+MODEL_IMAGE_LIMIT = 30  # pictures the image model takes in one request
+MODEL_IMAGE_RESERVE = 2  # kept free for the scene or master picture and a pose reference
 # The voice-over is added later, so the picture only has to look right: a talking shot shows
 # natural subtle speaking without exaggerated mouth movements, a narrated shot keeps lips closed.
 _DELIVERY_RULE = {
@@ -90,9 +92,12 @@ _DELIVERY_RULE = {
     ),
     False: "Nobody speaks: lips stay closed or relaxed, no lip movement.",
 }
+_NO_PERSON_VIDEO = (
+    "No person appears in the picture: no face and no body, only the product, the place and, "
+    "when needed, hands. "
+)
 VIDEO_LENGTHS = (15, 30, 45, 60, 75, 90)
 BRIEF_ATTEMPTS = 3
-PERSONA_STATUSES = frozenset({"ready", "approved", "rejected"})
 KEYFRAME_REVIEW_STATUSES = frozenset({"approved", "ready", "rejected"})
 BRIEF_FIELDS = (
     "title",
@@ -111,13 +116,23 @@ BRIEF_FIELDS = (
 
 
 REFERENCE_CANDIDATES = 5  # pictures a model compares for one shot
-IMAGE_MODEL_PHOTOS = 28  # the image model takes 30 pictures; two are kept for the person and scene
+REFERENCE_LOOK_WEIGHT = 0.5  # how much looking like the product photos counts, next to the text
+
+
+def _scaled(scores: dict[str, float]) -> dict[str, float]:
+    """Scores moved to 0..1, so two kinds of similarity can be added."""
+    if not scores:
+        return {}
+    low, high = min(scores.values()), max(scores.values())
+    return {
+        key: (value - low) / (high - low) if high > low else 0.0 for key, value in scores.items()
+    }
 
 
 def _product_photo_urls(brief: dict[str, Any], detail: dict[str, Any]) -> list[str]:
     """The product photos the brief picked; the first photos of the product if it picked none."""
     urls = brief.get("product_photo_urls") or [u for u in detail.get("images") or [] if u]
-    return urls[:IMAGE_MODEL_PHOTOS]
+    return urls
 
 
 def _clean_pins(pins: list[dict[str, Any]]) -> list[dict[str, str]]:
@@ -413,11 +428,16 @@ class ProductCatalogService:
         return counts
 
     async def create_brief(
-        self, product_id: str, user_idea: str = "", video_seconds: int = CLIP_SECONDS
+        self,
+        product_id: str,
+        user_idea: str = "",
+        video_seconds: int = CLIP_SECONDS,
+        person_photos: list[bytes] | None = None,
     ) -> dict[str, Any] | None:
         """Draft one brief for a selected product from varied live reference scenes.
 
         Every shot becomes one 15 second clip, so the video length sets the number of shots.
+        With person photos the video follows that person; without them it shows no person.
         """
         if video_seconds not in VIDEO_LENGTHS:
             raise BriefUnavailable(f"Video length must be one of {list(VIDEO_LENGTHS)} seconds")
@@ -439,7 +459,9 @@ class ProductCatalogService:
         attempts = 0
         for _ in range(BRIEF_ATTEMPTS):
             attempts += 1
-            brief = await self._briefer.write(detail, f"{user_idea}{fixes}", shot_count=shot_count)
+            brief = await self._briefer.write(
+                detail, f"{user_idea}{fixes}", shot_count=shot_count, person_photos=person_photos
+            )
             count_ok = "shots" not in brief or len(brief["shots"]) == shot_count
             problems = await self._review_storyboard(detail, brief) if count_ok else []
             if count_ok and not problems:
@@ -460,13 +482,7 @@ class ProductCatalogService:
         brief["selected_reference_ids"] = list(
             dict.fromkeys(item for item in brief["shot_references"] if item)
         )
-        if brief.get("persona"):
-            brief["persona"] = {
-                "description": str(brief["persona"]),
-                "image_path": None,
-                "status": "none",
-                "attempts": 0,
-            }
+        brief["with_person"] = bool(person_photos)
         await self._repository.save_brief(product_id, user_idea.strip(), brief, "draft")
         await self._log(
             product_id,
@@ -500,6 +516,37 @@ class ProductCatalogService:
                 vectors[image_id] = vector
         return vectors
 
+    async def _product_look(
+        self,
+        product: dict[str, Any],
+        brief: dict[str, Any],
+        product_type: str,
+        wanted: set[str],
+    ) -> dict[str, float]:
+        """How much each reference picture looks like the product photos, by image embedding.
+
+        Empty when there is no image embedder or the product photos cannot be embedded; the
+        references are then ranked by their text alone.
+        """
+        if self._embedder is None:
+            return {}
+        photos = await fetch_images(_product_photo_urls(brief, product))
+        if not photos:
+            return {}
+        try:
+            vectors = await self._embedder.embed_many(photos)
+        except Exception as error:
+            logger.warning("Product photos could not be embedded: {}", str(error)[:200])
+            return {}
+        stored = await self._repository.fingerprints(product_type)
+        return _scaled(
+            {
+                item["image_id"]: max(cosine(vector, item["embedding"]) for vector in vectors)
+                for item in stored
+                if item["embedding"] and item["image_id"] in wanted
+            }
+        )
+
     async def _pick_shot_references(
         self,
         product_id: str,
@@ -511,7 +558,8 @@ class ProductCatalogService:
         """For every shot, the image id of the reference that fits it best, or None.
 
         The text of the shot is matched to the written descriptions of the references by
-        embedding; a model then looks at the closest few pictures and keeps one, or none.
+        embedding, and references that look like the product photos rank higher; a model then
+        looks at the closest few pictures and keeps one, or none.
         """
         shots = brief.get("shots") or []
         none: list[str | None] = [None] * len(shots)
@@ -532,11 +580,20 @@ class ProductCatalogService:
             await self._log(product_id, "references", "error", str(error))
             return none
         pool = [image for image in live if image["image_id"] in vectors]
+        looks = await self._product_look(
+            product, brief, product_type, {i["image_id"] for i in pool}
+        )
         picker = self._reference_picker
 
         async def pick(shot: dict[str, Any], query: list[float]) -> str | None:
+            text = _scaled({i["image_id"]: cosine(query, vectors[i["image_id"]]) for i in pool})
             closest = sorted(
-                pool, key=lambda image: cosine(query, vectors[image["image_id"]]), reverse=True
+                pool,
+                key=lambda image: (
+                    text[image["image_id"]]
+                    + REFERENCE_LOOK_WEIGHT * looks.get(image["image_id"], 0.0)
+                ),
+                reverse=True,
             )[:REFERENCE_CANDIDATES]
             return await picker.choose(
                 product,
@@ -638,73 +695,39 @@ class ProductCatalogService:
             await self._log(product_id, "keyframe", status, f"Marked {status}", shot_index)
         return changed
 
-    async def generate_persona(
-        self, product_id: str, media_root: Path, description: str | None = None
+    async def get_persona(self, product_id: str, media_root: Path) -> dict[str, Any]:
+        """The photos the user uploaded of the person who appears in the video."""
+        stored = await self._read_json(media_root, f"persona/{product_id}/persona.json")
+        return stored or {"image_paths": [], "attempts": 0}
+
+    async def persona_photos(self, product_id: str, media_root: Path) -> list[bytes]:
+        store = self.media(media_root)
+        persona = await self.get_persona(product_id, media_root)
+        return [await store.read(path) for path in persona["image_paths"]]
+
+    async def upload_persona(
+        self, product_id: str, media_root: Path, content: bytes, add: bool = False
     ) -> dict[str, Any] | None:
-        """Make (or remake) the portrait of the recurring person; a human approves it."""
-        record = await self._repository.get_brief(product_id)
-        if record is None:
+        """Keep a photo of the person; with `add` it joins the photos already uploaded."""
+        if await self._repository.get_detail(product_id) is None:
             return None
-        if self._keyframer is None:
-            raise KeyframeUnavailable("Image model is not configured (AIC_IMAGE_MODEL)")
-        persona = dict(record["brief"].get("persona") or {})
-        text = (
-            description if description is not None else persona.get("description") or ""
-        ).strip()
-        if not text:
-            raise KeyframeUnavailable("This brief has no person yet; regenerate the brief first")
-        try:
-            image = await self._keyframer.persona(text)
-        except KeyframeGenerationError as error:
-            await self._log(product_id, "persona", "error", str(error))
-            raise KeyframeUnavailable(f"The person could not be made: {error}") from error
-        relative = f"persona/{product_id}/persona.jpg"
-        await self.media(media_root).write(relative, image)
-        persona = {
-            "description": text,
-            "image_path": relative,
-            "status": "ready",
-            "attempts": int(persona.get("attempts") or 0) + 1,
-        }
-        brief = {**record["brief"], "persona": persona}
-        await self._repository.save_brief(product_id, record["user_idea"], brief, record["status"])
+        store = self.media(media_root)
+        previous = await self.get_persona(product_id, media_root)
+        kept = previous["image_paths"] if add else []
+        if not add:
+            for old in previous["image_paths"]:
+                await store.remove(old)
+        relative = f"persona/{product_id}/photo_{len(kept)}.jpg"
+        await store.write(relative, content)
+        persona = {"image_paths": [*kept, relative], "attempts": previous["attempts"] + 1}
+        await self._write_json(media_root, f"persona/{product_id}/persona.json", persona)
         await self._log(
-            product_id, "persona", "ok", f"Portrait made (attempt {persona['attempts']})"
+            product_id, "persona", "ok", f"Person photo uploaded ({len(persona['image_paths'])})"
         )
         return persona
 
-    async def upload_persona(
-        self, product_id: str, media_root: Path, content: bytes
-    ) -> dict[str, Any] | None:
-        """Use a photo the user supplies as the person in the ad; the user still approves it."""
-        record = await self._repository.get_brief(product_id)
-        if record is None:
-            return None
-        previous = dict(record["brief"].get("persona") or {})
-        relative = f"persona/{product_id}/persona.jpg"
-        await self.media(media_root).write(relative, content)
-        persona = {
-            "description": "The person in the uploaded photo.",
-            "image_path": relative,
-            "status": "ready",
-            "attempts": int(previous.get("attempts") or 0) + 1,
-            "source": "uploaded",
-        }
-        brief = {**record["brief"], "persona": persona}
-        await self._repository.save_brief(product_id, record["user_idea"], brief, record["status"])
-        await self._log(product_id, "persona", "ok", "Person photo uploaded by the user")
-        return persona
-
-    async def set_persona_status(self, product_id: str, status: str) -> bool:
-        if status not in PERSONA_STATUSES:
-            raise ValueError(f"Person status must be one of {sorted(PERSONA_STATUSES)}")
-        record = await self._repository.get_brief(product_id)
-        persona = (record or {}).get("brief", {}).get("persona")
-        if record is None or not persona or not persona.get("image_path"):
-            return False
-        brief = {**record["brief"], "persona": {**persona, "status": status}}
-        await self._repository.save_brief(product_id, record["user_idea"], brief, record["status"])
-        return True
+    async def delete_persona(self, product_id: str, media_root: Path) -> None:
+        await self.media(media_root).remove_tree(f"persona/{product_id}")
 
     async def generate_keyframes(
         self, product_id: str, media_root: Path, shot_index: int | None = None
@@ -736,14 +759,18 @@ class ProductCatalogService:
             wanted = [0]
         if any(i > 0 for i in wanted) and not master_ready:
             raise KeyframeUnavailable("Approve the master keyframe (shot 0) first")
-        persona = record["brief"].get("persona") or {}
-        persona_image: bytes | None = None
-        if persona.get("description"):
-            if persona.get("status") != "approved" or not persona.get("image_path"):
-                raise KeyframeUnavailable("Approve the person's portrait first")
-            persona_image = await self.media(media_root).read(persona["image_path"])
+        persona_images: list[bytes] | None = None
+        if record["brief"].get("with_person"):
+            persona_images = (await self.persona_photos(product_id, media_root))[
+                : MODEL_IMAGE_LIMIT - MODEL_IMAGE_RESERVE - 1
+            ]
+            if not persona_images:
+                raise KeyframeUnavailable(
+                    "Upload the photos of the person again, or write a new brief without a person"
+                )
         detail = await self._repository.get_detail(product_id)
-        photos = await fetch_images(_product_photo_urls(record["brief"], detail or {}))
+        room = MODEL_IMAGE_LIMIT - MODEL_IMAGE_RESERVE - len(persona_images or [])
+        photos = await fetch_images(_product_photo_urls(record["brief"], detail or {})[:room])
         if not photos:
             raise KeyframeUnavailable("No product photo could be downloaded")
         references = await self._shot_references(record["brief"], wanted)
@@ -761,13 +788,18 @@ class ProductCatalogService:
                     await self._make_keyframe(
                         product_id,
                         index,
-                        {**shots[index], "product_size": size, "product_variant": variant},
+                        {
+                            **shots[index],
+                            "product_size": size,
+                            "product_variant": variant,
+                            "story": story_note(record["brief"], index),
+                        },
                         existing.get(index),
                         media_root,
                         photos,
                         references.get(index),
                         master,
-                        persona_image,
+                        persona_images,
                         done.get(index - 1),
                     )
                 finally:
@@ -806,7 +838,7 @@ class ProductCatalogService:
         photos: list[bytes],
         reference: bytes | None,
         master: bytes | None,
-        persona: bytes | None = None,
+        persona: list[bytes] | None = None,
         previous_done: asyncio.Event | None = None,
     ) -> None:
         assert self._keyframer is not None
@@ -897,7 +929,7 @@ class ProductCatalogService:
         photos: list[bytes],
         image: bytes,
         master: bytes | None,
-        persona: bytes | None = None,
+        persona: list[bytes] | None = None,
         before: bytes | None = None,
     ) -> str | None:
         if self._checker is None:
@@ -909,6 +941,8 @@ class ProductCatalogService:
             description = (
                 f"{description} The product must be this version: {shot['product_variant']}"
             )
+        if shot.get("story"):
+            description = f"{description}\n\nThe whole video, for context:\n{shot['story']}"
         return await self._checker.check(description, photos, image, master, persona, before)
 
     async def clips(self, product_id: str, media_root: Path) -> list[dict[str, Any]]:
@@ -989,14 +1023,16 @@ class ProductCatalogService:
         shot = brief["shots"][clip["shot_index"]]
         detail = await self._repository.get_detail(product_id)
         photos = await fetch_images(_product_photo_urls(brief, detail or {})[:CLIP_CHECK_PHOTOS])
-        persona_path = (brief.get("persona") or {}).get("image_path")
+        persona_images = (
+            await self.persona_photos(product_id, media_root) if brief.get("with_person") else []
+        )
         description = str(shot.get("description") or shot.get("motion_prompt") or "")
         return await self._clip_checker.check(
             description,
             photos,
             await store.read(keyframe["image_path"]),
             frames,
-            await store.read(persona_path) if persona_path else None,
+            persona_images or None,
         )
 
     async def generate_clips(
@@ -1029,7 +1065,13 @@ class ProductCatalogService:
             raise KeyframeUnavailable("No approved keyframe is waiting for a clip")
         for index in wanted:
             await self._start_clip(
-                product_id, index, shots[index], keyframes[index], clips.get(index), media_root
+                product_id,
+                index,
+                shots[index],
+                keyframes[index],
+                clips.get(index),
+                media_root,
+                bool(record["brief"].get("with_person")),
             )
         return await self._repository.list_clips(product_id)
 
@@ -1041,6 +1083,7 @@ class ProductCatalogService:
         keyframe: dict[str, Any],
         previous: dict[str, Any] | None,
         media_root: Path,
+        with_person: bool,
     ) -> None:
         assert self._videographer is not None
         seconds = CLIP_SECONDS
@@ -1072,6 +1115,7 @@ class ProductCatalogService:
             "Keep the product's exact shape, color and details; do not add or change objects. "
             "Energetic TikTok pace: brisk natural movement and quick camera moves, "
             "never slow motion, no long pauses. "
+            f"{'' if with_person else _NO_PERSON_VIDEO}"
             f"{sound}"
         )
         try:
@@ -1334,7 +1378,7 @@ class ProductCatalogService:
             }
             for index, shot in enumerate(brief.get("shots") or [])
         ]
-        persona = brief.get("persona") or {}
+        persona = await self.get_persona(product_id, media_root)
         return {
             "product": {
                 "product_id": product_id,
@@ -1353,11 +1397,8 @@ class ProductCatalogService:
             },
             "product_photos": brief.get("product_photo_urls") or [],
             "references": references,
-            "persona": {
-                "description": persona.get("description"),
-                "has_image": bool(persona.get("image_path")),
-            }
-            if persona.get("description")
+            "persona": {"photos": len(persona["image_paths"])}
+            if brief.get("with_person")
             else None,
             "shots": shots,
             "video": {
