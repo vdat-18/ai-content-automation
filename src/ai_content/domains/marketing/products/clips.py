@@ -26,6 +26,7 @@ _CAPTION_FONTS = (
     "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
 )
 TRANSITION_SECONDS = 0.25
+_PART_ENCODES = 2
 _COLOR_GRADE = "eq=contrast=1.03:brightness=0.01:saturation=1.05"
 
 
@@ -210,16 +211,15 @@ async def stitch(
         raise StitchUnavailable("No clip is ready to stitch")
     output.parent.mkdir(parents=True, exist_ok=True)
     font = caption_font()
-    parts: list[Path] = []
-    part_durations: list[float] = []
     scratch: list[Path] = []
     bgm_path = bgm or (find_bgm() if voiceover is not None else None)
     try:
-        for index, clip in enumerate(clips):
+        limit = asyncio.Semaphore(_PART_ENCODES)
+
+        async def encode(index: int, clip: StitchClip) -> None:
             part = output.parent / f"part_{index}.mp4"
             scratch.append(part)
-            seconds = shot_seconds(clip.duration)
-            part_durations.append(seconds)
+            seconds = part_durations[index]
             filters = (
                 f"setpts=PTS/{clip_speed():.4f},"
                 f"scale={_OUTPUT_SIZE}:force_original_aspect_ratio=increase,"
@@ -231,14 +231,20 @@ async def stitch(
                 textfile.write_text(textwrap.fill(clip.caption.strip(), 20), encoding="utf-8")
                 scratch.append(textfile)
                 filters += "," + _caption_filter(font, textfile.name, min(seconds - 0.3, 8))
-            await _run(
-                "ffmpeg", "-v", "error", "-y", "-ss", f"{TRIM_SECONDS:g}", "-i", str(clip.path),
-                "-t", f"{_source_seconds(clip.duration):.3f}", "-an", "-vf", filters,
-                "-c:v", "libx264", "-crf", "18", "-maxrate", "12M", "-bufsize", "24M",
-                "-pix_fmt", "yuv420p", part.name,
-                cwd=output.parent,
-            )  # fmt: skip
-            parts.append(part)
+            async with limit:
+                await _run(
+                    "ffmpeg", "-v", "error", "-y", "-ss", f"{TRIM_SECONDS:g}", "-i", str(clip.path),
+                    "-t", f"{_source_seconds(clip.duration):.3f}", "-an", "-vf", filters,
+                    "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-maxrate", "12M",
+                    "-bufsize", "24M", "-pix_fmt", "yuv420p", part.name,
+                    cwd=output.parent,
+                )  # fmt: skip
+
+        part_durations = [shot_seconds(clip.duration) for clip in clips]
+        parts = [output.parent / f"part_{index}.mp4" for index in range(len(clips))]
+        async with asyncio.TaskGroup() as group:
+            for index, clip in enumerate(clips):
+                group.create_task(encode(index, clip))
 
         # Video concatenation (xfade transition if clips are standard duration >= 4.0s)
         has_audio = voiceover is not None or bgm_path is not None

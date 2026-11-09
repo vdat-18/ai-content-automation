@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import io
 import re
 from typing import Any
 
 import httpx
 from loguru import logger
+from PIL import Image
 
 ASPECT_SIZE = "1024x1792"
 _REQUEST_TIMEOUT = 240
@@ -16,6 +18,7 @@ _TRIES = 3
 _RETRY_STATUSES = {429, 500, 502, 503, 504}
 _RETRY_DELAY = 5.0
 _DOWNLOAD_TIMEOUT = 40
+_MAX_INPUT_SIDE = 1792  # the long side of the generated keyframes
 
 _PRODUCT_RULE = (
     "The product photos show the real product: keep its exact shape, color, proportions, "
@@ -70,7 +73,22 @@ def _media_type(content: bytes) -> str:
     return "image/jpeg"
 
 
+def _shrink(content: bytes) -> bytes:
+    """Re-encode an input image that is larger than the output keyframe; others pass through."""
+    try:
+        with Image.open(io.BytesIO(content)) as image:
+            if max(image.size) <= _MAX_INPUT_SIDE:
+                return content
+            image.thumbnail((_MAX_INPUT_SIDE, _MAX_INPUT_SIDE))
+            buffer = io.BytesIO()
+            image.convert("RGB").save(buffer, "JPEG", quality=90)
+    except OSError:  # a format Pillow cannot read: send it unchanged
+        return content
+    return buffer.getvalue()
+
+
 def _data_url(content: bytes) -> str:
+    content = _shrink(content)
     return f"data:{_media_type(content)};base64,{base64.b64encode(content).decode()}"
 
 
@@ -228,17 +246,21 @@ async def fetch_images(urls: list[str], http: httpx.AsyncClient | None = None) -
     """Download images, dropping failures and byte-identical duplicates."""
     owned = http is None
     http = http or httpx.AsyncClient(timeout=_DOWNLOAD_TIMEOUT, follow_redirects=True)
+
+    async def download(url: str) -> bytes | None:
+        try:
+            response = await http.get(url)
+            response.raise_for_status()
+        except httpx.HTTPError as error:
+            logger.warning("Keyframe input download failed: {}", str(error)[:200])
+            return None
+        return response.content
+
     found: list[bytes] = []
     try:
-        for url in urls:
-            try:
-                response = await http.get(url)
-                response.raise_for_status()
-            except httpx.HTTPError as error:
-                logger.warning("Keyframe input download failed: {}", str(error)[:200])
-                continue
-            if response.content not in found:
-                found.append(response.content)
+        for content in await asyncio.gather(*(download(url) for url in urls)):
+            if content is not None and content not in found:
+                found.append(content)
     finally:
         if owned:
             await http.aclose()

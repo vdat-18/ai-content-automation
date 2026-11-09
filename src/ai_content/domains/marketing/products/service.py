@@ -77,6 +77,7 @@ def _duplicate_similarity() -> float:
 DUPLICATE_COSINE = _duplicate_similarity()
 DUPLICATE_HAMMING = 4
 MAX_KEYFRAME_FIXES = 2
+KEYFRAME_CONCURRENCY = 3
 # The voice-over is added later, so the picture only has to look right: a talking shot shows
 # natural subtle speaking without exaggerated mouth movements, a narrated shot keeps lips closed.
 _DELIVERY_RULE = {
@@ -745,18 +746,30 @@ class ProductCatalogService:
         )
         size = str(record["brief"].get("product_size") or "")
         variant = str(record["brief"].get("product_variant") or "")
-        for index in wanted:
-            await self._make_keyframe(
-                product_id,
-                index,
-                {**shots[index], "product_size": size, "product_variant": variant},
-                existing.get(index),
-                media_root,
-                photos,
-                references.get(index),
-                master,
-                persona_image,
-            )
+        limit = asyncio.Semaphore(KEYFRAME_CONCURRENCY)
+        done = {index: asyncio.Event() for index in wanted}
+
+        async def make(index: int) -> None:
+            async with limit:
+                try:
+                    await self._make_keyframe(
+                        product_id,
+                        index,
+                        {**shots[index], "product_size": size, "product_variant": variant},
+                        existing.get(index),
+                        media_root,
+                        photos,
+                        references.get(index),
+                        master,
+                        persona_image,
+                        done.get(index - 1),
+                    )
+                finally:
+                    done[index].set()
+
+        async with asyncio.TaskGroup() as group:
+            for index in wanted:
+                group.create_task(make(index))
         return await self._repository.list_keyframes(product_id)
 
     async def _shot_references(self, brief: dict[str, Any], wanted: list[int]) -> dict[int, bytes]:
@@ -770,10 +783,11 @@ class ProductCatalogService:
             for image in await self._repository.list_reference_images(None, None)
             if image["image_id"] in set(ids.values())
         }
-        found: dict[int, bytes] = {}
-        for index, image_id in ids.items():
-            if image_id in urls and (pictures := await fetch_images([urls[image_id]])):
-                found[index] = pictures[0]
+        wanted_ids = [
+            (index, urls[image_id]) for index, image_id in ids.items() if image_id in urls
+        ]
+        pictures = await asyncio.gather(*(fetch_images([url]) for _, url in wanted_ids))
+        found = {index: got[0] for (index, _), got in zip(wanted_ids, pictures, strict=True) if got}
         return found
 
     async def _make_keyframe(
@@ -787,10 +801,12 @@ class ProductCatalogService:
         reference: bytes | None,
         master: bytes | None,
         persona: bytes | None = None,
+        previous_done: asyncio.Event | None = None,
     ) -> None:
         assert self._keyframer is not None
         attempts = (previous or {}).get("attempts", 0)
-        before = await self._keyframe_before(product_id, index, media_root)
+        before: bytes | None = None
+        before_loaded = False
         record = {
             "product_id": product_id,
             "shot_index": index,
@@ -826,6 +842,11 @@ class ProductCatalogService:
                 break
             attempts += 1
             image = candidate
+            if not before_loaded:
+                if previous_done is not None:
+                    await previous_done.wait()  # the cut check needs the shot before this one
+                before = await self._keyframe_before(product_id, index, media_root)
+                before_loaded = True
             problem = await self._check_keyframe(shot, photos, image, master, persona, before) or ""
             if not problem:
                 break

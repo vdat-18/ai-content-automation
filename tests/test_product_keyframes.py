@@ -1,9 +1,13 @@
+import asyncio
 import base64
+import io
 import json
 
 import httpx
 import pytest
+from PIL import Image
 
+from ai_content.domains.marketing.products import keyframes as keyframes_module
 from ai_content.domains.marketing.products import service as service_module
 from ai_content.domains.marketing.products.keyframes import (
     KeyframeGenerationError,
@@ -403,3 +407,59 @@ async def test_generated_keyframes_are_uploaded_and_restored_from_the_remote(tmp
     # the master is read back from the remote to make the other shots
     await service.generate_keyframes(PRODUCT_ID, tmp_path)
     assert (tmp_path / "keyframes" / PRODUCT_ID / "shot_1.jpg").is_file()
+
+
+class _SlowKeyframer(_FakeKeyframer):
+    def __init__(self) -> None:
+        super().__init__()
+        self.running = 0
+        self.peak = 0
+
+    async def follow_up(self, shot, master, photos, fix="", persona=None, reference=None):
+        self.running += 1
+        self.peak = max(self.peak, self.running)
+        await asyncio.sleep(0.02)
+        self.running -= 1
+        return await super().follow_up(shot, master, photos, fix, persona, reference)
+
+
+class _CutChecker:
+    def __init__(self) -> None:
+        self.previous: dict[str, bytes | None] = {}
+
+    async def check(self, description, photos, keyframe, master=None, persona=None, previous=None):
+        self.previous[description] = previous
+        return ""
+
+
+async def test_follow_up_shots_run_together_and_cut_check_sees_the_shot_before(tmp_path) -> None:
+    shots = [
+        {"role": "r", "keyframe_prompt": f"shot {i}", "description": f"d{i}"} for i in range(4)
+    ]
+    keyframer = _SlowKeyframer()
+    service = await _service(tmp_path, keyframer, shots)
+    checker = _CutChecker()
+    await service.generate_keyframes(PRODUCT_ID, tmp_path)
+    await service.set_keyframe_status(PRODUCT_ID, 0, "approved")
+    service._checker = checker
+    await service.generate_keyframes(PRODUCT_ID, tmp_path)
+
+    assert keyframer.peak > 1
+    assert checker.previous["d1"] is None
+    assert checker.previous["d2"] == PNG + b"follow"
+    assert checker.previous["d3"] == PNG + b"follow"
+
+
+def _jpeg(size: tuple[int, int]) -> bytes:
+    buffer = io.BytesIO()
+    Image.new("RGB", size, "white").save(buffer, "JPEG")
+    return buffer.getvalue()
+
+
+def test_large_input_images_are_shrunk_and_the_rest_pass_through() -> None:
+    small = _jpeg((800, 1200))
+    assert keyframes_module._shrink(small) == small
+    assert keyframes_module._shrink(PNG) == PNG
+
+    big = keyframes_module._shrink(_jpeg((3000, 2000)))
+    assert Image.open(io.BytesIO(big)).size == (1792, 1195)
