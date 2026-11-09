@@ -111,6 +111,7 @@ product_clips = Table(
     Column("seconds", Integer, nullable=False, server_default=sql_text("0")),
     Column("attempts", Integer, nullable=False, server_default=sql_text("0")),
     Column("error", Text),
+    Column("qa_problem", Text, nullable=False, server_default=sql_text("''")),
     *_timestamps(),
     schema="marketing",
 )

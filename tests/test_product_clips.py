@@ -5,6 +5,7 @@ import subprocess
 import httpx
 import pytest
 
+from ai_content.domains.marketing.products import service as service_module
 from ai_content.domains.marketing.products.clips import (
     ClipGenerationError,
     JobState,
@@ -12,6 +13,7 @@ from ai_content.domains.marketing.products.clips import (
     StitchUnavailable,
     VideoClient,
     caption_font,
+    clip_frames,
     cover_frame,
     stitch,
 )
@@ -285,6 +287,7 @@ async def test_building_the_video_records_how_it_was_made(tmp_path) -> None:
             "seconds": 5,
             "attempts": 2,
             "error": None,
+            "qa_problem": "",
         }
     )
     await service.note_voice(PRODUCT_ID, tmp_path, "Kim Oanh")
@@ -333,3 +336,52 @@ def test_clips_play_faster_by_the_configured_speed(monkeypatch) -> None:
     assert clip_speed() == 2.0
     monkeypatch.setenv("AIC_CLIP_SPEED", "abc")
     assert clip_speed() == 1.25
+
+
+class _FakeClipChecker:
+    def __init__(self, verdicts: list[str | None]) -> None:
+        self.verdicts = verdicts
+        self.calls: list[tuple[str, bytes, int]] = []
+
+    async def check(self, description, photos, keyframe, frames, persona=None):
+        self.calls.append((description, keyframe, len(frames)))
+        return self.verdicts.pop(0)
+
+
+async def test_finished_clip_is_checked_and_a_flag_is_kept_until_it_is_made_again(
+    tmp_path, monkeypatch
+) -> None:
+    video = _FakeVideo()
+    service = await _service(tmp_path, video)
+    checker = _FakeClipChecker(["product melts in frame 3", "", None])
+    service._clip_checker = checker
+
+    async def frames(path, seconds):
+        return [b"a", b"b", b"c"]
+
+    monkeypatch.setattr(service_module, "clip_frames", frames)
+    await service.generate_clips(PRODUCT_ID, tmp_path)
+    video.states["job0"] = JobState("completed", video_url="https://v/x.mp4")
+    [flagged] = await service.clips(PRODUCT_ID, tmp_path)
+    assert (flagged["status"], flagged["qa_problem"]) == ("ready", "product melts in frame 3")
+    assert checker.calls == [("push in", b"jpeg", 3)]
+
+    [again] = await service.generate_clips(PRODUCT_ID, tmp_path, shot_index=0)
+    assert (again["status"], again["qa_problem"]) == ("processing", "")
+    video.states["job1"] = JobState("completed", video_url="https://v/y.mp4")
+    [passed] = await service.clips(PRODUCT_ID, tmp_path)
+    assert (passed["status"], passed["qa_problem"]) == ("ready", "")
+
+    await service.generate_clips(PRODUCT_ID, tmp_path, shot_index=0)
+    video.states["job2"] = JobState("completed", video_url="https://v/z.mp4")
+    [unchecked] = await service.clips(PRODUCT_ID, tmp_path)
+    assert (unchecked["status"], unchecked["qa_problem"]) == ("ready", "")
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg is not installed")
+async def test_clip_frames_are_three_stills_in_time_order(tmp_path) -> None:
+    path = tmp_path / "clip.mp4"
+    _make_clip(path, "red", seconds=4, audio=False)
+    frames = await clip_frames(path, 4)
+    assert len(frames) == 3 and all(frame[:2] == b"\xff\xd8" for frame in frames)
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["clip.mp4"]

@@ -23,6 +23,12 @@ class LlmResponseParser:
     def __init__(self, options: DoNotUseDirectlyCallManager):
         self.__options = options
 
+    def CheckClip(
+        self, llm_response: str, baml_options: BamlCallOptions = {},
+    ) -> types.ClipCheck:
+        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="CheckClip", llm_response=llm_response, mode="request")
+        return typing.cast(types.ClipCheck, __result__)
+
     def CheckKeyframe(
         self, llm_response: str, baml_options: BamlCallOptions = {},
     ) -> types.KeyframeCheck:
@@ -73,6 +79,12 @@ class LlmStreamParser:
     def __init__(self, options: DoNotUseDirectlyCallManager):
         self.__options = options
 
+    def CheckClip(
+        self, llm_response: str, baml_options: BamlCallOptions = {},
+    ) -> stream_types.ClipCheck:
+        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="CheckClip", llm_response=llm_response, mode="stream")
+        return typing.cast(stream_types.ClipCheck, __result__)
+
     def CheckKeyframe(
         self, llm_response: str, baml_options: BamlCallOptions = {},
     ) -> stream_types.KeyframeCheck:
@@ -115,4 +127,4 @@ class LlmStreamParser:
         __result__ = self.__options.merge_options(baml_options).parse_response(function_name="WritePostingPackage", llm_response=llm_response, mode="stream")
         return typing.cast(stream_types.PostingPackage, __result__)
 
-    
+    

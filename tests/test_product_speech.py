@@ -182,6 +182,7 @@ async def test_a_clip_without_speech_is_reported_not_crashed(tmp_path) -> None:
             "seconds": 15,
             "attempts": 1,
             "error": None,
+            "qa_problem": "",
         }
     )
 

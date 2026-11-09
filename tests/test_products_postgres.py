@@ -148,6 +148,7 @@ async def _round_trip() -> None:
             "seconds": 6,
             "attempts": 1,
             "error": None,
+            "qa_problem": "",
         }
         await briefer._repository.save_clip(clip)
         await briefer._repository.save_clip({**clip, "status": "ready", "video_path": "c.mp4"})

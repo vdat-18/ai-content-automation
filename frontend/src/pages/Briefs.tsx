@@ -45,7 +45,7 @@ type Brief = {
 };
 type BriefRecord = { product_id: string; user_idea: string; brief: Brief; status: "draft" | "approved" };
 type Keyframe = { shot_index: number; status: "ready" | "approved" | "rejected" | "failed"; attempts: number; error: string | null; qa_problem: string };
-type Clip = { shot_index: number; status: "processing" | "ready" | "failed"; seconds: number; attempts: number; error: string | null };
+type Clip = { shot_index: number; status: "processing" | "ready" | "failed"; seconds: number; attempts: number; error: string | null; qa_problem: string };
 type Product = { product_id: string; title: string | null; images: string[] };
 type ReferenceImage = { image_id: string; image_url: string };
 type Step = "brief" | "person" | "images" | "clips" | "voice" | "post";
@@ -64,7 +64,14 @@ async function waitForClips(productId: string, shotCount: number): Promise<void>
       const shots = failed.map((clip) => clip.shot_index + 1).join(", ");
       throw new Error(`The clip of shot ${shots} failed: ${failed[0].error ?? "video job failed"}. Retry it in the Clips step`);
     }
-    if (clips.filter((clip) => clip.status === "ready").length >= shotCount) return;
+    if (clips.filter((clip) => clip.status === "ready").length >= shotCount) {
+      const flagged = clips.filter((clip) => clip.qa_problem);
+      if (flagged.length > 0) {
+        const shots = flagged.map((clip) => clip.shot_index + 1).join(", ");
+        throw new Error(`The clip of shot ${shots} looks wrong (${flagged[0].qa_problem}). Make it again in the Clips step, or continue from the Voice and video step`);
+      }
+      return;
+    }
     if (Date.now() > deadline) throw new Error("The clips are still being made; check the Clips step later");
     await new Promise<void>((resolve) => window.setTimeout(resolve, CLIP_POLL_MS));
   }
@@ -916,6 +923,7 @@ function Pipeline({
                     {step === "images" && keyframe?.qa_problem && <small role="alert">{`${t("Check flagged")}: ${keyframe.qa_problem}`}</small>}
                     {step === "clips" && clip?.status === "processing" && <small>{t("Making the clip…")}</small>}
                     {step === "clips" && clip?.status === "failed" && <small role="alert">{clip.error}</small>}
+                    {step === "clips" && clip?.status === "ready" && clip.qa_problem && <small role="alert">{`${t("Check flagged")}: ${clip.qa_problem}`}</small>}
                     {step === "images" && (
                       <div className="keyframe-actions">
                         {keyframe && keyframe.status !== "failed" && (

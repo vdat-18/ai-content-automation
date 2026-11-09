@@ -16,6 +16,9 @@ from . import stream_types
 
 type_map = {
 
+    "types.ClipCheck": types.ClipCheck,
+    "stream_types.ClipCheck": stream_types.ClipCheck,
+
     "types.ContentBrief": types.ContentBrief,
     "stream_types.ContentBrief": stream_types.ContentBrief,
 

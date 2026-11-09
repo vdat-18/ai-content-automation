@@ -366,6 +366,7 @@ def test_clip_endpoints(
         "seconds": 6,
         "attempts": 1,
         "error": None,
+        "qa_problem": "",
     }
     asyncio.run(repository.save_clip(clip))
     assert client.get(f"{base}/clips/0/video").content == b"clip-bytes"

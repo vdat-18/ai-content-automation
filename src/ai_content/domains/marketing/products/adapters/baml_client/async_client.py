@@ -82,6 +82,21 @@ class BamlAsyncClient:
     def parse_stream(self):
       return self.__llm_stream_parser
 
+    async def CheckClip(self, shot_description: str,product_photos: typing.List[baml_py.Image],keyframe: baml_py.Image,character: typing.Optional[baml_py.Image],clip_frames: typing.List[baml_py.Image],
+        baml_options: BamlCallOptions = {},
+    ) -> types.ClipCheck:
+        # Check if on_tick is provided
+        if 'on_tick' in baml_options:
+            # Use streaming internally when on_tick is provided
+            __stream__ = self.stream.CheckClip(shot_description=shot_description,product_photos=product_photos,keyframe=keyframe,character=character,clip_frames=clip_frames,
+                baml_options=baml_options)
+            return await __stream__.get_final_response()
+        else:
+            # Original non-streaming code
+            __result__ = await self.__options.merge_options(baml_options).call_function_async(function_name="CheckClip", args={
+                "shot_description": shot_description,"product_photos": product_photos,"keyframe": keyframe,"character": character,"clip_frames": clip_frames,
+            })
+            return typing.cast(types.ClipCheck, __result__.cast_to(types, types, stream_types, False, __runtime__))
     async def CheckKeyframe(self, shot_description: str,product_photos: typing.List[baml_py.Image],master_keyframe: typing.Optional[baml_py.Image],keyframe: baml_py.Image,character: typing.Optional[baml_py.Image] = None,previous_keyframe: typing.Optional[baml_py.Image] = None,
         baml_options: BamlCallOptions = {},
     ) -> types.KeyframeCheck:
@@ -196,6 +211,18 @@ class BamlStreamClient:
     def __init__(self, options: DoNotUseDirectlyCallManager):
         self.__options = options
 
+    def CheckClip(self, shot_description: str,product_photos: typing.List[baml_py.Image],keyframe: baml_py.Image,character: typing.Optional[baml_py.Image],clip_frames: typing.List[baml_py.Image],
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.BamlStream[stream_types.ClipCheck, types.ClipCheck]:
+        __ctx__, __result__ = self.__options.merge_options(baml_options).create_async_stream(function_name="CheckClip", args={
+            "shot_description": shot_description,"product_photos": product_photos,"keyframe": keyframe,"character": character,"clip_frames": clip_frames,
+        })
+        return baml_py.BamlStream[stream_types.ClipCheck, types.ClipCheck](
+          __result__,
+          lambda x: typing.cast(stream_types.ClipCheck, x.cast_to(types, types, stream_types, True, __runtime__)),
+          lambda x: typing.cast(types.ClipCheck, x.cast_to(types, types, stream_types, False, __runtime__)),
+          __ctx__,
+        )
     def CheckKeyframe(self, shot_description: str,product_photos: typing.List[baml_py.Image],master_keyframe: typing.Optional[baml_py.Image],keyframe: baml_py.Image,character: typing.Optional[baml_py.Image] = None,previous_keyframe: typing.Optional[baml_py.Image] = None,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.BamlStream[stream_types.KeyframeCheck, types.KeyframeCheck]:
@@ -288,6 +315,13 @@ class BamlHttpRequestClient:
     def __init__(self, options: DoNotUseDirectlyCallManager):
         self.__options = options
 
+    async def CheckClip(self, shot_description: str,product_photos: typing.List[baml_py.Image],keyframe: baml_py.Image,character: typing.Optional[baml_py.Image],clip_frames: typing.List[baml_py.Image],
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.baml_py.HTTPRequest:
+        __result__ = await self.__options.merge_options(baml_options).create_http_request_async(function_name="CheckClip", args={
+            "shot_description": shot_description,"product_photos": product_photos,"keyframe": keyframe,"character": character,"clip_frames": clip_frames,
+        }, mode="request")
+        return __result__
     async def CheckKeyframe(self, shot_description: str,product_photos: typing.List[baml_py.Image],master_keyframe: typing.Optional[baml_py.Image],keyframe: baml_py.Image,character: typing.Optional[baml_py.Image] = None,previous_keyframe: typing.Optional[baml_py.Image] = None,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.baml_py.HTTPRequest:
@@ -345,6 +379,13 @@ class BamlHttpStreamRequestClient:
     def __init__(self, options: DoNotUseDirectlyCallManager):
         self.__options = options
 
+    async def CheckClip(self, shot_description: str,product_photos: typing.List[baml_py.Image],keyframe: baml_py.Image,character: typing.Optional[baml_py.Image],clip_frames: typing.List[baml_py.Image],
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.baml_py.HTTPRequest:
+        __result__ = await self.__options.merge_options(baml_options).create_http_request_async(function_name="CheckClip", args={
+            "shot_description": shot_description,"product_photos": product_photos,"keyframe": keyframe,"character": character,"clip_frames": clip_frames,
+        }, mode="stream")
+        return __result__
     async def CheckKeyframe(self, shot_description: str,product_photos: typing.List[baml_py.Image],master_keyframe: typing.Optional[baml_py.Image],keyframe: baml_py.Image,character: typing.Optional[baml_py.Image] = None,previous_keyframe: typing.Optional[baml_py.Image] = None,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.baml_py.HTTPRequest:
@@ -396,4 +437,4 @@ class BamlHttpStreamRequestClient:
         return __result__
     
 
-b = BamlAsyncClient(DoNotUseDirectlyCallManager({}))
+b = BamlAsyncClient(DoNotUseDirectlyCallManager({}))

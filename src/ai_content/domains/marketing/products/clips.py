@@ -191,6 +191,25 @@ async def cover_frame(video: Path, output: Path) -> None:
     )  # fmt: skip
 
 
+async def clip_frames(video: Path, seconds: float) -> list[bytes]:
+    """Three stills spread over the clip, in time order, for the automatic quality check."""
+    if shutil.which("ffmpeg") is None:
+        return []
+    frames: list[bytes] = []
+    for number, moment in enumerate((1.0, seconds / 2, max(seconds - 1.0, 1.0))):
+        still = video.parent / f"{video.stem}_check_{number}.jpg"
+        try:
+            await _run(
+                "ffmpeg", "-v", "error", "-y", "-ss", f"{moment:.2f}", "-i", video.name,
+                "-frames:v", "1", "-q:v", "3", still.name, cwd=video.parent,
+            )  # fmt: skip
+            if still.is_file():
+                frames.append(still.read_bytes())
+        finally:
+            still.unlink(missing_ok=True)
+    return frames
+
+
 async def stitch(
     clips: list[StitchClip],
     output: Path,

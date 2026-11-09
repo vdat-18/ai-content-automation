@@ -17,6 +17,7 @@ from ai_content.domains.marketing.creative_knowledge.repositories import (
 )
 from ai_content.domains.marketing.creative_knowledge.service import CreativeKnowledgeService
 from ai_content.domains.marketing.products.briefing import ContentBriefWriter
+from ai_content.domains.marketing.products.clip_check import ClipChecker
 from ai_content.domains.marketing.products.clips import VideoClient
 from ai_content.domains.marketing.products.embedding import ImageEmbedder
 from ai_content.domains.marketing.products.image_review import ReferenceImageReviewer
@@ -329,6 +330,16 @@ def _posting_writer(settings: ApiRuntimeSettings) -> PostingPackageWriter | None
     )
 
 
+def _clip_checker(settings: ApiRuntimeSettings) -> ClipChecker | None:
+    if not settings.screening_api_key:
+        return None
+    return ClipChecker.from_settings(
+        base_url=settings.screening_base_url,
+        api_key=settings.screening_api_key,
+        model=settings.screening_model,
+    )
+
+
 def _keyframe_checker(settings: ApiRuntimeSettings) -> KeyframeChecker | None:
     if not settings.screening_api_key:
         return None
@@ -414,6 +425,7 @@ async def product_catalog_scope(postgres: Any) -> AsyncIterator[ProductCatalogSe
             _storyboard_reviewer(settings),
             _text_embedder(settings),
             _reference_picker(settings),
+            clip_checker=_clip_checker(settings),
         )
     finally:
         if postgres is None:

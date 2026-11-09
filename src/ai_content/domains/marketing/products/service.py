@@ -21,12 +21,14 @@ from .briefing import (
     ContentBriefWriter,
     reference_note,
 )
+from .clip_check import ClipChecker
 from .clips import (
     CLIP_SECONDS,
     ClipGenerationError,
     StitchClip,
     StitchUnavailable,
     VideoClient,
+    clip_frames,
     cover_frame,
     shot_seconds,
     stitch,
@@ -78,6 +80,7 @@ DUPLICATE_COSINE = _duplicate_similarity()
 DUPLICATE_HAMMING = 4
 MAX_KEYFRAME_FIXES = 2
 KEYFRAME_CONCURRENCY = 3
+CLIP_CHECK_PHOTOS = 4
 # The voice-over is added later, so the picture only has to look right: a talking shot shows
 # natural subtle speaking without exaggerated mouth movements, a narrated shot keeps lips closed.
 _DELIVERY_RULE = {
@@ -179,6 +182,7 @@ class ProductCatalogService:
         storyboard_reviewer: StoryboardReviewer | None = None,
         text_embedder: TextEmbedder | None = None,
         reference_picker: ShotReferencePicker | None = None,
+        clip_checker: ClipChecker | None = None,
     ) -> None:
         self._repository = repository
         self._generator = generator
@@ -194,6 +198,8 @@ class ProductCatalogService:
         self._storyboard_reviewer = storyboard_reviewer
         self._text_embedder = text_embedder
         self._reference_picker = reference_picker
+        self._clip_checker = clip_checker
+        self._collecting: set[tuple[str, int]] = set()
 
     async def ingest(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Store whatever a captured page or feed response contains."""
@@ -917,15 +923,36 @@ class ProductCatalogService:
 
     async def _collect_clip(self, clip: dict[str, Any], media_root: Path) -> None:
         assert self._videographer is not None
+        key = (clip["product_id"], clip["shot_index"])
+        if key in self._collecting:
+            return  # another poll is already downloading and checking this clip
+        self._collecting.add(key)
+        try:
+            await self._collect_finished_clip(clip, media_root)
+        finally:
+            self._collecting.discard(key)
+
+    async def _collect_finished_clip(self, clip: dict[str, Any], media_root: Path) -> None:
+        assert self._videographer is not None
         try:
             state = await self._videographer.status(clip["job_id"], clip["job_model"])
             if state.status == "completed" and state.video_url:
                 content = await self._videographer.download(state.video_url)
                 relative = f"clips/{clip['product_id']}/shot_{clip['shot_index']}.mp4"
                 await self.media(media_root).write(relative, content)
-                update = {"status": "ready", "video_path": relative, "error": None}
+                problem = await self._check_clip(clip, relative, media_root)
+                update = {
+                    "status": "ready",
+                    "video_path": relative,
+                    "error": None,
+                    "qa_problem": problem or "",
+                }
                 await self._log(
-                    clip["product_id"], "clip", "ok", "Clip downloaded", clip["shot_index"]
+                    clip["product_id"],
+                    "clip",
+                    "flagged" if problem else "ok",
+                    "Clip downloaded" + (f", flagged: {problem}" if problem else ""),
+                    clip["shot_index"],
                 )
             elif state.status == "failed":
                 update = {"status": "failed", "error": state.error or "The video job failed"}
@@ -937,6 +964,40 @@ class ProductCatalogService:
         except ClipGenerationError:
             return
         await self._repository.save_clip({**clip, **update})
+
+    async def _check_clip(
+        self, clip: dict[str, Any], relative: str, media_root: Path
+    ) -> str | None:
+        """Ask Gemini whether the clip still shows the real product; None when not checked."""
+        if self._clip_checker is None:
+            return None
+        product_id = clip["product_id"]
+        record = await self._repository.get_brief(product_id)
+        keyframes = {k["shot_index"]: k for k in await self._repository.list_keyframes(product_id)}
+        keyframe = keyframes.get(clip["shot_index"], {})
+        if record is None or not keyframe.get("image_path"):
+            return None
+        store = self.media(media_root)
+        try:
+            frames = await clip_frames(store.path(relative), clip["seconds"])
+        except StitchUnavailable as error:
+            logger.warning("Clip frames could not be read: {}", error)
+            return None
+        if not frames:
+            return None
+        brief = record["brief"]
+        shot = brief["shots"][clip["shot_index"]]
+        detail = await self._repository.get_detail(product_id)
+        photos = await fetch_images(_product_photo_urls(brief, detail or {})[:CLIP_CHECK_PHOTOS])
+        persona_path = (brief.get("persona") or {}).get("image_path")
+        description = str(shot.get("description") or shot.get("motion_prompt") or "")
+        return await self._clip_checker.check(
+            description,
+            photos,
+            await store.read(keyframe["image_path"]),
+            frames,
+            await store.read(persona_path) if persona_path else None,
+        )
 
     async def generate_clips(
         self, product_id: str, media_root: Path, shot_index: int | None = None
@@ -991,6 +1052,7 @@ class ProductCatalogService:
             "video_path": (previous or {}).get("video_path"),
             "seconds": seconds,
             "attempts": (previous or {}).get("attempts", 0) + 1,
+            "qa_problem": "",
         }
         delivery = str(shot.get("delivery") or "narrated")
         if delivery == "talking":

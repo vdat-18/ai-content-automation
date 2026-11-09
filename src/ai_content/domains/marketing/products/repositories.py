@@ -173,6 +173,7 @@ _CLIP_COLUMNS = (
     "seconds",
     "attempts",
     "error",
+    "qa_problem",
 )
 
 
@@ -250,8 +251,12 @@ class SqliteProductRepository:
             "product_id TEXT NOT NULL, shot_index INTEGER NOT NULL, status TEXT NOT NULL, "
             "job_id TEXT, job_model TEXT, video_path TEXT, seconds INTEGER NOT NULL DEFAULT 0, "
             "attempts INTEGER NOT NULL DEFAULT 0, error TEXT, "
-            "PRIMARY KEY (product_id, shot_index))"
+            "qa_problem TEXT NOT NULL DEFAULT '', PRIMARY KEY (product_id, shot_index))"
         )
+        with contextlib.suppress(sqlite3.OperationalError):
+            self._connection.execute(
+                "ALTER TABLE product_clips ADD COLUMN qa_problem TEXT NOT NULL DEFAULT ''"
+            )
         self._connection.execute(
             "CREATE TABLE IF NOT EXISTS product_events ("
             "id INTEGER PRIMARY KEY AUTOINCREMENT, product_id TEXT NOT NULL, step TEXT NOT NULL, "

@@ -20,7 +20,7 @@ from .globals import DO_NOT_USE_DIRECTLY_UNLESS_YOU_KNOW_WHAT_YOURE_DOING_RUNTIM
 class TypeBuilder(type_builder.TypeBuilder):
     def __init__(self):
         super().__init__(classes=set(
-          ["ContentBrief","KeyframeCheck","LabeledReference","PostingPackage","ReferenceCandidate","ReferenceImageReview","ReferenceSearchProfileDraft","ShotReferenceChoice","StoryboardProblem","StoryboardReview","StoryboardShot",]
+          ["ClipCheck","ContentBrief","KeyframeCheck","LabeledReference","PostingPackage","ReferenceCandidate","ReferenceImageReview","ReferenceSearchProfileDraft","ShotReferenceChoice","StoryboardProblem","StoryboardReview","StoryboardShot",]
         ), enums=set(
           []
         ), runtime=DO_NOT_USE_DIRECTLY_UNLESS_YOU_KNOW_WHAT_YOURE_DOING_RUNTIME)
@@ -31,8 +31,12 @@ class TypeBuilder(type_builder.TypeBuilder):
 
 
     # #########################################################################
-    # Generated classes 11
+    # Generated classes 12
     # #########################################################################
+
+    @property
+    def ClipCheck(self) -> "ClipCheckViewer":
+        return ClipCheckViewer(self)
 
     @property
     def ContentBrief(self) -> "ContentBriefViewer":
@@ -86,8 +90,51 @@ class TypeBuilder(type_builder.TypeBuilder):
 
 
 # #########################################################################
-# Generated classes 11
+# Generated classes 12
 # #########################################################################
+
+class ClipCheckAst:
+    def __init__(self, tb: type_builder.TypeBuilder):
+        _tb = tb._tb # type: ignore (we know how to use this private attribute)
+        self._bldr = _tb.class_("ClipCheck")
+        self._properties: typing.Set[str] = set([  "passed",  "problem",  ])
+        self._props = ClipCheckProperties(self._bldr, self._properties)
+
+    def type(self) -> baml_py.FieldType:
+        return self._bldr.field()
+
+    @property
+    def props(self) -> "ClipCheckProperties":
+        return self._props
+
+
+class ClipCheckViewer(ClipCheckAst):
+    def __init__(self, tb: type_builder.TypeBuilder):
+        super().__init__(tb)
+
+    
+    def list_properties(self) -> typing.List[typing.Tuple[str, type_builder.ClassPropertyViewer]]:
+        return [(name, type_builder.ClassPropertyViewer(self._bldr.property(name))) for name in self._properties]
+    
+
+
+class ClipCheckProperties:
+    def __init__(self, bldr: baml_py.ClassBuilder, properties: typing.Set[str]):
+        self.__bldr = bldr
+        self.__properties = properties # type: ignore (we know how to use this private attribute) # noqa: F821
+
+    
+    
+    @property
+    def passed(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("passed"))
+    
+    @property
+    def problem(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("problem"))
+    
+    
+
 
 class ContentBriefAst:
     def __init__(self, tb: type_builder.TypeBuilder):
@@ -681,4 +728,3 @@ class StoryboardShotProperties:
     
     
 
-
