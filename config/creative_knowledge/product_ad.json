@@ -1,6 +1,6 @@
 {
   "schema_version": "creative-knowledge-bootstrap@2",
-  "bootstrap_id": "product-ad-v2",
+  "bootstrap_id": "product-ad-v3",
   "items": [
     {
       "knowledge_id": "product-ad-body-proportions",
@@ -168,7 +168,7 @@
       "knowledge_id": "product-ad-hook-first-seconds",
       "knowledge_type": "hard_rule",
       "title": "Hook in the first three seconds",
-      "content": "WHEN: Writing the first shot and the last shot. DO: Open on a close-up of the product or a problem shoppers know, with movement already in the very first frame, and put a short on-screen question or claim in the first shot's on_screen_text; give the shots the roles hook, problem, demo, benefit, call_to_action in order; end on a frame close to the opening one so the video loops. DO NOT: Open on a still or empty frame.",
+      "content": "WHEN: Writing the first shot and the last shot. DO: Open on a close-up of the product or a problem shoppers know, with movement already in the very first frame, and put a short on-screen question or claim in the first shot's on_screen_text; give the shots these roles in order: hook, problem, demo, benefit, call_to_action (with fewer than five shots merge neighbouring roles, with more shots repeat demo or benefit; the first shot is always the hook and the last always the call_to_action); end on a frame close to the opening one so the video loops. DO NOT: Open on a still or empty frame, or add shots just to fill every role.",
       "applies_to": [
         "preparation",
         "review"
