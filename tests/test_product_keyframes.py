@@ -533,3 +533,10 @@ async def test_the_story_reaches_the_image_prompt_and_the_checker(tmp_path) -> N
     await service.generate_keyframes(PRODUCT_ID, tmp_path)
     assert "The whole video, for context:" in prompts[0] and "phòng trọ nhỏ" in prompts[0]
     assert "phòng trọ nhỏ" in seen[0]
+
+
+async def test_a_note_is_the_first_thing_the_image_model_is_asked_to_fix(tmp_path) -> None:
+    keyframer = _FakeKeyframer()
+    service = await _service(tmp_path, keyframer)
+    await service.generate_keyframes(PRODUCT_ID, tmp_path, 0, "faint marks on the cheek")
+    assert keyframer.calls == [("master", 2, "faint marks on the cheek")]

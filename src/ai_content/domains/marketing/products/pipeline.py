@@ -40,11 +40,13 @@ async def run_pipeline(
     voice: str | None,
     report: Callable[[str], None],
     poll_seconds: float = CLIP_POLL_SECONDS,
+    until: str = "video",
 ) -> None:
     """Brief, person, keyframes, clips, voice-over, video and post text, resuming what exists.
 
     Anything already approved or made is kept. The run stops with PipelineStopped when a
     result needs a human look (a failed or flagged image or clip) instead of paying for more.
+    With until="images" it ends once every image exists, leaving the follow-up shots for review.
     """
     record = await service.get_brief(product_id)
     if record is None:
@@ -77,7 +79,7 @@ async def run_pipeline(
                 f"Master keyframe failed: {master.get('error') or 'no image'}. "
                 "Retry it in the Images step"
             )
-        if master.get("qa_problem"):
+        if master.get("qa_problem") and until != "images":
             raise PipelineStopped(
                 f"Master keyframe needs a look ({master['qa_problem']}). "
                 "Review it in the Images step, then run again"
@@ -88,6 +90,8 @@ async def run_pipeline(
     rest = {
         k["shot_index"]: k for k in await service.generate_keyframes(product_id, media_root) or []
     }
+    if until == "images":
+        return
     to_review: list[int] = []
     for index in range(1, shot_count):
         keyframe = rest.get(index, {})

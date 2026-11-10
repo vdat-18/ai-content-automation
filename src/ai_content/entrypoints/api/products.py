@@ -340,6 +340,7 @@ class PipelineRequest(BaseModel):
     idea: str = ""
     video_seconds: Literal[15, 30, 45, 60, 75, 90] = 60
     voice: str | None = None
+    until: Literal["images", "video"] = "video"
 
 
 async def _run_pipeline(
@@ -360,6 +361,7 @@ async def _run_pipeline(
                 video_seconds=body.video_seconds,
                 voice=body.voice,
                 report=report,
+                until=body.until,
             )
     except (PipelineStopped, *EXPECTED_STOPS) as error:
         run.update(status="paused", message=str(error)[:500])
@@ -449,6 +451,7 @@ def _json(value: object) -> str:
 
 class KeyframeRequest(BaseModel):
     shot_index: int | None = None
+    note: str = ""  # what to change when one shot is made again
 
 
 class KeyframeReview(BaseModel):
@@ -475,7 +478,9 @@ async def generate_keyframes(
 ) -> list[dict[str, Any]]:
     """Run the next keyframe step; the master must be approved before the other shots."""
     try:
-        keyframes = await service.generate_keyframes(product_id, _media_root(), body.shot_index)
+        keyframes = await service.generate_keyframes(
+            product_id, _media_root(), body.shot_index, body.note.strip()
+        )
     except KeyframeUnavailable as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
     if keyframes is None:

@@ -166,3 +166,27 @@ async def test_failed_or_flagged_clips_stop_the_run_before_the_voice() -> None:
     with pytest.raises(PipelineStopped, match="shot 1 looks wrong"):
         await _run(flagged)
     assert not any(call.startswith("voiceover") for call in flagged.calls)
+
+
+async def test_a_run_until_images_stops_with_the_follow_up_shots_left_for_review() -> None:
+    service = _FakeService()
+    service.made_keyframes = [_keyframe(0, "ready", "faint skin marks"), _keyframe(1, "ready")]
+    steps: list[str] = []
+    await run_pipeline(
+        service,  # type: ignore[arg-type]
+        PRODUCT_ID,
+        Path("."),
+        idea="",
+        video_seconds=30,
+        voice=None,
+        report=steps.append,
+        poll_seconds=0,
+        until="images",
+    )
+    assert service.calls == [
+        "create_brief:30:1",
+        "update_brief:approved",
+        "generate_keyframes:0",
+        "keyframe:0:approved",
+        "generate_keyframes:None",
+    ]

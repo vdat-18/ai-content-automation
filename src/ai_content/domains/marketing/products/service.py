@@ -746,7 +746,7 @@ class ProductCatalogService:
         await self.media(media_root).remove_tree(f"persona/{product_id}")
 
     async def generate_keyframes(
-        self, product_id: str, media_root: Path, shot_index: int | None = None
+        self, product_id: str, media_root: Path, shot_index: int | None = None, note: str = ""
     ) -> list[dict[str, Any]] | None:
         """Make the master keyframe first; after a human approves it, make the other shots.
 
@@ -823,6 +823,7 @@ class ProductCatalogService:
                         master,
                         persona_images,
                         done.get(index - 1),
+                        note,
                     )
                 finally:
                     done[index].set()
@@ -862,6 +863,7 @@ class ProductCatalogService:
         master: bytes | None,
         persona: list[bytes] | None = None,
         previous_done: asyncio.Event | None = None,
+        note: str = "",
     ) -> None:
         assert self._keyframer is not None
         attempts = (previous or {}).get("attempts", 0)
@@ -874,7 +876,7 @@ class ProductCatalogService:
             "image_path": (previous or {}).get("image_path"),
         }
         image: bytes | None = None
-        problem = ""
+        problem = note  # the user's note is the first thing to fix
         lesson_sent = False  # one proposal per keyframe keeps the review queue short
         for _ in range(1 + MAX_KEYFRAME_FIXES):
             try:
