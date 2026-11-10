@@ -12,7 +12,7 @@ SHOT = {"keyframe_prompt": "k", "motion_prompt": "m", "voiceover": "v"}
 
 def _reviewer(reply=None, error: Exception | None = None) -> StoryboardReviewer:
     class Client:
-        async def ReviewStoryboard(self, product_json, brief_json):  # noqa: N802
+        async def ReviewStoryboard(self, product_json, brief_json, rules):  # noqa: N802
             if error:
                 raise error
             return SimpleNamespace(**reply)
@@ -49,7 +49,7 @@ class _Writer:
     def __init__(self) -> None:
         self.ideas: list[str] = []
 
-    async def write(self, product, user_idea, shot_count=1, person_photos=None):
+    async def write(self, product, user_idea, shot_count=1, person_photos=None, rules=""):
         self.ideas.append(user_idea)
         return {"title": "T", "shots": [SHOT] * shot_count}
 
@@ -62,7 +62,7 @@ class _Judge:
         self.unchecked = unchecked
         self.calls = 0
 
-    async def review(self, product, brief):
+    async def review(self, product, brief, rules=""):
         self.calls += 1
         if self.unchecked:
             return None

@@ -18,7 +18,7 @@ _BRIEF_KEYS = ("title", "shots")
 
 class _BamlReviewClient(Protocol):
     async def ReviewStoryboard(
-        self, product_json: str, brief_json: str
+        self, product_json: str, brief_json: str, rules: str
     ) -> baml_types.StoryboardReview: ...
 
 
@@ -41,13 +41,16 @@ class StoryboardReviewer:
         )
         return cls(b.with_options(client_registry=registry))
 
-    async def review(self, product: dict[str, Any], brief: dict[str, Any]) -> list[str] | None:
+    async def review(
+        self, product: dict[str, Any], brief: dict[str, Any], rules: str = ""
+    ) -> list[str] | None:
         """Return the problems found ([] when it passes), or None when the review failed."""
         story = {key: brief.get(key) for key in _BRIEF_KEYS}
         try:
             result = await self._client.ReviewStoryboard(
                 json.dumps(product_facts(product), ensure_ascii=False),
                 json.dumps(story, ensure_ascii=False),
+                rules or "(none)",
             )
         except BamlError as error:
             logger.warning("Storyboard review failed: {}", str(error)[:300])

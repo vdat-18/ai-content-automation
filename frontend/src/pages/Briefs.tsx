@@ -448,6 +448,29 @@ function BriefCard({
 
 type PersonSummary = { photos: number; attempts: number };
 
+function FeedbackButton({ productId, assetType }: { productId: string; assetType: "brief" | "keyframe" }) {
+  const { t } = useI18n();
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState("");
+  const send = useMutation({
+    mutationFn: () => postJson(`${API}/${productId}/feedback`, { text: text.trim(), asset_type: assetType }),
+    onSuccess: () => {
+      setText("");
+      setOpen(false);
+    },
+  });
+  if (!open) {
+    return <button className="secondary-button" onClick={() => setOpen(true)}>{t("Report a problem")}</button>;
+  }
+  return (
+    <span className="feedback-box">
+      <input value={text} onChange={(event) => setText(event.target.value)} placeholder={t("What is wrong? It becomes a rule after you approve it in Second Brain.")} />
+      <button className="secondary-button" disabled={!text.trim() || send.isPending} onClick={() => send.mutate()}>{t("Send")}</button>
+      {send.error && <small role="alert">{send.error.message}</small>}
+    </span>
+  );
+}
+
 function PersonPhotos({
   productId,
   briefHasPerson,
@@ -692,6 +715,7 @@ function BriefForm({
         <div className="brief-bar">
           <span>{record.status === "approved" ? t("Approved. Pick the next step above.") : t("Approve the brief to make the person and the images.")}</span>
           <div className="brief-actions">
+            <FeedbackButton productId={record.product_id} assetType="brief" />
             <button className="secondary-button" type="submit" value="draft" disabled={saving}>{t("Save draft")}</button>
             <button className="primary-button" type="submit" value="approved" disabled={saving}>{t("Approve brief")}</button>
           </div>
@@ -863,6 +887,7 @@ function Pipeline({
                             </button>
                           </>
                         )}
+                        <FeedbackButton productId={productId} assetType="keyframe" />
                         {(keyframe || index === 0) && (index === 0 || masterApproved) && (
                           <button className="secondary-button" disabled={generate.isPending} onClick={() => generate.mutate(index)}>
                             <RotateCcw size={14} /> {t("Regenerate")}

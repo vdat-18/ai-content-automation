@@ -21,8 +21,9 @@ from ai_content.domains.marketing.creative_knowledge.models import (
     KnowledgeType,
 )
 from ai_content.domains.marketing.creative_knowledge.service import CreativeKnowledgeService
+from ai_content.domains.marketing.products.knowledge import FEEDBACK_SOURCE
 
-from .dependencies import get_creative_knowledge_service, get_runtime_settings
+from .dependencies import get_creative_knowledge_service, get_runtime_settings, knowledge_curator
 
 router = APIRouter(prefix="/api/v1/marketing/creative-knowledge", tags=["creative-knowledge"])
 
@@ -203,7 +204,26 @@ async def decide_knowledge(
     except ValueError as exc:
         code = status.HTTP_404_NOT_FOUND if "not found" in str(exc) else status.HTTP_409_CONFLICT
         raise HTTPException(status_code=code, detail=str(exc)) from exc
+    curator = knowledge_curator(get_runtime_settings())
+    if (
+        curator is not None
+        and item.status == KnowledgeStatus.APPROVED
+        and any(ref.startswith(FEEDBACK_SOURCE) for ref in item.source_refs)
+    ):
+        item = await service.curate(item.knowledge_id, curator)
     return _response(item)
+
+
+@router.post("/{knowledge_id}/retire", response_model=KnowledgeResponse)
+async def retire_knowledge(
+    knowledge_id: str,
+    service: CreativeKnowledgeService = Depends(get_creative_knowledge_service),
+) -> KnowledgeResponse:
+    try:
+        return _response(await service.retire(knowledge_id))
+    except ValueError as exc:
+        code = status.HTTP_404_NOT_FOUND if "not found" in str(exc) else status.HTTP_409_CONFLICT
+        raise HTTPException(status_code=code, detail=str(exc)) from exc
 
 
 @router.post("/{knowledge_id}/conflict", response_model=KnowledgeResponse)

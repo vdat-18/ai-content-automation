@@ -30,16 +30,7 @@ _PERSONA_RULE = (
     "the person in the ad. Copy their face, hair length and colour, skin tone and body exactly "
     "from these images in every shot and ignore any other description of their looks in the text "
     "below; they must be recognisable as the same real person. Wear the clothes the shot asks "
-    "for (the product, when it is clothing), otherwise the clothes seen in the images. Natural "
-    "hands, no extra fingers. The body is well proportioned and natural: a realistic head to body "
-    "ratio, normal arm and leg length and a believable height next to the furniture and the "
-    "room, never stretched, elongated or distorted. The face has clear, even skin with no acne, "
-    "pimples, spots or scars, yet still natural with pores, never waxy or plastic."
-)
-_REAL_PHOTO = (
-    "Make it look like an ordinary photo taken with a phone: natural light, a little grain, "
-    "natural skin with pores, everyday details of a lived-in home. Not glossy, retouched, studio "
-    "or 3D-render looking."
+    "for (the product, when it is clothing), otherwise the clothes seen in the images."
 )
 
 
@@ -92,6 +83,11 @@ def story_note(brief: dict[str, Any], index: int) -> str:
 def _story_part(shot: dict[str, Any]) -> str:
     story = str(shot.get("story") or "")
     return f"The whole video, for context:\n{story}" if story else ""
+
+
+def _rules_part(shot: dict[str, Any]) -> str:
+    rules = str(shot.get("rules") or "")
+    return f"Rules to follow in the picture:\n{rules}" if rules else ""
 
 
 def _fix_note(problem: str) -> str:
@@ -220,7 +216,7 @@ class KeyframeGenerator:
                 "styling, never its objects, brand, text or people."
             )
         parts += [_PRODUCT_RULE, "" if persona else _NO_PEOPLE]
-        parts += [_variant_note(shot), _size_note(shot), _REAL_PHOTO]
+        parts += [_variant_note(shot), _size_note(shot), _rules_part(shot)]
         parts += [_story_part(shot), "Shot to create:", str(shot["keyframe_prompt"])]
         if fix:
             parts.append(_fix_note(fix))
@@ -256,7 +252,7 @@ class KeyframeGenerator:
         parts += [
             _variant_note(shot),
             _size_note(shot),
-            _REAL_PHOTO,
+            _rules_part(shot),
             _story_part(shot),
             "Change the camera angle, framing, action and, when the shot says so, the spot in "
             "the same home. Shot to create:",

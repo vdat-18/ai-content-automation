@@ -127,19 +127,34 @@ class BamlAsyncClient:
                 "product_json": product_json,"shot_json": shot_json,"candidates": candidates,
             })
             return typing.cast(types.ShotReferenceChoice, __result__.cast_to(types, types, stream_types, False, __runtime__))
-    async def DraftContentBrief(self, product_json: str,user_idea: str,shot_count: int,product_images: typing.List[baml_py.Image],with_person: bool,person_images: typing.List[baml_py.Image],
+    async def CurateKnowledge(self, new_rule: str,existing_rules: str,
+        baml_options: BamlCallOptions = {},
+    ) -> types.CuratedRule:
+        # Check if on_tick is provided
+        if 'on_tick' in baml_options:
+            # Use streaming internally when on_tick is provided
+            __stream__ = self.stream.CurateKnowledge(new_rule=new_rule,existing_rules=existing_rules,
+                baml_options=baml_options)
+            return await __stream__.get_final_response()
+        else:
+            # Original non-streaming code
+            __result__ = await self.__options.merge_options(baml_options).call_function_async(function_name="CurateKnowledge", args={
+                "new_rule": new_rule,"existing_rules": existing_rules,
+            })
+            return typing.cast(types.CuratedRule, __result__.cast_to(types, types, stream_types, False, __runtime__))
+    async def DraftContentBrief(self, product_json: str,user_idea: str,shot_count: int,product_images: typing.List[baml_py.Image],with_person: bool,person_images: typing.List[baml_py.Image],rules: str,
         baml_options: BamlCallOptions = {},
     ) -> types.ContentBrief:
         # Check if on_tick is provided
         if 'on_tick' in baml_options:
             # Use streaming internally when on_tick is provided
-            __stream__ = self.stream.DraftContentBrief(product_json=product_json,user_idea=user_idea,shot_count=shot_count,product_images=product_images,with_person=with_person,person_images=person_images,
+            __stream__ = self.stream.DraftContentBrief(product_json=product_json,user_idea=user_idea,shot_count=shot_count,product_images=product_images,with_person=with_person,person_images=person_images,rules=rules,
                 baml_options=baml_options)
             return await __stream__.get_final_response()
         else:
             # Original non-streaming code
             __result__ = await self.__options.merge_options(baml_options).call_function_async(function_name="DraftContentBrief", args={
-                "product_json": product_json,"user_idea": user_idea,"shot_count": shot_count,"product_images": product_images,"with_person": with_person,"person_images": person_images,
+                "product_json": product_json,"user_idea": user_idea,"shot_count": shot_count,"product_images": product_images,"with_person": with_person,"person_images": person_images,"rules": rules,
             })
             return typing.cast(types.ContentBrief, __result__.cast_to(types, types, stream_types, False, __runtime__))
     async def DraftReferenceSearchProfile(self, product_json: str,
@@ -172,19 +187,19 @@ class BamlAsyncClient:
                 "product_type": product_type,"image": image,
             })
             return typing.cast(types.ReferenceImageReview, __result__.cast_to(types, types, stream_types, False, __runtime__))
-    async def ReviewStoryboard(self, product_json: str,brief_json: str,
+    async def ReviewStoryboard(self, product_json: str,brief_json: str,rules: str,
         baml_options: BamlCallOptions = {},
     ) -> types.StoryboardReview:
         # Check if on_tick is provided
         if 'on_tick' in baml_options:
             # Use streaming internally when on_tick is provided
-            __stream__ = self.stream.ReviewStoryboard(product_json=product_json,brief_json=brief_json,
+            __stream__ = self.stream.ReviewStoryboard(product_json=product_json,brief_json=brief_json,rules=rules,
                 baml_options=baml_options)
             return await __stream__.get_final_response()
         else:
             # Original non-streaming code
             __result__ = await self.__options.merge_options(baml_options).call_function_async(function_name="ReviewStoryboard", args={
-                "product_json": product_json,"brief_json": brief_json,
+                "product_json": product_json,"brief_json": brief_json,"rules": rules,
             })
             return typing.cast(types.StoryboardReview, __result__.cast_to(types, types, stream_types, False, __runtime__))
     async def WritePostingPackage(self, product_json: str,brief_json: str,
@@ -247,11 +262,23 @@ class BamlStreamClient:
           lambda x: typing.cast(types.ShotReferenceChoice, x.cast_to(types, types, stream_types, False, __runtime__)),
           __ctx__,
         )
-    def DraftContentBrief(self, product_json: str,user_idea: str,shot_count: int,product_images: typing.List[baml_py.Image],with_person: bool,person_images: typing.List[baml_py.Image],
+    def CurateKnowledge(self, new_rule: str,existing_rules: str,
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.BamlStream[stream_types.CuratedRule, types.CuratedRule]:
+        __ctx__, __result__ = self.__options.merge_options(baml_options).create_async_stream(function_name="CurateKnowledge", args={
+            "new_rule": new_rule,"existing_rules": existing_rules,
+        })
+        return baml_py.BamlStream[stream_types.CuratedRule, types.CuratedRule](
+          __result__,
+          lambda x: typing.cast(stream_types.CuratedRule, x.cast_to(types, types, stream_types, True, __runtime__)),
+          lambda x: typing.cast(types.CuratedRule, x.cast_to(types, types, stream_types, False, __runtime__)),
+          __ctx__,
+        )
+    def DraftContentBrief(self, product_json: str,user_idea: str,shot_count: int,product_images: typing.List[baml_py.Image],with_person: bool,person_images: typing.List[baml_py.Image],rules: str,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.BamlStream[stream_types.ContentBrief, types.ContentBrief]:
         __ctx__, __result__ = self.__options.merge_options(baml_options).create_async_stream(function_name="DraftContentBrief", args={
-            "product_json": product_json,"user_idea": user_idea,"shot_count": shot_count,"product_images": product_images,"with_person": with_person,"person_images": person_images,
+            "product_json": product_json,"user_idea": user_idea,"shot_count": shot_count,"product_images": product_images,"with_person": with_person,"person_images": person_images,"rules": rules,
         })
         return baml_py.BamlStream[stream_types.ContentBrief, types.ContentBrief](
           __result__,
@@ -283,11 +310,11 @@ class BamlStreamClient:
           lambda x: typing.cast(types.ReferenceImageReview, x.cast_to(types, types, stream_types, False, __runtime__)),
           __ctx__,
         )
-    def ReviewStoryboard(self, product_json: str,brief_json: str,
+    def ReviewStoryboard(self, product_json: str,brief_json: str,rules: str,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.BamlStream[stream_types.StoryboardReview, types.StoryboardReview]:
         __ctx__, __result__ = self.__options.merge_options(baml_options).create_async_stream(function_name="ReviewStoryboard", args={
-            "product_json": product_json,"brief_json": brief_json,
+            "product_json": product_json,"brief_json": brief_json,"rules": rules,
         })
         return baml_py.BamlStream[stream_types.StoryboardReview, types.StoryboardReview](
           __result__,
@@ -336,11 +363,18 @@ class BamlHttpRequestClient:
             "product_json": product_json,"shot_json": shot_json,"candidates": candidates,
         }, mode="request")
         return __result__
-    async def DraftContentBrief(self, product_json: str,user_idea: str,shot_count: int,product_images: typing.List[baml_py.Image],with_person: bool,person_images: typing.List[baml_py.Image],
+    async def CurateKnowledge(self, new_rule: str,existing_rules: str,
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.baml_py.HTTPRequest:
+        __result__ = await self.__options.merge_options(baml_options).create_http_request_async(function_name="CurateKnowledge", args={
+            "new_rule": new_rule,"existing_rules": existing_rules,
+        }, mode="request")
+        return __result__
+    async def DraftContentBrief(self, product_json: str,user_idea: str,shot_count: int,product_images: typing.List[baml_py.Image],with_person: bool,person_images: typing.List[baml_py.Image],rules: str,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.baml_py.HTTPRequest:
         __result__ = await self.__options.merge_options(baml_options).create_http_request_async(function_name="DraftContentBrief", args={
-            "product_json": product_json,"user_idea": user_idea,"shot_count": shot_count,"product_images": product_images,"with_person": with_person,"person_images": person_images,
+            "product_json": product_json,"user_idea": user_idea,"shot_count": shot_count,"product_images": product_images,"with_person": with_person,"person_images": person_images,"rules": rules,
         }, mode="request")
         return __result__
     async def DraftReferenceSearchProfile(self, product_json: str,
@@ -357,11 +391,11 @@ class BamlHttpRequestClient:
             "product_type": product_type,"image": image,
         }, mode="request")
         return __result__
-    async def ReviewStoryboard(self, product_json: str,brief_json: str,
+    async def ReviewStoryboard(self, product_json: str,brief_json: str,rules: str,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.baml_py.HTTPRequest:
         __result__ = await self.__options.merge_options(baml_options).create_http_request_async(function_name="ReviewStoryboard", args={
-            "product_json": product_json,"brief_json": brief_json,
+            "product_json": product_json,"brief_json": brief_json,"rules": rules,
         }, mode="request")
         return __result__
     async def WritePostingPackage(self, product_json: str,brief_json: str,
@@ -400,11 +434,18 @@ class BamlHttpStreamRequestClient:
             "product_json": product_json,"shot_json": shot_json,"candidates": candidates,
         }, mode="stream")
         return __result__
-    async def DraftContentBrief(self, product_json: str,user_idea: str,shot_count: int,product_images: typing.List[baml_py.Image],with_person: bool,person_images: typing.List[baml_py.Image],
+    async def CurateKnowledge(self, new_rule: str,existing_rules: str,
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.baml_py.HTTPRequest:
+        __result__ = await self.__options.merge_options(baml_options).create_http_request_async(function_name="CurateKnowledge", args={
+            "new_rule": new_rule,"existing_rules": existing_rules,
+        }, mode="stream")
+        return __result__
+    async def DraftContentBrief(self, product_json: str,user_idea: str,shot_count: int,product_images: typing.List[baml_py.Image],with_person: bool,person_images: typing.List[baml_py.Image],rules: str,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.baml_py.HTTPRequest:
         __result__ = await self.__options.merge_options(baml_options).create_http_request_async(function_name="DraftContentBrief", args={
-            "product_json": product_json,"user_idea": user_idea,"shot_count": shot_count,"product_images": product_images,"with_person": with_person,"person_images": person_images,
+            "product_json": product_json,"user_idea": user_idea,"shot_count": shot_count,"product_images": product_images,"with_person": with_person,"person_images": person_images,"rules": rules,
         }, mode="stream")
         return __result__
     async def DraftReferenceSearchProfile(self, product_json: str,
@@ -421,11 +462,11 @@ class BamlHttpStreamRequestClient:
             "product_type": product_type,"image": image,
         }, mode="stream")
         return __result__
-    async def ReviewStoryboard(self, product_json: str,brief_json: str,
+    async def ReviewStoryboard(self, product_json: str,brief_json: str,rules: str,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.baml_py.HTTPRequest:
         __result__ = await self.__options.merge_options(baml_options).create_http_request_async(function_name="ReviewStoryboard", args={
-            "product_json": product_json,"brief_json": brief_json,
+            "product_json": product_json,"brief_json": brief_json,"rules": rules,
         }, mode="stream")
         return __result__
     async def WritePostingPackage(self, product_json: str,brief_json: str,

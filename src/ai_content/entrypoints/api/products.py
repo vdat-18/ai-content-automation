@@ -10,10 +10,13 @@ from typing import Any, Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import FileResponse
 from loguru import logger
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
+from ai_content.domains.marketing.creative_knowledge.models import KnowledgeAuthority
+from ai_content.domains.marketing.creative_knowledge.service import CreativeKnowledgeService
 from ai_content.domains.marketing.products.briefing import BriefGenerationError, BriefUnavailable
 from ai_content.domains.marketing.products.clips import StitchUnavailable
+from ai_content.domains.marketing.products.knowledge import propose_feedback
 from ai_content.domains.marketing.products.pipeline import (
     EXPECTED_STOPS,
     PipelineStopped,
@@ -32,6 +35,7 @@ from ai_content.domains.marketing.products.service import (
 from ai_content.domains.marketing.products.speech import VOICES
 
 from .dependencies import (
+    get_creative_knowledge_service,
     get_product_catalog_service,
     get_runtime_settings,
     product_catalog_scope_for,
@@ -734,6 +738,30 @@ async def delete_persona(
 ) -> dict[str, int]:
     await service.delete_persona(product_id, _media_root())
     return {"photos": 0}
+
+
+class FeedbackRequest(BaseModel):
+    text: str = Field(min_length=1)
+    contributor: str = Field(default="user", min_length=1)
+    asset_type: Literal["brief", "keyframe"] = "keyframe"
+
+
+@router.post("/{product_id}/feedback")
+async def send_feedback(
+    product_id: str,
+    payload: FeedbackRequest,
+    knowledge: CreativeKnowledgeService = Depends(get_creative_knowledge_service),
+) -> dict[str, str]:
+    """Propose a rule from feedback on a generated image or video; a reviewer must approve it."""
+    item = await propose_feedback(
+        knowledge,
+        product_id=product_id,
+        text=payload.text,
+        contributor=payload.contributor,
+        authority=KnowledgeAuthority.INDIVIDUAL,
+        asset_type=payload.asset_type,
+    )
+    return {"knowledge_id": item.knowledge_id, "status": item.status.value}
 
 
 @router.get("/{product_id}/persona/image")

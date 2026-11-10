@@ -36,7 +36,8 @@ function DraftContentBrief(
   shot_count: int,
   product_images: image[],
   with_person: bool,
-  person_images: image[]
+  person_images: image[],
+  rules: string
 ) -> ContentBrief {
   client OrchestrationModel
   prompt #"
@@ -78,9 +79,7 @@ function DraftContentBrief(
     recognisable in every shot, from the first frame to the last, placed, held by hands or shown
     in use.
     {% endif %}
-    Make the shots differ: change the camera angle and distance, the
-    action and, where the story needs it, the spot inside the same home or place. Avoid shots that
-    only zoom or drift. The voice-over is a separate recording laid over the finished video, and the picture never has
+    The voice-over is a separate recording laid over the finished video, and the picture never has
     sound. Each shot has a delivery.
     {% if with_person %}
     narrated: the voice-over is heard while the person is busy
@@ -94,9 +93,6 @@ function DraftContentBrief(
     place and hands, and nobody is seen speaking. Never use talking.
     {% endif %}
 
-    Every number, percentage, price, material or feature in the text must come from the product
-    facts; never invent figures or claims.
-
     Ground every claim in the product facts and the product photos. Take the product's real
     color, shape and details from the product photos, never from the references. Do not invent
     features, certifications or prices.
@@ -107,36 +103,13 @@ function DraftContentBrief(
     and why, in Vietnamese. style: up to 4 short words. colors: up to 4 color names. title: a
     short Vietnamese name for the brief.
 
-    format: the video style, one of problem_solution (a familiar problem, then the product
-    solving it), step_by_step (how to use it), before_after (a messy or tiring situation, then a
-    tidy or easy one; never fake or exaggerated results), unboxing (opening and setting it up) or
-    worth_it_text (the product shown while on-screen text judges its value). Pick the one that
-    suits the product and the idea.
+    format: the video style, one of problem_solution, step_by_step, before_after, unboxing or
+    worth_it_text.
 
-    The first 3 seconds of the first shot must hook: start on a close-up of the product or on a
-    problem shoppers know, with movement already in the very first frame (never a still or empty
-    opening), and put a short on-screen question or claim in the first shot's on_screen_text.
-    Give the shots these roles in order: hook, problem, demo, benefit, call_to_action (with fewer
-    shots merge neighbours, with more shots repeat demo or benefit), so every shot moves the story
-    one step. The last shot ends on a frame close to the opening one (the same close-up of the
-    product) so the video loops when it repeats. Write on_screen_text and voiceover in everyday
-    Vietnamese shoppers use. The voiceover is read aloud, so write it the way a young
-    Vietnamese seller talks to a friend on TikTok: short sentences, spoken particles such as
-    nha, nè, á, luôn, thật sự, plain everyday words. Avoid written, Sino-Vietnamese or
-    advertising words (cao cấp, sang trọng, đẳng cấp, tối ưu, sở hữu), avoid English words and
-    write every number in words (hai trăm sáu mươi tám mi-li-lít, không 268ml). Never
-    use absolute claims (tốt nhất, rẻ nhất, số 1, 100%, chắc chắn), never name other shopping or
-    social platforms and never promise medical results.
+    Write on_screen_text and voiceover in everyday Vietnamese shoppers use.
 
-    script: the whole voice-over of the video as one continuous Vietnamese text that tells
-    a single story in this order: a hook, a problem shoppers know, the product solving it, one or
-    two concrete benefits from the product facts, and a call to open the product link. Write the
-    script first. Each shot plays for about 11 seconds in the finished video and the narrator speaks
-    fast, about 4 words per second, so write 40 to 46 words for every narrated shot's voiceover (count
-    them) so that the voice fills the shot, and a script of that many words times the number of
-    shots. A shot with delivery talking is spoken by the person on camera in one 15 second clip: keep its voiceover concise and punchy, exactly 16 to 22 words (about 4 to 5 seconds of clear speaking) so that the video model renders sharp, natural, realistic lip-sync without drifting or hallucinating mouth movements. Then cut it into consecutive parts, one per shot, so reading every shot's
-    voiceover in order gives the script again with nothing added or repeated. Each shot must
-    follow from the one before it (cause and effect), never start a new topic.
+    script: the whole voice-over of the video as one continuous Vietnamese text, written first and
+    then cut into consecutive parts, one per shot, so the voiceovers in order give the script again.
 
     shots: exactly {{ shot_count }} shot(s) in story order, each lasting 15 seconds, so
     duration_seconds is always 15. The first shot opens with a hook and the last ends with a
@@ -145,28 +118,9 @@ function DraftContentBrief(
     (a complete, self-contained English prompt for an image model: {% if with_person %}"the person from the character
     image" (never describe their age, face, hair, skin or clothes; the character image gives them) doing the action of this shot{% else %}the action of this shot with no person in the picture (hands are fine, no face, no body){% endif %} with the real product as the clear hero, the shared scene, camera angle, lighting, style and colors, and an explicit instruction
     that the product, in the version of product_variant, keeps its real shape, color, proportions and label, and that it keeps its
-    real size from product_size next to the person and the room, never enlarged or shrunk. Write it
-    as the description of an ordinary photo taken on a phone: natural window or room light, a
-    little grain, a lived-in Vietnamese home with everyday clutter, natural skin and hair. Never
-    use words such as perfect, flawless, cinematic, stunning, studio, professional, glossy or 8k), motion_prompt (English.
-    Name the subject in a few words and describe only motion, because the keyframe already shows
-    how everything looks: never re-describe the face, outfit or product. Say the shot size and the
-    camera height and name every camera move with its exact term: a dolly moves the camera, a
-    zoom changes the lens, a pan turns it in place, tracking follows the subject; write static
-    only when nothing at all moves. Replace mood words such as cinematic, epic or stunning with
-    what is seen. Write four or five sentences describing the action over the 15 seconds as timed
-    beats of about 3 seconds, each beat a new, clearly visible action or camera move (for example "0 to 3s: she
-    grabs the basket and swings it open; 3 to 6s: quick push-in as she stuffs clothes inside; 6
-    to 9s: camera swings around to her side while she lifts it; 9 to 12s: she folds it flat in
-    one move; 12 to 15s: she holds it up and smiles to the camera"). The pace is quick and
-    energetic like a TikTok ad: brisk natural movements, never slow motion or a slow drift, no
-    long pauses. Keep one continuous camera path in the same place with no scene cuts and no new
-    objects, for animating the keyframe; vary the shot size (close-up, medium, wide,
-    over-the-shoulder, overhead) and the camera move (push-in, pull-back, pan, tilt, tracking,
-    orbit, handheld) from shot to shot and name both; the clips are silent, so describe only what
-    is seen and mention
-    no sound, music or dialogue; for a narrated shot nobody talks and lips stay closed or
-    relaxed, for a talking shot the person talks naturally with small expressions and gestures),
+    real size from product_size next to the person and the room, never enlarged or shrunk; follow the rules for how a keyframe_prompt is written),
+    motion_prompt (English, for animating the keyframe: describe only motion, because the keyframe
+    already shows how everything looks; follow the rules for how it is written),
     delivery (narrated or talking),
     duration_seconds, on_screen_text (a short Vietnamese caption, or an empty string) and
     voiceover (one Vietnamese sentence).
@@ -181,6 +135,11 @@ function DraftContentBrief(
 
     User idea (may be empty):
     {{ user_idea }}
+
+    {% if rules %}
+    Approved rules from the team's knowledge base (follow them in every shot):
+    {{ rules }}
+    {% endif %}
 
     {% if with_person %}
     Person photos (the same real person, shown in every shot):

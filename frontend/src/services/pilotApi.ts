@@ -14,11 +14,15 @@ export const pilotApi = {
     const query = status ? `?status=${encodeURIComponent(status)}` : "";
     return getJson<CreativeKnowledgeList>(`/api/v1/marketing/creative-knowledge${query}`, signal);
   },
-  bootstrapCreativeKnowledge: (contributor: string) =>
+  bootstrapCreativeKnowledge: (contributor: string, manifestId = "creative") =>
     postJson<CreativeKnowledgeBootstrapResult>("/api/v1/marketing/creative-knowledge/bootstrap", {
       contributor,
-      manifest_id: "creative",
+      manifest_id: manifestId,
     }),
+  retireCreativeKnowledge: (knowledgeId: string) =>
+    postJson<CreativeKnowledge>(
+      `/api/v1/marketing/creative-knowledge/${encodeURIComponent(knowledgeId)}/retire`,
+    ),
   proposeCreativeKnowledge: (body: CreativeKnowledgeProposalRequest) =>
     postJson<CreativeKnowledge>("/api/v1/marketing/creative-knowledge", body),
   decideCreativeKnowledge: (

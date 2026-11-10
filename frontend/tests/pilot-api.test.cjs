@@ -39,25 +39,16 @@ test("the dashboard only routes to affiliate content and knowledge pages", () =>
   assert.doesNotMatch(shell, /creative-production|\/creatives|\/approvals|\/data-sources/);
 });
 
-test("SecondBrain edits Creative knowledge in place under human review", () => {
+test("SecondBrain is a simple rule list where proposals wait for a human", () => {
   const page = src("pages", "CreativeKnowledge.tsx");
-  const styles = src("styles.css");
   const api = src("services", "pilotApi.ts");
 
   assert.match(api, /creative-knowledge\/bootstrap/);
-  assert.match(api, /manifest_id: "creative"/);
+  assert.match(api, /manifest_id: manifestId/);
   assert.match(api, /decideCreativeKnowledge/);
-  assert.match(api, /markCreativeKnowledgeConflict/);
-  assert.doesNotMatch(api, /versions\//);
-  assert.doesNotMatch(page, /Version history/);
-  assert.match(page, /Edit knowledge/);
-  assert.match(page, /Propose reusable lesson/);
-  assert.match(page, /knowledge_type === "feedback"/);
-  assert.match(page, /Used by stages/);
-  assert.match(page, /applies_to: proposal\.appliesTo/);
-  assert.match(page, /useSplitResize\("aic-second-brain-split"/);
-  assert.match(page, /<SplitHandle label="Resize knowledge panels"/);
-  assert.match(styles, /\.second-brain-layout\.split-active/);
-  assert.match(styles, /\.second-brain-detail \{[^}]*overflow-y: auto/);
+  assert.match(api, /retireCreativeKnowledge/);
+  assert.match(page, /Approve all/);
+  assert.match(page, /pilotApi\.proposeCreativeKnowledge/);
+  assert.match(page, /decideCreativeKnowledge\(saved\.knowledge_id, "approved"/);
   assert.doesNotMatch(page, /autoApprove|auto_approve/);
 });

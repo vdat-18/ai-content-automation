@@ -9,30 +9,17 @@ class StoryboardReview {
   problems StoryboardProblem[]
 }
 
-function ReviewStoryboard(product_json: string, brief_json: string) -> StoryboardReview {
+function ReviewStoryboard(product_json: string, brief_json: string, rules: string) -> StoryboardReview {
   client OrchestrationModel
   prompt #"
     {{ _.role("system") }}
     You are a strict editor who reviews the storyboard of a short vertical product ad before any
     image or video is paid for. Return JSON only, exactly matching the response schema.
 
-    Judge the storyboard as a whole and each shot. It fails when any of these hold:
-    - it would play like a slideshow: shots look alike in framing, camera movement or action, or a
-      shot only drifts slowly with no visible action;
-    - a shot's motion_prompt is too thin to animate: it does not describe a sequence of timed,
-      visibly different actions across the whole clip;
-    - the real product is not clearly visible in a shot (its keyframe_prompt or motion_prompt
-      does not keep it in frame for the whole shot): the product must be in every shot;
-    - a keyframe_prompt or motion_prompt is vague or generic (for example only mood words) instead
-      of saying what is seen;
-    - a voiceover has more than 48 words or fewer than 38 for a narrated shot, or more than 25 words or fewer than 15 words for a talking shot (count the words; a narrated shot should fill the 11 seconds with 40 to 46 words, while a talking shot must be concise with 16 to 22 words so the speaker's lip-sync looks natural without drifting), or does not match what the shot shows;
-    - a voiceover does not sound like a young Vietnamese seller talking to a friend: it reads like
-      written text or an advertisement, uses Sino-Vietnamese or marketing words (cao cấp, sang
-      trọng, đẳng cấp, tối ưu), English words or digits that a speaker would have to read out;
-    - a keyframe_prompt describes a glossy, studio, retouched or cinematic picture instead of an
-      ordinary phone photo of a real home, or shows a product version other than product_variant;
-    - the story has no clear flow from hook to product benefit to call to action;
-    - it contradicts the product facts (size, use, features) or invents claims.
+    Judge the storyboard as a whole and each shot. It fails when any rule listed under "Rules"
+    is broken (count words when a rule gives word counts), when the story has no clear flow
+    from hook to product benefit to call to action, or when it contradicts the product facts
+    (size, use, features) or invents claims.
 
     problems: empty when passed. Otherwise one entry per problem. where: the shot number and the
     field, for example "shot 3 motion_prompt". problem: what is wrong, quoting the words or beats
@@ -43,6 +30,9 @@ function ReviewStoryboard(product_json: string, brief_json: string) -> Storyboar
     {{ _.role("user") }}
     Product facts:
     {{ product_json }}
+
+    Rules:
+    {{ rules }}
 
     Storyboard:
     {{ brief_json }}

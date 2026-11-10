@@ -1,0 +1,276 @@
+{
+  "schema_version": "creative-knowledge-bootstrap@2",
+  "bootstrap_id": "product-ad-v2",
+  "items": [
+    {
+      "knowledge_id": "product-ad-body-proportions",
+      "knowledge_type": "hard_rule",
+      "title": "Natural body proportions",
+      "content": "WHEN: A person appears in the picture. DO: Give a realistic head to body ratio, normal arm and leg length and a believable height next to the furniture and the room. DO NOT: Stretch, elongate or distort the body.",
+      "applies_to": [
+        "orchestration",
+        "review"
+      ],
+      "scope": {
+        "task_type": "product_ad",
+        "asset_type": "keyframe"
+      },
+      "authority": "lead",
+      "source_refs": [
+        "team:v2"
+      ]
+    },
+    {
+      "knowledge_id": "product-ad-clear-skin",
+      "knowledge_type": "hard_rule",
+      "title": "Clear natural skin",
+      "content": "WHEN: A face or skin is visible. DO: Show clear, even skin with no acne, pimples, spots or scars, yet natural with visible pores. DO NOT: Make skin waxy, plastic or heavily retouched.",
+      "applies_to": [
+        "orchestration",
+        "review"
+      ],
+      "scope": {
+        "task_type": "product_ad",
+        "asset_type": "keyframe"
+      },
+      "authority": "lead",
+      "source_refs": [
+        "team:v2"
+      ]
+    },
+    {
+      "knowledge_id": "product-ad-phone-photo-look",
+      "knowledge_type": "hard_rule",
+      "title": "Looks like a phone photo",
+      "content": "WHEN: Making or checking any keyframe. DO: Make it look like an ordinary photo taken with a phone: natural light, a little grain, everyday details of a lived-in home. DO NOT: Make it glossy, retouched, studio or 3D-render looking.",
+      "applies_to": [
+        "orchestration",
+        "review"
+      ],
+      "scope": {
+        "task_type": "product_ad",
+        "asset_type": "keyframe"
+      },
+      "authority": "lead",
+      "source_refs": [
+        "team:v2"
+      ]
+    },
+    {
+      "knowledge_id": "product-ad-voice-register",
+      "knowledge_type": "hard_rule",
+      "title": "Voice-over sounds like a young Vietnamese seller",
+      "content": "WHEN: Writing or checking any voiceover or script. DO: Write the way a young Vietnamese seller talks to a friend on TikTok: short sentences, spoken particles such as nha, nè, á, luôn, thật sự, plain everyday words. DO NOT: Use written, Sino-Vietnamese or advertising words (cao cấp, sang trọng, đẳng cấp, tối ưu, sở hữu).",
+      "applies_to": [
+        "preparation",
+        "review"
+      ],
+      "scope": {
+        "task_type": "product_ad",
+        "asset_type": "brief"
+      },
+      "authority": "lead",
+      "source_refs": [
+        "team:v2"
+      ]
+    },
+    {
+      "knowledge_id": "product-ad-voice-numbers",
+      "knowledge_type": "hard_rule",
+      "title": "Numbers in words, no English",
+      "content": "WHEN: A voiceover contains numbers, units or foreign words. DO: Write every number in words as it is read aloud (hai trăm sáu mươi tám mi-li-lít, không 268ml). DO NOT: Use digits or English words a speaker would have to read out.",
+      "applies_to": [
+        "preparation",
+        "review"
+      ],
+      "scope": {
+        "task_type": "product_ad",
+        "asset_type": "brief"
+      },
+      "authority": "lead",
+      "source_refs": [
+        "team:v2"
+      ]
+    },
+    {
+      "knowledge_id": "product-ad-voice-length-narrated",
+      "knowledge_type": "hard_rule",
+      "title": "Narrated shot voiceover length",
+      "content": "WHEN: A shot is narrated (nobody is seen speaking). DO: Write 40 to 46 words (never below 38 or above 48) so the voice fills the shot's 11 seconds, spoken at about 4 words per second, and match what the shot shows. DO NOT: Leave long silences or run over.",
+      "applies_to": [
+        "preparation",
+        "review"
+      ],
+      "scope": {
+        "task_type": "product_ad",
+        "asset_type": "brief"
+      },
+      "authority": "lead",
+      "source_refs": [
+        "team:v2"
+      ]
+    },
+    {
+      "knowledge_id": "product-ad-voice-length-talking",
+      "knowledge_type": "hard_rule",
+      "title": "Talking shot voiceover length",
+      "content": "WHEN: A shot is talking (the person speaks to the camera). DO: Keep it concise and punchy, 16 to 22 words (never below 15 or above 25), about 4 to 5 seconds of clear speech, so lip-sync looks natural. DO NOT: Write long lines that make the mouth drift or the model hallucinate speech.",
+      "applies_to": [
+        "preparation",
+        "review"
+      ],
+      "scope": {
+        "task_type": "product_ad",
+        "asset_type": "brief"
+      },
+      "authority": "lead",
+      "source_refs": [
+        "team:v2"
+      ]
+    },
+    {
+      "knowledge_id": "product-ad-claims-safety",
+      "knowledge_type": "hard_rule",
+      "title": "Safe, grounded claims",
+      "content": "WHEN: Writing any text, voiceover or on-screen text. DO: Take every number, percentage, price, material and feature from the product facts. DO NOT: Invent figures or features, use absolute claims (tốt nhất, rẻ nhất, số 1, 100%, chắc chắn), name other shopping or social platforms, or promise medical results.",
+      "applies_to": [
+        "preparation",
+        "review"
+      ],
+      "scope": {
+        "task_type": "product_ad",
+        "asset_type": "brief"
+      },
+      "authority": "lead",
+      "source_refs": [
+        "team:v2"
+      ]
+    },
+    {
+      "knowledge_id": "product-ad-script-flow",
+      "knowledge_type": "hard_rule",
+      "title": "One story across the shots",
+      "content": "WHEN: Writing the script and cutting it into shots. DO: Tell one story in this order: a hook, a problem shoppers know, the product solving it, one or two concrete benefits, a call to open the product link; each shot follows from the one before (cause and effect) and the shots' voiceovers read in order give the script with nothing added or repeated. DO NOT: Start a new topic in a later shot.",
+      "applies_to": [
+        "preparation",
+        "review"
+      ],
+      "scope": {
+        "task_type": "product_ad",
+        "asset_type": "brief"
+      },
+      "authority": "lead",
+      "source_refs": [
+        "team:v2"
+      ]
+    },
+    {
+      "knowledge_id": "product-ad-hook-first-seconds",
+      "knowledge_type": "hard_rule",
+      "title": "Hook in the first three seconds",
+      "content": "WHEN: Writing the first shot and the last shot. DO: Open on a close-up of the product or a problem shoppers know, with movement already in the very first frame, and put a short on-screen question or claim in the first shot's on_screen_text; give the shots the roles hook, problem, demo, benefit, call_to_action in order; end on a frame close to the opening one so the video loops. DO NOT: Open on a still or empty frame.",
+      "applies_to": [
+        "preparation",
+        "review"
+      ],
+      "scope": {
+        "task_type": "product_ad",
+        "asset_type": "brief"
+      },
+      "authority": "lead",
+      "source_refs": [
+        "team:v2"
+      ]
+    },
+    {
+      "knowledge_id": "product-ad-shot-variety",
+      "knowledge_type": "hard_rule",
+      "title": "Shots must differ",
+      "content": "WHEN: Writing a storyboard with several shots. DO: Change the camera angle, the distance and the action between shots, and where the story needs it the spot inside the same home. DO NOT: Make shots that only zoom or drift, or that look alike in framing, camera movement or action (it would play like a slideshow).",
+      "applies_to": [
+        "preparation",
+        "review"
+      ],
+      "scope": {
+        "task_type": "product_ad",
+        "asset_type": "brief"
+      },
+      "authority": "lead",
+      "source_refs": [
+        "team:v2"
+      ]
+    },
+    {
+      "knowledge_id": "product-ad-product-always-visible",
+      "knowledge_type": "hard_rule",
+      "title": "Product in every shot",
+      "content": "WHEN: Writing any keyframe_prompt or motion_prompt. DO: Keep the real product clearly visible and recognisable from the first frame to the last, held, worn, placed or in use. DO NOT: Hide it, crop it out or let it become tiny.",
+      "applies_to": [
+        "preparation",
+        "review"
+      ],
+      "scope": {
+        "task_type": "product_ad",
+        "asset_type": "brief"
+      },
+      "authority": "lead",
+      "source_refs": [
+        "team:v2"
+      ]
+    },
+    {
+      "knowledge_id": "product-ad-keyframe-prompt-style",
+      "knowledge_type": "hard_rule",
+      "title": "Keyframe prompt reads like a phone photo",
+      "content": "WHEN: Writing a keyframe_prompt. DO: Describe an ordinary photo taken on a phone: natural window or room light, a little grain, a lived-in Vietnamese home with everyday clutter, natural skin and hair; say what is seen (action, framing, distance, camera angle). DO NOT: Use perfect, flawless, cinematic, stunning, studio, professional, glossy or 8k, vague mood words, or show a product version other than product_variant.",
+      "applies_to": [
+        "preparation",
+        "review"
+      ],
+      "scope": {
+        "task_type": "product_ad",
+        "asset_type": "brief"
+      },
+      "authority": "lead",
+      "source_refs": [
+        "team:v2"
+      ]
+    },
+    {
+      "knowledge_id": "product-ad-motion-prompt-beats",
+      "knowledge_type": "hard_rule",
+      "title": "Motion prompt as timed beats",
+      "content": "WHEN: Writing a motion_prompt for a 15 second clip. DO: Name the subject in a few words, then write four or five sentences as timed beats of about 3 seconds, each a new clearly visible action or camera move; name the shot size, camera height and every move with its exact term (dolly, zoom, pan, tilt, tracking, orbit, handheld); keep one continuous camera path with brisk TikTok-style energy; for a narrated shot lips stay closed or relaxed, for a talking shot the person talks naturally. DO NOT: Re-describe the face, outfit or product, use mood words, add sound or music, cut scenes, add new objects, or use slow motion or a slow drift.",
+      "applies_to": [
+        "preparation",
+        "review"
+      ],
+      "scope": {
+        "task_type": "product_ad",
+        "asset_type": "brief"
+      },
+      "authority": "lead",
+      "source_refs": [
+        "team:v2"
+      ]
+    },
+    {
+      "knowledge_id": "product-ad-video-format",
+      "knowledge_type": "hard_rule",
+      "title": "Pick a fitting video format",
+      "content": "WHEN: Choosing the video format. DO: Choose the one that suits the product and idea: problem_solution, step_by_step (how to use it), before_after (a messy situation then a tidy one), unboxing, or worth_it_text. DO NOT: Fake or exaggerate results.",
+      "applies_to": [
+        "preparation",
+        "review"
+      ],
+      "scope": {
+        "task_type": "product_ad",
+        "asset_type": "brief"
+      },
+      "authority": "lead",
+      "source_refs": [
+        "team:v2"
+      ]
+    }
+  ]
+}

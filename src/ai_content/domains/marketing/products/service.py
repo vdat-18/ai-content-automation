@@ -15,6 +15,12 @@ from loguru import logger
 from openpyxl import Workbook
 from openpyxl.styles import Font
 
+from ai_content.domains.marketing.creative_knowledge.models import (
+    KnowledgeAuthority,
+    KnowledgeStage,
+)
+from ai_content.domains.marketing.creative_knowledge.service import CreativeKnowledgeService
+
 from .briefing import (
     BriefGenerationError,
     BriefUnavailable,
@@ -39,6 +45,7 @@ from .identity import PIN_SIZE_DIR, media_source_fingerprint
 from .image_review import ReferenceImageReviewer
 from .keyframe_check import KeyframeChecker
 from .keyframes import KeyframeGenerationError, KeyframeGenerator, fetch_images, story_note
+from .knowledge import approved_rules, propose_feedback
 from .media import MediaDownloadReport, download_product_media
 from .media_store import MediaStore, RemoteMedia
 from .parsing import (
@@ -198,6 +205,7 @@ class ProductCatalogService:
         text_embedder: TextEmbedder | None = None,
         reference_picker: ShotReferencePicker | None = None,
         clip_checker: ClipChecker | None = None,
+        knowledge: CreativeKnowledgeService | None = None,
     ) -> None:
         self._repository = repository
         self._generator = generator
@@ -214,6 +222,7 @@ class ProductCatalogService:
         self._text_embedder = text_embedder
         self._reference_picker = reference_picker
         self._clip_checker = clip_checker
+        self._knowledge = knowledge
         self._collecting: set[tuple[str, int]] = set()
 
     async def ingest(self, payload: dict[str, Any]) -> dict[str, Any]:
@@ -455,12 +464,17 @@ class ProductCatalogService:
                 f"No usable reference image of type '{product_type}' yet; crawl Pinterest first"
             )
         shot_count = max(1, round(video_seconds / shot_seconds(CLIP_SECONDS)))
+        rules = await approved_rules(self._knowledge, KnowledgeStage.PREPARATION, "brief")
         fixes = ""
         attempts = 0
         for _ in range(BRIEF_ATTEMPTS):
             attempts += 1
             brief = await self._briefer.write(
-                detail, f"{user_idea}{fixes}", shot_count=shot_count, person_photos=person_photos
+                detail,
+                f"{user_idea}{fixes}",
+                shot_count=shot_count,
+                person_photos=person_photos,
+                rules=rules.text,
             )
             count_ok = "shots" not in brief or len(brief["shots"]) == shot_count
             problems = await self._review_storyboard(detail, brief) if count_ok else []
@@ -483,6 +497,7 @@ class ProductCatalogService:
             dict.fromkeys(item for item in brief["shot_references"] if item)
         )
         brief["with_person"] = bool(person_photos)
+        brief["rule_ids"] = rules.ids
         await self._repository.save_brief(product_id, user_idea.strip(), brief, "draft")
         await self._log(
             product_id,
@@ -641,7 +656,8 @@ class ProductCatalogService:
         """Problems the reviewer found; none when there is no reviewer or the review failed."""
         if self._storyboard_reviewer is None or not brief.get("shots"):
             return []
-        return await self._storyboard_reviewer.review(product, brief) or []
+        rules = await approved_rules(self._knowledge, KnowledgeStage.REVIEW, "brief")
+        return await self._storyboard_reviewer.review(product, brief, rules.text) or []
 
     def media(self, media_root: Path) -> MediaStore:
         """The store of generated files: the local folder plus the remote copy, when set up."""
@@ -779,6 +795,9 @@ class ProductCatalogService:
         )
         size = str(record["brief"].get("product_size") or "")
         variant = str(record["brief"].get("product_variant") or "")
+        rules = await approved_rules(self._knowledge, KnowledgeStage.ORCHESTRATION, "keyframe")
+        qa_rules = await approved_rules(self._knowledge, KnowledgeStage.REVIEW, "keyframe")
+        rule_ids = sorted({*rules.ids, *qa_rules.ids})
         limit = asyncio.Semaphore(KEYFRAME_CONCURRENCY)
         done = {index: asyncio.Event() for index in wanted}
 
@@ -792,6 +811,9 @@ class ProductCatalogService:
                             **shots[index],
                             "product_size": size,
                             "product_variant": variant,
+                            "rules": rules.text,
+                            "qa_rules": qa_rules.text,
+                            "rule_ids": rule_ids,
                             "story": story_note(record["brief"], index),
                         },
                         existing.get(index),
@@ -853,6 +875,7 @@ class ProductCatalogService:
         }
         image: bytes | None = None
         problem = ""
+        lesson_sent = False  # one proposal per keyframe keeps the review queue short
         for _ in range(1 + MAX_KEYFRAME_FIXES):
             try:
                 if index == 0:
@@ -891,6 +914,15 @@ class ProductCatalogService:
             await self._log(
                 product_id, "keyframe", "retry", f"Attempt {attempts}: Gemini says {problem}", index
             )
+            if self._knowledge is not None and not lesson_sent:
+                lesson_sent = True
+                await propose_feedback(
+                    self._knowledge,
+                    product_id=product_id,
+                    text=problem,
+                    contributor="gemini-qa",
+                    authority=KnowledgeAuthority.EXTERNAL,
+                )
         assert image is not None
         relative = f"keyframes/{product_id}/shot_{index}.jpg"
         await self.media(media_root).write(relative, image)
@@ -909,7 +941,8 @@ class ProductCatalogService:
             "keyframe",
             "flagged" if problem else "ok",
             f"Image ready after {attempts} attempt(s)"
-            + (f", still flagged: {problem}" if problem else ""),
+            + (f", still flagged: {problem}" if problem else "")
+            + (f". Rules used: {', '.join(shot['rule_ids'])}" if shot.get("rule_ids") else ""),
             index,
         )
 
@@ -943,6 +976,8 @@ class ProductCatalogService:
             )
         if shot.get("story"):
             description = f"{description}\n\nThe whole video, for context:\n{shot['story']}"
+        if shot.get("qa_rules"):
+            description = f"{description}\n\nApproved rules:\n{shot['qa_rules']}"
         return await self._checker.check(description, photos, image, master, persona, before)
 
     async def clips(self, product_id: str, media_root: Path) -> list[dict[str, Any]]:

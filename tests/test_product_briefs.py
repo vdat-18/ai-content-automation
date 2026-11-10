@@ -27,7 +27,7 @@ PIN = {"image_url": "https://i.pinimg.com/236x/ab/cd/ef.jpg", "pin_url": "/pin/1
 
 
 class _FakeWriter:
-    async def write(self, product, user_idea, shot_count=1, person_photos=None):
+    async def write(self, product, user_idea, shot_count=1, person_photos=None, rules=""):
         return {
             "title": "Brief",
             "scene": "Phòng giặt",
@@ -107,7 +107,7 @@ class _FakeBamlClient:
         self.people: list[tuple[bool, int]] = []
 
     async def DraftContentBrief(
-        self, product_json, user_idea, shot_count, product_images, with_person, person_images
+        self, product_json, user_idea, shot_count, product_images, with_person, person_images, rules
     ):
         if self.fail:
             raise BamlClientError("503", "503", "503")
@@ -186,7 +186,7 @@ def test_product_facts_are_compact() -> None:
 
 
 class _TwoShots:
-    async def write(self, product, user_idea, shot_count=1, person_photos=None):
+    async def write(self, product, user_idea, shot_count=1, person_photos=None, rules=""):
         prompts = ["a hand applies lotion", "sitting in a room", "standing in a room"]
         shots = [{"role": "demo", "keyframe_prompt": prompts[i % 3]} for i in range(shot_count)]
         return {"title": "T", "shots": shots}
@@ -301,7 +301,7 @@ async def test_references_fall_back_to_text_when_the_product_cannot_be_embedded(
 
 async def test_a_reference_is_not_used_for_two_shots(tmp_path) -> None:
     class _SameShots(_TwoShots):
-        async def write(self, product, user_idea, shot_count=1, person_photos=None):
+        async def write(self, product, user_idea, shot_count=1, person_photos=None, rules=""):
             brief = await super().write(product, user_idea, shot_count, person_photos)
             for shot in brief["shots"]:
                 shot["keyframe_prompt"] = "a hand pours lotion"
@@ -374,7 +374,7 @@ async def test_video_length_sets_the_shot_count_from_the_finished_length(
     seen: list[int] = []
 
     class _Counting(_FakeWriter):
-        async def write(self, product, user_idea, shot_count=1, person_photos=None):
+        async def write(self, product, user_idea, shot_count=1, person_photos=None, rules=""):
             seen.append(shot_count)
             return await super().write(product, user_idea, shot_count, person_photos)
 
@@ -396,7 +396,7 @@ async def test_brief_is_rewritten_until_it_has_the_requested_number_of_shots(
     counts = [1, 1, 3]
 
     class _Wrong(_FakeWriter):
-        async def write(self, product, user_idea, shot_count=1, person_photos=None):
+        async def write(self, product, user_idea, shot_count=1, person_photos=None, rules=""):
             return {"title": "T", "shots": [{}] * counts.pop(0)}
 
     service = await _service(tmp_path, _Wrong())

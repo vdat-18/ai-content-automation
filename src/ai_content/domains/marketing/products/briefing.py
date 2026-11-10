@@ -38,6 +38,7 @@ class _BamlBriefClient(Protocol):
         product_images: list[BamlImage],
         with_person: bool,
         person_images: list[BamlImage],
+        rules: str,
     ) -> baml_types.ContentBrief: ...
 
 
@@ -113,6 +114,7 @@ class ContentBriefWriter:
         http: httpx.AsyncClient | None = None,
         shot_count: int = 1,
         person_photos: list[bytes] | None = None,
+        rules: str = "",
     ) -> dict[str, Any]:
         """Return the brief as a dict.
 
@@ -154,6 +156,7 @@ class ContentBriefWriter:
                 [photo for _, photo in photos],
                 bool(person_photos),
                 [_image(photo) for photo in person_photos or []],
+                rules,
             )
         except BamlError as error:
             raise BriefGenerationError(str(error)) from error

@@ -41,7 +41,7 @@ def all_succeeded(checks: typing.Dict[CheckName, Check]) -> bool:
 # #########################################################################
 
 # #########################################################################
-# Generated classes (12)
+# Generated classes (13)
 # #########################################################################
 
 class ClipCheck(BaseModel):
@@ -62,6 +62,11 @@ class ContentBrief(BaseModel):
     style: typing.List[str]
     colors: typing.List[str]
     shots: typing.List["StoryboardShot"]
+
+class CuratedRule(BaseModel):
+    title: str
+    content: str
+    replaces: typing.List[str]
 
 class KeyframeCheck(BaseModel):
     passed: bool
@@ -127,7 +132,7 @@ class StoryboardShot(BaseModel):
 
 
 # #########################################################################
-# Model rebuilds (12)
+# Model rebuilds (13)
 # #########################################################################
 # Resolve string forward references now that every model above is defined so
 # class declaration order never breaks Pydantic construction (issue #793).
@@ -135,6 +140,7 @@ class StoryboardShot(BaseModel):
 # eagerly rebuilding them can recurse).
 ClipCheck.model_rebuild()
 ContentBrief.model_rebuild()
+CuratedRule.model_rebuild()
 KeyframeCheck.model_rebuild()
 LabeledReference.model_rebuild()
 PostingPackage.model_rebuild()

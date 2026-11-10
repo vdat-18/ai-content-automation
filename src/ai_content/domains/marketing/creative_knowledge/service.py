@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
+from typing import Protocol
 from uuid import uuid4
 
 from .models import (
@@ -18,9 +19,47 @@ from .models import (
 from .repository import CreativeKnowledgeRepository, resolve_approved_knowledge
 
 
+@dataclass(frozen=True)
+class CuratedKnowledge:
+    """A cleaned rewrite of an approved item and the older items it makes redundant."""
+
+    title: str
+    content: str
+    replaces: tuple[str, ...] = ()
+
+
+class KnowledgeCurator(Protocol):
+    async def rewrite(
+        self, item: CreativeKnowledge, others: tuple[CreativeKnowledge, ...]
+    ) -> CuratedKnowledge | None: ...
+
+
 class CreativeKnowledgeService:
     def __init__(self, repository: CreativeKnowledgeRepository) -> None:
         self.repository = repository
+
+    async def curate(self, knowledge_id: str, curator: KnowledgeCurator) -> CreativeKnowledge:
+        """Let the curator rewrite an approved item and retire the items it replaces."""
+        item = await self.repository.get(knowledge_id)
+        if item is None:
+            raise ValueError("Creative knowledge not found")
+        if item.status != KnowledgeStatus.APPROVED:
+            raise ValueError("Only approved knowledge can be curated")
+        others = tuple(
+            other
+            for other in await self.resolve(item.scope)
+            if other.knowledge_id != item.knowledge_id
+            and other.knowledge_type != KnowledgeType.HARD_RULE
+        )
+        curated = await curator.rewrite(item, others)
+        if curated is None:
+            return item
+        for other in others:
+            if other.knowledge_id in curated.replaces:
+                await self.repository.save(replace(other, status=KnowledgeStatus.EXPIRED))
+        rewritten = replace(item, title=curated.title, content=curated.content)
+        await self.repository.save(rewritten)
+        return rewritten
 
     async def propose(
         self,
@@ -70,6 +109,17 @@ class CreativeKnowledgeService:
         decided = item.decide(status, reviewer)
         await self.repository.save(decided)
         return decided
+
+    async def retire(self, knowledge_id: str) -> CreativeKnowledge:
+        """Turn an approved item off so it is no longer used."""
+        item = await self.repository.get(knowledge_id)
+        if item is None:
+            raise ValueError("Creative knowledge not found")
+        if item.status != KnowledgeStatus.APPROVED:
+            raise ValueError("Only approved knowledge can be turned off")
+        retired = replace(item, status=KnowledgeStatus.EXPIRED)
+        await self.repository.save(retired)
+        return retired
 
     async def mark_conflict(self, knowledge_id: str) -> CreativeKnowledge:
         item = await self.repository.get(knowledge_id)

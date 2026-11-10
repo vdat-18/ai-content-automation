@@ -26,6 +26,7 @@ from ai_content.domains.marketing.products.keyframes import (
     KeyframeGenerator,
     KeyframeImageClient,
 )
+from ai_content.domains.marketing.products.knowledge import BamlKnowledgeCurator
 from ai_content.domains.marketing.products.media_store import S3RemoteMedia
 from ai_content.domains.marketing.products.posting import PostingPackageWriter
 from ai_content.domains.marketing.products.reference_picker import ShotReferencePicker
@@ -330,6 +331,16 @@ def _posting_writer(settings: ApiRuntimeSettings) -> PostingPackageWriter | None
     )
 
 
+def knowledge_curator(settings: ApiRuntimeSettings) -> BamlKnowledgeCurator | None:
+    if not settings.screening_api_key:
+        return None
+    return BamlKnowledgeCurator.from_settings(
+        base_url=settings.screening_base_url,
+        api_key=settings.screening_api_key,
+        model=settings.screening_model,
+    )
+
+
 def _clip_checker(settings: ApiRuntimeSettings) -> ClipChecker | None:
     if not settings.screening_api_key:
         return None
@@ -409,6 +420,14 @@ async def product_catalog_scope(postgres: Any) -> AsyncIterator[ProductCatalogSe
         if postgres is not None
         else SqliteProductRepository(settings.db_path)
     )
+    knowledge_repository = (
+        None if postgres is not None else SqliteCreativeKnowledgeRepository(settings.db_path)
+    )
+    knowledge = (
+        postgres.creative_knowledge_service
+        if postgres is not None
+        else CreativeKnowledgeService(knowledge_repository)
+    )
     try:
         yield ProductCatalogService(
             repository,
@@ -426,10 +445,12 @@ async def product_catalog_scope(postgres: Any) -> AsyncIterator[ProductCatalogSe
             _text_embedder(settings),
             _reference_picker(settings),
             clip_checker=_clip_checker(settings),
+            knowledge=knowledge,
         )
     finally:
         if postgres is None:
             repository.close()
+            knowledge_repository.close()
 
 
 def product_catalog_scope_for(request: Request):

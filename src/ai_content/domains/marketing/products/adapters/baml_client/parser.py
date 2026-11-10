@@ -41,6 +41,12 @@ class LlmResponseParser:
         __result__ = self.__options.merge_options(baml_options).parse_response(function_name="ChooseShotReference", llm_response=llm_response, mode="request")
         return typing.cast(types.ShotReferenceChoice, __result__)
 
+    def CurateKnowledge(
+        self, llm_response: str, baml_options: BamlCallOptions = {},
+    ) -> types.CuratedRule:
+        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="CurateKnowledge", llm_response=llm_response, mode="request")
+        return typing.cast(types.CuratedRule, __result__)
+
     def DraftContentBrief(
         self, llm_response: str, baml_options: BamlCallOptions = {},
     ) -> types.ContentBrief:
@@ -96,6 +102,12 @@ class LlmStreamParser:
     ) -> stream_types.ShotReferenceChoice:
         __result__ = self.__options.merge_options(baml_options).parse_response(function_name="ChooseShotReference", llm_response=llm_response, mode="stream")
         return typing.cast(stream_types.ShotReferenceChoice, __result__)
+
+    def CurateKnowledge(
+        self, llm_response: str, baml_options: BamlCallOptions = {},
+    ) -> stream_types.CuratedRule:
+        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="CurateKnowledge", llm_response=llm_response, mode="stream")
+        return typing.cast(stream_types.CuratedRule, __result__)
 
     def DraftContentBrief(
         self, llm_response: str, baml_options: BamlCallOptions = {},

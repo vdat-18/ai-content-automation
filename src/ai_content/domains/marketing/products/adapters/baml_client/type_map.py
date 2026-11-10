@@ -22,6 +22,9 @@ type_map = {
     "types.ContentBrief": types.ContentBrief,
     "stream_types.ContentBrief": stream_types.ContentBrief,
 
+    "types.CuratedRule": types.CuratedRule,
+    "stream_types.CuratedRule": stream_types.CuratedRule,
+
     "types.KeyframeCheck": types.KeyframeCheck,
     "stream_types.KeyframeCheck": stream_types.KeyframeCheck,
 

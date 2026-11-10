@@ -332,7 +332,7 @@ async def test_prompts_name_the_person_only_when_there_is_one() -> None:
 
     client = _RecordingClient()
     generator = KeyframeGenerator(client)  # type: ignore[arg-type]
-    shot = {"keyframe_prompt": "she folds the basket"}
+    shot = {"keyframe_prompt": "she folds the basket", "rules": "- Clear skin: no acne"}
     await generator.master(shot, [b"p1", b"p2"], b"room", persona=[b"face"])
     await generator.master(shot, [b"p1"], None)
     await generator.follow_up(shot, b"master", [b"p1"], persona=[b"face"])
@@ -343,8 +343,7 @@ async def test_prompts_name_the_person_only_when_there_is_one() -> None:
         "Image 4 is a scene reference" in with_person[0]
         and "Do not show any human face" not in with_person[0]
     )
-    assert "well proportioned" in with_person[0] and "no acne" in with_person[0]
-    assert "well proportioned" not in without[0]
+    assert "Rules to follow in the picture:" + chr(10) + "- Clear skin: no acne" in with_person[0]
     assert without[1] == 1 and "Do not show any human face" in without[0]
     assert follow[1] == 3 and "Image 2 shows the person in the ad" in follow[0]
     assert with_reference[1] == 4 and "Image 3 is a loose reference" in with_reference[0]
@@ -388,7 +387,6 @@ async def test_the_real_product_size_reaches_the_image_prompt_and_the_checker(tm
     # one version of the product, shot like an ordinary phone photo
     assert "show only this one: matte pink bottle" in prompts[0]
     assert "matte pink bottle" in seen[0]
-    assert "ordinary photo taken with a phone" in prompts[0]
 
 
 async def test_each_step_is_written_to_the_run_log(tmp_path) -> None:
