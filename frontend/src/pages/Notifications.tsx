@@ -1,60 +1,32 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bell, Check, ExternalLink } from "lucide-react";
+import { Bell, Check } from "lucide-react";
 import { Link } from "react-router-dom";
-import { EmptyState, PageHeader, Panel, SkeletonPage } from "../components/ui";
-import { useI18n } from "../hooks/useI18n";
+import { Empty, ErrorNote, PageHead, Skeleton } from "../components/ui";
 import { pilotApi } from "../services/pilotApi";
 
 export function NotificationsPage() {
-  const { t } = useI18n();
   const client = useQueryClient();
-  const query = useQuery({
-    queryKey: ["notifications"],
-    queryFn: ({ signal }) => pilotApi.notifications(false, signal),
-    refetchInterval: 15000,
-  });
-  const markRead = useMutation({
-    mutationFn: pilotApi.markNotificationRead,
-    onSuccess: () => client.invalidateQueries({ queryKey: ["notifications"] }),
-  });
-
-  if (query.isLoading) return <SkeletonPage />;
-  if (query.error || !query.data) {
-    return <EmptyState icon={<Bell />} title="Could not load notifications" text={query.error?.message ?? "The notification service returned no data."} />;
-  }
-
+  const query = useQuery({ queryKey: ["notifications"], queryFn: ({ signal }) => pilotApi.notifications(false, signal), refetchInterval: 15000 });
+  const markRead = useMutation({ mutationFn: pilotApi.markNotificationRead, onSuccess: () => client.invalidateQueries({ queryKey: ["notifications"] }) });
+  if (query.isLoading) return <div className="page"><Skeleton /></div>;
+  if (query.error || !query.data) return <div className="page"><ErrorNote error={query.error ?? new Error("No data")} /></div>;
   return (
-    <>
-      <PageHeader
-        eyebrow="Marketing workspace"
-        title="Notifications"
-        description="Only actionable Creative events and completed batches appear here."
-        actions={<span className="badge badge--warning">{query.data.unread} {t("unread")}</span>}
-      />
-      <div className="notification-list">
+    <div className="page">
+      <PageHead title="Notifications" text="Things that need you, and videos that are done." actions={query.data.unread > 0 ? <span className="pill pill-warn">{`${query.data.unread} unread`}</span> : undefined} />
+      {query.data.items.length === 0 && <Empty icon={<Bell size={32} aria-hidden="true" />} title="Nothing new" text="We will tell you here when something needs you." />}
+      <div className="stack">
         {query.data.items.map((item) => (
-          <Panel key={item.notification_id} className={`notification-row ${item.read_at ? "is-read" : "is-unread"}`}>
-            <div className="notification-row__marker" aria-hidden="true" />
-            <div className="notification-row__copy">
-              <div>
-                <strong>{item.title}</strong>
-                <time dateTime={item.created_at}>{new Date(item.created_at).toLocaleString()}</time>
-              </div>
-              <p>{item.detail}</p>
-              <small>{item.kind.replaceAll("_", " ")}</small>
+          <div key={item.notification_id} className={`card note-row${item.read_at ? "" : " unread"}`}>
+            <div className="copy">
+              <strong>{item.title}</strong>
+              <p className="muted">{item.detail}</p>
+              <span className="muted small">{new Date(item.created_at).toLocaleString()}</span>
             </div>
-            <div className="notification-row__actions">
-              {!item.read_at && (
-                <button className="secondary-button" disabled={markRead.isPending} onClick={() => markRead.mutate(item.notification_id)}>
-                  <Check size={15} /> {t("Mark read")}
-                </button>
-              )}
-              {item.action_path && <Link className="primary-button" to={item.action_path}><ExternalLink size={15} /> {t("Open")}</Link>}
-            </div>
-          </Panel>
+            {!item.read_at && <button className="btn btn-sm" disabled={markRead.isPending} onClick={() => markRead.mutate(item.notification_id)}><Check size={14} aria-hidden="true" />Mark as read</button>}
+            {item.action_path && <Link className="btn btn-primary btn-sm" to={item.action_path}>Open</Link>}
+          </div>
         ))}
       </div>
-      {!query.data.items.length && <EmptyState icon={<Bell />} title="No notifications" text="Actionable Creative events will appear here." />}
-    </>
+    </div>
   );
 }

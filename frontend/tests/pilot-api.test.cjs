@@ -5,10 +5,7 @@ const path = require("node:path");
 
 const src = (...parts) => fs.readFileSync(path.resolve(__dirname, "../src", ...parts), "utf8");
 
-test("pilot API owns every backend HTTP request", () => {
-  const api = src("services", "pilotApi.ts");
-  const http = src("services", "http.ts");
-  const sourceRoot = path.resolve(__dirname, "../src");
+const sourceFiles = () => {
   const files = [];
   const visit = (directory) => {
     for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
@@ -17,38 +14,52 @@ test("pilot API owns every backend HTTP request", () => {
       else if (/\.(ts|tsx)$/.test(entry.name)) files.push(target);
     }
   };
-  visit(sourceRoot);
+  visit(path.resolve(__dirname, "../src"));
+  return files;
+};
 
+test("only the http service talks to the backend", () => {
+  const http = src("services", "http.ts");
   assert.match(http, /response = await fetch\(path, init\)/);
-  assert.match(api, /creativeKnowledge[\s\S]*marketing\/creative-knowledge/);
-  assert.match(api, /notifications[\s\S]*\/api\/v1\/notifications/);
-  for (const file of files.filter((item) => !item.endsWith(path.join("services", "http.ts")))) {
+  for (const file of sourceFiles().filter((item) => !item.endsWith(path.join("services", "http.ts")))) {
     assert.doesNotMatch(fs.readFileSync(file, "utf8"), /\bfetch\(/, file);
   }
 });
 
-test("the dashboard only routes to affiliate content and knowledge pages", () => {
+test("the app has four menu pages, the studio and redirects for old links", () => {
   const app = src("App.tsx");
-  const shell = src("components", "AppShell.tsx");
-
-  for (const route of ["products", "references", "briefs", "second-brain", "notifications"]) {
+  const shell = src("components", "Shell.tsx");
+  for (const route of ["products", "videos", "studio/:productId", "memory", "notifications"]) {
     assert.match(app, new RegExp(`path="${route}"`));
   }
-  assert.match(app, /<Navigate replace to="\/products" \/>/);
-  assert.doesNotMatch(app, /creative-production|creatives|approvals|workflows|data-sources|research-/);
-  assert.doesNotMatch(shell, /creative-production|\/creatives|\/approvals|\/data-sources/);
+  for (const [from, to] of [["briefs", "/videos"], ["outputs", "/videos"], ["second-brain", "/memory"]]) {
+    assert.match(app, new RegExp(`path="${from}" element=\\{<Navigate replace to="${to}" />`));
+  }
+  for (const label of ["Home", "Products", "My videos", "AI memory"]) assert.match(shell, new RegExp(`label: "${label}"`));
 });
 
-test("SecondBrain is a simple rule list where proposals wait for a human", () => {
-  const page = src("pages", "CreativeKnowledge.tsx");
-  const api = src("services", "pilotApi.ts");
+test("the interface is English only and has no translation layer", () => {
+  for (const file of sourceFiles()) {
+    assert.doesNotMatch(fs.readFileSync(file, "utf8"), /useI18n|I18nProvider/, file);
+  }
+});
 
+test("a rule the AI proposes waits for a human before it is used", () => {
+  const rules = src("pages", "memory", "RulesTab.tsx");
+  const api = src("services", "pilotApi.ts");
   assert.match(api, /creative-knowledge\/bootstrap/);
-  assert.match(api, /manifest_id: manifestId/);
-  assert.match(api, /decideCreativeKnowledge/);
   assert.match(api, /retireCreativeKnowledge/);
-  assert.match(page, /Approve all/);
-  assert.match(page, /pilotApi\.proposeCreativeKnowledge/);
-  assert.match(page, /decideCreativeKnowledge\(saved\.knowledge_id, "approved"/);
-  assert.doesNotMatch(page, /autoApprove|auto_approve/);
+  assert.match(rules, /Approve all/);
+  assert.match(rules, /decideCreativeKnowledge\(saved\.knowledge_id, "approved"/);
+  assert.doesNotMatch(rules, /autoApprove|auto_approve/);
+});
+
+test("the studio pauses for image review before the video is paid for", () => {
+  const idea = src("pages", "studio", "IdeaStep.tsx");
+  const images = src("pages", "studio", "ImagesStep.tsx");
+  const hook = src("hooks", "useStudio.ts");
+  assert.match(idea, /until: "images"/);
+  assert.match(images, /until: "video"/);
+  assert.match(images, /Approve every scene to continue/);
+  assert.match(hook, /pipeline/);
 });

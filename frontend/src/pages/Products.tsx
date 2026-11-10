@@ -1,332 +1,153 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ArrowDownToLine, ArrowUpToLine, Download, Film, LayoutGrid, List, Loader2, Package, RotateCcw, Search, Trash2, Chrome, ShoppingBag, Sparkles } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { Chrome, Download, Package, Search, ShoppingBag, Sparkles, Trash2 } from "lucide-react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { EmptyState, PageHeader, Panel, SkeletonPage } from "../components/ui";
-import { useI18n } from "../hooks/useI18n";
+import { Empty, ErrorNote, PageHead, Skeleton, Spinner } from "../components/ui";
+import { API, useBriefs, useProducts, useSelections } from "../hooks/useStudio";
+import { toNumber, vnd } from "../lib/studio";
 import { deleteJson, getJson, postJson } from "../services/http";
-import type { ReferenceProfile } from "./References";
+import type { Product } from "../types/studio";
 
-type Product = {
-  product_id: string;
-  title: string | null;
-  url: string;
-  price: { sale: string | null };
-  sold_count: number | string | null;
-  rating: number | string | null;
-  review_count: number | string | null;
-  seller: { name: string | null; rating?: number | string | null };
-  images: string[];
-};
-
-type MediaReport = { downloaded: number; duplicates: number; skipped: number; failed: number };
-type SelectResult = { product_id: string; profile: ReferenceProfile | null; error: string | null };
-
-const API = "/api/v1/products";
-const toNumber = (value: number | string | null | undefined) => Number(String(value ?? 0).replace(/[.,]/g, "")) || 0;
-const vnd = (value: string | null) => (value ? `${toNumber(value).toLocaleString("vi-VN")} ₫` : "-");
 const SORTS = {
   sold: (product: Product) => toNumber(product.sold_count),
-  reviews: (product: Product) => toNumber(product.review_count),
   rating: (product: Product) => Number(product.rating) || 0,
 } as const;
 type SortKey = keyof typeof SORTS;
 
 export function ProductsPage() {
-  const { t } = useI18n();
   const navigate = useNavigate();
-  const [search, setSearch] = useState("");
-  const listRef = useRef<HTMLDivElement>(null);
-  const [sortKey, setSortKey] = useState<SortKey>("sold");
-  const [minSold, setMinSold] = useState(0);
-  const [viewMode, setViewMode] = useState<"card" | "table">(() => {
-    try {
-      return (window.localStorage.getItem("aic-products-view") as "card" | "table") || "card";
-    } catch {
-      return "card";
-    }
-  });
-
-  const toggleViewMode = (mode: "card" | "table") => {
-    setViewMode(mode);
-    try {
-      window.localStorage.setItem("aic-products-view", mode);
-    } catch {
-      // ignore
-    }
-  };
-  const query = useQuery({ queryKey: ["products"], queryFn: ({ signal }) => getJson<Product[]>(API, signal), refetchInterval: 10000 });
-  const media = useMutation({ mutationFn: () => postJson<MediaReport>(`${API}/media/download`) });
   const client = useQueryClient();
-  // a selected product whose keyword is not made yet has a null type; poll until the queue is empty
-  const selections = useQuery({
-    queryKey: ["product-selections"],
-    queryFn: ({ signal }) => getJson<Record<string, string | null>>(`${API}/selections`, signal),
-    refetchInterval: (query) => (Object.values(query.state.data ?? {}).some((type) => !type) ? 3000 : false),
-  });
-  const selectErrors = useQuery({
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<SortKey>("sold");
+  const products = useProducts();
+  const selections = useSelections();
+  const briefs = useBriefs();
+  const errors = useQuery({
     queryKey: ["select-errors"],
     queryFn: ({ signal }) => getJson<Record<string, string>>(`${API}/select-errors`, signal),
-    refetchInterval: (query) => (Object.values(selections.data ?? {}).some((type) => !type) || Object.keys(query.state.data ?? {}).length ? 3000 : false),
+    refetchInterval: (query) => (Object.keys(query.state.data ?? {}).length ? 3000 : false),
   });
-  const select = useMutation({
-    mutationFn: ({ productId, regenerate }: { productId: string; regenerate: boolean }) =>
-      postJson<SelectResult>(`${API}/${productId}/select?regenerate=${regenerate}`),
-    onSuccess: (_data, variables) => {
-      void client.invalidateQueries({ queryKey: ["product-selections"] });
-      void client.invalidateQueries({ queryKey: ["select-errors"] });
-      void client.invalidateQueries({ queryKey: ["reference-profiles"] });
-      if (!variables.regenerate) {
-        navigate(`/briefs?product=${encodeURIComponent(variables.productId)}`);
-      }
+  const refresh = () => {
+    void client.invalidateQueries({ queryKey: ["product-selections"] });
+    void client.invalidateQueries({ queryKey: ["select-errors"] });
+  };
+  const start = useMutation({
+    mutationFn: (productId: string) => postJson(`${API}/${productId}/select?regenerate=false`),
+    onSuccess: (_data, productId) => {
+      refresh();
+      navigate(`/studio/${productId}`);
     },
   });
-
+  const retry = useMutation({ mutationFn: (productId: string) => postJson(`${API}/${productId}/select?regenerate=true`), onSuccess: refresh });
   const remove = useMutation({
-    mutationFn: (productId: string) => deleteJson<{ deleted: boolean }>(`${API}/${productId}`),
+    mutationFn: (productId: string) => deleteJson(`${API}/${productId}`),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: ["products"] });
-      void client.invalidateQueries({ queryKey: ["product-selections"] });
+      refresh();
     },
   });
+  const media = useMutation({ mutationFn: () => postJson<{ downloaded: number }>(`${API}/media/download`) });
 
   const rows = useMemo(() => {
     const needle = search.trim().toLowerCase();
-    return (query.data ?? [])
-      .filter((product) => (!needle || `${product.title} ${product.seller?.name}`.toLowerCase().includes(needle)))
-      .filter((product) => toNumber(product.sold_count) >= minSold)
-      .sort((a, b) => SORTS[sortKey](b) - SORTS[sortKey](a));
-  }, [query.data, search, sortKey, minSold]);
+    return (products.data ?? [])
+      .filter((product) => !needle || `${product.title} ${product.seller?.name}`.toLowerCase().includes(needle))
+      .sort((a, b) => SORTS[sort](b) - SORTS[sort](a));
+  }, [products.data, search, sort]);
 
-  if (query.isLoading) return <SkeletonPage />;
-  if (query.error || !query.data) {
-    return <EmptyState icon={<Package />} title="Could not load products" text={query.error?.message ?? "The product service returned no data."} />;
+  if (products.isLoading) return <div className="page"><Skeleton /></div>;
+  if (products.error || !products.data) {
+    return <div className="page"><ErrorNote error={products.error ?? new Error("No data")} /></div>;
   }
+  const briefIds = new Set((briefs.data ?? []).map((record) => record.product_id));
 
   return (
-    <>
-      <PageHeader
-        eyebrow="Affiliate content"
+    <div className="page">
+      <PageHead
         title="Products"
-        description="Products collected from TikTok Shop by the browser extension."
-        actions={
-          <>
-            <a className="secondary-button" href={`${API}/export?format=xlsx`}><Download size={15} /> Excel</a>
-            <a className="secondary-button" href={`${API}/export?format=json`}><Download size={15} /> JSON</a>
-            <button className="secondary-button" disabled={media.isPending} onClick={() => media.mutate()}>
-              <Film size={15} /> {media.isPending ? t("Downloading…") : t("Download media")}
-            </button>
-          </>
-        }
+        text="Products you collected from TikTok Shop. Pick one and make a video."
+        actions={<a className="btn" href={`${API}/export?format=xlsx`}><Download size={16} aria-hidden="true" />Download Excel</a>}
       />
-      {media.data && (
-        <p role="status">{`${t("New")} ${media.data.downloaded} · ${t("duplicates")} ${media.data.duplicates} · ${t("already saved")} ${media.data.skipped} · ${t("failed")} ${media.data.failed}`}</p>
-      )}
-      {media.error && <p role="alert">{media.error.message}</p>}
-      {select.data?.error && <p role="alert">{select.data.error}</p>}
-      {select.error && <p role="alert">{select.error.message}</p>}
-      <Panel>
-        <div className="products-filters">
-          <label className="pf-search">
-            <Search size={15} aria-hidden="true" />
-            <input type="search" placeholder={t("Search title or shop")} value={search} onChange={(event) => setSearch(event.target.value)} />
-          </label>
-          <label className="pf-field">
-            <span>{t("Sort by")}</span>
-            <select value={sortKey} onChange={(event) => setSortKey(event.target.value as SortKey)}>
-              <option value="sold">{t("Sold")}</option>
-              <option value="reviews">{t("Reviews")}</option>
-              <option value="rating">{t("Rating")}</option>
+      <ErrorNote error={start.error ?? remove.error} />
+
+      {products.data.length > 0 && (
+        <div className="toolbar">
+          <label className="sr-only" htmlFor="product-search">Search products</label>
+          <div style={{ position: "relative" }}>
+            <Search size={16} aria-hidden="true" style={{ position: "absolute", left: 12, top: 14, color: "var(--muted)" }} />
+            <input id="product-search" className="input" style={{ paddingLeft: 36 }} type="search" placeholder="Search by name or shop" value={search} onChange={(event) => setSearch(event.target.value)} />
+          </div>
+          <label className="row">
+            <span className="muted small">Sort by</span>
+            <select className="input" style={{ width: "auto" }} value={sort} onChange={(event) => setSort(event.target.value as SortKey)}>
+              <option value="sold">Most sold</option>
+              <option value="rating">Best rated</option>
             </select>
           </label>
-          <label className="pf-field">
-            <span>{t("Min sold")}</span>
-            <input type="number" min={0} value={minSold} onChange={(event) => setMinSold(Number(event.target.value) || 0)} />
-          </label>
-          <span className="pf-count">{`${rows.length} / ${query.data.length}`}</span>
-          <div className="view-mode-toggle" role="group" aria-label={t("View mode")}>
-            <button
-              type="button"
-              className={`icon-button${viewMode === "card" ? " icon-button--active" : ""}`}
-              onClick={() => toggleViewMode("card")}
-              title={t("Grid view")}
-              aria-label={t("Grid view")}
-            >
-              <LayoutGrid size={16} />
-            </button>
-            <button
-              type="button"
-              className={`icon-button${viewMode === "table" ? " icon-button--active" : ""}`}
-              onClick={() => toggleViewMode("table")}
-              title={t("Table view")}
-              aria-label={t("Table view")}
-            >
-              <List size={16} />
-            </button>
-          </div>
-          <span className="pf-scroll">
-            <button type="button" className="icon-button" aria-label={t("Scroll to top")} title={t("Scroll to top")} onClick={() => listRef.current?.scrollTo({ top: 0, behavior: "smooth" })}><ArrowUpToLine size={16} /></button>
-            <button type="button" className="icon-button" aria-label={t("Scroll to bottom")} title={t("Scroll to bottom")} onClick={() => listRef.current?.scrollTo({ top: listRef.current.scrollHeight, behavior: "smooth" })}><ArrowDownToLine size={16} /></button>
-          </span>
+          <span className="muted small">{`${rows.length} of ${products.data.length}`}</span>
         </div>
-        {rows.length ? (
-          <div className="products-scroll" ref={listRef}>
-            {viewMode === "card" ? (
-              <div className="product-cards-grid">
-                {rows.map((product) => {
-                  const picked = product.product_id in (selections.data ?? {});
-                  const keyword = selections.data?.[product.product_id];
-                  const failure = selectErrors.data?.[product.product_id];
-                  const queue = () => select.mutate({ productId: product.product_id, regenerate: true });
-                  return (
-                    <div key={product.product_id} className="product-card">
-                      <div className="product-card__thumb">
-                        {product.images[0] ? (
-                          <img src={product.images[0]} alt="" loading="lazy" />
-                        ) : (
-                          <div className="product-card__placeholder"><Package size={28} /></div>
-                        )}
-                        <span className="product-card__price">{vnd(product.price.sale)}</span>
-                      </div>
-                      <div className="product-card__meta">
-                        <a href={product.url.split("?")[0]} target="_blank" rel="noreferrer" className="product-card__title" title={product.title ?? ""}>
-                          {product.title}
-                        </a>
-                        <small className="product-card__seller">{product.seller?.name || t("Unknown shop")}</small>
-                        <div className="product-card__stats">
-                          <span>{t("Sold")}: <strong>{toNumber(product.sold_count).toLocaleString("vi-VN")}</strong></span>
-                          <span>·</span>
-                          <span>⭐ {product.rating ?? "-"}</span>
-                        </div>
-                      </div>
-                      <div className="product-card__footer">
-                        {!picked ? (
-                          <button
-                            type="button"
-                            className="primary-button product-card__btn-main"
-                            disabled={select.isPending}
-                            onClick={() => select.mutate({ productId: product.product_id, regenerate: false })}
-                          >
-                            <Sparkles size={14} /> {t("Select for content")}
-                          </button>
-                        ) : keyword ? (
-                          <div className="product-card__keyword-box">
-                            <span className="pt-keyword" title={t("Keyword used to find reference images")}>{keyword}</span>
-                            <button type="button" className="pt-icon" aria-label={t("Regenerate keywords")} title={t("Regenerate keywords")} onClick={queue}><RotateCcw size={14} /></button>
-                          </div>
-                        ) : failure ? (
-                          <div className="product-card__keyword-box">
-                            <span className="pt-error" title={failure}>{t("Keyword failed")}</span>
-                            <button type="button" className="pt-icon" aria-label={t("Try again")} title={`${failure} · ${t("Try again")}`} onClick={queue}><RotateCcw size={14} /></button>
-                          </div>
-                        ) : (
-                          <span className="pt-queued"><Loader2 size={13} className="pt-spin" aria-hidden="true" />{t("Making keyword…")}</span>
-                        )}
-                        <button
-                          type="button"
-                          className="pt-icon pt-icon--danger"
-                          aria-label={t("Delete product")}
-                          title={t("Delete product")}
-                          disabled={remove.isPending}
-                          onClick={() => {
-                            if (window.confirm(t("Delete this product and its brief, images, clips and video? It will not be collected again."))) remove.mutate(product.product_id);
-                          }}
-                        ><Trash2 size={14} /></button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <table className="products-table">
-                <thead>
-                  <tr><th></th><th>{t("Product")}</th><th>{t("Price")}</th><th>{t("Sold")}</th><th>{t("Reviews")}</th><th>{t("Rating")}</th><th></th></tr>
-                </thead>
-                <tbody>
-                  {rows.map((product) => (
-                    <tr key={product.product_id}>
-                        <td>{product.images[0] && <img src={product.images[0]} alt="" width={48} height={48} loading="lazy" />}</td>
-                        <td><a href={product.url.split("?")[0]} target="_blank" rel="noreferrer">{product.title}</a><small>{product.seller?.name}</small></td>
-                        <td>{vnd(product.price.sale)}</td>
-                        <td>{toNumber(product.sold_count).toLocaleString("vi-VN")}</td>
-                        <td>{toNumber(product.review_count).toLocaleString("vi-VN")}</td>
-                        <td>{product.rating ?? "-"}</td>
-                        <td>
-                          <div className="pt-actions">
-                            {(() => {
-                              const picked = product.product_id in (selections.data ?? {});
-                              const keyword = selections.data?.[product.product_id];
-                              const failure = selectErrors.data?.[product.product_id];
-                              const queue = () => select.mutate({ productId: product.product_id, regenerate: true });
-                              if (!picked) {
-                                return <button type="button" className="pt-button" onClick={() => select.mutate({ productId: product.product_id, regenerate: false })}>{t("Select for content")}</button>;
-                              }
-                              if (keyword) {
-                                return (
-                                  <>
-                                    <span className="pt-keyword" title={t("Keyword used to find reference images")}>{keyword}</span>
-                                    <button type="button" className="pt-icon" aria-label={t("Regenerate keywords")} title={t("Regenerate keywords")} onClick={queue}><RotateCcw size={14} /></button>
-                                  </>
-                                );
-                              }
-                              if (failure) {
-                                return (
-                                  <>
-                                    <span className="pt-error" title={failure}>{t("Keyword failed")}</span>
-                                    <button type="button" className="pt-icon" aria-label={t("Try again")} title={`${failure} · ${t("Try again")}`} onClick={queue}><RotateCcw size={14} /></button>
-                                  </>
-                                );
-                              }
-                              return <span className="pt-queued"><Loader2 size={13} className="pt-spin" aria-hidden="true" />{t("Making keyword…")}</span>;
-                            })()}
-                            <button
-                              type="button"
-                              className="pt-icon pt-icon--danger"
-                              aria-label={t("Delete product")}
-                              title={t("Delete product")}
-                              disabled={remove.isPending}
-                              onClick={() => {
-                                if (window.confirm(t("Delete this product and its brief, images, clips and video? It will not be collected again."))) remove.mutate(product.product_id);
-                              }}
-                            ><Trash2 size={14} /></button>
-                          </div>
-                        </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-        ) : (
-          <div className="onboarding-guide">
-            <div className="onboarding-guide__hero">
-              <Package size={32} />
-              <h3>{t("No products yet")}</h3>
-              <p>{t("Follow 3 simple steps to collect products and create high-converting affiliate videos.")}</p>
+      )}
+
+      {rows.length ? (
+        <div className="product-grid">
+          {rows.map((product) => {
+            const picked = product.product_id in (selections.data ?? {});
+            const preparing = picked && !selections.data?.[product.product_id];
+            const failure = errors.data?.[product.product_id];
+            const hasVideoWork = briefIds.has(product.product_id);
+            return (
+              <article className="card product-card" key={product.product_id}>
+                <div className="thumb">
+                  {product.images[0] ? <img src={product.images[0]} alt="" loading="lazy" referrerPolicy="no-referrer" /> : <Package size={28} />}
+                  {product.price.sale && <span className="price">{vnd(product.price.sale)}</span>}
+                </div>
+                <div className="body">
+                  <a className="title" href={product.url.split("?")[0]} target="_blank" rel="noreferrer" title={product.title ?? ""}>{product.title}</a>
+                  <span className="muted small">{product.seller?.name || "Unknown shop"}</span>
+                  <span className="small">{`${toNumber(product.sold_count).toLocaleString("en-US")} sold`}{product.rating ? ` · ★ ${product.rating}` : ""}</span>
+                  <div className="foot">
+                    {failure ? (
+                      <button className="btn btn-sm btn-block" disabled={retry.isPending} onClick={() => retry.mutate(product.product_id)}>Could not get ready, try again</button>
+                    ) : (
+                      <button className="btn btn-primary btn-block" disabled={start.isPending || preparing} onClick={() => start.mutate(product.product_id)}>
+                        {preparing ? <><Spinner size={14} />Getting ready…</> : hasVideoWork ? "Open" : <><Sparkles size={16} aria-hidden="true" />Make a video</>}
+                      </button>
+                    )}
+                    <button
+                      className="icon-button"
+                      aria-label="Delete product"
+                      title="Delete product"
+                      disabled={remove.isPending}
+                      onClick={() => {
+                        if (window.confirm("Delete this product and everything made for it? It will not be collected again.")) remove.mutate(product.product_id);
+                      }}
+                    ><Trash2 size={16} /></button>
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      ) : (
+        <Empty icon={<Package size={32} aria-hidden="true" />} title={products.data.length ? "No product matches" : "No products yet"} text={products.data.length ? "Try a different search." : "Collect products from TikTok Shop in three steps."}>
+          {!products.data.length && (
+            <div className="steps-3">
+              <div className="card"><span className="num">1</span><Chrome size={20} aria-hidden="true" /><strong>Install the Chrome extension</strong><span className="muted small">Add it to your Chrome browser.</span></div>
+              <div className="card"><span className="num">2</span><ShoppingBag size={20} aria-hidden="true" /><strong>Browse TikTok Shop</strong><span className="muted small">Open the products you want to promote.</span></div>
+              <div className="card"><span className="num">3</span><Sparkles size={20} aria-hidden="true" /><strong>Click Collect, then come back here</strong><span className="muted small">Your products appear on this page.</span></div>
             </div>
-            <div className="onboarding-guide__steps">
-              <div className="onboarding-step">
-                <span className="onboarding-step__num">1</span>
-                <div className="onboarding-step__icon"><Chrome size={20} /></div>
-                <strong>{t("Install Chrome Extension")}</strong>
-                <p>{t("Load the extension from the extensions folder into your Chrome browser.")}</p>
-              </div>
-              <div className="onboarding-step">
-                <span className="onboarding-step__num">2</span>
-                <div className="onboarding-step__icon"><ShoppingBag size={20} /></div>
-                <strong>{t("Browse TikTok Shop")}</strong>
-                <p>{t("Open TikTok Shop product pages or search results you want to promote.")}</p>
-              </div>
-              <div className="onboarding-step">
-                <span className="onboarding-step__num">3</span>
-                <div className="onboarding-step__icon"><Sparkles size={20} /></div>
-                <strong>{t("Collect & Create")}</strong>
-                <p>{t("Click 'Collect' on the extension, then select products here to generate video briefs.")}</p>
-              </div>
-            </div>
-          </div>
-        )}
-      </Panel>
-    </>
+          )}
+        </Empty>
+      )}
+
+      <details>
+        <summary className="muted small" style={{ cursor: "pointer" }}>More tools</summary>
+        <div className="row" style={{ marginTop: 12 }}>
+          <a className="btn btn-sm" href={`${API}/export?format=json`}>Download JSON</a>
+          <button className="btn btn-sm" disabled={media.isPending} onClick={() => media.mutate()}>{media.isPending ? "Saving pictures…" : "Save product pictures to the server"}</button>
+          {media.data && <span className="muted small">{`${media.data.downloaded} new pictures saved`}</span>}
+        </div>
+      </details>
+    </div>
   );
 }

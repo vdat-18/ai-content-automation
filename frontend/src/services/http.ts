@@ -5,22 +5,17 @@ export class ApiError extends Error {
   }
 }
 
-export function marketingErrorMessage(error: unknown): string {
+/** What a person should read when a request fails; the raw detail is only for the details link. */
+export function friendlyMessage(error: unknown): string {
   if (error instanceof ApiError) {
-    if (error.status === 502 || error.status === 503 || error.status === 504 || error.status === 0) {
-      return "The creative service is taking longer than expected. Your input is still here — please try again in a moment.";
+    if ([0, 502, 503, 504].includes(error.status)) {
+      return "The AI service is busy or not reachable right now. Nothing was lost, please try again in a minute.";
     }
-    if (error.status === 409) {
-      return "This request changed while it was being prepared. Review your input and try again.";
-    }
-    if (error.status === 413) {
-      return "One or more files are too large. Choose smaller files and try again.";
-    }
-    if (error.status >= 500) {
-      return "The creative service is temporarily unavailable. Your input is still here — please try again shortly.";
-    }
+    if (error.status === 409) return error.message;
+    if (error.status === 413) return "That file is too large. Choose a smaller one and try again.";
+    if (error.status >= 500) return "Something went wrong on our side. Please try again shortly.";
   }
-  return "We couldn't complete this step. Your input is still here — please try again.";
+  return "We could not finish that step. Please try again.";
 }
 
 async function requestJson<T>(path: string, init?: RequestInit): Promise<T> {
