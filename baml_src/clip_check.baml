@@ -25,9 +25,10 @@ function CheckClip(
     the person in every frame is clearly the same person as in the photos and the keyframe
     (the clothes may differ when the shot shows the product worn). Be strict about the face:
     compare it with the photos feature by feature (eye shape and spacing, eyebrows, nose,
-    lips, jaw and chin, hairline and hair parting, skin tone). A face that is only similar, a
-    generic handsome face, or one that looks smoothed, idealised or like a different man or
-    woman fails, and so does a face that drifts from the photos between frames; when the
+    lips, jaw and chin, hairline and hair parting, skin tone). The only allowed difference is
+    clearer skin: acne, spots and scars seen in the photos must NOT appear in the clip. A face
+    that is only similar, a generic handsome face, or one whose features look changed or like a
+    different man or woman fails, and so does a face that drifts from the photos between frames; when the
     person's face is visible, it must also be alive: across the frames it shows real
     expression (a smile, raised eyebrows, eye movement, a change of look) and is never a
     frozen, blank, mask-like face that stays the same in every frame; hands and limbs look natural with no extra, missing,

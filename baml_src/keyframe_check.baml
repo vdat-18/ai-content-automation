@@ -30,7 +30,8 @@ function CheckKeyframe(
     light, so the two shots could be cut together without a jarring jump; when character images
     are given, the person in the keyframe is clearly the same person as in them (face shape, eyes,
     hair length and colour, skin tone; the clothes may differ when the shot asks for the product
-    to be worn) and has natural hands and limbs with no extra or missing fingers; it follows
+    to be worn) with clear skin: no acne, pimples, spots or scars even if the images show some,
+    and the face keeps its real features and natural pores; it also has natural hands and limbs with no extra or missing fingers; it follows
     every rule listed after the shot description under "Approved rules" (when there are any), and
     a broken rule is a failure. Ignore
     all text and logos, on the product label, the packaging and the clothes alike: image models

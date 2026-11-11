@@ -29,7 +29,9 @@ _NO_PEOPLE = "Do not show any human face; hands, the product and the space are e
 _PERSONA_RULE = (
     "the person in the ad. Copy their face, hair length and colour, skin tone and body exactly "
     "from these images in every shot and ignore any other description of their looks in the text "
-    "below; they must be recognisable as the same real person. Wear the clothes the shot asks "
+    "below; they must be recognisable as the same real person. Give the face clear, even skin: "
+    "remove any acne, pimples, spots, scars and blemishes seen in the images, but keep the "
+    "natural pores and every other feature unchanged. Wear the clothes the shot asks "
     "for (the product, when it is clothing), otherwise the clothes seen in the images."
 )
 
