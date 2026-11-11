@@ -84,7 +84,9 @@ Mỗi lỗi có mức nặng/nhẹ, ra điểm 0–100. Lỗi lặp lại nhiề
 
 ## 4. Vòng phản hồi sau video
 
-**Trạng thái:** Chờ duyệt · **Công sức:** nhỏ–vừa · **Nguồn:** nguyentatkiem (`feedback.mjs`)
+**Trạng thái:** Xong phần code và test · **Công sức:** nhỏ–vừa · **Nguồn:** nguyentatkiem (`feedback.mjs`)
+
+**Đã làm (khác bản gốc theo ý người dùng).** Không chấm sao, không ngưỡng 2 lần/25%: ở bước Finish có ô nhận xét tự do, gửi vào SecondBrain thành luật chờ duyệt (loại `brief`, vì luật cho kịch bản mới ảnh hưởng video sau). Kết quả kiểm tra video (mục 3) cũng vào SecondBrain: khi cùng một lỗi (không có hook, chữ quá dài, im lặng) xuất hiện ở từ 2 video, hệ thống đề xuất luật nhãn `video-check`; luật đã có (kể cả đã duyệt hoặc từ chối) không bị mở lại. Lỗi về độ to, đỉnh âm, hình đứng yên không đề xuất vì kịch bản không sửa được. Chưa có AI xem video cuối rồi nhận xét (tốn tiền, chưa được duyệt).
 
 **Làm gì.**
 - Sau mỗi video, người dùng chấm 1–5 sao và chọn thẻ lỗi: mở đầu yếu, chữ khó đọc, nhạc to, dài quá, giọng lạ.

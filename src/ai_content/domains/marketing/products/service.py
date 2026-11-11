@@ -72,7 +72,7 @@ from .speech import (
 )
 from .storyboard_review import StoryboardReviewer
 from .text_embedding import TextEmbedder, TextEmbeddingError
-from .video_check import VideoCheckUnavailable, judge, measure
+from .video_check import LESSONS, VideoCheckUnavailable, judge, measure
 
 _PINTEREST_SEARCH = "https://www.pinterest.com/search/pins/?q="
 _SCREEN_BATCH = 200
@@ -1241,9 +1241,7 @@ class ProductCatalogService:
             lengths = await make_voiceover(self._speaker, segments, folder / "voiceover.mp3", voice)
             await store.push(f"videos/{product_id}/voiceover.mp3")
             heard = {
-                str(index): round(
-                    spoken_seconds(n, reading.seconds, reading.guide is not None), 2
-                )
+                str(index): round(spoken_seconds(n, reading.seconds, reading.guide is not None), 2)
                 for index, n, reading in zip(approved, lengths, segments, strict=True)
                 if reading.text.strip()
             }
@@ -1305,9 +1303,9 @@ class ProductCatalogService:
         parts: list[StitchClip] = []
         first_words = ""
         used: dict[int, int] = {}
-        heard = ((await self._read_json(media_root, f"videos/{product_id}/voiceover.json")) or {}).get(
-            "speech_seconds"
-        ) or {}
+        heard = (
+            (await self._read_json(media_root, f"videos/{product_id}/voiceover.json")) or {}
+        ).get("speech_seconds") or {}
         for index, shot in enumerate(shots):
             if keyframes.get(index, {}).get("status") != "approved":
                 continue
@@ -1346,6 +1344,8 @@ class ProductCatalogService:
             )
         except VideoCheckUnavailable as error:
             logger.warning("Final video check skipped: {}", error)
+        if check is not None:
+            await self._learn_from_check(product_id, media_root, check)
         await self._write_json(
             media_root,
             f"videos/{product_id}/video.json",
@@ -1366,6 +1366,32 @@ class ProductCatalogService:
             f"captions {'yes' if captions else 'no'}",
         )
         return relative
+
+    async def _learn_from_check(
+        self, product_id: str, media_root: Path, check: dict[str, Any]
+    ) -> None:
+        """Propose a script rule for a problem that has now shown up in two or more videos."""
+        if self._knowledge is None:
+            return
+        found = {i["code"] for i in check["issues"] if i["code"] in LESSONS}
+        for record in await self._repository.list_briefs():
+            if not found:
+                break
+            if record["product_id"] == product_id:
+                continue
+            earlier = await self._read_json(media_root, f"videos/{record['product_id']}/video.json")
+            seen = {i.get("code") for i in ((earlier or {}).get("check") or {}).get("issues", [])}
+            for code in found & seen:
+                await propose_feedback(
+                    self._knowledge,
+                    product_id=product_id,
+                    text=LESSONS[code],
+                    contributor="video-check",
+                    authority=KnowledgeAuthority.EXTERNAL,
+                    asset_type="brief",
+                    once=True,
+                )
+            found -= seen
 
     async def video_check(self, product_id: str, media_root: Path) -> dict[str, Any] | None:
         """The automatic check made when the video was stitched, or None when there is none."""
@@ -1388,7 +1414,11 @@ class ProductCatalogService:
         await self._write_json(
             media_root,
             f"videos/{product_id}/voiceover.json",
-            {"voice": voice, "made_at": datetime.now(UTC).isoformat(), "speech_seconds": heard or {}},
+            {
+                "voice": voice,
+                "made_at": datetime.now(UTC).isoformat(),
+                "speech_seconds": heard or {},
+            },
         )
 
     async def list_outputs(self, media_root: Path) -> list[dict[str, Any]]:

@@ -25,6 +25,7 @@ export function FinishStep({ productId, record, frames, hasVideo, run }: { produ
   const [copied, setCopied] = useState("");
   const [link, setLink] = useState(() => readLink(productId));
   const [captions, setCaptions] = useState(false);
+  const [review, setReview] = useState("");
   const [voice, setVoice] = useState(() => window.localStorage.getItem(VOICE_KEY) ?? "");
   const pack = record.brief.post_package;
   const check = useVideoCheck(productId, version).data;
@@ -34,6 +35,10 @@ export function FinishStep({ productId, record, frames, hasVideo, run }: { produ
   const writePack = useMutation({
     mutationFn: () => postJson<PostPackage>(`${API}/${productId}/post-package`),
     onSuccess: () => client.invalidateQueries({ queryKey: ["brief", productId] }),
+  });
+  const sendReview = useMutation({
+    mutationFn: () => postJson(`${API}/${productId}/feedback`, { text: review.trim(), asset_type: "brief" }),
+    onSuccess: () => setReview(""),
   });
   const remake = useMutation({
     mutationFn: async () => {
@@ -105,6 +110,17 @@ export function FinishStep({ productId, record, frames, hasVideo, run }: { produ
                 </div>
               </div>
             )}
+            <div className="stack">
+              <label className="field">
+                <span className="small">What would make the next video better?</span>
+                <textarea rows={2} value={review} onChange={(event) => setReview(event.target.value)} placeholder="For example: the opening was slow, start with a question." />
+              </label>
+              <div className="row">
+                <button className="btn btn-sm" disabled={!review.trim() || sendReview.isPending} onClick={() => sendReview.mutate()}>Send to AI memory</button>
+                {sendReview.isSuccess && <span className="muted small">Sent. Approve it in AI memory to use it in the next videos.</span>}
+              </div>
+              <ErrorNote error={sendReview.error} />
+            </div>
             <details>
               <summary className="muted small" style={{ cursor: "pointer" }}>More options: change the voice or show on-screen text</summary>
               <div className="stack" style={{ marginTop: 12 }}>

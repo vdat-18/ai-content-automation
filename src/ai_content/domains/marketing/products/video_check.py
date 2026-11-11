@@ -24,6 +24,13 @@ MAX_FROZEN_SECONDS = 6.0
 MAX_LENGTH_DRIFT = 2.0
 MAX_CAPTION_WORDS = 5
 _PENALTY = {"major": 25, "minor": 10}
+# Problems a better script can prevent: what to tell the next script when they keep coming back.
+LESSONS = {
+    "no_hook": "Start the first scene with spoken words or on-screen text, such as a question or "
+    "a number, so the first 2 seconds hook the viewer.",
+    "long_text": "Keep on-screen text to 5 words or fewer so it can be read in a glance.",
+    "silence": "Give every scene a voice-over line so the video never goes quiet for 2 seconds.",
+}
 
 
 class VideoCheckUnavailable(RuntimeError):
@@ -44,6 +51,7 @@ class Measures:
 
 @dataclass(frozen=True)
 class Issue:
+    code: str
     severity: str  # "major" or "minor"
     message: str
 
@@ -60,40 +68,57 @@ def judge(
     issues: list[Issue] = []
     if (measures.width, measures.height) != TARGET_SIZE:
         issues.append(
-            Issue("major", f"Picture is {measures.width}x{measures.height}, not 1080x1920 (9:16)")
+            Issue(
+                "size",
+                "major",
+                f"Picture is {measures.width}x{measures.height}, not 1080x1920 (9:16)",
+            )
         )
     if abs(measures.seconds - expected_seconds) > MAX_LENGTH_DRIFT:
         issues.append(
             Issue(
+                "length",
                 "minor",
                 f"Video is {measures.seconds:.1f} s long, expected about {expected_seconds:.1f} s",
             )
         )
     if not measures.has_audio:
         if wants_audio:
-            issues.append(Issue("major", "The video has no sound"))
+            issues.append(Issue("no_audio", "major", "The video has no sound"))
     else:
         if measures.loudness is not None and abs(measures.loudness - TARGET_LUFS) > LUFS_TOLERANCE:
             issues.append(
-                Issue("minor", f"Loudness is {measures.loudness:.1f} LUFS, TikTok expects -14")
+                Issue(
+                    "loudness",
+                    "minor",
+                    f"Loudness is {measures.loudness:.1f} LUFS, TikTok expects -14",
+                )
             )
         if measures.true_peak is not None and measures.true_peak > MAX_TRUE_PEAK:
             issues.append(
-                Issue("minor", f"Sound peaks at {measures.true_peak:.1f} dB and may clip")
+                Issue("peak", "minor", f"Sound peaks at {measures.true_peak:.1f} dB and may clip")
             )
         longest = max(measures.silences, default=0.0)
         if longest >= MAX_SILENCE_SECONDS:
-            issues.append(Issue("minor", f"There is {longest:.1f} s of silence in the middle"))
+            issues.append(
+                Issue("silence", "minor", f"There is {longest:.1f} s of silence in the middle")
+            )
     still = max(measures.freezes, default=0.0)
     if still >= MAX_FROZEN_SECONDS:
-        issues.append(Issue("minor", f"The picture hardly moves for {still:.1f} s"))
+        issues.append(Issue("frozen", "minor", f"The picture hardly moves for {still:.1f} s"))
     if not hook_text.strip():
         issues.append(
-            Issue("minor", "The first scene has no words, so the first 2 seconds have no hook")
+            Issue(
+                "no_hook",
+                "minor",
+                "The first scene has no words, so the first 2 seconds have no hook",
+            )
         )
     for text in burned_texts:
         if len(text.split()) > MAX_CAPTION_WORDS:
-            issues.append(Issue("minor", f'On-screen text is too long to read fast: "{text}"'))
+            issues.append(
+                Issue("long_text", "minor", f'On-screen text is too long to read fast: "{text}"')
+            )
     score = max(0, 100 - sum(_PENALTY[issue.severity] for issue in issues))
     return {"score": score, "issues": [asdict(issue) for issue in issues]}
 

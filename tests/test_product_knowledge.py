@@ -222,3 +222,39 @@ async def test_an_approved_rule_can_be_turned_off_and_is_then_not_used(tmp_path)
     assert not (await approved_rules(knowledge, KnowledgeStage.ORCHESTRATION, "keyframe")).ids
     with pytest.raises(ValueError, match="Only approved"):
         await knowledge.retire("a")
+
+
+async def test_an_automatic_proposal_never_reopens_a_decided_rule(tmp_path) -> None:
+    knowledge = _knowledge(tmp_path)
+    first = await propose_feedback(
+        knowledge, product_id=PRODUCT_ID, text="Hook fast", contributor="video-check",
+        authority=KnowledgeAuthority.EXTERNAL, asset_type="brief", once=True,
+    )  # fmt: skip
+    await knowledge.repository.save(replace(first, status=KnowledgeStatus.REJECTED))
+    again = await propose_feedback(
+        knowledge, product_id="other", text="Hook fast", contributor="video-check",
+        authority=KnowledgeAuthority.EXTERNAL, asset_type="brief", once=True,
+    )  # fmt: skip
+    assert again.status == KnowledgeStatus.REJECTED
+    assert len(await knowledge.repository.list()) == 1
+
+
+async def test_a_check_problem_seen_in_two_videos_becomes_a_proposed_script_rule(tmp_path) -> None:
+    knowledge = _knowledge(tmp_path)
+    repository = SqliteProductRepository(tmp_path / "c.db")
+    service = ProductCatalogService(repository, knowledge=knowledge)
+    for product in ("p1", "p2"):
+        await repository.save_brief(product, "", {"title": product, "shots": []}, "approved")
+    issue = {"code": "no_hook", "severity": "minor", "message": "m"}
+    await service._write_json(
+        tmp_path, "videos/p1/video.json", {"check": {"score": 90, "issues": [issue]}}
+    )
+    await service._learn_from_check("p2", tmp_path, {"score": 90, "issues": [issue]})
+    [item] = await knowledge.repository.list()
+    assert item.status == KnowledgeStatus.PROPOSED and item.contributor == "video-check"
+    assert item.scope.asset_type == "brief" and "hook" in item.content
+
+    await service._learn_from_check("p2", tmp_path, {"score": 90, "issues": []})
+    quiet = {"code": "silence", "severity": "minor", "message": "m"}
+    await service._learn_from_check("p2", tmp_path, {"score": 90, "issues": [quiet]})
+    assert len(await knowledge.repository.list()) == 1  # silence has not been seen before

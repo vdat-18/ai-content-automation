@@ -56,10 +56,17 @@ async def propose_feedback(
     contributor: str,
     authority: KnowledgeAuthority,
     asset_type: str = "keyframe",
+    once: bool = False,
 ) -> CreativeKnowledge:
-    """Store feedback on a generated image or video as a proposal that a human must approve."""
+    """Store feedback on a generated image or video as a proposal that a human must approve.
+
+    With once=True a rule that already exists (even approved or rejected) is left as it is,
+    so an automatic source cannot put a decided rule back to "proposed".
+    """
     text = text.strip()
     digest = hashlib.sha1(f"{asset_type}:{text}".casefold().encode()).hexdigest()[:12]
+    if once and (known := await knowledge.repository.get(f"feedback-{digest}")) is not None:
+        return known
     return await knowledge.propose(
         knowledge_id=f"feedback-{digest}",
         knowledge_type=KnowledgeType.LESSON,
