@@ -40,7 +40,7 @@ from .clips import (
     shot_seconds,
     stitch,
 )
-from .compliance import AI_LABEL_REMINDER, brief_warnings, package_warnings
+from .compliance import AI_LABEL_REMINDER, brief_warnings, package_warnings, product_facts
 from .embedding import ImageEmbedder, cosine, dhash, download_images, hamming
 from .identity import PIN_SIZE_DIR, media_source_fingerprint
 from .image_review import ReferenceImageReviewer
@@ -492,7 +492,7 @@ class ProductCatalogService:
                 f"The model wrote {len(brief['shots'])} shots instead of {shot_count}; try again"
             )
         brief["quality_problems"] = problems
-        brief["warnings"] = brief_warnings(brief)
+        brief["warnings"] = brief_warnings(brief, product_facts(detail, user_idea))
         brief["shot_references"] = await self._pick_shot_references(
             product_id, detail, brief, live, product_type
         )
@@ -692,11 +692,12 @@ class ProductCatalogService:
         if current is None:
             return None
         brief = {**current["brief"], **{k: v for k, v in changes.items() if k in BRIEF_FIELDS}}
-        brief["warnings"] = brief_warnings(brief)
+        detail = await self._repository.get_detail(product_id)
+        facts = product_facts(detail, current["user_idea"]) if detail else ""
+        brief["warnings"] = brief_warnings(brief, facts)
         brief.setdefault("quality_problems", [])
         if brief.get("shots") != current["brief"].get("shots"):
             # only a changed storyboard is worth a new review, which takes a minute
-            detail = await self._repository.get_detail(product_id)
             brief["quality_problems"] = (
                 await self._review_storyboard(detail, brief) if detail else []
             )

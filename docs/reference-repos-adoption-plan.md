@@ -144,7 +144,7 @@ Mỗi lỗi có mức nặng/nhẹ, ra điểm 0–100. Lỗi lặp lại nhiề
 
 ## 8. Trạng thái của từng claim
 
-**Trạng thái:** Chờ duyệt · **Công sức:** nhỏ · **Nguồn:** ai-video-editor (promotion-narrative), nguyentatkiem ("không tự bịa số liệu")
+**Trạng thái:** Xong phần code và test, bản đơn giản: chỉ kiểm số liệu (phần trăm, tiền, số từ 100 trở lên) so với dữ liệu sản phẩm và ý tưởng của người dùng; số không có nguồn hiện thành cảnh báo cho người đọc (cùng chỗ với cảnh báo từ cấm), không tự xoá và không gắn ba nhãn `verified`/`official-claim`/`illustrative`. Số đếm cho phép làm tròn xuống ("hơn 3.000" cho 3.200). Chưa thử với kịch bản AI viết thật · **Công sức:** nhỏ · **Nguồn:** ai-video-editor (promotion-narrative), nguyentatkiem ("không tự bịa số liệu")
 
 **Làm gì.** Mỗi con số hay lời hứa trong script gắn nhãn nguồn: `verified` (có trong dữ liệu sản phẩm: giá, lượt bán, đánh giá), `official-claim` (người bán tự nói), `illustrative` (minh hoạ). Claim không có nguồn thì không cho vào video.
 
