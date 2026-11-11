@@ -10,10 +10,13 @@ from ai_content.domains.marketing.products.service import (
     ProductCatalogService,
 )
 from ai_content.domains.marketing.products.speech import (
+    PHRASE_PAUSE,
+    SENTENCE_PAUSE,
     Reading,
     SpeechClient,
     SpeechError,
     make_voiceover,
+    phrases,
 )
 
 PRODUCT_ID = "1730000000000000001"
@@ -89,6 +92,40 @@ async def test_speech_client_retries_overload_and_rejects_other_errors() -> None
     json_error = _client(lambda request: httpx.Response(200, content=b'{"error":"x"}'))
     with pytest.raises(SpeechError):
         await json_error.speak("a")
+
+
+def test_a_voice_over_is_split_into_breath_groups_with_pauses() -> None:
+    assert phrases("Áo mát lắm, giặt không xù, giá chỉ 199k. Mua ngay nhé!") == [
+        ("Áo mát lắm,", PHRASE_PAUSE),
+        ("giặt không xù,", PHRASE_PAUSE),
+        ("giá chỉ 199k.", SENTENCE_PAUSE),
+        ("Mua ngay nhé!", SENTENCE_PAUSE),
+    ]
+
+
+def test_a_single_word_is_joined_to_its_neighbour() -> None:
+    assert phrases("Ôi, áo này đẹp quá. Mua!") == [("Ôi, áo này đẹp quá. Mua!", SENTENCE_PAUSE)]
+    assert phrases("") == [] and phrases("...") == []
+
+
+@needs_ffmpeg
+async def test_phrases_are_read_apart_with_pauses_and_set_to_one_loudness(tmp_path) -> None:
+    spoken: list[str] = []
+
+    class _Fake:
+        async def speak(self, text, voice=None):
+            spoken.append(text)
+            return _tone(1.0)
+
+    output = tmp_path / "videos" / "voiceover.mp3"
+    result = await make_voiceover(
+        _Fake(),
+        [Reading("Áo mát lắm, giặt không xù.", 6.0)],
+        output,  # type: ignore[arg-type]
+    )
+    assert spoken == ["Áo mát lắm,", "giặt không xù."]
+    assert 2.2 < result[0] < 2.4  # two 1 s readings and one 0.28 s pause
+    assert sorted(p.name for p in output.parent.iterdir()) == ["voiceover.mp3"]
 
 
 @needs_ffmpeg

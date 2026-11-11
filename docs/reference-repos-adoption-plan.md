@@ -128,7 +128,7 @@ Mỗi lỗi có mức nặng/nhẹ, ra điểm 0–100. Lỗi lặp lại nhiề
 
 ## 7. Giọng đọc theo cụm hơi
 
-**Trạng thái:** Chờ duyệt · **Công sức:** nhỏ–vừa · **Nguồn:** ai-video-editor (`voiceover-workflow`)
+**Trạng thái:** Xong phần code và test (cảnh không có clip dẫn: đọc theo cụm, nghỉ 0,28 s sau dấu phẩy và 0,4 s sau câu, cân mỗi đoạn về -16 LUFS, tối đa ±12 dB). Khác kế hoạch: (1) vẫn tăng tốc giọng khi dài hơn cảnh vì độ dài cảnh cố định theo clip đã trả tiền, tốc độ mặc định giữ nguyên; (2) các số nằm trong hằng số của `speech.py`, chưa đưa vào SecondBrain vì luật ở đó là văn bản, chưa có loại voiceover; (3) cảnh nói trước camera (khớp môi) giữ nguyên cách cũ. Chưa nghe thử với giọng TTS thật · **Công sức:** nhỏ–vừa · **Nguồn:** ai-video-editor (`voiceover-workflow`)
 
 **Làm gì.**
 - Chia lời thành cụm ngắn theo dấu phẩy và câu, đọc từng cụm riêng, nghỉ 0,28–0,4 giây giữa các cụm.

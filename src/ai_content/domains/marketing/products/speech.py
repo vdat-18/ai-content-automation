@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import os
+import re
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
@@ -19,6 +20,11 @@ _TRIES = 3
 _RETRY_STATUSES = {429, 500, 502, 503, 504}
 _RETRY_DELAY = 4.0
 MAX_SPEEDUP = 1.5
+PHRASE_PAUSE = 0.28  # seconds of quiet after a comma-like mark
+SENTENCE_PAUSE = 0.4  # seconds of quiet after the end of a sentence
+MIN_PHRASE_WORDS = 2
+VOICE_LUFS = -16.0  # every reading is brought to this loudness
+MAX_GAIN_DB = 12.0
 
 
 def tts_speed() -> float:
@@ -108,6 +114,99 @@ async def _probe_seconds(path: Path) -> float:
         raise StitchUnavailable("ffprobe could not read the voice-over audio") from error
 
 
+def phrases(text: str) -> list[tuple[str, float]]:
+    """Split a voice-over into breath groups with the pause that follows each.
+
+    A group ends at a comma-like mark (short pause) or a sentence end (longer pause). A group of
+    a single word is joined to its neighbour because one word read alone sounds clipped.
+    """
+    groups: list[tuple[str, float]] = []
+    for match in re.finditer(r"[^,;:.!?…]+[,;:.!?…]*", text):
+        piece = " ".join(match.group().split())
+        if not re.search(r"\w", piece):
+            continue
+        pause = SENTENCE_PAUSE if re.search(r"[.!?…]$", piece) else PHRASE_PAUSE
+        if groups and len(groups[-1][0].split()) < MIN_PHRASE_WORDS:
+            groups[-1] = (f"{groups[-1][0]} {piece}", pause)
+        else:
+            groups.append((piece, pause))
+    if len(groups) > 1 and len(groups[-1][0].split()) < MIN_PHRASE_WORDS:
+        last, _ = groups.pop()
+        groups[-1] = (f"{groups[-1][0]} {last}", groups[-1][1])
+    return groups
+
+
+async def _read_in_phrases(
+    client: SpeechClient,
+    text: str,
+    voice: str | None,
+    target: Path,
+    folder: Path,
+    index: int,
+    scratch: list[Path],
+) -> float:
+    """Read each breath group on its own and join them with pauses; returns the total seconds."""
+    pieces: list[Path] = []
+    total = 0.0
+    groups = phrases(text) or [(text.strip(), 0.0)]
+    for number, (phrase, pause) in enumerate(groups):
+        raw = folder / f"voice_raw_{index}_{number}.mp3"
+        piece = folder / f"voice_piece_{index}_{number}.wav"
+        scratch.extend([raw, piece])
+        raw.write_bytes(await client.speak(phrase, voice))
+        total += await _probe_seconds(raw)
+        await _run(
+            "ffmpeg", "-v", "error", "-y", "-i", raw.name, "-ar", "24000", "-ac", "1", piece.name,
+            cwd=folder,
+        )  # fmt: skip
+        pieces.append(piece)
+        if number < len(groups) - 1:
+            gap = folder / f"voice_gap_{index}_{number}.wav"
+            scratch.append(gap)
+            await _run(
+                "ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "anullsrc=r=24000:cl=mono",
+                "-t", f"{pause:.3f}", gap.name, cwd=folder,
+            )  # fmt: skip
+            pieces.append(gap)
+            total += pause
+    listing = folder / f"voice_phrases_{index}.txt"
+    scratch.append(listing)
+    listing.write_text("".join(f"file '{p.name}'\n" for p in pieces), encoding="utf-8")
+    await _run(
+        "ffmpeg", "-v", "error", "-y", "-f", "concat", "-safe", "0", "-i", listing.name,
+        "-c:a", "pcm_s16le", target.name, cwd=folder,
+    )  # fmt: skip
+    return total
+
+
+async def _loudness(path: Path) -> float | None:
+    """Integrated loudness of a reading in LUFS, or None when there is nothing to measure."""
+    process = await asyncio.create_subprocess_exec(
+        "ffmpeg", "-hide_banner", "-nostats", "-i", str(path), "-af", "ebur128", "-f", "null", "-",
+        stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE,
+    )  # fmt: skip
+    _, stderr = await process.communicate()
+    found = re.findall(r"\bI:\s+(-?[\d.]+) LUFS", stderr.decode(errors="replace"))
+    return float(found[-1]) if found and float(found[-1]) > -60 else None
+
+
+async def _level(part: Path) -> None:
+    """Bring one reading to the common voice loudness so no shot is louder than another."""
+    measured = await _loudness(part)
+    if measured is None:
+        return
+    gain = min(max(VOICE_LUFS - measured, -MAX_GAIN_DB), MAX_GAIN_DB)
+    if abs(gain) < 0.3:
+        return
+    leveled = part.with_name(f"leveled_{part.name}")
+    await _run(
+        "ffmpeg", "-v", "error", "-y", "-i", part.name,
+        "-af", f"volume={gain:.2f}dB,alimiter=limit=0.89", "-ar", "24000", "-ac", "1", leveled.name,
+        cwd=part.parent,
+    )  # fmt: skip
+    leveled.replace(part)
+
+
 @dataclass(frozen=True)
 class Reading:
     text: str
@@ -131,7 +230,9 @@ async def make_voiceover(
 ) -> list[float]:
     """Read each text so it starts with its shot, and join the readings into one mp3.
 
-    Every reading is sped up to the brisk pace of AIC_TTS_SPEED, and one longer than its shot
+    A reading is spoken one breath group at a time, with a short pause between groups, and each
+    shot's voice is brought to the same loudness. Every reading is sped up to the brisk pace of
+    AIC_TTS_SPEED, and one longer than its shot
     further, to at most 1.5x, and then cut; a shorter one is
     padded with silence, so every shot's words begin where the shot begins. A talking shot has a
     guide clip: its reading is read at the natural pace and bent to follow the speech in the clip,
@@ -161,20 +262,27 @@ async def make_voiceover(
                     cwd=output.parent,
                 )  # fmt: skip
                 continue
+            if guide is None:
+                phrased = output.parent / f"voice_phrased_{index}.wav"
+                scratch.append(phrased)
+                length = await _read_in_phrases(
+                    client, text, voice, phrased, output.parent, index, scratch
+                )
+                lengths.append(length)
+                speed = min(max(length / seconds, tts_speed()), MAX_SPEEDUP)
+                await _run(
+                    "ffmpeg", "-v", "error", "-y", "-i", phrased.name,
+                    "-af", f"atempo={speed:.4f},apad=whole_dur={seconds:.3f}",
+                    "-t", f"{seconds:.3f}", "-ar", "24000", "-ac", "1", part.name,
+                    cwd=output.parent,
+                )  # fmt: skip
+                await _level(part)
+                continue
             raw = output.parent / f"voice_raw_{index}.mp3"
             scratch.append(raw)
             raw.write_bytes(await client.speak(text.strip(), voice))
             length = await _probe_seconds(raw)
             lengths.append(length)
-            if guide is None:
-                speed = min(max(length / seconds, tts_speed()), MAX_SPEEDUP)
-                await _run(
-                    "ffmpeg", "-v", "error", "-y", "-i", raw.name,
-                    "-af", f"atempo={speed:.4f},apad=whole_dur={seconds:.3f}",
-                    "-t", f"{seconds:.3f}", "-ar", "24000", "-ac", "1", part.name,
-                    cwd=output.parent,
-                )  # fmt: skip
-                continue
             aligned = output.parent / f"voice_aligned_{index}.wav"
             scratch.append(aligned)
             await align_to_guide(raw, guide, aligned)
@@ -185,6 +293,7 @@ async def make_voiceover(
                 "-t", f"{seconds:.3f}", "-ar", "24000", "-ac", "1", part.name,
                 cwd=output.parent,
             )  # fmt: skip
+            await _level(part)
         listing = output.parent / "voice_parts.txt"
         scratch.append(listing)
         listing.write_text("".join(f"file '{p.name}'\n" for p in parts), encoding="utf-8")
