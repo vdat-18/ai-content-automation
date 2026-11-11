@@ -41,7 +41,9 @@ Trạng thái: `Chờ duyệt` · `Đã duyệt` · `Bỏ` · `Xong`
 
 ## 2. Phụ đề chạy theo từng chữ
 
-**Trạng thái:** Chờ duyệt · **Công sức:** vừa · **Nguồn:** nguyentatkiem (`topic_video`)
+**Trạng thái:** Xong phần code và test · **Công sức:** vừa · **Nguồn:** nguyentatkiem (`topic_video`)
+
+**Đã làm (khác kế hoạch một chỗ).** Không dùng Whisper: giọng đọc được tạo theo từng shot nên đã biết sẵn mỗi shot nói trong bao lâu; chữ được chia theo số ký tự (cộng thêm thời gian nghỉ sau dấu phẩy/chấm) trong khoảng đó. Đỡ một thư viện nặng và không có lỗi nghe sai tiếng Việt. Mỗi dòng tối đa 4 từ, từ có chữ số (giá, số lượng) tô vàng. Bật bằng ô "Show the on-screen text" ở bước Finish; giọng tải lên từ file không có mốc nên dùng chữ on-screen cũ. Đã chạy thử trong Docker: chữ hiện đúng lúc và tắt khi hết lời. Nếu sau này lệch nhiều, nâng cấp bằng Whisper được.
 
 **Vấn đề hiện tại.** Caption là một khối `drawtext` hiện suốt cả shot (`clips.py`), không chạy theo lời đọc.
 

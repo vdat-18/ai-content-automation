@@ -27,6 +27,7 @@ from .briefing import (
     ContentBriefWriter,
     reference_note,
 )
+from .captions import spoken_cues
 from .clip_check import ClipChecker
 from .clips import (
     CLIP_SECONDS,
@@ -67,6 +68,7 @@ from .speech import (
     SpeechClient,
     SpeechError,
     make_voiceover,
+    spoken_seconds,
 )
 from .storyboard_review import StoryboardReviewer
 from .text_embedding import TextEmbedder, TextEmbeddingError
@@ -1237,8 +1239,15 @@ class ProductCatalogService:
         try:
             lengths = await make_voiceover(self._speaker, segments, folder / "voiceover.mp3", voice)
             await store.push(f"videos/{product_id}/voiceover.mp3")
+            heard = {
+                str(index): round(
+                    spoken_seconds(n, reading.seconds, reading.guide is not None), 2
+                )
+                for index, n, reading in zip(approved, lengths, segments, strict=True)
+                if reading.text.strip()
+            }
             await self.note_voice(
-                product_id, media_root, VOICES.get(voice or "", voice or "default")
+                product_id, media_root, VOICES.get(voice or "", voice or "default"), heard
             )
         except (SpeechError, StitchUnavailable) as error:
             raise KeyframeUnavailable(f"The voice-over could not be made: {error}") from error
@@ -1283,7 +1292,8 @@ class ProductCatalogService:
         """Stitch the ready clips of approved shots, in story order, into one mp4.
 
         Captions are only burned into the picture when asked for, since the text can cover the
-        product.
+        product. They show the voice-over words as they are spoken; a shot whose voice-over was
+        not made shows its on-screen text instead.
         """
         record = await self._repository.get_brief(product_id)
         if record is None:
@@ -1293,6 +1303,9 @@ class ProductCatalogService:
         keyframes = {k["shot_index"]: k for k in await self._repository.list_keyframes(product_id)}
         parts: list[StitchClip] = []
         used: dict[int, int] = {}
+        heard = ((await self._read_json(media_root, f"videos/{product_id}/voiceover.json")) or {}).get(
+            "speech_seconds"
+        ) or {}
         for index, shot in enumerate(shots):
             if keyframes.get(index, {}).get("status") != "approved":
                 continue
@@ -1304,7 +1317,8 @@ class ProductCatalogService:
             local = await self.media(media_root).fetch(clip["video_path"])
             if local is None:
                 raise StitchUnavailable(f"The clip file for shot {index + 1} is missing")
-            parts.append(StitchClip(local, duration, caption))
+            cues = tuple(spoken_cues(str(shot.get("voiceover") or ""), heard.get(str(index), 0)))
+            parts.append(StitchClip(local, duration, caption, cues if captions else ()))
             used[index] = clip["attempts"]
         relative = f"videos/{product_id}/video.mp4"
         store = self.media(media_root)
@@ -1346,12 +1360,14 @@ class ProductCatalogService:
         except FileNotFoundError:
             return None
 
-    async def note_voice(self, product_id: str, media_root: Path, voice: str) -> None:
-        """Remember which voice read the voice-over, for the page that shows what a video is made of."""
+    async def note_voice(
+        self, product_id: str, media_root: Path, voice: str, heard: dict[str, float] | None = None
+    ) -> None:
+        """Remember which voice read the voice-over and how long each shot's words are heard."""
         await self._write_json(
             media_root,
             f"videos/{product_id}/voiceover.json",
-            {"voice": voice, "made_at": datetime.now(UTC).isoformat()},
+            {"voice": voice, "made_at": datetime.now(UTC).isoformat(), "speech_seconds": heard or {}},
         )
 
     async def list_outputs(self, media_root: Path) -> list[dict[str, Any]]:

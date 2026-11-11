@@ -115,6 +115,14 @@ class Reading:
     guide: Path | None = None  # the clip whose own speech sets the pace of a talking shot
 
 
+def spoken_seconds(length: float, seconds: float, guided: bool = False) -> float:
+    """How long the words of one reading are actually heard inside its shot (before the padding)."""
+    if guided:
+        return min(length / clip_speed(), seconds)
+    speed = min(max(length / seconds, tts_speed()), MAX_SPEEDUP)
+    return min(length / speed, seconds)
+
+
 async def make_voiceover(
     client: SpeechClient,
     segments: list[Reading],

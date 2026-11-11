@@ -14,6 +14,8 @@ from urllib.parse import quote
 import httpx
 from loguru import logger
 
+from .captions import Cue, ass_document
+
 CLIP_SECONDS = 15
 ASPECT = "9:16"
 _TIMEOUT = 120
@@ -153,6 +155,7 @@ class StitchClip:
     path: Path
     duration: float
     caption: str = ""
+    cues: tuple[Cue, ...] = ()  # spoken words; when present they replace the caption
 
 
 def caption_font() -> Path | None:
@@ -178,6 +181,17 @@ def find_bgm() -> Path | None:
             return candidate.resolve()
     return None
 
+
+
+def _font_family(font: Path) -> str:
+    """The family name subtitles ask for; libass finds the file through its folder."""
+    name = font.stem.lower()
+    return "DejaVu Sans" if "dejavu" in name else "Arial" if "arial" in name else font.stem
+
+
+def _spoken_filter(font: Path, subtitle_file: str) -> str:
+    folder = font.parent.as_posix().replace(":", r"\:")
+    return f"ass={subtitle_file}:fontsdir='{folder}'"
 
 
 def _caption_filter(font: Path, textfile: str, end: float) -> str:
@@ -253,7 +267,14 @@ async def stitch(
                 f"crop={_OUTPUT_SIZE},setsar=1,fps={_FPS},"
                 f"{_COLOR_GRADE}"
             )
-            if clip.caption.strip() and font is not None:
+            if clip.cues and font is not None:
+                subtitles = output.parent / f"caption_{index}.ass"
+                subtitles.write_text(
+                    ass_document(list(clip.cues), _font_family(font)), encoding="utf-8"
+                )
+                scratch.append(subtitles)
+                filters += "," + _spoken_filter(font, subtitles.name)
+            elif clip.caption.strip() and font is not None:
                 textfile = output.parent / f"caption_{index}.txt"
                 textfile.write_text(textwrap.fill(clip.caption.strip(), 20), encoding="utf-8")
                 scratch.append(textfile)

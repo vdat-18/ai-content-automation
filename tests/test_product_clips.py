@@ -399,3 +399,21 @@ async def test_a_clip_of_a_brief_without_a_person_forbids_people(tmp_path) -> No
     await service._repository.save_brief(PRODUCT_ID, "", {**brief, "with_person": True}, "approved")
     await service.generate_clips(PRODUCT_ID, tmp_path, shot_index=0)
     assert "No person appears" not in video.submitted[-1][0]
+
+
+@pytest.mark.skipif(
+    shutil.which("ffmpeg") is None or caption_font() is None, reason="no ffmpeg or caption font"
+)
+async def test_stitch_burns_spoken_words_only_while_they_are_said(tmp_path) -> None:
+    from ai_content.domains.marketing.products.captions import spoken_cues
+
+    clip = tmp_path / "c.mp4"
+    _make_clip(clip, "black", audio=False)
+    output = tmp_path / "spoken.mp4"
+    cues = tuple(spoken_cues("Gấp gọn trong 3 giây", 1.5))
+    await stitch([StitchClip(clip, 3.0, cues=cues)], output)
+    frame = lambda second: subprocess.run(  # noqa: E731
+        ["ffmpeg", "-v", "error", "-ss", second, "-i", str(output), "-frames:v", "1", "-f", "rawvideo", "-pix_fmt", "gray", "-"],
+        capture_output=True, check=True,
+    ).stdout  # fmt: skip
+    assert max(frame("0.7")) > 200 and max(frame("2.3")) < 20
