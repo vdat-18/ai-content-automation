@@ -458,3 +458,30 @@ async def test_a_hook_variant_reuses_the_clips_and_keeps_its_own_files(tmp_path)
     built = json.loads((folder / "hook_1" / "video.json").read_text(encoding="utf-8"))
     assert built["hook"] == "Bạn đã thử chưa?"
     assert [h["built"] for h in await service.hooks(PRODUCT_ID, tmp_path)] == [True]
+
+
+def test_a_clip_is_cut_to_the_length_its_shot_should_have() -> None:
+    from ai_content.domains.marketing.products.clips import clip_seconds_for, shot_seconds
+
+    assert abs(shot_seconds(clip_seconds_for(6.0)) - 6.0) < 1e-6
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg is not installed")
+async def test_a_shot_is_cut_when_its_voice_over_ends_early(tmp_path) -> None:
+    service = await _service(tmp_path, _FakeVideo())
+    clip = tmp_path / "clips" / PRODUCT_ID / "shot_0.mp4"
+    clip.parent.mkdir(parents=True)
+    _make_clip(clip, "red", seconds=15, audio=False)
+    await service._repository.save_clip(
+        {
+            "product_id": PRODUCT_ID, "shot_index": 0, "status": "ready", "job_id": "j",
+            "job_model": "m", "video_path": f"clips/{PRODUCT_ID}/shot_0.mp4", "seconds": 15,
+            "attempts": 1, "error": None, "qa_problem": "",
+        }
+    )  # fmt: skip
+    await service.note_voice(PRODUCT_ID, tmp_path, "Kim Oanh", {"0": 2.0}, "", {"0": 3.0})
+    await service.build_video(PRODUCT_ID, tmp_path)
+    built = json.loads(
+        (tmp_path / "videos" / PRODUCT_ID / "video.json").read_text(encoding="utf-8")
+    )
+    assert 2.9 < built["seconds"] < 3.1  # without the cut it would be 3.8

@@ -152,6 +152,11 @@ def shot_seconds(duration: float) -> float:
     return _source_seconds(duration) / clip_speed()
 
 
+def clip_seconds_for(shot_length: float) -> float:
+    """The part of a clip to use so that the shot lasts shot_length in the stitched video."""
+    return shot_length * clip_speed() + 2 * TRIM_SECONDS
+
+
 @dataclass(frozen=True)
 class StitchClip:
     path: Path

@@ -39,6 +39,7 @@ from .clips import (
     VideoClient,
     caption_font,
     clip_frames,
+    clip_seconds_for,
     cover_frame,
     shot_seconds,
     stitch,
@@ -281,10 +282,14 @@ class ProductCatalogService:
         stickers: bool = False,
     ) -> str | None:
         """Make the video for one saved hook from the clips already generated: no new clip."""
-        hook = next((h for h in await self.hooks(product_id, media_root) if h["id"] == hook_id), None)
+        hook = next(
+            (h for h in await self.hooks(product_id, media_root) if h["id"] == hook_id), None
+        )
         if hook is None:
             return None
-        await self.create_voiceover(product_id, media_root, voice, variant=hook_id, hook=hook["text"])
+        await self.create_voiceover(
+            product_id, media_root, voice, variant=hook_id, hook=hook["text"]
+        )
         return await self.build_video(
             product_id, media_root, captions, stickers, variant=hook_id, hook=hook["text"]
         )
@@ -1344,23 +1349,35 @@ class ProductCatalogService:
         folder.mkdir(parents=True, exist_ok=True)
         for extension in VOICEOVER_TYPES.values():
             await store.remove(f"{where}/voiceover.{extension}")
+        planned = [reading.seconds for reading in segments]
         try:
             lengths = await make_voiceover(self._speaker, segments, folder / "voiceover.mp3", voice)
             await store.push(f"{where}/voiceover.mp3")
             heard = {
-                str(index): round(spoken_seconds(n, reading.seconds, reading.guide is not None), 2)
-                for index, n, reading in zip(approved, lengths, segments, strict=True)
+                str(index): round(spoken_seconds(n, planned_seconds, reading.guide is not None), 2)
+                for index, n, planned_seconds, reading in zip(
+                    approved, lengths, planned, segments, strict=True
+                )
                 if reading.text.strip()
             }
+            held = {
+                str(index): round(reading.seconds, 2)
+                for index, reading in zip(approved, segments, strict=True)
+            }
             await self.note_voice(
-                product_id, media_root, VOICES.get(voice or "", voice or "default"), heard, variant
+                product_id,
+                media_root,
+                VOICES.get(voice or "", voice or "default"),
+                heard,
+                variant,
+                held,
             )
         except (SpeechError, StitchUnavailable) as error:
             raise KeyframeUnavailable(f"The voice-over could not be made: {error}") from error
         too_long = [
             i + 1
-            for i, (n, reading) in enumerate(zip(lengths, segments, strict=True))
-            if n > reading.seconds * MAX_SPEEDUP
+            for i, (n, planned_seconds) in enumerate(zip(lengths, planned, strict=True))
+            if n > planned_seconds * MAX_SPEEDUP
         ]
         await self._log(
             product_id,
@@ -1419,9 +1436,9 @@ class ProductCatalogService:
         used: dict[int, int] = {}
         spoken_texts: list[str] = []
         where = video_folder(product_id, variant)
-        heard = ((await self._read_json(media_root, f"{where}/voiceover.json")) or {}).get(
-            "speech_seconds"
-        ) or {}
+        made = (await self._read_json(media_root, f"{where}/voiceover.json")) or {}
+        heard = made.get("speech_seconds") or {}
+        held = made.get("shot_seconds") or {}
         for index, shot in enumerate(shots):
             if keyframes.get(index, {}).get("status") != "approved":
                 continue
@@ -1431,6 +1448,8 @@ class ProductCatalogService:
             if clip is None or clip["status"] != "ready":
                 raise StitchUnavailable(f"The clip for shot {index + 1} is not ready yet")
             duration = min(float(shot.get("duration_seconds") or clip["seconds"]), clip["seconds"])
+            if str(index) in held:  # the voice-over was cut to its words; cut the picture to match
+                duration = min(duration, clip_seconds_for(float(held[str(index)])))
             caption = str(shot.get("on_screen_text") or "") if captions else ""
             local = await self.media(media_root).fetch(clip["video_path"])
             if local is None:
@@ -1467,7 +1486,7 @@ class ProductCatalogService:
         check = None
         try:
             check = judge(
-                await measure(store.path(relative)),
+                await measure(store.path(relative), voice),
                 expected_seconds=sum(shot_seconds(p.duration) for p in parts),
                 hook_text=first_words,
                 burned_texts=[p.caption for p in parts if p.caption and not p.cues],
@@ -1496,7 +1515,8 @@ class ProductCatalogService:
             "video",
             "ok",
             f"Stitched {len(parts)} clip(s), voice-over {'yes' if voice else 'no'}, "
-            f"captions {'yes' if captions else 'no'}" + (f", hook variant {variant}" if variant else ""),
+            f"captions {'yes' if captions else 'no'}"
+            + (f", hook variant {variant}" if variant else ""),
         )
         return relative
 
@@ -1547,6 +1567,7 @@ class ProductCatalogService:
         voice: str,
         heard: dict[str, float] | None = None,
         variant: str = "",
+        held: dict[str, float] | None = None,
     ) -> None:
         """Remember which voice read the voice-over and how long each shot's words are heard."""
         await self._write_json(
@@ -1556,6 +1577,7 @@ class ProductCatalogService:
                 "voice": voice,
                 "made_at": datetime.now(UTC).isoformat(),
                 "speech_seconds": heard or {},
+                "shot_seconds": held or {},
             },
         )
 

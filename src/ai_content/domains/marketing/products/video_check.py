@@ -20,6 +20,7 @@ TARGET_LUFS = -14.0
 LUFS_TOLERANCE = 3.0
 MAX_TRUE_PEAK = -1.0
 MAX_SILENCE_SECONDS = 2.5
+VOICE_SILENCE_DB = -38
 MAX_FROZEN_SECONDS = 6.0
 MAX_LENGTH_DRIFT = 2.0
 MAX_CAPTION_WORDS = 5
@@ -139,8 +140,12 @@ def _last_number(pattern: str, text: str) -> float | None:
     return float(found[-1]) if found else None
 
 
-async def measure(video: Path) -> Measures:
-    """Read the format with ffprobe, then loudness, quiet gaps and still stretches with ffmpeg."""
+async def measure(video: Path, voice: Path | None = None) -> Measures:
+    """Read the format with ffprobe, then loudness, quiet gaps and still stretches with ffmpeg.
+
+    Quiet gaps are measured on the voice-over alone when it is given, because music under it
+    would hide a stretch where nobody speaks.
+    """
     if shutil.which("ffmpeg") is None or shutil.which("ffprobe") is None:
         raise VideoCheckUnavailable("ffmpeg is not installed on this machine")
     probe = json.loads(await _probe_json(video))
@@ -158,6 +163,12 @@ async def measure(video: Path) -> Measures:
         "ffmpeg", "-hide_banner", "-nostats", "-i", str(video),
         "-vf", "freezedetect=n=0.003:d=3", *sound, "-f", "null", "-",
     )  # fmt: skip
+    quiet = log
+    if voice is not None and has_audio:
+        quiet = await _output(
+            "ffmpeg", "-hide_banner", "-nostats", "-i", str(voice),
+            "-af", f"silencedetect=n={VOICE_SILENCE_DB}dB:d=1", "-f", "null", "-",
+        )  # fmt: skip
     return Measures(
         measures.width,
         measures.height,
@@ -165,7 +176,7 @@ async def measure(video: Path) -> Measures:
         has_audio,
         _last_number(r"\bI:\s+(-?[\d.]+) LUFS", log) if has_audio else None,
         _last_number(r"\bPeak:\s+(-?[\d.]+) dBFS", log) if has_audio else None,
-        [float(n) for n in re.findall(r"silence_duration: ([\d.]+)", log)],
+        [float(n) for n in re.findall(r"silence_duration: ([\d.]+)", quiet)],
         [float(n) for n in re.findall(r"freeze_duration: ([\d.]+)", log)],
     )
 

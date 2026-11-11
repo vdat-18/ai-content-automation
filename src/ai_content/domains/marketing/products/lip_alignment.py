@@ -115,6 +115,12 @@ def _path(reading: np.ndarray, guide: np.ndarray) -> tuple[np.ndarray, np.ndarra
     return pairs[:, 0], pairs[:, 1]
 
 
+async def speech_end(audio: Path) -> float:
+    """Seconds into the audio where the last speech ends; 0 when it is silent."""
+    found = _speech(_frames(await _decode(audio)))
+    return 0.0 if found is None else found[1] * _HOP / _RATE
+
+
 async def align_to_guide(reading: Path, guide: Path, output: Path) -> None:
     """Write the reading to `output` on the guide's timeline: it starts where the guide's speech
     starts and each piece lasts as long as the matching piece of the guide's speech."""

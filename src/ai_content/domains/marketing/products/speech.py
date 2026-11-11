@@ -13,7 +13,7 @@ import httpx
 from loguru import logger
 
 from .clips import TRIM_SECONDS, StitchUnavailable, _run, clip_speed
-from .lip_alignment import GuideMismatch, align_to_guide
+from .lip_alignment import GuideMismatch, align_to_guide, speech_end
 
 _TIMEOUT = 120
 _TRIES = 3
@@ -25,6 +25,8 @@ SENTENCE_PAUSE = 0.4  # seconds of quiet after the end of a sentence
 MIN_PHRASE_WORDS = 2
 VOICE_LUFS = -16.0  # every reading is brought to this loudness
 MAX_GAIN_DB = 12.0
+TAIL_SECONDS = 1.2  # quiet kept after the last word of a shot before the cut
+MIN_SHOT_SECONDS = 4.0  # a shorter shot would lose the soft transition into the next
 
 
 def tts_speed() -> float:
@@ -179,6 +181,21 @@ async def _read_in_phrases(
     return total
 
 
+async def _trim_silence(part: Path, seconds: float) -> float:
+    """Cut the quiet after the last word of a reading; returns how long the shot now lasts."""
+    end = await speech_end(part)
+    keep = min(seconds, max(end + TAIL_SECONDS, MIN_SHOT_SECONDS))
+    if keep >= seconds - 0.2:
+        return seconds
+    shorter = part.with_name(f"short_{part.name}")
+    await _run(
+        "ffmpeg", "-v", "error", "-y", "-i", part.name, "-t", f"{keep:.3f}", "-ar", "24000",
+        "-ac", "1", shorter.name, cwd=part.parent,
+    )  # fmt: skip
+    shorter.replace(part)
+    return keep
+
+
 async def _loudness(path: Path) -> float | None:
     """Integrated loudness of a reading in LUFS, or None when there is nothing to measure."""
     process = await asyncio.create_subprocess_exec(
@@ -237,7 +254,9 @@ async def make_voiceover(
     padded with silence, so every shot's words begin where the shot begins. A talking shot has a
     guide clip: its reading is read at the natural pace and bent to follow the speech in the clip,
     so the mouth in the picture fits the voice. When the clip's speech is too different in length
-    to follow, the shot is read like any other and its guide is dropped from `segments`. Returns the natural length of each reading so a
+    to follow, the shot is read like any other and its guide is dropped from `segments`. A shot
+    whose words end well before the shot does is cut short after them, and its new length is
+    written back to `segments`, so the picture can be cut to match. Returns the natural length of each reading so a
     caller can tell which shots need shorter text.
     """
     if shutil.which("ffmpeg") is None or shutil.which("ffprobe") is None:
@@ -285,6 +304,9 @@ async def make_voiceover(
                         cwd=output.parent,
                     )  # fmt: skip
                     await _level(part)
+                    segments[index] = replace(
+                        segments[index], seconds=await _trim_silence(part, seconds)
+                    )
                     continue
             phrased = output.parent / f"voice_phrased_{index}.wav"
             scratch.append(phrased)
@@ -300,6 +322,7 @@ async def make_voiceover(
                 cwd=output.parent,
             )  # fmt: skip
             await _level(part)
+            segments[index] = replace(segments[index], seconds=await _trim_silence(part, seconds))
         listing = output.parent / "voice_parts.txt"
         scratch.append(listing)
         listing.write_text("".join(f"file '{p.name}'\n" for p in parts), encoding="utf-8")

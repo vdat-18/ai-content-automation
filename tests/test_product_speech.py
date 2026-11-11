@@ -149,6 +149,24 @@ async def test_each_reading_is_fitted_to_its_shot(tmp_path) -> None:
 
 
 @needs_ffmpeg
+async def test_the_quiet_after_the_last_word_of_a_shot_is_cut_off(tmp_path) -> None:
+    class _Fake:
+        async def speak(self, text, voice=None):
+            return _tone(3.0)
+
+    output = tmp_path / "videos" / "voiceover.mp3"
+    readings = [Reading("nói ngắn", 12.0), Reading("kể", 3.0)]
+    await make_voiceover(_Fake(), readings, output)  # type: ignore[arg-type]
+    # 3 s of words at the brisk pace is about 2.3 s, so the shot keeps the 4 s minimum
+    assert 3.9 < readings[0].seconds < 4.1 and readings[1].seconds == 3.0
+    duration = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(output)],
+        capture_output=True, text=True, check=True,
+    ).stdout  # fmt: skip
+    assert 6.8 < float(duration) < 7.2
+
+
+@needs_ffmpeg
 async def test_a_talking_shot_follows_the_speech_of_its_clip(tmp_path) -> None:
     guide = tmp_path / "guide.wav"
     _write_wav(guide, [(0.5, 1.3, 150), (2.2, 3.2, 220), (4.0, 4.6, 300)], 5.5)
