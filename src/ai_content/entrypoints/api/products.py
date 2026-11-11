@@ -608,6 +608,15 @@ async def video_info(
     }
 
 
+@router.get("/{product_id}/video-check")
+async def video_check(
+    product_id: str,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> dict[str, Any] | None:
+    """Score and problems the automatic check found in the finished video."""
+    return await service.video_check(product_id, _media_root())
+
+
 @router.get("/{product_id}/video")
 async def final_video(
     product_id: str,

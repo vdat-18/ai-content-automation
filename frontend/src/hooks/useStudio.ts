@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, getJson, postJson } from "../services/http";
-import type { BriefRecord, Clip, Keyframe, OutputItem, PersonSummary, PipelineRun, Product, RunEvent, VideoInfo } from "../types/studio";
+import type { BriefRecord, Clip, Keyframe, OutputItem, PersonSummary, PipelineRun, Product, RunEvent, VideoCheck, VideoInfo } from "../types/studio";
 
 export const API = "/api/v1/products";
 
@@ -83,3 +83,6 @@ export function useStartPipeline(productId: string) {
     onSuccess: (run) => client.setQueryData(["pipeline", productId], run),
   });
 }
+
+export const useVideoCheck = (productId: string, version: number) =>
+  useQuery({ queryKey: ["video-check", productId, version], queryFn: ({ signal }) => getJson<VideoCheck>(`${API}/${productId}/video-check`, signal) });

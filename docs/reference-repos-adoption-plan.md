@@ -61,7 +61,9 @@ Trạng thái: `Chờ duyệt` · `Đã duyệt` · `Bỏ` · `Xong`
 
 ## 3. QC cho video cuối
 
-**Trạng thái:** Chờ duyệt · **Công sức:** vừa · **Nguồn:** nguyentatkiem (`ai_qc`)
+**Trạng thái:** Xong phần code và test · **Công sức:** vừa · **Nguồn:** nguyentatkiem (`ai_qc`)
+
+**Đã làm.** Sau khi ghép video, máy đo bằng ffprobe/ffmpeg: kích thước 1080x1920, thời lượng, có âm thanh, độ to (-14 LUFS ±3), đỉnh âm (> -1 dB), im lặng ≥ 2,5 s, hình đứng yên ≥ 6 s, có chữ ở cảnh đầu, chữ on-screen quá 5 từ. Lỗi nặng trừ 25 điểm, nhẹ trừ 10; kết quả lưu trong `video.json` và hiện ở bước Finish (endpoint `/video-check`). **Chưa làm:** kiểm tra chữ tràn vùng an toàn (chữ luôn nằm giữa nên không tràn), nhạc át giọng (không đo riêng được hai luồng, đã có ducking), và đề xuất luật SecondBrain từ lỗi lặp lại (sẽ gộp vào mục 4 cùng vòng phản hồi). Đã đo thử trong Docker trên video giả; chưa chạy trên video thật.
 
 **Vấn đề hiện tại.** Đang QC từng ảnh và từng clip bằng Gemini, nhưng không kiểm tra video đã ghép.
 

@@ -1,0 +1,156 @@
+"""Automatic technical check of the finished video: format, sound, gaps and text length.
+
+It measures with ffprobe and ffmpeg only (no AI, no cost) and reports problems with a score.
+It does not judge how the video looks, and it only reports; nothing is fixed automatically.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import json
+import re
+import shutil
+from dataclasses import asdict, dataclass, field
+from pathlib import Path
+
+from loguru import logger
+
+TARGET_SIZE = (1080, 1920)
+TARGET_LUFS = -14.0
+LUFS_TOLERANCE = 3.0
+MAX_TRUE_PEAK = -1.0
+MAX_SILENCE_SECONDS = 2.5
+MAX_FROZEN_SECONDS = 6.0
+MAX_LENGTH_DRIFT = 2.0
+MAX_CAPTION_WORDS = 5
+_PENALTY = {"major": 25, "minor": 10}
+
+
+class VideoCheckUnavailable(RuntimeError):
+    """The video could not be measured (ffmpeg is missing or could not read it)."""
+
+
+@dataclass(frozen=True)
+class Measures:
+    width: int
+    height: int
+    seconds: float
+    has_audio: bool
+    loudness: float | None = None  # integrated, LUFS
+    true_peak: float | None = None  # dBTP
+    silences: list[float] = field(default_factory=list)  # lengths of quiet gaps, seconds
+    freezes: list[float] = field(default_factory=list)  # lengths of stretches without motion
+
+
+@dataclass(frozen=True)
+class Issue:
+    severity: str  # "major" or "minor"
+    message: str
+
+
+def judge(
+    measures: Measures,
+    *,
+    expected_seconds: float,
+    hook_text: str,
+    burned_texts: list[str],
+    wants_audio: bool = True,
+) -> dict:
+    """Turn the measurements into issues and a 0-100 score."""
+    issues: list[Issue] = []
+    if (measures.width, measures.height) != TARGET_SIZE:
+        issues.append(
+            Issue("major", f"Picture is {measures.width}x{measures.height}, not 1080x1920 (9:16)")
+        )
+    if abs(measures.seconds - expected_seconds) > MAX_LENGTH_DRIFT:
+        issues.append(
+            Issue(
+                "minor",
+                f"Video is {measures.seconds:.1f} s long, expected about {expected_seconds:.1f} s",
+            )
+        )
+    if not measures.has_audio:
+        if wants_audio:
+            issues.append(Issue("major", "The video has no sound"))
+    else:
+        if measures.loudness is not None and abs(measures.loudness - TARGET_LUFS) > LUFS_TOLERANCE:
+            issues.append(
+                Issue("minor", f"Loudness is {measures.loudness:.1f} LUFS, TikTok expects -14")
+            )
+        if measures.true_peak is not None and measures.true_peak > MAX_TRUE_PEAK:
+            issues.append(
+                Issue("minor", f"Sound peaks at {measures.true_peak:.1f} dB and may clip")
+            )
+        longest = max(measures.silences, default=0.0)
+        if longest >= MAX_SILENCE_SECONDS:
+            issues.append(Issue("minor", f"There is {longest:.1f} s of silence in the middle"))
+    still = max(measures.freezes, default=0.0)
+    if still >= MAX_FROZEN_SECONDS:
+        issues.append(Issue("minor", f"The picture hardly moves for {still:.1f} s"))
+    if not hook_text.strip():
+        issues.append(
+            Issue("minor", "The first scene has no words, so the first 2 seconds have no hook")
+        )
+    for text in burned_texts:
+        if len(text.split()) > MAX_CAPTION_WORDS:
+            issues.append(Issue("minor", f'On-screen text is too long to read fast: "{text}"'))
+    score = max(0, 100 - sum(_PENALTY[issue.severity] for issue in issues))
+    return {"score": score, "issues": [asdict(issue) for issue in issues]}
+
+
+async def _output(*args: str) -> str:
+    process = await asyncio.create_subprocess_exec(
+        *args, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+    )
+    stdout, stderr = await process.communicate()
+    if process.returncode:
+        logger.warning("{} failed: {}", args[0], stderr.decode(errors="replace")[-300:])
+        raise VideoCheckUnavailable("ffmpeg could not read the video")
+    return (stdout + b"\n" + stderr).decode(errors="replace")
+
+
+def _last_number(pattern: str, text: str) -> float | None:
+    found = re.findall(pattern, text)
+    return float(found[-1]) if found else None
+
+
+async def measure(video: Path) -> Measures:
+    """Read the format with ffprobe, then loudness, quiet gaps and still stretches with ffmpeg."""
+    if shutil.which("ffmpeg") is None or shutil.which("ffprobe") is None:
+        raise VideoCheckUnavailable("ffmpeg is not installed on this machine")
+    probe = json.loads(await _probe_json(video))
+    streams = probe.get("streams") or []
+    picture = next((s for s in streams if s.get("codec_type") == "video"), {})
+    has_audio = any(s.get("codec_type") == "audio" for s in streams)
+    measures = Measures(
+        int(picture.get("width") or 0),
+        int(picture.get("height") or 0),
+        float((probe.get("format") or {}).get("duration") or 0),
+        has_audio,
+    )
+    sound = ["-af", "ebur128=peak=true,silencedetect=n=-45dB:d=1"] if has_audio else ["-an"]
+    log = await _output(
+        "ffmpeg", "-hide_banner", "-nostats", "-i", str(video),
+        "-vf", "freezedetect=n=0.003:d=3", *sound, "-f", "null", "-",
+    )  # fmt: skip
+    return Measures(
+        measures.width,
+        measures.height,
+        measures.seconds,
+        has_audio,
+        _last_number(r"\bI:\s+(-?[\d.]+) LUFS", log) if has_audio else None,
+        _last_number(r"\bPeak:\s+(-?[\d.]+) dBFS", log) if has_audio else None,
+        [float(n) for n in re.findall(r"silence_duration: ([\d.]+)", log)],
+        [float(n) for n in re.findall(r"freeze_duration: ([\d.]+)", log)],
+    )
+
+
+async def _probe_json(video: Path) -> str:
+    process = await asyncio.create_subprocess_exec(
+        "ffprobe", "-v", "error", "-print_format", "json", "-show_streams", "-show_format",
+        str(video), stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL,
+    )  # fmt: skip
+    stdout, _ = await process.communicate()
+    if process.returncode:
+        raise VideoCheckUnavailable("ffprobe could not read the video")
+    return stdout.decode()

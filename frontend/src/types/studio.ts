@@ -42,6 +42,7 @@ export type OutputItem = {
   shots: number;
   has_cover: boolean;
 };
+export type VideoCheck = { score: number; issues: { severity: "major" | "minor"; message: string }[] } | null;
 export type VideoInfo = { exists: boolean; voiceover: boolean };
 export type RunEvent = { id: number; at: string; step: string; shot_index: number | null; status: string; message: string };
 export type Voice = { id: string; label: string };

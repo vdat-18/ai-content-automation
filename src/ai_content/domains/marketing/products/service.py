@@ -72,6 +72,7 @@ from .speech import (
 )
 from .storyboard_review import StoryboardReviewer
 from .text_embedding import TextEmbedder, TextEmbeddingError
+from .video_check import VideoCheckUnavailable, judge, measure
 
 _PINTEREST_SEARCH = "https://www.pinterest.com/search/pins/?q="
 _SCREEN_BATCH = 200
@@ -1302,6 +1303,7 @@ class ProductCatalogService:
         clips = {c["shot_index"]: c for c in await self.clips(product_id, media_root)}
         keyframes = {k["shot_index"]: k for k in await self._repository.list_keyframes(product_id)}
         parts: list[StitchClip] = []
+        first_words = ""
         used: dict[int, int] = {}
         heard = ((await self._read_json(media_root, f"videos/{product_id}/voiceover.json")) or {}).get(
             "speech_seconds"
@@ -1319,6 +1321,8 @@ class ProductCatalogService:
                 raise StitchUnavailable(f"The clip file for shot {index + 1} is missing")
             cues = tuple(spoken_cues(str(shot.get("voiceover") or ""), heard.get(str(index), 0)))
             parts.append(StitchClip(local, duration, caption, cues if captions else ()))
+            if not parts[1:]:
+                first_words = str(shot.get("on_screen_text") or shot.get("voiceover") or "")
             used[index] = clip["attempts"]
         relative = f"videos/{product_id}/video.mp4"
         store = self.media(media_root)
@@ -1331,6 +1335,17 @@ class ProductCatalogService:
         cover = f"videos/{product_id}/cover.jpg"
         await cover_frame(store.path(relative), store.path(cover))
         await store.push(cover)
+        check = None
+        try:
+            check = judge(
+                await measure(store.path(relative)),
+                expected_seconds=sum(shot_seconds(p.duration) for p in parts),
+                hook_text=first_words,
+                burned_texts=[p.caption for p in parts if p.caption and not p.cues],
+                wants_audio=voice is not None,
+            )
+        except VideoCheckUnavailable as error:
+            logger.warning("Final video check skipped: {}", error)
         await self._write_json(
             media_root,
             f"videos/{product_id}/video.json",
@@ -1339,6 +1354,7 @@ class ProductCatalogService:
                 "captions": captions,
                 "seconds": round(sum(shot_seconds(p.duration) for p in parts), 1),
                 "clip_attempts": used,
+                "check": check,
                 "voice": await self._read_json(media_root, f"videos/{product_id}/voiceover.json"),
             },
         )
@@ -1350,6 +1366,11 @@ class ProductCatalogService:
             f"captions {'yes' if captions else 'no'}",
         )
         return relative
+
+    async def video_check(self, product_id: str, media_root: Path) -> dict[str, Any] | None:
+        """The automatic check made when the video was stitched, or None when there is none."""
+        built = await self._read_json(media_root, f"videos/{product_id}/video.json") or {}
+        return built.get("check")
 
     async def _write_json(self, media_root: Path, relative: str, data: dict[str, Any]) -> None:
         await self.media(media_root).write(relative, json.dumps(data, ensure_ascii=False).encode())

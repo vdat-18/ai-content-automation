@@ -3,7 +3,7 @@ import { Copy, Download, Info } from "lucide-react";
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ErrorNote, Spinner } from "../../components/ui";
-import { API, useStartPipeline, VOICE_KEY } from "../../hooks/useStudio";
+import { API, useStartPipeline, useVideoCheck, VOICE_KEY } from "../../hooks/useStudio";
 import { imagesApproved } from "../../lib/studio";
 import { getJson, postJson } from "../../services/http";
 import type { BriefRecord, Keyframe, PipelineRun, PostPackage, Voice } from "../../types/studio";
@@ -27,6 +27,7 @@ export function FinishStep({ productId, record, frames, hasVideo, run }: { produ
   const [captions, setCaptions] = useState(false);
   const [voice, setVoice] = useState(() => window.localStorage.getItem(VOICE_KEY) ?? "");
   const pack = record.brief.post_package;
+  const check = useVideoCheck(productId, version).data;
   const voices = useQuery({ queryKey: ["voices"], queryFn: ({ signal }) => getJson<Voice[]>(`${API}/voices`, signal), staleTime: Infinity });
   const selectedVoice = voice || voices.data?.find((option) => option.id !== "auto")?.id || "";
 
@@ -96,6 +97,14 @@ export function FinishStep({ productId, record, frames, hasVideo, run }: { produ
               <a className="btn btn-primary btn-lg" href={`${API}/${productId}/video?download=true`}><Download size={18} aria-hidden="true" />Download video</a>
               <a className="btn btn-lg" href={`${API}/${productId}/cover?download=true`}>Download cover picture</a>
             </div>
+            {check && (
+              <div className={check.issues.length ? "notice notice-warn" : "notice"} role="status">
+                <div>
+                  <strong>{`Automatic check: ${check.score}/100`}</strong>
+                  {check.issues.length ? <ul>{check.issues.map((issue) => <li key={issue.message}>{issue.message}</li>)}</ul> : " No problems found."}
+                </div>
+              </div>
+            )}
             <details>
               <summary className="muted small" style={{ cursor: "pointer" }}>More options: change the voice or show on-screen text</summary>
               <div className="stack" style={{ marginTop: 12 }}>
