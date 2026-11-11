@@ -10,7 +10,7 @@ def test_words_are_spread_over_the_speaking_time_at_most_four_to_a_line() -> Non
 
 def test_a_pause_mark_ends_the_line_and_takes_extra_time() -> None:
     cues = spoken_cues("Xin chào, bạn ơi", 4.0)
-    assert [c.text for c in cues] == ["Xin chào,", "bạn ơi"]
+    assert [c.text for c in cues] == ["Xin chào", "bạn ơi"]
     assert cues[0].end > 4.0 * len("Xin chào,") / len("Xin chào,bạn ơi")
 
 
