@@ -156,7 +156,7 @@ Mỗi lỗi có mức nặng/nhẹ, ra điểm 0–100. Lỗi lặp lại nhiề
 
 ## 9. Hồ sơ nhịp theo mục tiêu
 
-**Trạng thái:** Chờ duyệt · **Công sức:** nhỏ · **Nguồn:** zecloud (`narrativePacingMaximum`)
+**Trạng thái:** Hoãn, chờ được phép chạy video thật để thử số liệu · **Công sức:** nhỏ · **Nguồn:** zecloud (`narrativePacingMaximum`)
 
 **Làm gì.** Độ dài tối đa mỗi cảnh theo loại video (ví dụ giới thiệu sản phẩm ≤ 8 giây, ngắn dồn dập ≤ 6 giây). Lưu thành cấu hình trong SecondBrain thay vì hard-code, dùng khi chia shot và viết script.
 
@@ -180,7 +180,7 @@ Mỗi lỗi có mức nặng/nhẹ, ra điểm 0–100. Lỗi lặp lại nhiề
 
 ## 11. Duyệt qua điện thoại (Telegram)
 
-**Trạng thái:** Chờ duyệt · **Công sức:** lớn · **Nguồn:** nguyentatkiem (agent Telegram)
+**Trạng thái:** Hoãn, người dùng nói chưa cần · **Công sức:** lớn · **Nguồn:** nguyentatkiem (agent Telegram)
 
 **Làm gì.** Bot Telegram gửi ảnh để duyệt, nhận nút Duyệt / Không đạt, báo khi video xong. Dùng long polling nên không cần URL công khai. Ghép nối bằng mã, người lạ bị từ chối, bot không bao giờ chạy lệnh shell.
 
