@@ -378,6 +378,39 @@ async def test_finished_clip_is_checked_and_a_flag_is_kept_until_it_is_made_agai
     assert (unchecked["status"], unchecked["qa_problem"]) == ("ready", "")
 
 
+async def test_a_flagged_clip_proposes_a_script_rule_once(tmp_path, monkeypatch) -> None:
+    from ai_content.domains.marketing.creative_knowledge.models import KnowledgeStatus
+    from ai_content.domains.marketing.creative_knowledge.repositories import (
+        SqliteCreativeKnowledgeRepository,
+    )
+    from ai_content.domains.marketing.creative_knowledge.service import CreativeKnowledgeService
+
+    video = _FakeVideo()
+    service = await _service(tmp_path, video)
+    knowledge = CreativeKnowledgeService(SqliteCreativeKnowledgeRepository(tmp_path / "k.db"))
+    service._knowledge = knowledge
+    service._clip_checker = _FakeClipChecker(["long sleeves appear in frame 2", "", None])  # type: ignore[assignment]
+
+    async def frames(path, seconds):
+        return [b"a", b"b", b"c"]
+
+    monkeypatch.setattr(service_module, "clip_frames", frames)
+    await service.generate_clips(PRODUCT_ID, tmp_path)
+    video.states["job0"] = JobState("completed", video_url="https://v/x.mp4")
+    await service.clips(PRODUCT_ID, tmp_path)
+    [item] = await knowledge.repository.list()
+    assert item.content == "long sleeves appear in frame 2" and item.contributor == "gemini-qa"
+    assert item.scope.asset_type == "brief" and item.status is KnowledgeStatus.PROPOSED
+
+    await knowledge.decide(item.knowledge_id, status=KnowledgeStatus.REJECTED, reviewer="user")
+    service._clip_checker = _FakeClipChecker(["long sleeves appear in frame 2"])  # type: ignore[assignment]
+    await service.generate_clips(PRODUCT_ID, tmp_path, shot_index=0)
+    video.states["job1"] = JobState("completed", video_url="https://v/y.mp4")
+    await service.clips(PRODUCT_ID, tmp_path)
+    [same] = await knowledge.repository.list()
+    assert same.status is KnowledgeStatus.REJECTED
+
+
 @pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg is not installed")
 async def test_clip_frames_are_three_stills_in_time_order(tmp_path) -> None:
     path = tmp_path / "clip.mp4"

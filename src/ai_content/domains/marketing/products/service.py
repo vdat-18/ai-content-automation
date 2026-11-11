@@ -1115,6 +1115,16 @@ class ProductCatalogService:
                 relative = f"clips/{clip['product_id']}/shot_{clip['shot_index']}.mp4"
                 await self.media(media_root).write(relative, content)
                 problem = await self._check_clip(clip, relative, media_root)
+                if problem and self._knowledge is not None:
+                    await propose_feedback(
+                        self._knowledge,
+                        product_id=clip["product_id"],
+                        text=problem,
+                        contributor="gemini-qa",
+                        authority=KnowledgeAuthority.EXTERNAL,
+                        asset_type="brief",
+                        once=True,
+                    )
                 update = {
                     "status": "ready",
                     "video_path": relative,
