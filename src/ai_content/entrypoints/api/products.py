@@ -562,6 +562,7 @@ async def clip_video(
 
 class VideoRequest(BaseModel):
     captions: bool = False
+    stickers: bool = False
 
 
 @router.post("/{product_id}/video")
@@ -573,7 +574,10 @@ async def build_video(
     """Stitch the ready clips into one video; captions are burned in only on request."""
     try:
         path = await service.build_video(
-            product_id, _media_root(), payload.captions if payload else False
+            product_id,
+            _media_root(),
+            payload.captions if payload else False,
+            payload.stickers if payload else False,
         )
     except StitchUnavailable as error:
         raise HTTPException(status_code=409, detail=str(error)) from error

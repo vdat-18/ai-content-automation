@@ -77,7 +77,7 @@ _FACT_FIELDS = (
 )
 
 
-def _numbers(text: str) -> list[tuple[str, str, float]]:
+def numbers_in(text: str) -> list[tuple[str, str, float]]:
     """(as written, unit, value) for each number in the text; 199k and 199.000 are both 199000."""
     found = []
     for match in _NUMBER.finditer(text):
@@ -106,9 +106,9 @@ def unsupported_numbers(text: str, facts: str) -> list[str]:
     Only figures worth checking count: percentages, amounts of money and plain numbers from 100
     up. A count may be rounded down ("over 3,000" for 3,200); a percentage or price must match.
     """
-    known = [value for _, _, value in _numbers(facts)]
+    known = [value for _, _, value in numbers_in(facts)]
     missing = []
-    for written, unit, value in _numbers(text):
+    for written, unit, value in numbers_in(text):
         if not unit and value < 100:
             continue
         rounded_down = not unit and any(0.8 * known_ <= value <= known_ for known_ in known)

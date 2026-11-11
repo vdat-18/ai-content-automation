@@ -192,7 +192,7 @@ Mỗi lỗi có mức nặng/nhẹ, ra điểm 0–100. Lỗi lặp lại nhiề
 
 ## 12. Sticker giá, mã giảm, nút CTA
 
-**Trạng thái:** Chờ duyệt · **Công sức:** vừa · **Nguồn:** nguyentatkiem (khối HyperFrames, Apache-2.0 của HeyGen)
+**Trạng thái:** Xong phần code và test. Bước Finish có ô chọn "Show price, sales and rating stickers" (mặc định tắt, giống caption): 3 sticker vàng góc trên trái, số lấy từ dữ liệu sản phẩm (giá bán và giá gốc, đã bán, đánh giá). Mỗi sticker hiện ở cảnh mà lời nhắc tới số đó; giá không cảnh nào nhắc thì hiện ở cảnh cuối; thiếu dữ liệu thì không có sticker. Chưa làm mã giảm vì chưa biết dữ liệu thật có trường này. Đã dựng thử video giả trong Docker và xem khung hình (chữ tiếng Việt đúng, vị trí đúng cảnh); chưa thử trên video thật · **Công sức:** vừa · **Nguồn:** nguyentatkiem (khối HyperFrames, Apache-2.0 của HeyGen)
 
 **Làm gì.** Render ảnh PNG từ dữ liệu thật của sản phẩm (giá, lượt bán, mã giảm) rồi ffmpeg `overlay` lên video đúng lúc nhắc tới.
 

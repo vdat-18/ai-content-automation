@@ -6,6 +6,7 @@ import asyncio
 import json
 import os
 import tempfile
+from dataclasses import replace
 from datetime import UTC, datetime
 from io import BytesIO
 from pathlib import Path
@@ -36,6 +37,7 @@ from .clips import (
     StitchClip,
     StitchUnavailable,
     VideoClient,
+    caption_font,
     clip_frames,
     cover_frame,
     shot_seconds,
@@ -72,6 +74,7 @@ from .speech import (
     make_voiceover,
     spoken_seconds,
 )
+from .stickers import render_sticker, sticker_lines, stickers_by_shot
 from .storyboard_review import StoryboardReviewer
 from .text_embedding import TextEmbedder, TextEmbeddingError
 from .video_check import LESSONS, VideoCheckUnavailable, judge, measure
@@ -1324,13 +1327,14 @@ class ProductCatalogService:
         return found
 
     async def build_video(
-        self, product_id: str, media_root: Path, captions: bool = False
+        self, product_id: str, media_root: Path, captions: bool = False, stickers: bool = False
     ) -> str | None:
         """Stitch the ready clips of approved shots, in story order, into one mp4.
 
         Captions are only burned into the picture when asked for, since the text can cover the
         product. They show the voice-over words as they are spoken; a shot whose voice-over was
-        not made shows its on-screen text instead.
+        not made shows its on-screen text instead. Stickers show the price, sales and rating from
+        the product data in the shot that mentions them, only when asked for.
         """
         record = await self._repository.get_brief(product_id)
         if record is None:
@@ -1341,6 +1345,7 @@ class ProductCatalogService:
         parts: list[StitchClip] = []
         first_words = ""
         used: dict[int, int] = {}
+        spoken_texts: list[str] = []
         heard = (
             (await self._read_json(media_root, f"videos/{product_id}/voiceover.json")) or {}
         ).get("speech_seconds") or {}
@@ -1357,6 +1362,7 @@ class ProductCatalogService:
                 raise StitchUnavailable(f"The clip file for shot {index + 1} is missing")
             cues = tuple(spoken_cues(str(shot.get("voiceover") or ""), heard.get(str(index), 0)))
             parts.append(StitchClip(local, duration, caption, cues if captions else ()))
+            spoken_texts.append(f"{shot.get('voiceover') or ''} {shot.get('on_screen_text') or ''}")
             if not parts[1:]:
                 first_words = str(shot.get("on_screen_text") or shot.get("voiceover") or "")
             used[index] = clip["attempts"]
@@ -1366,7 +1372,21 @@ class ProductCatalogService:
             [f"videos/{product_id}/voiceover.{ext}" for ext in VOICEOVER_TYPES.values()]
         )
         voice = find_voiceover(media_root, product_id)
-        await stitch(parts, store.path(relative), voice)
+        shown: list[list[str]] = [[] for _ in parts]
+        with tempfile.TemporaryDirectory() as scratch:
+            font = caption_font()
+            detail = await self._repository.get_detail(product_id) if stickers else None
+            if detail and font is not None:
+                lines = sticker_lines(detail)
+                shown = stickers_by_shot(lines, spoken_texts)
+                for number, (part, kinds) in enumerate(zip(parts, shown, strict=True)):
+                    images = []
+                    for kind in kinds:
+                        image = Path(scratch) / f"sticker_{number}_{kind}.png"
+                        render_sticker(lines[kind][0], font, image)
+                        images.append(image)
+                    parts[number] = replace(part, stickers=tuple(images))
+            await stitch(parts, store.path(relative), voice)
         await store.push(relative)
         cover = f"videos/{product_id}/cover.jpg"
         await cover_frame(store.path(relative), store.path(cover))
@@ -1390,6 +1410,7 @@ class ProductCatalogService:
             {
                 "built_at": datetime.now(UTC).isoformat(),
                 "captions": captions,
+                "stickers": [kind for kinds in shown for kind in kinds],
                 "seconds": round(sum(shot_seconds(p.duration) for p in parts), 1),
                 "clip_attempts": used,
                 "check": check,

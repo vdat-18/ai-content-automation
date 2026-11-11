@@ -28,6 +28,8 @@ _CAPTION_FONTS = (
     "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
 )
 TRANSITION_SECONDS = 0.25
+_STICKER_TOP = 240  # clear of the top bar of the TikTok app
+_STICKER_STEP = 200  # space for one sticker
 _PART_ENCODES = 2
 _COLOR_GRADE = "eq=contrast=1.03:brightness=0.01:saturation=1.05"
 
@@ -156,6 +158,7 @@ class StitchClip:
     duration: float
     caption: str = ""
     cues: tuple[Cue, ...] = ()  # spoken words; when present they replace the caption
+    stickers: tuple[Path, ...] = ()  # label images laid over the shot, stacked from the top
 
 
 def caption_font() -> Path | None:
@@ -279,10 +282,22 @@ async def stitch(
                 textfile.write_text(textwrap.fill(clip.caption.strip(), 20), encoding="utf-8")
                 scratch.append(textfile)
                 filters += "," + _caption_filter(font, textfile.name, min(seconds - 0.3, 8))
+            picture = ["-vf", filters]
+            sticker_inputs: list[str] = []
+            if clip.stickers:
+                graph, last = f"[0:v]{filters}[base]", "base"
+                for number, sticker in enumerate(clip.stickers, start=1):
+                    sticker_inputs += ["-loop", "1", "-i", str(sticker)]
+                    graph += (
+                        f";[{last}][{number}:v]overlay=x=40:y={_STICKER_TOP + (number - 1) * _STICKER_STEP}"
+                        f":shortest=1:enable='between(t,0.5,{max(seconds - 0.3, 1):.2f})'[s{number}]"
+                    )
+                    last = f"s{number}"
+                picture = ["-filter_complex", graph, "-map", f"[{last}]"]
             async with limit:
                 await _run(
                     "ffmpeg", "-v", "error", "-y", "-ss", f"{TRIM_SECONDS:g}", "-i", str(clip.path),
-                    "-t", f"{_source_seconds(clip.duration):.3f}", "-an", "-vf", filters,
+                    *sticker_inputs, "-t", f"{_source_seconds(clip.duration):.3f}", "-an", *picture,
                     "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-maxrate", "12M",
                     "-bufsize", "24M", "-pix_fmt", "yuv420p", part.name,
                     cwd=output.parent,

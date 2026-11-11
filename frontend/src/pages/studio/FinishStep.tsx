@@ -25,6 +25,7 @@ export function FinishStep({ productId, record, frames, hasVideo, run }: { produ
   const [copied, setCopied] = useState("");
   const [link, setLink] = useState(() => readLink(productId));
   const [captions, setCaptions] = useState(false);
+  const [stickers, setStickers] = useState(false);
   const [review, setReview] = useState("");
   const [voice, setVoice] = useState(() => window.localStorage.getItem(VOICE_KEY) ?? "");
   const pack = record.brief.post_package;
@@ -43,7 +44,7 @@ export function FinishStep({ productId, record, frames, hasVideo, run }: { produ
   const remake = useMutation({
     mutationFn: async () => {
       await postJson(`${API}/${productId}/voiceover`, { voice: selectedVoice || null });
-      await postJson(`${API}/${productId}/video`, { captions });
+      await postJson(`${API}/${productId}/video`, { captions, stickers });
     },
     onSuccess: () => {
       setVersion((v) => v + 1);
@@ -131,6 +132,7 @@ export function FinishStep({ productId, record, frames, hasVideo, run }: { produ
                 </label>
                 {selectedVoice && <audio key={selectedVoice} controls preload="none" src={`${API}/voices/${encodeURIComponent(selectedVoice)}/sample`} />}
                 <label className="check"><input type="checkbox" checked={captions} onChange={(event) => setCaptions(event.target.checked)} />Show the on-screen text in the video (it can cover the product).</label>
+                <label className="check"><input type="checkbox" checked={stickers} onChange={(event) => setStickers(event.target.checked)} />Show price, sales and rating stickers from the product data, in the shot that mentions them.</label>
                 <div><button className="btn" disabled={remake.isPending} onClick={() => remake.mutate()}>{remake.isPending ? <><Spinner size={14} />Remaking…</> : "Remake the video with these choices"}</button></div>
                 <ErrorNote error={remake.error} />
               </div>
