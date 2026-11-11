@@ -10,7 +10,8 @@ _PAUSE_MARKS = ",.;:!?…"
 _PAUSE_WEIGHT = 4  # a mark at the end of a word costs about this many letters of speaking time
 _HIGHLIGHT = r"{\c&H00D7FF&}"  # ASS colours are BGR: this is amber
 _PLAIN = r"{\c&HFFFFFF&}"
-_MAX_HIGHLIGHTS = 2
+_POP = r"{\fscx115\fscy115}"  # the word being said is a little larger
+_NORMAL = r"{\fscx100\fscy100}"
 # The voice-over is written the way it is read aloud; captions show the usual spelling.
 _DISPLAY_SPELLING = {
     "phom": "form",
@@ -44,11 +45,11 @@ def spoken_cues(text: str, speech_seconds: float) -> list[Cue]:
     clock = 0.0
     position = 0
     for size in _line_sizes(words):
-        started = clock
-        for weight in weights[position : position + size]:
-            clock += weight * unit
         line = [_display(w) for w in words[position : position + size]]
-        cues.append(Cue(started, clock, _styled(line)))
+        for number, weight in enumerate(weights[position : position + size]):
+            started = clock
+            clock += weight * unit
+            cues.append(Cue(started, clock, _styled(line, number)))
         position += size
     return cues
 
@@ -80,13 +81,13 @@ def _display(word: str) -> str:
     return shown + "".join(c for c in word[len(core) :] if c in "?!…")  # no comma or full stop
 
 
-def _styled(line: list[str]) -> str:
-    """Colour the words with a digit (prices, amounts, sizes), at most two per line."""
-    marked = 0
+def _styled(line: list[str], active: int) -> str:
+    """The whole line, with the word being said bigger and in amber (digit words stay amber)."""
     out = []
-    for word in line:
-        if marked < _MAX_HIGHLIGHTS and re.search(r"\d", word):
-            marked += 1
+    for number, word in enumerate(line):
+        if number == active:
+            out.append(f"{_HIGHLIGHT}{_POP}{_escape(word)}{_PLAIN}{_NORMAL}")
+        elif re.search(r"\d", word):
             out.append(f"{_HIGHLIGHT}{_escape(word)}{_PLAIN}")
         else:
             out.append(_escape(word))
@@ -113,13 +114,13 @@ def ass_document(cues: list[Cue], font_family: str, width: int = 1080, height: i
         "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, "
         "BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, "
         "BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n"
-        f"Style: Default,{font_family},76,&H00FFFFFF,&H00FFFFFF,&H00101010,&H90000000,"
-        "-1,0,0,0,100,100,1,0,1,7,4,2,80,80,500,1\n\n"
+        f"Style: Default,{font_family},88,&H00FFFFFF,&H00FFFFFF,&H00101010,&H90000000,"
+        "-1,0,0,0,100,100,1,0,1,9,5,2,70,70,330,1\n\n"
         "[Events]\n"
         "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n"
     )
     events = "".join(
-        f"Dialogue: 0,{_stamp(cue.start)},{_stamp(cue.end)},Default,,0,0,0,,{{\\fad(60,40)}}{cue.text}\n"
+        f"Dialogue: 0,{_stamp(cue.start)},{_stamp(cue.end)},Default,,0,0,0,,{cue.text}\n"
         for cue in cues
     )
     return header + events
