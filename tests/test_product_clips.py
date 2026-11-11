@@ -412,7 +412,7 @@ async def test_a_flagged_clip_proposes_a_script_rule_once(tmp_path, monkeypatch)
 
 
 @pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg is not installed")
-async def test_clip_frames_are_three_stills_in_time_order(tmp_path) -> None:
+async def test_clip_frames_are_stills_in_time_order(tmp_path) -> None:
     path = tmp_path / "clip.mp4"
     _make_clip(path, "red", seconds=4, audio=False)
     frames = await clip_frames(path, 4)

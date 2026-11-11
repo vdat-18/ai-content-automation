@@ -6,7 +6,7 @@ from PIL import Image
 
 from ai_content.domains.marketing.products.clips import StitchClip, caption_font, stitch
 from ai_content.domains.marketing.products.stickers import (
-    render_sticker,
+    render_stickers,
     sticker_lines,
     stickers_by_shot,
 )
@@ -21,6 +21,7 @@ DETAIL = {
 def test_stickers_only_hold_figures_from_the_product_data() -> None:
     lines = sticker_lines(DETAIL)
     assert lines["price"][0] == ("199.000đ", "Giá gốc 299.000đ")
+    assert lines["price"].badge == "-33%"  # worked out from the two prices
     assert lines["sold"][0] == ("Đã bán 3.200",)
     assert lines["rating"][0] == ("4,6 / 5 sao",)
     assert sticker_lines({"price": {"sale": "1"}, "sold_count": 0}) == {}
@@ -32,7 +33,8 @@ def test_prices_written_with_a_dot_for_thousands_are_read_correctly() -> None:
         {"price": {"sale": "122.147", "original": "211.796"}, "sold_count": "225.222"}
     )
     assert lines["price"][0] == ("122.147đ", "Giá gốc 211.796đ")
-    assert lines["sold"][0] == ("Đã bán 225.222",)
+    assert lines["price"].badge == "-42%"
+    assert lines["sold"][0] == ("Đã bán 225,2k+",)  # never rounded up
 
 
 def test_each_sticker_goes_to_the_shot_that_mentions_it() -> None:
@@ -46,11 +48,14 @@ def test_the_price_falls_back_to_the_last_shot_and_others_are_left_out() -> None
 
 
 @pytest.mark.skipif(caption_font() is None, reason="no caption font on this machine")
-def test_a_sticker_is_drawn_as_a_transparent_png(tmp_path) -> None:
-    output = tmp_path / "price.png"
-    render_sticker(("199.000đ", "Giá gốc 299.000đ"), caption_font(), output)  # type: ignore[arg-type]
+def test_the_stickers_of_a_shot_are_drawn_as_one_transparent_picture(tmp_path) -> None:
+    output = tmp_path / "stickers.png"
+    lines = sticker_lines(DETAIL)
+    render_stickers([(k, lines[k]) for k in ("price", "sold", "rating")], caption_font(), output)  # type: ignore[arg-type]
     image = Image.open(output)
-    assert image.mode == "RGBA" and image.width > 200 and image.getpixel((0, 0))[3] == 0
+    assert image.mode == "RGBA" and image.width > 200 and image.height > 150
+    assert image.getpixel((0, 0))[3] == 0  # the corner is see-through
+    assert image.getchannel("A").getextrema()[1] > 200  # the cards themselves are solid
 
 
 @pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg is not installed")

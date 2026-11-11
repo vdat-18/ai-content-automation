@@ -76,7 +76,7 @@ from .speech import (
     make_voiceover,
     spoken_seconds,
 )
-from .stickers import render_sticker, sticker_lines, stickers_by_shot
+from .stickers import render_stickers, sticker_lines, stickers_by_shot
 from .storyboard_review import StoryboardReviewer
 from .text_embedding import TextEmbedder, TextEmbeddingError
 from .video_check import LESSONS, VideoCheckUnavailable, judge, measure
@@ -1483,9 +1483,9 @@ class ProductCatalogService:
                 shown = stickers_by_shot(lines, spoken_texts)
                 for number, (part, kinds) in enumerate(zip(parts, shown, strict=True)):
                     images = []
-                    for kind in kinds:
-                        image = Path(scratch) / f"sticker_{number}_{kind}.png"
-                        render_sticker(lines[kind][0], font, image)
+                    if kinds:
+                        image = Path(scratch) / f"stickers_{number}.png"
+                        render_stickers([(kind, lines[kind]) for kind in kinds], font, image)
                         images.append(image)
                     parts[number] = replace(part, stickers=tuple(images))
             await stitch(parts, store.path(relative), voice)

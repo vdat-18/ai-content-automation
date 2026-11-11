@@ -28,6 +28,7 @@ _CAPTION_FONTS = (
     "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
 )
 TRANSITION_SECONDS = 0.25
+CHECK_FRAMES = 6  # stills of a clip the quality check looks at
 _STICKER_TOP = 130  # small and high, above the face of a person who fills the frame
 _STICKER_STEP = 130  # space for one sticker
 _PART_ENCODES = 2
@@ -222,11 +223,13 @@ async def cover_frame(video: Path, output: Path) -> None:
 
 
 async def clip_frames(video: Path, seconds: float) -> list[bytes]:
-    """Three stills spread over the clip, in time order, for the automatic quality check."""
+    """Stills spread evenly over the clip, in time order, for the automatic quality check."""
     if shutil.which("ffmpeg") is None:
         return []
     frames: list[bytes] = []
-    for number, moment in enumerate((1.0, seconds / 2, max(seconds - 1.0, 1.0))):
+    last = max(seconds - 1.0, 1.0)
+    moments = [1.0 + (last - 1.0) * i / (CHECK_FRAMES - 1) for i in range(CHECK_FRAMES)]
+    for number, moment in enumerate(moments):
         still = video.parent / f"{video.stem}_check_{number}.jpg"
         try:
             await _run(

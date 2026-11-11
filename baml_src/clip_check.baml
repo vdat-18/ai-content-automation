@@ -26,7 +26,14 @@ function CheckClip(
     may differ when the shot shows the product worn) as in the photos and the keyframe; hands and limbs look natural with no extra, missing,
     fused or bent-backwards fingers or arms, and the body stays well proportioned in every frame
     (a realistic head to body ratio and normal limb length, never stretched or distorted) and the
-    face keeps clear skin with no acne or spots; the picture still shows what the shot description
+    face keeps clear skin with no acne or spots; the head and body always agree: in every
+    frame compare where the face looks with where the chest faces; when the chest, or the back of
+    the shirt, is turned away from the camera by more than about 60 degrees while the face still
+    looks straight into the camera, the neck is twisted further than a real neck can go, so the
+    clip fails; the person never turns the head all the way round;
+    a mirror or other reflective surface that appears shows the same person in the same pose,
+    never another person, a different pose or a body seen from the back while the front faces
+    the camera, and no second person or figure appears that is not in the keyframe; the picture still shows what the shot description
     asks for and the room and light stay the same as in the keyframe; the frames look like
     footage of a real phone camera, not a glitching render. Ignore all text and logos on the
     product, the packaging and the clothes: video models cannot draw small text, so never fail a

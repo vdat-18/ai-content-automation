@@ -7,19 +7,29 @@ shot mentions it, because that is where the call to action is.
 
 from __future__ import annotations
 
+import math
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, NamedTuple
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 from .compliance import numbers_in
 
-STICKER_COLOR = (255, 215, 0, 235)  # amber, the same as the highlighted caption words
-TEXT_COLOR = (20, 20, 20, 255)
-_PADDING = 18
-_RADIUS = 16
-_BIG, _SMALL = 46, 30
+RED = (254, 44, 85, 255)
+AMBER = (255, 214, 10, 255)
+WHITE = (255, 255, 255, 255)
+SOFT_WHITE = (255, 255, 255, 215)
+DARK = (18, 18, 22, 170)
+SCALE = 3  # drawn three times larger and scaled down, so the edges are smooth
+_PAD, _GAP, _RADIUS = 22, 12, 24
+_BIG, _MEDIUM, _SMALL = 50, 34, 26
+
+
+class Sticker(NamedTuple):
+    lines: tuple[str, ...]
+    figure: float  # the number a shot must mention to show this sticker
+    badge: str = ""  # a small label beside the first line, such as the percentage off
 
 
 def _number(value: Any) -> float | None:
@@ -32,23 +42,32 @@ def _vnd(amount: float) -> str:
     return f"{round(amount):,}".replace(",", ".") + "đ"
 
 
-def sticker_lines(detail: dict[str, Any]) -> dict[str, tuple[tuple[str, ...], float]]:
-    """Per sticker kind: the lines to draw and the figure a shot must mention to show it."""
-    found: dict[str, tuple[tuple[str, ...], float]] = {}
+def _short_count(count: float) -> str:
+    """3200 stays 3.200; 225222 becomes 225,2k+ (more than that, never rounded up)."""
+    if count < 10_000:
+        return f"{round(count):,}".replace(",", ".")
+    return f"{int(count // 100) / 10:.1f}".replace(".", ",") + "k+"
+
+
+def sticker_lines(detail: dict[str, Any]) -> dict[str, Sticker]:
+    """Per sticker kind: what to draw, from the product data only."""
+    found: dict[str, Sticker] = {}
     price = detail.get("price") or {}
     sale = _number(price.get("sale"))
     if sale and sale >= 1000:
-        lines = (_vnd(sale),)
+        lines, badge = (_vnd(sale),), ""
         original = _number(price.get("original"))
         if original and original > sale:
             lines += (f"Giá gốc {_vnd(original)}",)
-        found["price"] = (lines, sale)
+            percent = int((original - sale) / original * 100)
+            badge = f"-{percent}%" if percent >= 1 else ""
+        found["price"] = Sticker(lines, sale, badge)
     sold = _number(detail.get("sold_count"))
     if sold and sold >= 1:
-        found["sold"] = ((f"Đã bán {round(sold):,}".replace(",", "."),), sold)
+        found["sold"] = Sticker((f"Đã bán {_short_count(sold)}",), sold)
     rating = _number(detail.get("rating"))
     if rating and 0 < rating <= 5:
-        found["rating"] = ((f"{rating:.1f}".replace(".", ",") + " / 5 sao",), rating)
+        found["rating"] = Sticker((f"{rating:.1f}".replace(".", ",") + " / 5 sao",), rating)
     return found
 
 
@@ -61,14 +80,12 @@ def _mentions(text: str, kind: str, figure: float) -> bool:
     return any(abs(value - figure) <= 0.01 * figure for _, _, value in numbers_in(text))
 
 
-def stickers_by_shot(
-    lines: dict[str, tuple[tuple[str, ...], float]], shot_texts: list[str]
-) -> list[list[str]]:
+def stickers_by_shot(lines: dict[str, Sticker], shot_texts: list[str]) -> list[list[str]]:
     """For each shot, which sticker kinds to show; every kind appears in one shot at most."""
     chosen: list[list[str]] = [[] for _ in shot_texts]
-    for kind, (_, figure) in lines.items():
+    for kind, sticker in lines.items():
         for index, text in enumerate(shot_texts):
-            if _mentions(text, kind, figure):
+            if _mentions(text, kind, sticker.figure):
                 chosen[index].append(kind)
                 break
         else:
@@ -77,18 +94,107 @@ def stickers_by_shot(
     return chosen
 
 
-def render_sticker(lines: tuple[str, ...], font: Path, output: Path) -> None:
-    """Draw a rounded amber label with the first line large and the others small."""
-    fonts = [ImageFont.truetype(str(font), _BIG if i == 0 else _SMALL) for i in range(len(lines))]
-    measure = ImageDraw.Draw(Image.new("RGBA", (1, 1)))
-    boxes = [measure.textbbox((0, 0), line, font=f) for line, f in zip(lines, fonts, strict=True)]
-    width = max(box[2] - box[0] for box in boxes) + 2 * _PADDING
-    height = sum(box[3] - box[1] for box in boxes) + _PADDING * (len(lines) + 1)
-    image = Image.new("RGBA", (width, height), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(image)
-    draw.rounded_rectangle((0, 0, width - 1, height - 1), _RADIUS, fill=STICKER_COLOR)
-    y = _PADDING
-    for line, f, box in zip(lines, fonts, boxes, strict=True):
-        draw.text((_PADDING - box[0], y - box[1]), line, font=f, fill=TEXT_COLOR)
-        y += box[3] - box[1] + _PADDING
-    image.save(output)
+def _font(path: Path, size: int) -> ImageFont.FreeTypeFont:
+    return ImageFont.truetype(str(path), size * SCALE)
+
+
+def _width(text: str, font: ImageFont.FreeTypeFont) -> int:
+    return round(font.getlength(text))
+
+
+def _ink(font: ImageFont.FreeTypeFont, text: str) -> tuple[int, int, int, int]:
+    return font.getbbox(text)
+
+
+def _price_card(sticker: Sticker, path: Path) -> Image.Image:
+    """A red card: the price large, a yellow percentage badge, the old price struck through."""
+    pad, gap = _PAD * SCALE, _GAP * SCALE
+    big, medium, small = _font(path, _BIG), _font(path, _MEDIUM), _font(path, _SMALL)
+    price = sticker.lines[0]
+    price_box = _ink(big, price)
+    price_h = price_box[3] - price_box[1]
+    badge_w = badge_h = 0
+    if sticker.badge:
+        badge_w = _width(sticker.badge, medium) + 2 * gap
+        badge_h = _ink(medium, sticker.badge)[3] - _ink(medium, sticker.badge)[1] + gap
+    row_h = max(price_h, badge_h)
+    old = sticker.lines[1:]
+    old_h = [_ink(small, line)[3] - _ink(small, line)[1] for line in old]
+    width = max(
+        [_width(price, big) + (gap + badge_w if badge_w else 0), *(_width(x, small) for x in old)]
+    )
+    height = row_h + sum(h + gap // 2 for h in old_h)
+    card = Image.new("RGBA", (width + 2 * pad, height + 2 * pad), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(card)
+    draw.rounded_rectangle((0, 0, card.width - 1, card.height - 1), _RADIUS * SCALE, fill=RED)
+    draw.text((pad, pad + (row_h - price_h) // 2 - price_box[1]), price, font=big, fill=WHITE)
+    if badge_w:
+        x0 = pad + _width(price, big) + gap
+        y0 = pad + (row_h - badge_h) // 2
+        draw.rounded_rectangle((x0, y0, x0 + badge_w, y0 + badge_h), badge_h // 2, fill=AMBER)
+        box = _ink(medium, sticker.badge)
+        draw.text((x0 + gap, y0 + gap // 2 - box[1]), sticker.badge, font=medium, fill=RED)
+    y = pad + row_h + gap // 2
+    for line, h in zip(old, old_h, strict=True):
+        draw.text((pad, y - _ink(small, line)[1]), line, font=small, fill=SOFT_WHITE)
+        number = line.rsplit(" ", 1)[-1]  # only the old price is struck through
+        start = pad + _width(line[: len(line) - len(number)], small)
+        draw.line((start, y + h // 2, start + _width(number, small), y + h // 2), SOFT_WHITE, 3)
+        y += h + gap // 2
+    return card
+
+
+def _pill(sticker: Sticker, kind: str, path: Path) -> Image.Image:
+    """A dark rounded pill; the figures in it are amber, a star leads the rating."""
+    pad, gap = _PAD * SCALE * 2 // 3, _GAP * SCALE
+    font = _font(path, _MEDIUM)
+    tokens = sticker.lines[0].split(" ")
+    colors = [AMBER if any(c.isdigit() for c in t) else WHITE for t in tokens]
+    space = _width("a a", font) - _width("aa", font)
+    height = _ink(font, "Âgy")[3] - _ink(font, "Âgy")[1]
+    star = height if kind == "rating" else 0
+    width = sum(_width(t, font) for t in tokens) + space * (len(tokens) - 1)
+    width += star + gap if star else 0
+    pill = Image.new("RGBA", (width + 2 * _PAD * SCALE // 1, height + 2 * pad), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(pill)
+    draw.rounded_rectangle((0, 0, pill.width - 1, pill.height - 1), pill.height // 2, fill=DARK)
+    x = _PAD * SCALE
+    if star:
+        _star(draw, x + star // 2, pad + height // 2, star // 2)
+        x += star + gap
+    for token, color in zip(tokens, colors, strict=True):
+        draw.text((x, pad - _ink(font, "Âgy")[1]), token, font=font, fill=color)
+        x += _width(token, font) + space
+    return pill
+
+
+def _star(draw: ImageDraw.ImageDraw, cx: int, cy: int, radius: int) -> None:
+    points = []
+    for i in range(10):
+        angle = -math.pi / 2 + i * math.pi / 5
+        r = radius if i % 2 == 0 else radius * 0.45
+        points.append((cx + r * math.cos(angle), cy + r * math.sin(angle)))
+    draw.polygon(points, fill=AMBER)
+
+
+def render_stickers(items: list[tuple[str, Sticker]], font: Path, output: Path) -> None:
+    """Draw the stickers of one shot one above the other with a soft shadow, as one picture."""
+    cards = [
+        _price_card(sticker, font) if kind == "price" else _pill(sticker, kind, font)
+        for kind, sticker in items
+    ]
+    margin, gap = 14 * SCALE, 14 * SCALE
+    width = max(card.width for card in cards) + 2 * margin
+    height = sum(card.height for card in cards) + gap * (len(cards) - 1) + 2 * margin
+    sheet = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    shadow = Image.new("RGBA", sheet.size, (0, 0, 0, 0))
+    y = margin
+    for card in cards:
+        shadow.paste((0, 0, 0, 110), (margin, y + 5 * SCALE), card.getchannel("A"))
+        y += card.height + gap
+    sheet.alpha_composite(shadow.filter(ImageFilter.GaussianBlur(6 * SCALE)))
+    y = margin
+    for card in cards:
+        sheet.alpha_composite(card, (margin, y))
+        y += card.height + gap
+    sheet.resize((width // SCALE, height // SCALE), Image.LANCZOS).save(output)
