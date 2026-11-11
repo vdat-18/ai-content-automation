@@ -101,7 +101,7 @@ Mỗi lỗi có mức nặng/nhẹ, ra điểm 0–100. Lỗi lặp lại nhiề
 
 ## 5. Biến thể hook A/B
 
-**Trạng thái:** Xong phần code và test. Bước Finish có mục "Try other opening lines": AI viết 3 hook (câu hỏi, con số, nỗi đau/lợi ích; tối đa 7 từ; loại hook có từ cấm hoặc số không có trong dữ liệu sản phẩm), mỗi hook bấm "Make this video" thì đọc lại giọng và ghép lại từ các clip đã có, lưu ở `videos/<id>/hook_N/`, không sinh clip mới. Không làm cold open. Hook không dùng được khi cảnh đầu là cảnh nói trước camera (lời cố định theo clip). Phần bước 6 (file JSON dựng chỉnh được) chưa làm; mục này chỉ dùng thư mục riêng cho từng hook. Đã chạy dựng video hook trong Docker với giọng giả; chưa gọi AI viết hook thật · **Công sức:** vừa · **Nguồn:** nguyentatkiem (`variants.mjs`)
+**Trạng thái:** Xong phần code và test. Bước Finish có mục "Try other opening lines": AI viết 3 hook (câu hỏi, con số, nỗi đau/lợi ích; tối đa 7 từ; loại hook có từ cấm hoặc số không có trong dữ liệu sản phẩm), mỗi hook bấm "Make this video" thì đọc lại giọng và ghép lại từ các clip đã có, lưu ở `videos/<id>/hook_N/`, không sinh clip mới. Không làm cold open. Hook không dùng được khi cảnh đầu là cảnh nói trước camera (lời cố định theo clip). Phần bước 6 (file JSON dựng chỉnh được) chưa làm; mục này chỉ dùng thư mục riêng cho từng hook. Đã chạy dựng video hook trong Docker với giọng giả; đã gọi AI thật một lần với sản phẩm giả: 2 trong 3 hook qua kiểm tra (lần đầu bị cắt cụt vì giới hạn đầu ra 1500 token, đã nâng lên 4000) · **Công sức:** vừa · **Nguồn:** nguyentatkiem (`variants.mjs`)
 
 **Làm gì.**
 - LLM viết N hook (mặc định 3), mỗi hook ≤ 7 từ và một góc khác nhau: câu hỏi, con số/tuyên bố, nỗi đau/lợi ích.
@@ -168,7 +168,7 @@ Mỗi lỗi có mức nặng/nhẹ, ra điểm 0–100. Lỗi lặp lại nhiề
 
 ## 10. Phân tích một quảng cáo mẫu
 
-**Trạng thái:** Xong phần code và test. Trang AI memory, tab rules có ô "Learn from an example ad": chọn video MP4 (tối đa 100 MB, 3 phút), hệ thống lấy 40 khung, đo điểm cắt bằng ffmpeg, nhờ AI mô tả cấu trúc thành 3–6 luật "brief" chờ duyệt (người gửi `reference-ad`). Video không được lưu. Khác kế hoạch: vị trí chữ do AI nhìn khung hình mô tả, không đo bằng máy. Đã thử lấy khung và đo cắt trên video giả trong Docker; chưa gọi AI thật nên chưa biết luật AI viết ra chất lượng thế nào · **Công sức:** vừa–lớn · **Nguồn:** nguyentatkiem (Tạo style)
+**Trạng thái:** Xong phần code và test. Trang AI memory, tab rules có ô "Learn from an example ad": chọn video MP4 (tối đa 100 MB, 3 phút), hệ thống lấy 40 khung, đo điểm cắt bằng ffmpeg, nhờ AI mô tả cấu trúc thành 3–6 luật "brief" chờ duyệt (người gửi `reference-ad`). Video không được lưu. Khác kế hoạch: vị trí chữ do AI nhìn khung hình mô tả, không đo bằng máy. Đã thử lấy khung và đo cắt trên video giả trong Docker; đã gọi AI thật một lần trên video giả hai cảnh: ra 4 luật hợp lý (giới hạn đầu ra nâng lên 4000 token); chưa thử trên quảng cáo thật · **Công sức:** vừa–lớn · **Nguồn:** nguyentatkiem (Tạo style)
 
 **Làm gì.** Người dùng thả một quảng cáo TikTok đang chạy tốt. Hệ thống lấy khoảng 40 khung hình, đo nhịp cắt, vị trí chữ rồi nhờ LLM mô tả cấu trúc: loại hook, vai trò từng shot, nhịp, vị trí caption. Kết quả được **đề xuất thành luật SecondBrain chờ duyệt**.
 
