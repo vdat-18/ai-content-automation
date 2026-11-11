@@ -312,3 +312,16 @@ async def test_voice_sample_is_made_once_and_unknown_voices_are_refused(tmp_path
     assert len(calls) == 1 and '"voice":"hamy.mp3"' in calls[0]
     with pytest.raises(KeyframeUnavailable, match="Unknown voice"):
         await service.voice_sample("../evil", tmp_path)
+
+
+def test_low_room_noise_after_the_words_is_not_counted_as_speech() -> None:
+    import numpy as np
+
+    from ai_content.domains.marketing.products.lip_alignment import _frames, _speech
+
+    rate = 16_000
+    t = np.arange(rate * 10) / rate
+    samples = 0.01 * np.sin(2 * np.pi * 200 * t)  # noise about a tenth as loud as the words
+    samples[: rate * 3] = 0.1 * np.sin(2 * np.pi * 200 * t[: rate * 3])
+    first, last = _speech(_frames(samples.astype(np.float32)))  # type: ignore[misc]
+    assert first == 0 and abs(last / 100 - 3.0) < 0.1

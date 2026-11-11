@@ -22,7 +22,7 @@ _MELS = 40
 _COEFFICIENTS = 20
 _KNOT = 25  # frames between two stretch points, 0.25 s (finer granularity for Vietnamese syllables)
 _MIN_RATE, _MAX_RATE = 0.65, 1.5  # a piece stretched further sounds unnatural
-_QUIET = 0.06  # a frame this much quieter than the loudest one is not speech
+_QUIET = 0.12  # a frame this much quieter than the loudest one is not speech (room noise is not)
 
 
 async def _decode(path: Path) -> np.ndarray:
