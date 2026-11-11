@@ -22,8 +22,15 @@ function CheckClip(
     keeps the same shape, color, proportions, material and number of items as in the product
     photos and the keyframe, with no melting, warping, splitting or growing between frames; no
     object appears from nowhere or vanishes between frames; when photos of the person are given,
-    the person in every frame is clearly the same person (face shape, hair, skin tone; the clothes
-    may differ when the shot shows the product worn) as in the photos and the keyframe; hands and limbs look natural with no extra, missing,
+    the person in every frame is clearly the same person as in the photos and the keyframe
+    (the clothes may differ when the shot shows the product worn). Be strict about the face:
+    compare it with the photos feature by feature (eye shape and spacing, eyebrows, nose,
+    lips, jaw and chin, hairline and hair parting, skin tone). A face that is only similar, a
+    generic handsome face, or one that looks smoothed, idealised or like a different man or
+    woman fails, and so does a face that drifts from the photos between frames; when the
+    person's face is visible, it must also be alive: across the frames it shows real
+    expression (a smile, raised eyebrows, eye movement, a change of look) and is never a
+    frozen, blank, mask-like face that stays the same in every frame; hands and limbs look natural with no extra, missing,
     fused or bent-backwards fingers or arms, and the body stays well proportioned in every frame
     (a realistic head to body ratio and normal limb length, never stretched or distorted) and the
     face keeps clear skin with no acne or spots; the head and body always agree: in every
