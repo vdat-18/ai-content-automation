@@ -11,6 +11,14 @@ _PAUSE_WEIGHT = 4  # a mark at the end of a word costs about this many letters o
 _HIGHLIGHT = r"{\c&H00D7FF&}"  # ASS colours are BGR: this is amber
 _PLAIN = r"{\c&HFFFFFF&}"
 _MAX_HIGHLIGHTS = 2
+# The voice-over is written the way it is read aloud; captions show the usual spelling.
+_DISPLAY_SPELLING = {
+    "phom": "form",
+    "cốt-tông": "cotton",
+    "mi-li-lít": "ml",
+    "xen-ti-mét": "cm",
+    "ki-lô-gam": "kg",
+}
 
 
 @dataclass(frozen=True)
@@ -32,21 +40,44 @@ def spoken_cues(text: str, speech_seconds: float) -> list[Cue]:
         return []
     weights = [len(w) + (_PAUSE_WEIGHT if w[-1] in _PAUSE_MARKS else 0) for w in words]
     unit = speech_seconds / sum(weights)
-    lines: list[tuple[list[str], float, float]] = []
+    cues: list[Cue] = []
     clock = 0.0
-    current: list[str] = []
-    started = 0.0
-    for word, weight in zip(words, weights, strict=True):
-        if not current:
-            started = clock
-        current.append(word)
-        clock += weight * unit
-        if len(current) == MAX_WORDS or word[-1] in _PAUSE_MARKS:
-            lines.append((current, started, clock))
-            current = []
-    if current:
-        lines.append((current, started, clock))
-    return [Cue(start, end, _styled(line)) for line, start, end in lines]
+    position = 0
+    for size in _line_sizes(words):
+        started = clock
+        for weight in weights[position : position + size]:
+            clock += weight * unit
+        line = [_display(w) for w in words[position : position + size]]
+        cues.append(Cue(started, clock, _styled(line)))
+        position += size
+    return cues
+
+
+def _line_sizes(words: list[str]) -> list[int]:
+    """Words per line: a phrase (up to a comma or full stop) is split into even lines."""
+    sizes: list[int] = []
+    phrase = 0
+    for word in words:
+        phrase += 1
+        if word[-1] in _PAUSE_MARKS:
+            sizes += _even(phrase)
+            phrase = 0
+    return sizes + (_even(phrase) if phrase else [])
+
+
+def _even(count: int) -> list[int]:
+    lines = -(-count // MAX_WORDS)
+    base, extra = divmod(count, lines)
+    return [base + (1 if i < extra else 0) for i in range(lines)]
+
+
+def _display(word: str) -> str:
+    """The usual spelling of a word that is written as it is read aloud."""
+    core = word.rstrip(_PAUSE_MARKS)
+    shown = _DISPLAY_SPELLING.get(core.lower(), core)
+    if shown != core and core[:1].isupper():
+        shown = shown.capitalize()
+    return shown + "".join(c for c in word[len(core) :] if c in "?!…")  # no comma or full stop
 
 
 def _styled(line: list[str]) -> str:
@@ -82,13 +113,13 @@ def ass_document(cues: list[Cue], font_family: str, width: int = 1080, height: i
         "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, "
         "BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, "
         "BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n"
-        f"Style: Default,{font_family},84,&H00FFFFFF,&H00FFFFFF,&H00000000,&H80000000,"
-        "-1,0,0,0,100,100,0,0,1,6,2,2,60,60,520,1\n\n"
+        f"Style: Default,{font_family},76,&H00FFFFFF,&H00FFFFFF,&H00101010,&H90000000,"
+        "-1,0,0,0,100,100,1,0,1,7,4,2,80,80,500,1\n\n"
         "[Events]\n"
         "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n"
     )
     events = "".join(
-        f"Dialogue: 0,{_stamp(cue.start)},{_stamp(cue.end)},Default,,0,0,0,,{cue.text}\n"
+        f"Dialogue: 0,{_stamp(cue.start)},{_stamp(cue.end)},Default,,0,0,0,,{{\\fad(60,40)}}{cue.text}\n"
         for cue in cues
     )
     return header + events
