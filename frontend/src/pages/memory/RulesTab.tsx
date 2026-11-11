@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Pencil, Power, X } from "lucide-react";
+import { Check, Pencil, Power, Upload, X } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { ErrorNote, Skeleton, Spinner } from "../../components/ui";
 import { useWorkspace } from "../../hooks/useWorkspace";
@@ -82,6 +82,14 @@ export function RulesTab() {
     },
   });
 
+  const learn = useMutation({
+    mutationFn: (file: File) => pilotApi.learnFromExampleAd(file),
+    onSuccess: ({ rules }) => {
+      notify(`${rules.length} rule(s) found. Check them below and approve the ones you like.`, "success");
+      return refresh();
+    },
+  });
+
   const submit = (event: FormEvent) => {
     event.preventDefault();
     if (text.trim()) save.mutate({ content: text.trim(), asset });
@@ -144,7 +152,29 @@ export function RulesTab() {
           <button className="btn btn-primary" type="submit" disabled={!text.trim() || save.isPending}>{save.isPending ? <><Spinner size={14} />Saving…</> : "Add rule"}</button>
         </div>
       </form>
-      <ErrorNote error={decide.error ?? turnOff.error ?? save.error} />
+      <section className="card pad stack">
+        <h2>Learn from an example ad</h2>
+        <p className="small muted">
+          Choose a video ad that sells well (MP4, up to 100 MB, 3 minutes). The AI describes how it is built:
+          the hook, the pace, where the text sits, the ending. It copies nothing from the ad, and the video is not
+          kept. Each finding waits for your OK below.
+        </p>
+        <label className="btn" style={{ width: "fit-content" }}>
+          {learn.isPending ? <><Spinner size={14} />Analysing…</> : <><Upload size={14} aria-hidden="true" />Choose a video</>}
+          <input
+            type="file"
+            accept="video/mp4,video/quicktime,video/webm"
+            hidden
+            disabled={learn.isPending}
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              event.target.value = "";
+              if (file) learn.mutate(file);
+            }}
+          />
+        </label>
+      </section>
+      <ErrorNote error={decide.error ?? turnOff.error ?? save.error ?? learn.error} />
 
       {pending.length > 0 && (
         <section className="card pad stack" style={{ borderColor: "var(--brand)" }}>

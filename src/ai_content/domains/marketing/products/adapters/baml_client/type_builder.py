@@ -20,7 +20,7 @@ from .globals import DO_NOT_USE_DIRECTLY_UNLESS_YOU_KNOW_WHAT_YOURE_DOING_RUNTIM
 class TypeBuilder(type_builder.TypeBuilder):
     def __init__(self):
         super().__init__(classes=set(
-          ["ClipCheck","ContentBrief","CuratedRule","KeyframeCheck","LabeledReference","PostingPackage","ReferenceCandidate","ReferenceImageReview","ReferenceSearchProfileDraft","ShotReferenceChoice","StoryboardProblem","StoryboardReview","StoryboardShot",]
+          ["AdStructure","ClipCheck","ContentBrief","CuratedRule","KeyframeCheck","LabeledReference","PostingPackage","ReferenceCandidate","ReferenceImageReview","ReferenceSearchProfileDraft","ShotReferenceChoice","StoryboardProblem","StoryboardReview","StoryboardShot",]
         ), enums=set(
           []
         ), runtime=DO_NOT_USE_DIRECTLY_UNLESS_YOU_KNOW_WHAT_YOURE_DOING_RUNTIME)
@@ -31,8 +31,12 @@ class TypeBuilder(type_builder.TypeBuilder):
 
 
     # #########################################################################
-    # Generated classes 13
+    # Generated classes 14
     # #########################################################################
+
+    @property
+    def AdStructure(self) -> "AdStructureViewer":
+        return AdStructureViewer(self)
 
     @property
     def ClipCheck(self) -> "ClipCheckViewer":
@@ -94,8 +98,47 @@ class TypeBuilder(type_builder.TypeBuilder):
 
 
 # #########################################################################
-# Generated classes 13
+# Generated classes 14
 # #########################################################################
+
+class AdStructureAst:
+    def __init__(self, tb: type_builder.TypeBuilder):
+        _tb = tb._tb # type: ignore (we know how to use this private attribute)
+        self._bldr = _tb.class_("AdStructure")
+        self._properties: typing.Set[str] = set([  "rules",  ])
+        self._props = AdStructureProperties(self._bldr, self._properties)
+
+    def type(self) -> baml_py.FieldType:
+        return self._bldr.field()
+
+    @property
+    def props(self) -> "AdStructureProperties":
+        return self._props
+
+
+class AdStructureViewer(AdStructureAst):
+    def __init__(self, tb: type_builder.TypeBuilder):
+        super().__init__(tb)
+
+    
+    def list_properties(self) -> typing.List[typing.Tuple[str, type_builder.ClassPropertyViewer]]:
+        return [(name, type_builder.ClassPropertyViewer(self._bldr.property(name))) for name in self._properties]
+    
+
+
+class AdStructureProperties:
+    def __init__(self, bldr: baml_py.ClassBuilder, properties: typing.Set[str]):
+        self.__bldr = bldr
+        self.__properties = properties # type: ignore (we know how to use this private attribute) # noqa: F821
+
+    
+    
+    @property
+    def rules(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("rules"))
+    
+    
+
 
 class ClipCheckAst:
     def __init__(self, tb: type_builder.TypeBuilder):
@@ -775,3 +818,4 @@ class StoryboardShotProperties:
     
     
 
+

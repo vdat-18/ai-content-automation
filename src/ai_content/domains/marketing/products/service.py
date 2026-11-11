@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import tempfile
 from datetime import UTC, datetime
 from io import BytesIO
 from pathlib import Path
@@ -57,6 +58,7 @@ from .parsing import (
     parse_product_page,
 )
 from .posting import PostingPackageWriter
+from .reference_ad import AdAnalyzer, ReferenceAdUnavailable
 from .reference_picker import ShotReferencePicker
 from .references import ProfileGenerationError, ReferenceProfile, ReferenceProfileGenerator
 from .repositories import ProductRepository
@@ -209,7 +211,9 @@ class ProductCatalogService:
         reference_picker: ShotReferencePicker | None = None,
         clip_checker: ClipChecker | None = None,
         knowledge: CreativeKnowledgeService | None = None,
+        ad_analyzer: AdAnalyzer | None = None,
     ) -> None:
+        self._ad_analyzer = ad_analyzer
         self._repository = repository
         self._generator = generator
         self._reviewer = reviewer
@@ -227,6 +231,39 @@ class ProductCatalogService:
         self._clip_checker = clip_checker
         self._knowledge = knowledge
         self._collecting: set[tuple[str, int]] = set()
+
+    async def learn_from_reference_ad(self, content: bytes) -> list[dict[str, str]]:
+        """Describe how an example ad is built and propose that as rules for a human to approve.
+
+        The video is analysed from a temporary file and never kept.
+        """
+        if self._ad_analyzer is None or self._knowledge is None:
+            raise KeyframeUnavailable("The AI model is not configured (AIC_SCREENING_API_KEY)")
+        with tempfile.TemporaryDirectory() as scratch:
+            video = Path(scratch) / "example_ad"
+            video.write_bytes(content)
+            try:
+                rules = await self._ad_analyzer.analyze(video)
+            except ReferenceAdUnavailable as error:
+                raise KeyframeUnavailable(str(error)) from error
+        if not rules:
+            raise KeyframeUnavailable("The AI model could not describe that ad; try again")
+        items = [
+            await propose_feedback(
+                self._knowledge,
+                product_id="reference-ad",
+                text=rule,
+                contributor="reference-ad",
+                authority=KnowledgeAuthority.EXTERNAL,
+                asset_type="brief",
+                once=True,
+            )
+            for rule in rules
+        ]
+        return [
+            {"knowledge_id": item.knowledge_id, "text": item.content, "status": item.status.value}
+            for item in items
+        ]
 
     async def ingest(self, payload: dict[str, Any]) -> dict[str, Any]:
         """Store whatever a captured page or feed response contains."""

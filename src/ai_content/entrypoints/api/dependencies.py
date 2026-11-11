@@ -29,6 +29,7 @@ from ai_content.domains.marketing.products.keyframes import (
 from ai_content.domains.marketing.products.knowledge import BamlKnowledgeCurator
 from ai_content.domains.marketing.products.media_store import S3RemoteMedia
 from ai_content.domains.marketing.products.posting import PostingPackageWriter
+from ai_content.domains.marketing.products.reference_ad import AdAnalyzer
 from ai_content.domains.marketing.products.reference_picker import ShotReferencePicker
 from ai_content.domains.marketing.products.references import ReferenceProfileGenerator
 from ai_content.domains.marketing.products.repositories import SqliteProductRepository
@@ -401,6 +402,16 @@ def _storyboard_reviewer(settings: ApiRuntimeSettings) -> StoryboardReviewer | N
     )
 
 
+def _ad_analyzer(settings: ApiRuntimeSettings) -> AdAnalyzer | None:
+    if not settings.screening_api_key:
+        return None
+    return AdAnalyzer.from_settings(
+        base_url=settings.screening_base_url,
+        api_key=settings.screening_api_key,
+        model=settings.screening_model,
+    )
+
+
 def _profile_generator(settings: ApiRuntimeSettings) -> ReferenceProfileGenerator | None:
     if not settings.screening_api_key:
         return None
@@ -446,6 +457,7 @@ async def product_catalog_scope(postgres: Any) -> AsyncIterator[ProductCatalogSe
             _reference_picker(settings),
             clip_checker=_clip_checker(settings),
             knowledge=knowledge,
+            ad_analyzer=_ad_analyzer(settings),
         )
     finally:
         if postgres is None:

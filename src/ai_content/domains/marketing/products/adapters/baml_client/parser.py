@@ -23,6 +23,12 @@ class LlmResponseParser:
     def __init__(self, options: DoNotUseDirectlyCallManager):
         self.__options = options
 
+    def AnalyzeAdStructure(
+        self, llm_response: str, baml_options: BamlCallOptions = {},
+    ) -> types.AdStructure:
+        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="AnalyzeAdStructure", llm_response=llm_response, mode="request")
+        return typing.cast(types.AdStructure, __result__)
+
     def CheckClip(
         self, llm_response: str, baml_options: BamlCallOptions = {},
     ) -> types.ClipCheck:
@@ -85,6 +91,12 @@ class LlmStreamParser:
     def __init__(self, options: DoNotUseDirectlyCallManager):
         self.__options = options
 
+    def AnalyzeAdStructure(
+        self, llm_response: str, baml_options: BamlCallOptions = {},
+    ) -> stream_types.AdStructure:
+        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="AnalyzeAdStructure", llm_response=llm_response, mode="stream")
+        return typing.cast(stream_types.AdStructure, __result__)
+
     def CheckClip(
         self, llm_response: str, baml_options: BamlCallOptions = {},
     ) -> stream_types.ClipCheck:
@@ -139,4 +151,4 @@ class LlmStreamParser:
         __result__ = self.__options.merge_options(baml_options).parse_response(function_name="WritePostingPackage", llm_response=llm_response, mode="stream")
         return typing.cast(stream_types.PostingPackage, __result__)
 
-    
+    

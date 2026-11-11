@@ -168,7 +168,7 @@ Mỗi lỗi có mức nặng/nhẹ, ra điểm 0–100. Lỗi lặp lại nhiề
 
 ## 10. Phân tích một quảng cáo mẫu
 
-**Trạng thái:** Chờ duyệt · **Công sức:** vừa–lớn · **Nguồn:** nguyentatkiem (Tạo style)
+**Trạng thái:** Xong phần code và test. Trang AI memory, tab rules có ô "Learn from an example ad": chọn video MP4 (tối đa 100 MB, 3 phút), hệ thống lấy 40 khung, đo điểm cắt bằng ffmpeg, nhờ AI mô tả cấu trúc thành 3–6 luật "brief" chờ duyệt (người gửi `reference-ad`). Video không được lưu. Khác kế hoạch: vị trí chữ do AI nhìn khung hình mô tả, không đo bằng máy. Đã thử lấy khung và đo cắt trên video giả trong Docker; chưa gọi AI thật nên chưa biết luật AI viết ra chất lượng thế nào · **Công sức:** vừa–lớn · **Nguồn:** nguyentatkiem (Tạo style)
 
 **Làm gì.** Người dùng thả một quảng cáo TikTok đang chạy tốt. Hệ thống lấy khoảng 40 khung hình, đo nhịp cắt, vị trí chữ rồi nhờ LLM mô tả cấu trúc: loại hook, vai trò từng shot, nhịp, vị trí caption. Kết quả được **đề xuất thành luật SecondBrain chờ duyệt**.
 

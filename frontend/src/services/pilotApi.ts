@@ -1,4 +1,4 @@
-import { getJson, postJson } from "./http";
+import { getJson, postJson, putFile } from "./http";
 import type {
   CreativeKnowledge,
   CreativeKnowledgeBootstrapResult,
@@ -10,6 +10,11 @@ import type {
 } from "../types/pilotApi";
 
 export const pilotApi = {
+  learnFromExampleAd: (file: File) =>
+    putFile<{ rules: { knowledge_id: string; text: string; status: string }[] }>(
+      "/api/v1/products/reference-ad",
+      file,
+    ),
   creativeKnowledge: (status?: CreativeKnowledgeStatus, signal?: AbortSignal) => {
     const query = status ? `?status=${encodeURIComponent(status)}` : "";
     return getJson<CreativeKnowledgeList>(`/api/v1/marketing/creative-knowledge${query}`, signal);

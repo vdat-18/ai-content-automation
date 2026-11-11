@@ -778,6 +778,31 @@ async def send_feedback(
     return {"knowledge_id": item.knowledge_id, "status": item.status.value}
 
 
+VIDEO_TYPES = {"video/mp4", "video/quicktime", "video/webm"}
+MAX_EXAMPLE_AD_BYTES = 100 * 1024 * 1024
+
+
+@router.put("/reference-ad")
+async def learn_from_reference_ad(
+    request: Request,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> dict[str, Any]:
+    """Describe how an example ad is built and propose that as rules; the video is not kept."""
+    kind = request.headers.get("content-type", "").split(";")[0].strip()
+    if kind not in VIDEO_TYPES:
+        raise HTTPException(status_code=415, detail=f"Use one of {sorted(VIDEO_TYPES)}")
+    content = await request.body()
+    if not content:
+        raise HTTPException(status_code=422, detail="The file is empty")
+    if len(content) > MAX_EXAMPLE_AD_BYTES:
+        raise HTTPException(status_code=413, detail="The video is larger than 100 MB")
+    try:
+        rules = await service.learn_from_reference_ad(content)
+    except KeyframeUnavailable as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    return {"rules": rules}
+
+
 @router.get("/{product_id}/persona/image")
 async def persona_image(
     product_id: str,

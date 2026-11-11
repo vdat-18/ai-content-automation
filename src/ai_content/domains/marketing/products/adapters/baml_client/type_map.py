@@ -16,6 +16,9 @@ from . import stream_types
 
 type_map = {
 
+    "types.AdStructure": types.AdStructure,
+    "stream_types.AdStructure": stream_types.AdStructure,
+
     "types.ClipCheck": types.ClipCheck,
     "stream_types.ClipCheck": stream_types.ClipCheck,
 
