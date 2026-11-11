@@ -46,7 +46,6 @@ class KeyframeChecker:
             api_key=api_key,
             reasoning_effort=None,
             temperature=0,
-            max_output_tokens=4000,
         )
         return cls(b.with_options(client_registry=registry))
 

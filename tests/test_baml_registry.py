@@ -36,3 +36,14 @@ def test_several_models_become_a_fallback_chain_in_order(monkeypatch) -> None:
     assert registry.primary == "TChain"
     assert registry.clients["TChain"] == ("fallback", {"strategy": ["T", "TFallback1"]})
     assert [registry.clients[n][1]["model"] for n in ("T", "TFallback1")] == ["a", "b"]
+
+
+def test_no_output_limit_is_sent_unless_one_is_given(monkeypatch) -> None:
+    monkeypatch.setattr(baml_registry, "ClientRegistry", _Registry)
+    kwargs = {"name": "T", "base_url": "http://x/v1", "model": "a", "api_key": "k"}
+    open_ended = baml_registry.build_client_registry(**kwargs, reasoning_effort=None, temperature=0)
+    capped = baml_registry.build_client_registry(
+        **kwargs, reasoning_effort=None, temperature=0, max_output_tokens=50
+    )
+    assert "max_tokens" not in open_ended.clients["T"][1]
+    assert capped.clients["T"][1]["max_tokens"] == 50
