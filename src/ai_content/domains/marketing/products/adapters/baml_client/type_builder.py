@@ -20,7 +20,7 @@ from .globals import DO_NOT_USE_DIRECTLY_UNLESS_YOU_KNOW_WHAT_YOURE_DOING_RUNTIM
 class TypeBuilder(type_builder.TypeBuilder):
     def __init__(self):
         super().__init__(classes=set(
-          ["AdStructure","ClipCheck","ContentBrief","CuratedRule","HookOption","HookOptions","KeyframeCheck","LabeledReference","PostingPackage","ReferenceCandidate","ReferenceImageReview","ReferenceSearchProfileDraft","ShotReferenceChoice","StoryboardProblem","StoryboardReview","StoryboardShot",]
+          ["AdStructure","ClipCheck","ContentBrief","CuratedRule","HookOption","HookOptions","KeyframeCheck","LabeledReference","PostingPackage","ReferenceCandidate","ReferenceImageReview","ReferenceSearchProfileDraft","ShotReferenceChoice","StoryboardProblem","StoryboardReview","StoryboardShot","VoicePick",]
         ), enums=set(
           []
         ), runtime=DO_NOT_USE_DIRECTLY_UNLESS_YOU_KNOW_WHAT_YOURE_DOING_RUNTIME)
@@ -31,7 +31,7 @@ class TypeBuilder(type_builder.TypeBuilder):
 
 
     # #########################################################################
-    # Generated classes 16
+    # Generated classes 17
     # #########################################################################
 
     @property
@@ -98,6 +98,10 @@ class TypeBuilder(type_builder.TypeBuilder):
     def StoryboardShot(self) -> "StoryboardShotViewer":
         return StoryboardShotViewer(self)
 
+    @property
+    def VoicePick(self) -> "VoicePickViewer":
+        return VoicePickViewer(self)
+
 
 
 # #########################################################################
@@ -106,7 +110,7 @@ class TypeBuilder(type_builder.TypeBuilder):
 
 
 # #########################################################################
-# Generated classes 16
+# Generated classes 17
 # #########################################################################
 
 class AdStructureAst:
@@ -905,6 +909,53 @@ class StoryboardShotProperties:
     @property
     def voiceover(self) -> type_builder.ClassPropertyViewer:
         return type_builder.ClassPropertyViewer(self.__bldr.property("voiceover"))
+    
+    
+
+
+class VoicePickAst:
+    def __init__(self, tb: type_builder.TypeBuilder):
+        _tb = tb._tb # type: ignore (we know how to use this private attribute)
+        self._bldr = _tb.class_("VoicePick")
+        self._properties: typing.Set[str] = set([  "gender",  "voice",  "reason",  ])
+        self._props = VoicePickProperties(self._bldr, self._properties)
+
+    def type(self) -> baml_py.FieldType:
+        return self._bldr.field()
+
+    @property
+    def props(self) -> "VoicePickProperties":
+        return self._props
+
+
+class VoicePickViewer(VoicePickAst):
+    def __init__(self, tb: type_builder.TypeBuilder):
+        super().__init__(tb)
+
+    
+    def list_properties(self) -> typing.List[typing.Tuple[str, type_builder.ClassPropertyViewer]]:
+        return [(name, type_builder.ClassPropertyViewer(self._bldr.property(name))) for name in self._properties]
+    
+
+
+class VoicePickProperties:
+    def __init__(self, bldr: baml_py.ClassBuilder, properties: typing.Set[str]):
+        self.__bldr = bldr
+        self.__properties = properties # type: ignore (we know how to use this private attribute) # noqa: F821
+
+    
+    
+    @property
+    def gender(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("gender"))
+    
+    @property
+    def voice(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("voice"))
+    
+    @property
+    def reason(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("reason"))
     
     
 

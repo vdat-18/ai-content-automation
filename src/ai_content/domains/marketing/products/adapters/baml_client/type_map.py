@@ -64,5 +64,8 @@ type_map = {
     "types.StoryboardShot": types.StoryboardShot,
     "stream_types.StoryboardShot": stream_types.StoryboardShot,
 
+    "types.VoicePick": types.VoicePick,
+    "stream_types.VoicePick": stream_types.VoicePick,
+
 
 }

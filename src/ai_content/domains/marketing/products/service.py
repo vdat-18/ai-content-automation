@@ -80,6 +80,7 @@ from .stickers import render_stickers, sticker_lines, stickers_by_shot
 from .storyboard_review import StoryboardReviewer
 from .text_embedding import TextEmbedder, TextEmbeddingError
 from .video_check import LESSONS, VideoCheckUnavailable, judge, measure
+from .voice_picker import VoicePicker
 
 _PINTEREST_SEARCH = "https://www.pinterest.com/search/pins/?q="
 _SCREEN_BATCH = 200
@@ -223,7 +224,9 @@ class ProductCatalogService:
         knowledge: CreativeKnowledgeService | None = None,
         ad_analyzer: AdAnalyzer | None = None,
         hook_writer: HookWriter | None = None,
+        voice_picker: VoicePicker | None = None,
     ) -> None:
+        self._voice_picker = voice_picker
         self._ad_analyzer = ad_analyzer
         self._hook_writer = hook_writer
         self._repository = repository
@@ -1319,6 +1322,13 @@ class ProductCatalogService:
             raise KeyframeUnavailable("Text-to-speech is not configured (AIC_TTS_MODEL)")
         if voice and voice not in VOICES:
             raise KeyframeUnavailable(f"Unknown voice {voice}")
+        voice_reason = ""
+        if not voice and self._voice_picker is not None:
+            brief = record["brief"]
+            photos = (await self.persona_photos(product_id, media_root))[:2]
+            choice = await self._voice_picker.pick(brief, photos if brief.get("with_person") else [])
+            if choice is not None:
+                voice, voice_reason = choice.voice, choice.reason
         keyframes = {k["shot_index"]: k for k in await self._repository.list_keyframes(product_id)}
         shots = record["brief"].get("shots") or []
         approved = [
@@ -1394,10 +1404,13 @@ class ProductCatalogService:
             "voiceover",
             "warning" if too_long else "ok",
             f"Read in voice {voice or 'default'}; shots {[round(n, 1) for n in lengths]} s"
+            + (f"; chosen because: {voice_reason}" if voice_reason else "")
             + (f"; too long: {too_long}" if too_long else ""),
         )
         return {
             "voiceover": "mp3",
+            "voice": voice or "",
+            "voice_reason": voice_reason,
             "seconds": [round(n, 1) for n in lengths],
             "too_long_shots": too_long,
         }

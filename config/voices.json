@@ -1,0 +1,38 @@
+[
+  {
+    "id": "tiendat.mp3",
+    "gender": "male",
+    "pitch_hz": 170,
+    "description": "Young, bright, lively male voice. Suits fashion, everyday items and a young audience."
+  },
+  {
+    "id": "huuduc.mp3",
+    "gender": "male",
+    "pitch_hz": 106,
+    "description": "Deep, steady, mature male voice. Suits household goods, tools and products that need trust."
+  },
+  {
+    "id": "giongadam.mp3",
+    "gender": "male",
+    "pitch_hz": 113,
+    "description": "Deep male voice, style not yet described. Use only when no other male voice fits."
+  },
+  {
+    "id": "kimoanh.mp3",
+    "gender": "female",
+    "pitch_hz": 229,
+    "description": "Soft, mid-pitched, natural female voice. Suits cosmetics, home items and women's fashion."
+  },
+  {
+    "id": "maichi.mp3",
+    "gender": "female",
+    "pitch_hz": 333,
+    "description": "High, bright female voice. Suits young, cute or playful products."
+  },
+  {
+    "id": "hamy.mp3",
+    "gender": "female",
+    "pitch_hz": 356,
+    "description": "High, bright female voice, style not yet told apart from Mai Chi. Use only when no other female voice fits."
+  }
+]

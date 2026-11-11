@@ -38,6 +38,7 @@ from ai_content.domains.marketing.products.service import ProductCatalogService
 from ai_content.domains.marketing.products.speech import SpeechClient
 from ai_content.domains.marketing.products.storyboard_review import StoryboardReviewer
 from ai_content.domains.marketing.products.text_embedding import TextEmbedder
+from ai_content.domains.marketing.products.voice_picker import VoicePicker
 from ai_content.entrypoints.postgres_runtime import PostgresRuntimeContainer
 from ai_content.platform.ai_usage import AIUsageRepository, SqliteAIUsageRepository
 from ai_content.platform.database import Database
@@ -413,6 +414,16 @@ def _hook_writer(settings: ApiRuntimeSettings) -> HookWriter | None:
     )
 
 
+def _voice_picker(settings: ApiRuntimeSettings) -> VoicePicker | None:
+    if not settings.screening_api_key:
+        return None
+    return VoicePicker.from_settings(
+        base_url=settings.screening_base_url,
+        api_key=settings.screening_api_key,
+        model=settings.screening_model,
+    )
+
+
 def _ad_analyzer(settings: ApiRuntimeSettings) -> AdAnalyzer | None:
     if not settings.screening_api_key:
         return None
@@ -470,6 +481,7 @@ async def product_catalog_scope(postgres: Any) -> AsyncIterator[ProductCatalogSe
             knowledge=knowledge,
             ad_analyzer=_ad_analyzer(settings),
             hook_writer=_hook_writer(settings),
+            voice_picker=_voice_picker(settings),
         )
     finally:
         if postgres is None:

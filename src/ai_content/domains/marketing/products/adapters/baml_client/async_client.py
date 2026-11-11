@@ -187,6 +187,21 @@ class BamlAsyncClient:
                 "product_json": product_json,
             })
             return typing.cast(types.ReferenceSearchProfileDraft, __result__.cast_to(types, types, stream_types, False, __runtime__))
+    async def PickVoice(self, brief_json: str,voices_json: str,person_photos: typing.List[baml_py.Image],
+        baml_options: BamlCallOptions = {},
+    ) -> types.VoicePick:
+        # Check if on_tick is provided
+        if 'on_tick' in baml_options:
+            # Use streaming internally when on_tick is provided
+            __stream__ = self.stream.PickVoice(brief_json=brief_json,voices_json=voices_json,person_photos=person_photos,
+                baml_options=baml_options)
+            return await __stream__.get_final_response()
+        else:
+            # Original non-streaming code
+            __result__ = await self.__options.merge_options(baml_options).call_function_async(function_name="PickVoice", args={
+                "brief_json": brief_json,"voices_json": voices_json,"person_photos": person_photos,
+            })
+            return typing.cast(types.VoicePick, __result__.cast_to(types, types, stream_types, False, __runtime__))
     async def ReviewReferenceImage(self, product_type: str,image: baml_py.Image,
         baml_options: BamlCallOptions = {},
     ) -> types.ReferenceImageReview:
@@ -340,6 +355,18 @@ class BamlStreamClient:
           lambda x: typing.cast(types.ReferenceSearchProfileDraft, x.cast_to(types, types, stream_types, False, __runtime__)),
           __ctx__,
         )
+    def PickVoice(self, brief_json: str,voices_json: str,person_photos: typing.List[baml_py.Image],
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.BamlStream[stream_types.VoicePick, types.VoicePick]:
+        __ctx__, __result__ = self.__options.merge_options(baml_options).create_async_stream(function_name="PickVoice", args={
+            "brief_json": brief_json,"voices_json": voices_json,"person_photos": person_photos,
+        })
+        return baml_py.BamlStream[stream_types.VoicePick, types.VoicePick](
+          __result__,
+          lambda x: typing.cast(stream_types.VoicePick, x.cast_to(types, types, stream_types, True, __runtime__)),
+          lambda x: typing.cast(types.VoicePick, x.cast_to(types, types, stream_types, False, __runtime__)),
+          __ctx__,
+        )
     def ReviewReferenceImage(self, product_type: str,image: baml_py.Image,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.BamlStream[stream_types.ReferenceImageReview, types.ReferenceImageReview]:
@@ -445,6 +472,13 @@ class BamlHttpRequestClient:
             "product_json": product_json,
         }, mode="request")
         return __result__
+    async def PickVoice(self, brief_json: str,voices_json: str,person_photos: typing.List[baml_py.Image],
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.baml_py.HTTPRequest:
+        __result__ = await self.__options.merge_options(baml_options).create_http_request_async(function_name="PickVoice", args={
+            "brief_json": brief_json,"voices_json": voices_json,"person_photos": person_photos,
+        }, mode="request")
+        return __result__
     async def ReviewReferenceImage(self, product_type: str,image: baml_py.Image,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.baml_py.HTTPRequest:
@@ -528,6 +562,13 @@ class BamlHttpStreamRequestClient:
     ) -> baml_py.baml_py.HTTPRequest:
         __result__ = await self.__options.merge_options(baml_options).create_http_request_async(function_name="DraftReferenceSearchProfile", args={
             "product_json": product_json,
+        }, mode="stream")
+        return __result__
+    async def PickVoice(self, brief_json: str,voices_json: str,person_photos: typing.List[baml_py.Image],
+        baml_options: BamlCallOptions = {},
+    ) -> baml_py.baml_py.HTTPRequest:
+        __result__ = await self.__options.merge_options(baml_options).create_http_request_async(function_name="PickVoice", args={
+            "brief_json": brief_json,"voices_json": voices_json,"person_photos": person_photos,
         }, mode="stream")
         return __result__
     async def ReviewReferenceImage(self, product_type: str,image: baml_py.Image,

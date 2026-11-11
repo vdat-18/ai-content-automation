@@ -65,6 +65,12 @@ class LlmResponseParser:
         __result__ = self.__options.merge_options(baml_options).parse_response(function_name="DraftReferenceSearchProfile", llm_response=llm_response, mode="request")
         return typing.cast(types.ReferenceSearchProfileDraft, __result__)
 
+    def PickVoice(
+        self, llm_response: str, baml_options: BamlCallOptions = {},
+    ) -> types.VoicePick:
+        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="PickVoice", llm_response=llm_response, mode="request")
+        return typing.cast(types.VoicePick, __result__)
+
     def ReviewReferenceImage(
         self, llm_response: str, baml_options: BamlCallOptions = {},
     ) -> types.ReferenceImageReview:
@@ -138,6 +144,12 @@ class LlmStreamParser:
     ) -> stream_types.ReferenceSearchProfileDraft:
         __result__ = self.__options.merge_options(baml_options).parse_response(function_name="DraftReferenceSearchProfile", llm_response=llm_response, mode="stream")
         return typing.cast(stream_types.ReferenceSearchProfileDraft, __result__)
+
+    def PickVoice(
+        self, llm_response: str, baml_options: BamlCallOptions = {},
+    ) -> stream_types.VoicePick:
+        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="PickVoice", llm_response=llm_response, mode="stream")
+        return typing.cast(stream_types.VoicePick, __result__)
 
     def ReviewReferenceImage(
         self, llm_response: str, baml_options: BamlCallOptions = {},
