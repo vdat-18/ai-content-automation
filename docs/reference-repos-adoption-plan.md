@@ -18,7 +18,7 @@ Trạng thái: `Chờ duyệt` · `Đã duyệt` · `Bỏ` · `Xong`
 
 ## 1. Bền trạng thái và tự thử lại khi provider bận
 
-**Trạng thái:** Đã duyệt, đã code (thử thật với provider đang tiến hành) · **Công sức:** vừa · **Nguồn:** nguyentatkiem (autopilot, queue), ai-video-editor (remote-video-generation)
+**Trạng thái:** Xong phần code và test (commit c9919f1). Chưa thử với provider thật vì sẽ tốn tiền clip; chờ người dùng cho phép chạy video · **Công sức:** vừa · **Nguồn:** nguyentatkiem (autopilot, queue), ai-video-editor (remote-video-generation)
 
 **Đã làm:** `pipeline.py` nhận ra lỗi "provider bận" (`is_busy_error` trong `clips.py`), chờ 60 giây rồi gửi lại từng clip một, tối đa 15 lần mỗi shot, hết lượt thì dừng với thông báo rõ. Lỗi khác vẫn dừng ngay.
 
