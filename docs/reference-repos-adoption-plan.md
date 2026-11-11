@@ -1,0 +1,209 @@
+# Kế hoạch áp dụng ý tưởng từ 3 repo tham khảo
+
+Nguồn tham khảo (đã clone ở `D:\video-repos\`, chỉ để đọc, không chạy):
+
+- `nguyentatkiem-ai-video-studio` (MIT, yêu cầu giữ ghi công tác giả): phần mềm dựng video dùng Claude CLI.
+- `ai-video-editor` (MIT, license model hỗn hợp): Timeline Studio, kèm skill `edit-timeline-studio`.
+- `zecloud-ai-video-studio`: app Azure/OneDrive. Không thấy file LICENSE ở thư mục gốc nên **chỉ học ý tưởng, không copy code**.
+
+Cả 3 repo dựng video từ footage có sẵn, không repo nào sinh footage từ ảnh sản phẩm và mặt người thật như dự án này. Vì vậy chỉ lấy **mẫu thiết kế**, không lấy engine hay template.
+
+## Quy trình duyệt
+
+Mỗi mục có trạng thái. Chỉ làm mục có trạng thái `Đã duyệt`. Làm xong ghi `Xong` kèm commit.
+
+Trạng thái: `Chờ duyệt` · `Đã duyệt` · `Bỏ` · `Xong`
+
+---
+
+## 1. Bền trạng thái và tự thử lại khi provider bận
+
+**Trạng thái:** Đã duyệt, đã code (thử thật với provider đang tiến hành) · **Công sức:** vừa · **Nguồn:** nguyentatkiem (autopilot, queue), ai-video-editor (remote-video-generation)
+
+**Đã làm:** `pipeline.py` nhận ra lỗi "provider bận" (`is_busy_error` trong `clips.py`), chờ 60 giây rồi gửi lại từng clip một, tối đa 15 lần mỗi shot, hết lượt thì dừng với thông báo rõ. Lỗi khác vẫn dừng ngay.
+
+**Không làm bảng lưu trạng thái riêng:** pipeline đã chạy tiếp được vì mỗi bước kiểm tra dữ liệu có sẵn trong DB (ảnh đã duyệt, clip đã xong) và bỏ qua phần đã làm. Chỉ có chỉ báo "đang chạy" là nằm trong bộ nhớ nên mất khi restart server; chạy lại thì tự tiếp tục từ chỗ dở.
+
+**Vấn đề hiện tại.** Provider video (`api.vilao.ai`) hay trả "hệ thống đang xử lý lượng lớn yêu cầu". Pipeline gửi cả 3 clip cùng lúc, cả 3 lỗi và cả pipeline dừng. Trạng thái run nằm trong bộ nhớ nên restart server là mất.
+
+**Làm gì.**
+- Gửi clip lần lượt, không gửi dồn.
+- Nếu provider báo bận thì chờ rồi thử lại (cách nhau vài chục giây, tối đa vài lần). Lỗi khác thì dừng như cũ.
+- Lưu trạng thái từng bước (brief, ảnh, clip, giọng, ghép) vào DB để chạy lại thì bỏ qua bước đã xong.
+- Trạng thái job thật: đang chờ, đang chạy, xong, lỗi. Chỉ hiện % khi provider trả tiến độ thật.
+- Tải byte clip về lưu ngay, vì URL của provider có thể hết hạn.
+
+**Tác dụng và lý do.** Video không còn chết giữa chừng chỉ vì provider bận. Không tốn lại credit của bước đã xong. Đây là việc đang chặn video 30s.
+
+**Rủi ro.** Retry quá tay có thể tốn credit nếu provider tính tiền cả lần lỗi. Phải giới hạn số lần và ghi log rõ.
+
+---
+
+## 2. Phụ đề chạy theo từng chữ
+
+**Trạng thái:** Chờ duyệt · **Công sức:** vừa · **Nguồn:** nguyentatkiem (`topic_video`)
+
+**Vấn đề hiện tại.** Caption là một khối `drawtext` hiện suốt cả shot (`clips.py`), không chạy theo lời đọc.
+
+**Làm gì.**
+- Có giọng đọc xong thì nghe lại bằng Whisper để lấy mốc thời gian từng chữ.
+- Đối chiếu với **đúng chữ trong kịch bản** (không dùng chữ Whisper nghe nhầm), chữ nào không khớp thì chia theo số ký tự giữa hai chữ khớp.
+- Mỗi dòng tối đa 4 từ, tô nổi 1–2 từ khoá.
+- Xuất file ASS rồi ffmpeg đốt vào video.
+
+**Tác dụng và lý do.** Video bán hàng TikTok gần như luôn dùng kiểu phụ đề nhảy theo chữ vì giữ người xem và xem được khi tắt tiếng. Đây là chỗ thấy khác biệt rõ nhất giữa video "AI làm" và video "ra dáng quảng cáo".
+
+**Rủi ro.** Whisper tiếng Việt đôi khi nghe sai, nên bắt buộc dùng chữ kịch bản làm chuẩn. Cần font hỗ trợ dấu tiếng Việt.
+
+---
+
+## 3. QC cho video cuối
+
+**Trạng thái:** Chờ duyệt · **Công sức:** vừa · **Nguồn:** nguyentatkiem (`ai_qc`)
+
+**Vấn đề hiện tại.** Đang QC từng ảnh và từng clip bằng Gemini, nhưng không kiểm tra video đã ghép.
+
+**Làm gì.** Bước máy tự đo (không cần AI):
+- 2 giây đầu có chữ hook hoặc không.
+- Chữ có tràn ngoài vùng an toàn của TikTok không, caption có quá 5 từ không.
+- Có đoạn dài hơn 6 giây không có sự kiện hình không.
+- Độ to và true peak của bản cuối (chuẩn -14 LUFS, ≤ -1 dBTP), nhạc có át giọng không, có im lặng giữa chừng không.
+- Kiểm tra ffprobe: có audio, đúng kích thước 9:16, đúng thời lượng.
+
+Mỗi lỗi có mức nặng/nhẹ, ra điểm 0–100. Lỗi lặp lại nhiều lần thì đề xuất thành luật SecondBrain.
+
+**Tác dụng và lý do.** Bắt lỗi trước khi người dùng thấy. Cũng là cách để SecondBrain tự học từ lỗi thật của video cuối, không chỉ từ ảnh.
+
+**Rủi ro.** Chỉ đo lỗi kỹ thuật, không chấm thẩm mỹ. Chỉ báo lỗi, chưa tự sửa ở giai đoạn đầu.
+
+---
+
+## 4. Vòng phản hồi sau video
+
+**Trạng thái:** Chờ duyệt · **Công sức:** nhỏ–vừa · **Nguồn:** nguyentatkiem (`feedback.mjs`)
+
+**Làm gì.**
+- Sau mỗi video, người dùng chấm 1–5 sao và chọn thẻ lỗi: mở đầu yếu, chữ khó đọc, nhạc to, dài quá, giọng lạ.
+- Một thẻ xuất hiện ≥ 2 lần và chiếm ≥ 25% trong 8 phản hồi gần nhất thì mới tạo đề xuất.
+- Đề xuất đi vào SecondBrain như một **luật chờ duyệt** (người duyệt, LLM chép lại cho sạch). Không tự áp.
+
+**Tác dụng và lý do.** SecondBrain học từ ý kiến của chính người dùng, đúng ý "agent feedback tự sửa nhưng phải duyệt". Ngưỡng 2 lần/25% chặn việc sửa luật chỉ vì một lần chấm cảm tính.
+
+**Rủi ro.** Cần người dùng chịu chấm. Nên chỉ cần 1 cú bấm thẻ.
+
+---
+
+## 5. Biến thể hook A/B
+
+**Trạng thái:** Chờ duyệt · **Công sức:** vừa · **Nguồn:** nguyentatkiem (`variants.mjs`)
+
+**Làm gì.**
+- LLM viết N hook (mặc định 3), mỗi hook ≤ 7 từ và một góc khác nhau: câu hỏi, con số/tuyên bố, nỗi đau/lợi ích.
+- Với mỗi hook, chỉ đổi câu mở đầu (lời + caption) rồi ghép lại, **dùng lại các clip đã sinh**.
+- Tuỳ chọn cold open: kéo câu mạnh nhất lên đầu.
+
+**Tác dụng và lý do.** Affiliate cần thử nhiều hook để biết hook nào ra đơn. Làm cách này gần như không tốn credit video. Phụ thuộc mục 6 để ghép lại không phải sinh lại clip.
+
+**Rủi ro.** Đổi lời hook thì giọng đọc shot 1 phải làm lại, tốn một ít TTS. Hook mới phải qua bước kiểm tra compliance như bình thường.
+
+---
+
+## 6. Lưu bản dựng dưới dạng JSON chỉnh được
+
+**Trạng thái:** Chờ duyệt · **Công sức:** vừa · **Nguồn:** ai-video-editor (timeline là nguồn sự thật)
+
+**Làm gì.** Lưu kèm mỗi video một file mô tả bản dựng: thứ tự shot, mốc cắt, mốc từng chữ, mức nhạc, giọng. Bước Finish đổi giọng, caption, nhạc thì ghép lại từ file này.
+
+**Tác dụng và lý do.** Đổi caption hay nhạc không phải sinh lại clip, không tốn credit, không phải chờ. Là nền cho mục 2 và 5.
+
+**Rủi ro.** Phải giữ file clip gốc trên đĩa. Cần quy ước phiên bản của file.
+
+---
+
+## 7. Giọng đọc theo cụm hơi
+
+**Trạng thái:** Chờ duyệt · **Công sức:** nhỏ–vừa · **Nguồn:** ai-video-editor (`voiceover-workflow`)
+
+**Làm gì.**
+- Chia lời thành cụm ngắn theo dấu phẩy và câu, đọc từng cụm riêng, nghỉ 0,28–0,4 giây giữa các cụm.
+- Chốt âm thanh trước, sau đó mới khớp hình theo thời lượng thật của giọng. Không tăng tốc giọng cho vừa độ dài.
+- Đo độ to từng đoạn, chênh nhau ≤ 1 LU.
+- Đưa các quy tắc này vào SecondBrain (loại voiceover), không hard-code.
+
+**Tác dụng và lý do.** Giọng tiếng Việt bớt đều đều như máy, nhịp tự nhiên hơn.
+
+**Rủi ro.** Nhiều lần gọi TTS hơn nên tốn thời gian hơn một chút.
+
+---
+
+## 8. Trạng thái của từng claim
+
+**Trạng thái:** Chờ duyệt · **Công sức:** nhỏ · **Nguồn:** ai-video-editor (promotion-narrative), nguyentatkiem ("không tự bịa số liệu")
+
+**Làm gì.** Mỗi con số hay lời hứa trong script gắn nhãn nguồn: `verified` (có trong dữ liệu sản phẩm: giá, lượt bán, đánh giá), `official-claim` (người bán tự nói), `illustrative` (minh hoạ). Claim không có nguồn thì không cho vào video.
+
+**Tác dụng và lý do.** Tránh nói sai về sản phẩm, bổ sung cho `compliance.py` và luật quảng cáo.
+
+**Rủi ro.** Có thể làm script bớt "bốc" nếu claim bị loại. Đây là đánh đổi cố ý.
+
+---
+
+## 9. Hồ sơ nhịp theo mục tiêu
+
+**Trạng thái:** Chờ duyệt · **Công sức:** nhỏ · **Nguồn:** zecloud (`narrativePacingMaximum`)
+
+**Làm gì.** Độ dài tối đa mỗi cảnh theo loại video (ví dụ giới thiệu sản phẩm ≤ 8 giây, ngắn dồn dập ≤ 6 giây). Lưu thành cấu hình trong SecondBrain thay vì hard-code, dùng khi chia shot và viết script.
+
+**Tác dụng và lý do.** Nhịp dựng là thứ người làm nội dung hay muốn chỉnh, nên phải sửa được mà không đụng code.
+
+**Rủi ro.** Số liệu của zecloud là cho video quay thật, cần thử lại cho video AI.
+
+---
+
+## 10. Phân tích một quảng cáo mẫu
+
+**Trạng thái:** Chờ duyệt · **Công sức:** vừa–lớn · **Nguồn:** nguyentatkiem (Tạo style)
+
+**Làm gì.** Người dùng thả một quảng cáo TikTok đang chạy tốt. Hệ thống lấy khoảng 40 khung hình, đo nhịp cắt, vị trí chữ rồi nhờ LLM mô tả cấu trúc: loại hook, vai trò từng shot, nhịp, vị trí caption. Kết quả được **đề xuất thành luật SecondBrain chờ duyệt**.
+
+**Tác dụng và lý do.** Học từ cái đang thắng thay vì đoán. Chỉ học cấu trúc, **không chép nội dung, logo hay lời** của người khác.
+
+**Rủi ro.** LLM chỉ thấy ảnh tĩnh, không thấy chuyển động nên nhịp là ước lượng. Cần cân nhắc bản quyền khi lưu video mẫu.
+
+---
+
+## 11. Duyệt qua điện thoại (Telegram)
+
+**Trạng thái:** Chờ duyệt · **Công sức:** lớn · **Nguồn:** nguyentatkiem (agent Telegram)
+
+**Làm gì.** Bot Telegram gửi ảnh để duyệt, nhận nút Duyệt / Không đạt, báo khi video xong. Dùng long polling nên không cần URL công khai. Ghép nối bằng mã, người lạ bị từ chối, bot không bao giờ chạy lệnh shell.
+
+**Tác dụng và lý do.** Người làm marketing duyệt ngay trên điện thoại, không cần ngồi trước dashboard.
+
+**Rủi ro.** Thêm một kênh và một token cần bảo mật. Nên làm sau cùng.
+
+---
+
+## 12. Sticker giá, mã giảm, nút CTA
+
+**Trạng thái:** Chờ duyệt · **Công sức:** vừa · **Nguồn:** nguyentatkiem (khối HyperFrames, Apache-2.0 của HeyGen)
+
+**Làm gì.** Render ảnh PNG từ dữ liệu thật của sản phẩm (giá, lượt bán, mã giảm) rồi ffmpeg `overlay` lên video đúng lúc nhắc tới.
+
+**Tác dụng và lý do.** Quảng cáo Việt hay có giá và lượt bán trên màn hình, tăng độ tin cậy.
+
+**Rủi ro.** Số liệu phải lấy đúng từ dữ liệu sản phẩm. Không dùng preset chứa số mẫu.
+
+---
+
+## Không áp dụng
+
+- Template, 28 gói style, 11 nguồn b-roll stock: dành cho video quay thật.
+- Chrome headless render, WebGPU/ONNX, avatar số (JoyVASA, LivePortrait): quá nặng và lệch hướng.
+- Azure, OneDrive, DJI của zecloud.
+- Quy tắc "ít nhất 3 case khác nhau" của ai-video-editor: quá nặng cho video 30 giây.
+- Phụ thuộc Claude Code CLI để chạy AI: dự án đã có BAML và 9router.
+
+## Thứ tự đề xuất
+
+1 → (2, 3) → (4, 8) → (5, 6, 7) → còn lại. Mục 5 cần mục 6.

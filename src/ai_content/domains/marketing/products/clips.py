@@ -39,6 +39,14 @@ class StitchUnavailable(RuntimeError):
     """The clips cannot be stitched yet; the message says what to do first."""
 
 
+_BUSY_MARKERS = ("HTTP 429", "HTTP 503", "lượng lớn")
+
+
+def is_busy_error(message: str | None) -> bool:
+    """True when the video service refused a job only because it is overloaded right now."""
+    return bool(message) and any(marker in str(message) for marker in _BUSY_MARKERS)
+
+
 @dataclass(frozen=True)
 class JobState:
     status: str

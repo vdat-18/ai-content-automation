@@ -24,6 +24,7 @@ class _FakeService:
         self.made_keyframes = [_keyframe(i, "ready") for i in range(shots)]
         self.clip_states: list[list[dict]] = [[_clip(i, "ready") for i in range(shots)]]
         self.has_brief = False
+        self.restarted: list[int] = []
 
     def _record(self) -> dict:
         brief = {"shots": [{}] * self.shots}
@@ -63,6 +64,8 @@ class _FakeService:
 
     async def generate_clips(self, product_id, media_root, shot_index=None):
         self.calls.append("generate_clips")
+        if shot_index is not None:
+            self.restarted.append(shot_index)
 
     async def create_voiceover(self, product_id, media_root, voice):
         self.calls.append(f"voiceover:{voice}")
@@ -84,6 +87,7 @@ async def _run(service: _FakeService, steps: list[str] | None = None) -> None:
         voice="hamy.mp3",
         report=(steps if steps is not None else []).append,
         poll_seconds=0,
+        busy_wait_seconds=0,
     )
 
 
@@ -166,6 +170,33 @@ async def test_failed_or_flagged_clips_stop_the_run_before_the_voice() -> None:
     with pytest.raises(PipelineStopped, match="shot 1 looks wrong"):
         await _run(flagged)
     assert not any(call.startswith("voiceover") for call in flagged.calls)
+
+
+_BUSY = "Hệ thống đang xử lý lượng lớn yêu cầu cùng lúc. Vui lòng thử lại"
+
+
+async def test_clips_refused_as_busy_are_sent_again_one_at_a_time_until_they_work() -> None:
+    service = _FakeService(shots=3)
+    service.clip_states = [
+        [],  # the first look, before any clip is started
+        [_clip(0, "ready"), _clip(1, "failed", error=_BUSY), _clip(2, "failed", error=_BUSY)],
+        [_clip(0, "ready"), _clip(1, "processing"), _clip(2, "failed", error=_BUSY)],
+        [_clip(i, "ready") for i in range(3)],
+    ]
+    steps: list[str] = []
+    await _run(service, steps)
+    assert service.restarted == [1, 2, 2]
+    assert "Video service is busy, trying again shortly" in steps
+    assert service.calls[-3:] == ["voiceover:hamy.mp3", "build_video", "post_package"]
+
+
+async def test_clips_that_stay_busy_stop_the_run_instead_of_retrying_forever() -> None:
+    service = _FakeService()
+    service.clip_states = [[_clip(0, "ready"), _clip(1, "failed", error=_BUSY)]]
+    with pytest.raises(PipelineStopped, match="stayed overloaded"):
+        await _run(service)
+    assert len(service.restarted) == 15
+    assert not any(call.startswith("voiceover") for call in service.calls)
 
 
 async def test_a_run_until_images_stops_with_the_follow_up_shots_left_for_review() -> None:
