@@ -79,6 +79,11 @@ def _features(frames: np.ndarray) -> np.ndarray:
     return cepstrum / (np.linalg.norm(cepstrum, axis=1, keepdims=True) + 1e-9)
 
 
+class GuideMismatch(StitchUnavailable):
+    """The speech in the clip cannot be followed by the reading, for example when its length is
+    less than half or more than double."""
+
+
 def _path(reading: np.ndarray, guide: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     """Dynamic time warping: for every frame of the reading, the frame of the guide it matches."""
     cost = 1.0 - reading @ guide.T
@@ -99,7 +104,7 @@ def _path(reading: np.ndarray, guide: np.ndarray) -> tuple[np.ndarray, np.ndarra
         total[i] = cost[i] + options[best, np.arange(columns)]
         step[i] = best
     if not np.isfinite(total[-1, -1]):
-        raise StitchUnavailable("The speech in the clip and the reading differ too much in length")
+        raise GuideMismatch("The speech in the clip and the reading differ too much in length")
     i, j = rows - 1, columns - 1
     path = [(i, j)]
     while (i, j) != (0, 0):
@@ -119,7 +124,7 @@ async def align_to_guide(reading: Path, guide: Path, output: Path) -> None:
     guide_frames = _frames(await _decode(guide))
     voice_speech, guide_speech = _speech(voice_frames), _speech(guide_frames)
     if guide_speech is None:
-        raise StitchUnavailable("The clip has no speech to follow")
+        raise GuideMismatch("The clip has no speech to follow")
     if voice_speech is None:
         raise StitchUnavailable("The reading is silent")
     (v0, v1), (g0, g1) = voice_speech, guide_speech

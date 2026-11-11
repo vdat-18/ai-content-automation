@@ -27,6 +27,14 @@ def test_stickers_only_hold_figures_from_the_product_data() -> None:
     assert sticker_lines({"price": {"sale": "99000"}}).keys() == {"price"}
 
 
+def test_prices_written_with_a_dot_for_thousands_are_read_correctly() -> None:
+    lines = sticker_lines(
+        {"price": {"sale": "122.147", "original": "211.796"}, "sold_count": "225.222"}
+    )
+    assert lines["price"][0] == ("122.147đ", "Giá gốc 211.796đ")
+    assert lines["sold"][0] == ("Đã bán 225.222",)
+
+
 def test_each_sticker_goes_to_the_shot_that_mentions_it() -> None:
     texts = ["Áo gì mà mát vậy", "Đã bán hơn 3.200 cái, đánh giá 4,6 sao", "Chỉ 199k, bấm giỏ hàng"]
     assert stickers_by_shot(sticker_lines(DETAIL), texts) == [[], ["sold", "rating"], ["price"]]
@@ -60,4 +68,4 @@ async def test_stickers_are_laid_over_the_shot_they_belong_to(tmp_path) -> None:
         check=True,
     )
     picture = Image.open(frame).convert("RGB")
-    assert picture.getpixel((100, 300))[0] > 200 and picture.getpixel((900, 1500)) == (0, 0, 0)
+    assert picture.getpixel((100, 180))[0] > 200 and picture.getpixel((900, 1500)) == (0, 0, 0)

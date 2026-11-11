@@ -6,14 +6,14 @@ import asyncio
 import os
 import re
 import shutil
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 import httpx
 from loguru import logger
 
 from .clips import TRIM_SECONDS, StitchUnavailable, _run, clip_speed
-from .lip_alignment import align_to_guide
+from .lip_alignment import GuideMismatch, align_to_guide
 
 _TIMEOUT = 120
 _TRIES = 3
@@ -236,7 +236,8 @@ async def make_voiceover(
     further, to at most 1.5x, and then cut; a shorter one is
     padded with silence, so every shot's words begin where the shot begins. A talking shot has a
     guide clip: its reading is read at the natural pace and bent to follow the speech in the clip,
-    so the mouth in the picture fits the voice. Returns the natural length of each reading so a
+    so the mouth in the picture fits the voice. When the clip's speech is too different in length
+    to follow, the shot is read like any other and its guide is dropped from `segments`. Returns the natural length of each reading so a
     caller can tell which shots need shorter text.
     """
     if shutil.which("ffmpeg") is None or shutil.which("ffprobe") is None:
@@ -262,34 +263,39 @@ async def make_voiceover(
                     cwd=output.parent,
                 )  # fmt: skip
                 continue
-            if guide is None:
-                phrased = output.parent / f"voice_phrased_{index}.wav"
-                scratch.append(phrased)
-                length = await _read_in_phrases(
-                    client, text, voice, phrased, output.parent, index, scratch
-                )
-                lengths.append(length)
-                speed = min(max(length / seconds, tts_speed()), MAX_SPEEDUP)
-                await _run(
-                    "ffmpeg", "-v", "error", "-y", "-i", phrased.name,
-                    "-af", f"atempo={speed:.4f},apad=whole_dur={seconds:.3f}",
-                    "-t", f"{seconds:.3f}", "-ar", "24000", "-ac", "1", part.name,
-                    cwd=output.parent,
-                )  # fmt: skip
-                await _level(part)
-                continue
-            raw = output.parent / f"voice_raw_{index}.mp3"
-            scratch.append(raw)
-            raw.write_bytes(await client.speak(text.strip(), voice))
-            length = await _probe_seconds(raw)
+            if guide is not None:
+                raw = output.parent / f"voice_raw_{index}.mp3"
+                scratch.append(raw)
+                raw.write_bytes(await client.speak(text.strip(), voice))
+                length = await _probe_seconds(raw)
+                aligned = output.parent / f"voice_aligned_{index}.wav"
+                scratch.append(aligned)
+                try:
+                    await align_to_guide(raw, guide, aligned)
+                except GuideMismatch as error:
+                    logger.warning("Shot {} is read at its own pace: {}", index + 1, error)
+                    segments[index] = replace(segments[index], guide=None)
+                else:
+                    lengths.append(length)
+                    # the clip is trimmed and sped up in the video, so the voice gets the same
+                    await _run(
+                        "ffmpeg", "-v", "error", "-y", "-ss", f"{TRIM_SECONDS:g}", "-i",
+                        aligned.name, "-af", f"atempo={clip_speed():.4f},apad=whole_dur={seconds:.3f}",
+                        "-t", f"{seconds:.3f}", "-ar", "24000", "-ac", "1", part.name,
+                        cwd=output.parent,
+                    )  # fmt: skip
+                    await _level(part)
+                    continue
+            phrased = output.parent / f"voice_phrased_{index}.wav"
+            scratch.append(phrased)
+            length = await _read_in_phrases(
+                client, text, voice, phrased, output.parent, index, scratch
+            )
             lengths.append(length)
-            aligned = output.parent / f"voice_aligned_{index}.wav"
-            scratch.append(aligned)
-            await align_to_guide(raw, guide, aligned)
-            # the clip is trimmed and sped up in the video, so the voice gets the same treatment
+            speed = min(max(length / seconds, tts_speed()), MAX_SPEEDUP)
             await _run(
-                "ffmpeg", "-v", "error", "-y", "-ss", f"{TRIM_SECONDS:g}", "-i", aligned.name,
-                "-af", f"atempo={clip_speed():.4f},apad=whole_dur={seconds:.3f}",
+                "ffmpeg", "-v", "error", "-y", "-i", phrased.name,
+                "-af", f"atempo={speed:.4f},apad=whole_dur={seconds:.3f}",
                 "-t", f"{seconds:.3f}", "-ar", "24000", "-ac", "1", part.name,
                 cwd=output.parent,
             )  # fmt: skip

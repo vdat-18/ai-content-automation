@@ -17,16 +17,15 @@ from .compliance import numbers_in
 
 STICKER_COLOR = (255, 215, 0, 235)  # amber, the same as the highlighted caption words
 TEXT_COLOR = (20, 20, 20, 255)
-_PADDING = 28
-_RADIUS = 26
-_BIG, _SMALL = 66, 40
+_PADDING = 18
+_RADIUS = 16
+_BIG, _SMALL = 46, 30
 
 
 def _number(value: Any) -> float | None:
-    try:
-        return float(str(value).replace(",", "."))
-    except ValueError:
-        return None
+    """A figure as the product data writes it: 122.147 is 122147 and 4.7 is 4.7."""
+    found = numbers_in(str(value))
+    return found[0][2] if found else None
 
 
 def _vnd(amount: float) -> str:

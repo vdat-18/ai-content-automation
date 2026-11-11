@@ -168,6 +168,29 @@ async def test_a_talking_shot_follows_the_speech_of_its_clip(tmp_path) -> None:
     assert sorted(p.name for p in output.parent.iterdir()) == ["voiceover.mp3"]
 
 
+@needs_ffmpeg
+async def test_a_talking_shot_whose_clip_speech_cannot_be_followed_is_read_at_its_own_pace(
+    tmp_path,
+) -> None:
+    guide = tmp_path / "guide.wav"
+    _write_wav(guide, [(0.5, 10.5, 150)], 11.0)  # the clip "speaks" for 10 s, the reading for 3 s
+
+    class _Fake:
+        async def speak(self, text, voice=None):
+            return _tone(3.0)
+
+    output = tmp_path / "videos" / "voiceover.mp3"
+    readings = [Reading("nói", 4.0, guide), Reading("kể", 2.0)]
+    lengths = await make_voiceover(_Fake(), readings, output)  # type: ignore[arg-type]
+    assert [round(n) for n in lengths] == [3, 3]
+    assert readings[0].guide is None  # the caller learns the shot was not lip-synced
+    duration = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(output)],
+        capture_output=True, text=True, check=True,
+    ).stdout  # fmt: skip
+    assert 5.8 < float(duration) < 6.3
+
+
 async def test_a_talking_shot_needs_its_clip_before_the_voice(tmp_path) -> None:
     repository = SqliteProductRepository(tmp_path / "s.db")
     shots = [{"voiceover": "Xin chào", "duration_seconds": 15, "delivery": "talking"}]

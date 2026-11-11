@@ -28,8 +28,8 @@ _CAPTION_FONTS = (
     "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
 )
 TRANSITION_SECONDS = 0.25
-_STICKER_TOP = 240  # clear of the top bar of the TikTok app
-_STICKER_STEP = 200  # space for one sticker
+_STICKER_TOP = 130  # small and high, above the face of a person who fills the frame
+_STICKER_STEP = 130  # space for one sticker
 _PART_ENCODES = 2
 _COLOR_GRADE = "eq=contrast=1.03:brightness=0.01:saturation=1.05"
 
@@ -356,7 +356,8 @@ async def stitch(
                 "[1:a]loudnorm=I=-14:LRA=11:TP=-1,asplit=2[voice_main][voice_sc];"
                 "[2:a]volume=0.25[music_base];"
                 "[music_base][voice_sc]sidechaincompress=threshold=0.08:ratio=4:attack=50:release=300[music_ducked];"
-                "[voice_main][music_ducked]amix=inputs=2:duration=first:dropout_transition=2[aout]"
+                "[voice_main][music_ducked]amix=inputs=2:duration=first:dropout_transition=2,"
+                "loudnorm=I=-14:LRA=11:TP=-1[aout]"
             )
             await _run(
                 "ffmpeg", "-v", "error", "-y", "-i", silent.name, "-i", str(voiceover),
