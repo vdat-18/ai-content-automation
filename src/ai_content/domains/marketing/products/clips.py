@@ -27,7 +27,6 @@ _CAPTION_FONTS = (
     "C:/Windows/Fonts/arialbd.ttf",
     "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
 )
-TRANSITION_SECONDS = 0.25
 CHECK_FRAMES = 6  # stills of a clip the quality check looks at
 _STICKER_TOP = 130  # small and high, above the face of a person who fills the frame
 _STICKER_STEP = 130  # space for one sticker
@@ -254,7 +253,7 @@ async def stitch(
     The clips' own audio is dropped because it changes at every cut. The first and last frames
     of each clip are trimmed to avoid static or frozen frames.
     Clips receive subtle color-grading to ensure consistency across AI-generated scenes,
-    and are stitched with soft transitions (xfade) when long enough.
+    and are joined with hard cuts.
     Background music is auto-ducked under voice-over speech when available.
     """
     if shutil.which("ffmpeg") is None:
@@ -317,45 +316,19 @@ async def stitch(
             for index, clip in enumerate(clips):
                 group.create_task(encode(index, clip))
 
-        # Video concatenation (xfade transition if clips are standard duration >= 4.0s)
+        # Hard cuts: a fade would shorten the video and drift the voice-over out of sync
         has_audio = voiceover is not None or bgm_path is not None
         silent = output.parent / "silent.mp4" if has_audio else output
         if has_audio:
             scratch.append(silent)
 
-        can_xfade = len(parts) > 1 and all(d >= 4.0 for d in part_durations)
-        if can_xfade:
-            # Build multi-input xfade filtergraph
-            inputs = []
-            for p in parts:
-                inputs.extend(["-i", p.name])
-            filter_chains = []
-            prev_label = "[0:v]"
-            accum_offset = part_durations[0] - TRANSITION_SECONDS
-            for i in range(1, len(parts)):
-                curr_label = f"[{i}:v]"
-                out_label = f"[v{i}]" if i < len(parts) - 1 else "[vout]"
-                filter_chains.append(
-                    f"{prev_label}{curr_label}xfade=transition=fade:duration={TRANSITION_SECONDS:.2f}:offset={accum_offset:.2f}{out_label}"
-                )
-                prev_label = out_label
-                if i < len(parts) - 1:
-                    accum_offset += part_durations[i] - TRANSITION_SECONDS
-            await _run(
-                "ffmpeg", "-v", "error", "-y", *inputs,
-                "-filter_complex", ";".join(filter_chains),
-                "-map", "[vout]", "-c:v", "libx264", "-crf", "18", "-pix_fmt", "yuv420p",
-                "-movflags", "+faststart", silent.name,
-                cwd=output.parent,
-            )  # fmt: skip
-        else:
-            listing = output.parent / "parts.txt"
-            listing.write_text("".join(f"file '{part.name}'\n" for part in parts), encoding="utf-8")
-            scratch.append(listing)
-            await _run(
-                "ffmpeg", "-v", "error", "-y", "-f", "concat", "-safe", "0", "-i", listing.name,
-                "-c", "copy", "-movflags", "+faststart", silent.name, cwd=output.parent,
-            )  # fmt: skip
+        listing = output.parent / "parts.txt"
+        listing.write_text("".join(f"file '{part.name}'\n" for part in parts), encoding="utf-8")
+        scratch.append(listing)
+        await _run(
+            "ffmpeg", "-v", "error", "-y", "-f", "concat", "-safe", "0", "-i", listing.name,
+            "-c", "copy", "-movflags", "+faststart", silent.name, cwd=output.parent,
+        )  # fmt: skip
 
         # Audio mix: Voiceover + BGM Auto-Ducking (or voiceover only)
         if voiceover is not None and bgm_path is not None:
