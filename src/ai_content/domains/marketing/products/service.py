@@ -45,6 +45,7 @@ from .clips import (
 )
 from .compliance import AI_LABEL_REMINDER, brief_warnings, package_warnings, product_facts
 from .embedding import ImageEmbedder, cosine, dhash, download_images, hamming
+from .hooks import HookWriter
 from .identity import PIN_SIZE_DIR, media_source_fingerprint
 from .image_review import ReferenceImageReviewer
 from .keyframe_check import KeyframeChecker
@@ -182,9 +183,14 @@ VOICEOVER_TYPES = {
 }
 
 
-def find_voiceover(media_root: Path, product_id: str) -> Path | None:
+def video_folder(product_id: str, variant: str = "") -> str:
+    """Where a product's video files live; a hook variant keeps its own files in a sub-folder."""
+    return f"videos/{product_id}" + (f"/{variant}" if variant else "")
+
+
+def find_voiceover(media_root: Path, product_id: str, variant: str = "") -> Path | None:
     """The voice-over file kept beside the stitched video, if there is one."""
-    folder = Path(media_root) / "videos" / product_id
+    folder = Path(media_root) / video_folder(product_id, variant)
     return next(
         (p for ext in VOICEOVER_TYPES.values() if (p := folder / f"voiceover.{ext}").is_file()),
         None,
@@ -215,8 +221,10 @@ class ProductCatalogService:
         clip_checker: ClipChecker | None = None,
         knowledge: CreativeKnowledgeService | None = None,
         ad_analyzer: AdAnalyzer | None = None,
+        hook_writer: HookWriter | None = None,
     ) -> None:
         self._ad_analyzer = ad_analyzer
+        self._hook_writer = hook_writer
         self._repository = repository
         self._generator = generator
         self._reviewer = reviewer
@@ -234,6 +242,52 @@ class ProductCatalogService:
         self._clip_checker = clip_checker
         self._knowledge = knowledge
         self._collecting: set[tuple[str, int]] = set()
+
+    async def write_hooks(self, product_id: str, media_root: Path) -> list[dict[str, str]] | None:
+        """Write alternative opening lines for the brief and keep them; None without a brief."""
+        record = await self._repository.get_brief(product_id)
+        detail = await self._repository.get_detail(product_id)
+        if record is None or detail is None:
+            return None
+        if self._hook_writer is None:
+            raise KeyframeUnavailable("The AI model is not configured (AIC_SCREENING_API_KEY)")
+        rules = await approved_rules(self._knowledge, KnowledgeStage.PREPARATION, "brief")
+        hooks = await self._hook_writer.write(detail, record["brief"], rules.text)
+        if not hooks:
+            raise KeyframeUnavailable(
+                "No hook passed the checks (7 words or fewer, no flagged words, no invented "
+                "numbers); try again"
+            )
+        stored = [{"id": f"hook_{n}", **hook} for n, hook in enumerate(hooks, start=1)]
+        await self._write_json(media_root, f"videos/{product_id}/hooks.json", {"hooks": stored})
+        return stored
+
+    async def hooks(self, product_id: str, media_root: Path) -> list[dict[str, Any]]:
+        """The saved hooks, each with whether its video has been made."""
+        saved = (await self._read_json(media_root, f"videos/{product_id}/hooks.json")) or {}
+        store = self.media(media_root)
+        return [
+            {**hook, "built": await store.exists(f"videos/{product_id}/{hook['id']}/video.mp4")}
+            for hook in saved.get("hooks") or []
+        ]
+
+    async def build_hook_video(
+        self,
+        product_id: str,
+        media_root: Path,
+        hook_id: str,
+        voice: str | None = None,
+        captions: bool = False,
+        stickers: bool = False,
+    ) -> str | None:
+        """Make the video for one saved hook from the clips already generated: no new clip."""
+        hook = next((h for h in await self.hooks(product_id, media_root) if h["id"] == hook_id), None)
+        if hook is None:
+            return None
+        await self.create_voiceover(product_id, media_root, voice, variant=hook_id, hook=hook["text"])
+        return await self.build_video(
+            product_id, media_root, captions, stickers, variant=hook_id, hook=hook["text"]
+        )
 
     async def learn_from_reference_ad(self, content: bytes) -> list[dict[str, str]]:
         """Describe how an example ad is built and propose that as rules for a human to approve.
@@ -1235,7 +1289,12 @@ class ProductCatalogService:
         return package
 
     async def create_voiceover(
-        self, product_id: str, media_root: Path, voice: str | None = None
+        self,
+        product_id: str,
+        media_root: Path,
+        voice: str | None = None,
+        variant: str = "",
+        hook: str = "",
     ) -> dict[str, Any] | None:
         """Read each approved shot's voice-over so its words start with the shot."""
         record = await self._repository.get_brief(product_id)
@@ -1273,21 +1332,28 @@ class ProductCatalogService:
                     )
             seconds = min(float(shot.get("duration_seconds") or CLIP_SECONDS), CLIP_SECONDS)
             segments.append(Reading(str(shot.get("voiceover") or ""), shot_seconds(seconds), guide))
+        if hook.strip():
+            if segments[0].guide is not None:
+                raise KeyframeUnavailable(
+                    "The first shot is a talking shot: its words are fixed by its clip"
+                )
+            segments[0] = replace(segments[0], text=hook.strip())
         store = self.media(media_root)
-        folder = store.path(f"videos/{product_id}")
+        where = video_folder(product_id, variant)
+        folder = store.path(where)
         folder.mkdir(parents=True, exist_ok=True)
         for extension in VOICEOVER_TYPES.values():
-            await store.remove(f"videos/{product_id}/voiceover.{extension}")
+            await store.remove(f"{where}/voiceover.{extension}")
         try:
             lengths = await make_voiceover(self._speaker, segments, folder / "voiceover.mp3", voice)
-            await store.push(f"videos/{product_id}/voiceover.mp3")
+            await store.push(f"{where}/voiceover.mp3")
             heard = {
                 str(index): round(spoken_seconds(n, reading.seconds, reading.guide is not None), 2)
                 for index, n, reading in zip(approved, lengths, segments, strict=True)
                 if reading.text.strip()
             }
             await self.note_voice(
-                product_id, media_root, VOICES.get(voice or "", voice or "default"), heard
+                product_id, media_root, VOICES.get(voice or "", voice or "default"), heard, variant
             )
         except (SpeechError, StitchUnavailable) as error:
             raise KeyframeUnavailable(f"The voice-over could not be made: {error}") from error
@@ -1327,7 +1393,13 @@ class ProductCatalogService:
         return found
 
     async def build_video(
-        self, product_id: str, media_root: Path, captions: bool = False, stickers: bool = False
+        self,
+        product_id: str,
+        media_root: Path,
+        captions: bool = False,
+        stickers: bool = False,
+        variant: str = "",
+        hook: str = "",
     ) -> str | None:
         """Stitch the ready clips of approved shots, in story order, into one mp4.
 
@@ -1346,12 +1418,15 @@ class ProductCatalogService:
         first_words = ""
         used: dict[int, int] = {}
         spoken_texts: list[str] = []
-        heard = (
-            (await self._read_json(media_root, f"videos/{product_id}/voiceover.json")) or {}
-        ).get("speech_seconds") or {}
+        where = video_folder(product_id, variant)
+        heard = ((await self._read_json(media_root, f"{where}/voiceover.json")) or {}).get(
+            "speech_seconds"
+        ) or {}
         for index, shot in enumerate(shots):
             if keyframes.get(index, {}).get("status") != "approved":
                 continue
+            if hook.strip() and not parts:  # a hook variant only changes the opening line
+                shot = {**shot, "voiceover": hook.strip(), "on_screen_text": hook.strip()}
             clip = clips.get(index)
             if clip is None or clip["status"] != "ready":
                 raise StitchUnavailable(f"The clip for shot {index + 1} is not ready yet")
@@ -1366,12 +1441,10 @@ class ProductCatalogService:
             if not parts[1:]:
                 first_words = str(shot.get("on_screen_text") or shot.get("voiceover") or "")
             used[index] = clip["attempts"]
-        relative = f"videos/{product_id}/video.mp4"
+        relative = f"{where}/video.mp4"
         store = self.media(media_root)
-        await store.fetch_first(
-            [f"videos/{product_id}/voiceover.{ext}" for ext in VOICEOVER_TYPES.values()]
-        )
-        voice = find_voiceover(media_root, product_id)
+        await store.fetch_first([f"{where}/voiceover.{ext}" for ext in VOICEOVER_TYPES.values()])
+        voice = find_voiceover(media_root, product_id, variant)
         shown: list[list[str]] = [[] for _ in parts]
         with tempfile.TemporaryDirectory() as scratch:
             font = caption_font()
@@ -1388,7 +1461,7 @@ class ProductCatalogService:
                     parts[number] = replace(part, stickers=tuple(images))
             await stitch(parts, store.path(relative), voice)
         await store.push(relative)
-        cover = f"videos/{product_id}/cover.jpg"
+        cover = f"{where}/cover.jpg"
         await cover_frame(store.path(relative), store.path(cover))
         await store.push(cover)
         check = None
@@ -1402,19 +1475,20 @@ class ProductCatalogService:
             )
         except VideoCheckUnavailable as error:
             logger.warning("Final video check skipped: {}", error)
-        if check is not None:
+        if check is not None and not variant:
             await self._learn_from_check(product_id, media_root, check)
         await self._write_json(
             media_root,
-            f"videos/{product_id}/video.json",
+            f"{where}/video.json",
             {
+                "hook": hook.strip(),
                 "built_at": datetime.now(UTC).isoformat(),
                 "captions": captions,
                 "stickers": [kind for kinds in shown for kind in kinds],
                 "seconds": round(sum(shot_seconds(p.duration) for p in parts), 1),
                 "clip_attempts": used,
                 "check": check,
-                "voice": await self._read_json(media_root, f"videos/{product_id}/voiceover.json"),
+                "voice": await self._read_json(media_root, f"{where}/voiceover.json"),
             },
         )
         await self._log(
@@ -1422,7 +1496,7 @@ class ProductCatalogService:
             "video",
             "ok",
             f"Stitched {len(parts)} clip(s), voice-over {'yes' if voice else 'no'}, "
-            f"captions {'yes' if captions else 'no'}",
+            f"captions {'yes' if captions else 'no'}" + (f", hook variant {variant}" if variant else ""),
         )
         return relative
 
@@ -1467,12 +1541,17 @@ class ProductCatalogService:
             return None
 
     async def note_voice(
-        self, product_id: str, media_root: Path, voice: str, heard: dict[str, float] | None = None
+        self,
+        product_id: str,
+        media_root: Path,
+        voice: str,
+        heard: dict[str, float] | None = None,
+        variant: str = "",
     ) -> None:
         """Remember which voice read the voice-over and how long each shot's words are heard."""
         await self._write_json(
             media_root,
-            f"videos/{product_id}/voiceover.json",
+            f"{video_folder(product_id, variant)}/voiceover.json",
             {
                 "voice": voice,
                 "made_at": datetime.now(UTC).isoformat(),

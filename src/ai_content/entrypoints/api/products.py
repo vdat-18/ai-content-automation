@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi import Path as PathParam
 from fastapi.responses import FileResponse
 from loguru import logger
 from pydantic import BaseModel, Field
@@ -584,6 +585,73 @@ async def build_video(
     if path is None:
         raise HTTPException(status_code=404, detail="No brief for this product")
     return {"video": f"/api/v1/products/{product_id}/video"}
+
+
+class HookVideoRequest(BaseModel):
+    voice: str | None = None
+    captions: bool = False
+    stickers: bool = False
+
+
+@router.post("/{product_id}/hooks")
+async def write_hooks(
+    product_id: str,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> list[dict[str, str]]:
+    """Write alternative opening lines to try on the same clips."""
+    try:
+        hooks = await service.write_hooks(product_id, _media_root())
+    except KeyframeUnavailable as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    if hooks is None:
+        raise HTTPException(status_code=404, detail="No brief for this product")
+    return hooks
+
+
+@router.get("/{product_id}/hooks")
+async def list_hooks(
+    product_id: str,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> list[dict[str, Any]]:
+    return await service.hooks(product_id, _media_root())
+
+
+@router.post("/{product_id}/hooks/{hook_id}/video")
+async def build_hook_video(
+    product_id: str,
+    hook_id: str,
+    payload: HookVideoRequest | None = None,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> dict[str, str]:
+    """Make the video for one hook from the clips already generated; no clip is paid for again."""
+    options = payload or HookVideoRequest()
+    try:
+        path = await service.build_hook_video(
+            product_id, _media_root(), hook_id, options.voice, options.captions, options.stickers
+        )
+    except (KeyframeUnavailable, StitchUnavailable) as error:
+        raise HTTPException(status_code=409, detail=str(error)) from error
+    if path is None:
+        raise HTTPException(status_code=404, detail="No such hook")
+    return {"video": f"/api/v1/products/{product_id}/hooks/{hook_id}/video"}
+
+
+@router.get("/{product_id}/hooks/{hook_id}/video")
+async def hook_video(
+    product_id: str,
+    hook_id: str = PathParam(pattern=r"^hook_\d+$"),
+    download: bool = False,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> FileResponse:
+    path = await service.media(_media_root()).fetch(f"videos/{product_id}/{hook_id}/video.mp4")
+    if path is None:
+        raise HTTPException(status_code=404, detail="This hook has no video yet")
+    return FileResponse(
+        path,
+        media_type="video/mp4",
+        headers={"Cache-Control": "no-cache"},
+        filename=f"{product_id}_{hook_id}.mp4" if download else None,
+    )
 
 
 @router.get("/{product_id}/events")

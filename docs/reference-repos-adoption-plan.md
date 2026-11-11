@@ -101,7 +101,7 @@ Mỗi lỗi có mức nặng/nhẹ, ra điểm 0–100. Lỗi lặp lại nhiề
 
 ## 5. Biến thể hook A/B
 
-**Trạng thái:** Chờ duyệt · **Công sức:** vừa · **Nguồn:** nguyentatkiem (`variants.mjs`)
+**Trạng thái:** Xong phần code và test. Bước Finish có mục "Try other opening lines": AI viết 3 hook (câu hỏi, con số, nỗi đau/lợi ích; tối đa 7 từ; loại hook có từ cấm hoặc số không có trong dữ liệu sản phẩm), mỗi hook bấm "Make this video" thì đọc lại giọng và ghép lại từ các clip đã có, lưu ở `videos/<id>/hook_N/`, không sinh clip mới. Không làm cold open. Hook không dùng được khi cảnh đầu là cảnh nói trước camera (lời cố định theo clip). Phần bước 6 (file JSON dựng chỉnh được) chưa làm; mục này chỉ dùng thư mục riêng cho từng hook. Đã chạy dựng video hook trong Docker với giọng giả; chưa gọi AI viết hook thật · **Công sức:** vừa · **Nguồn:** nguyentatkiem (`variants.mjs`)
 
 **Làm gì.**
 - LLM viết N hook (mặc định 3), mỗi hook ≤ 7 từ và một góc khác nhau: câu hỏi, con số/tuyên bố, nỗi đau/lợi ích.
@@ -116,7 +116,7 @@ Mỗi lỗi có mức nặng/nhẹ, ra điểm 0–100. Lỗi lặp lại nhiề
 
 ## 6. Lưu bản dựng dưới dạng JSON chỉnh được
 
-**Trạng thái:** Chờ duyệt · **Công sức:** vừa · **Nguồn:** ai-video-editor (timeline là nguồn sự thật)
+**Trạng thái:** Chưa làm; mục 5 chạy được không cần mục này (xem ghi chú mục 5). Chỉ làm khi cần đổi thứ tự cảnh hoặc cắt cảnh trên giao diện · **Công sức:** vừa · **Nguồn:** ai-video-editor (timeline là nguồn sự thật)
 
 **Làm gì.** Lưu kèm mỗi video một file mô tả bản dựng: thứ tự shot, mốc cắt, mốc từng chữ, mức nhạc, giọng. Bước Finish đổi giọng, caption, nhạc thì ghép lại từ file này.
 

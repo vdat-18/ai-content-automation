@@ -417,3 +417,44 @@ async def test_stitch_burns_spoken_words_only_while_they_are_said(tmp_path) -> N
         capture_output=True, check=True,
     ).stdout  # fmt: skip
     assert max(frame("0.7")) > 200 and max(frame("2.3")) < 20
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg is not installed")
+async def test_a_hook_variant_reuses_the_clips_and_keeps_its_own_files(tmp_path) -> None:
+    spoken: list[str] = []
+
+    class _Speaker:
+        async def speak(self, text, voice=None):
+            spoken.append(text)
+            return subprocess.run(
+                ["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "sine=frequency=300:duration=2",
+                 "-f", "mp3", "-"], capture_output=True, check=True,
+            ).stdout  # fmt: skip
+
+    service = await _service(tmp_path, _FakeVideo())
+    service._speaker = _Speaker()  # type: ignore[assignment]
+    clip = tmp_path / "clips" / PRODUCT_ID / "shot_0.mp4"
+    clip.parent.mkdir(parents=True)
+    _make_clip(clip, "red", seconds=4, audio=False)
+    await service._repository.save_clip(
+        {
+            "product_id": PRODUCT_ID, "shot_index": 0, "status": "ready", "job_id": "j",
+            "job_model": "m", "video_path": f"clips/{PRODUCT_ID}/shot_0.mp4", "seconds": 5,
+            "attempts": 1, "error": None, "qa_problem": "",
+        }
+    )  # fmt: skip
+    await service._write_json(
+        tmp_path,
+        f"videos/{PRODUCT_ID}/hooks.json",
+        {"hooks": [{"id": "hook_1", "angle": "question", "text": "Bạn đã thử chưa?"}]},
+    )
+    made = await service.build_hook_video(PRODUCT_ID, tmp_path, "hook_1")
+    assert made == f"videos/{PRODUCT_ID}/hook_1/video.mp4"
+    folder = tmp_path / "videos" / PRODUCT_ID
+    assert "Bạn đã thử chưa?" in spoken
+    assert (folder / "hook_1" / "video.mp4").is_file()
+    assert (folder / "hook_1" / "voiceover.mp3").is_file()
+    assert not (folder / "video.mp4").exists() and not (folder / "voiceover.mp3").exists()
+    built = json.loads((folder / "hook_1" / "video.json").read_text(encoding="utf-8"))
+    assert built["hook"] == "Bạn đã thử chưa?"
+    assert [h["built"] for h in await service.hooks(PRODUCT_ID, tmp_path)] == [True]

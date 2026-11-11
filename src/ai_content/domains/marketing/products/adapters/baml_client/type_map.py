@@ -28,6 +28,12 @@ type_map = {
     "types.CuratedRule": types.CuratedRule,
     "stream_types.CuratedRule": stream_types.CuratedRule,
 
+    "types.HookOption": types.HookOption,
+    "stream_types.HookOption": stream_types.HookOption,
+
+    "types.HookOptions": types.HookOptions,
+    "stream_types.HookOptions": stream_types.HookOptions,
+
     "types.KeyframeCheck": types.KeyframeCheck,
     "stream_types.KeyframeCheck": stream_types.KeyframeCheck,
 

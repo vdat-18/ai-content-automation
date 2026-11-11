@@ -8,6 +8,7 @@ import { imagesApproved } from "../../lib/studio";
 import { getJson, postJson } from "../../services/http";
 import type { BriefRecord, Keyframe, PipelineRun, PostPackage, Voice } from "../../types/studio";
 
+type Hook = { id: string; angle: string; text: string; built: boolean };
 const linkKey = (productId: string) => `aic-affiliate-${productId}`;
 const readLink = (productId: string) => {
   try {
@@ -40,6 +41,15 @@ export function FinishStep({ productId, record, frames, hasVideo, run }: { produ
   const sendReview = useMutation({
     mutationFn: () => postJson(`${API}/${productId}/feedback`, { text: review.trim(), asset_type: "brief" }),
     onSuccess: () => setReview(""),
+  });
+  const hooks = useQuery({ queryKey: ["hooks", productId], queryFn: ({ signal }) => getJson<Hook[]>(`${API}/${productId}/hooks`, signal) });
+  const writeHooks = useMutation({
+    mutationFn: () => postJson(`${API}/${productId}/hooks`),
+    onSuccess: () => client.invalidateQueries({ queryKey: ["hooks", productId] }),
+  });
+  const buildHook = useMutation({
+    mutationFn: (hook: Hook) => postJson(`${API}/${productId}/hooks/${hook.id}/video`, { voice: selectedVoice || null, captions, stickers }),
+    onSuccess: () => client.invalidateQueries({ queryKey: ["hooks", productId] }),
   });
   const remake = useMutation({
     mutationFn: async () => {
@@ -121,6 +131,24 @@ export function FinishStep({ productId, record, frames, hasVideo, run }: { produ
                 {sendReview.isSuccess && <span className="muted small">Sent. Approve it in AI memory to use it in the next videos.</span>}
               </div>
               <ErrorNote error={sendReview.error} />
+            </div>
+            <div className="stack">
+              <div className="row">
+                <strong className="small">Try other opening lines</strong>
+                <button className="btn btn-sm" disabled={writeHooks.isPending} onClick={() => writeHooks.mutate()}>{writeHooks.isPending ? <><Spinner size={14} />Writing…</> : hooks.data?.length ? "Write new ones" : "Write 3 opening lines"}</button>
+              </div>
+              <p className="muted small">Only the first line changes. The scenes are reused, so no new scene is paid for. It uses the voice and options chosen below.</p>
+              {hooks.data?.map((hook) => (
+                <div className="caption-box" key={hook.id}>
+                  <p><span className="muted small">{hook.angle}</span><br />{hook.text}</p>
+                  <div className="row">
+                    <button className="btn btn-sm" disabled={buildHook.isPending} onClick={() => buildHook.mutate(hook)}>{buildHook.isPending && buildHook.variables?.id === hook.id ? <><Spinner size={14} />Making…</> : hook.built ? "Make again" : "Make this video"}</button>
+                    {hook.built && <a className="btn btn-sm" href={`${API}/${productId}/hooks/${hook.id}/video?download=true`}><Download size={14} aria-hidden="true" />Download</a>}
+                    {hook.built && <a className="btn btn-sm" href={`${API}/${productId}/hooks/${hook.id}/video`} target="_blank" rel="noreferrer">Watch</a>}
+                  </div>
+                </div>
+              ))}
+              <ErrorNote error={writeHooks.error ?? buildHook.error} />
             </div>
             <details>
               <summary className="muted small" style={{ cursor: "pointer" }}>More options: change the voice or show on-screen text</summary>

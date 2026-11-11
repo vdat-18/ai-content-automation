@@ -20,6 +20,7 @@ from ai_content.domains.marketing.products.briefing import ContentBriefWriter
 from ai_content.domains.marketing.products.clip_check import ClipChecker
 from ai_content.domains.marketing.products.clips import VideoClient
 from ai_content.domains.marketing.products.embedding import ImageEmbedder
+from ai_content.domains.marketing.products.hooks import HookWriter
 from ai_content.domains.marketing.products.image_review import ReferenceImageReviewer
 from ai_content.domains.marketing.products.keyframe_check import KeyframeChecker
 from ai_content.domains.marketing.products.keyframes import (
@@ -402,6 +403,16 @@ def _storyboard_reviewer(settings: ApiRuntimeSettings) -> StoryboardReviewer | N
     )
 
 
+def _hook_writer(settings: ApiRuntimeSettings) -> HookWriter | None:
+    if not settings.screening_api_key:
+        return None
+    return HookWriter.from_settings(
+        base_url=settings.screening_base_url,
+        api_key=settings.screening_api_key,
+        model=settings.screening_model,
+    )
+
+
 def _ad_analyzer(settings: ApiRuntimeSettings) -> AdAnalyzer | None:
     if not settings.screening_api_key:
         return None
@@ -458,6 +469,7 @@ async def product_catalog_scope(postgres: Any) -> AsyncIterator[ProductCatalogSe
             clip_checker=_clip_checker(settings),
             knowledge=knowledge,
             ad_analyzer=_ad_analyzer(settings),
+            hook_writer=_hook_writer(settings),
         )
     finally:
         if postgres is None:

@@ -23,7 +23,7 @@ class StreamState(BaseModel, typing.Generic[StreamStateValueT]):
     value: StreamStateValueT
     state: typing_extensions.Literal["Pending", "Incomplete", "Complete"]
 # #########################################################################
-# Generated classes (14)
+# Generated classes (16)
 # #########################################################################
 
 class AdStructure(BaseModel):
@@ -52,6 +52,13 @@ class CuratedRule(BaseModel):
     title: typing.Optional[str] = None
     content: typing.Optional[str] = None
     replaces: typing.List[str]
+
+class HookOption(BaseModel):
+    angle: typing.Optional[str] = None
+    text: typing.Optional[str] = None
+
+class HookOptions(BaseModel):
+    hooks: typing.List["HookOption"]
 
 class KeyframeCheck(BaseModel):
     passed: typing.Optional[bool] = None
@@ -117,7 +124,7 @@ class StoryboardShot(BaseModel):
 
 
 # #########################################################################
-# Model rebuilds (14)
+# Model rebuilds (16)
 # #########################################################################
 # Resolve string forward references now that every model above is defined so
 # class declaration order never breaks Pydantic construction (issue #793).
@@ -127,6 +134,8 @@ AdStructure.model_rebuild()
 ClipCheck.model_rebuild()
 ContentBrief.model_rebuild()
 CuratedRule.model_rebuild()
+HookOption.model_rebuild()
+HookOptions.model_rebuild()
 KeyframeCheck.model_rebuild()
 LabeledReference.model_rebuild()
 PostingPackage.model_rebuild()
