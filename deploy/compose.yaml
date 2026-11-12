@@ -17,6 +17,7 @@ x-python-environment: &python-environment
   AIC_VIDEO_BASE_URL: ${AIC_VIDEO_BASE_URL:-}
   AIC_VIDEO_API_KEY: ${AIC_VIDEO_API_KEY:-}
   AIC_VIDEO_MODEL: ${AIC_VIDEO_MODEL:-}
+  AIC_VIDEO_FRAME_FIELDS: ${AIC_VIDEO_FRAME_FIELDS:-image,input_reference,image_url}
   AIC_TTS_BASE_URL: ${AIC_TTS_BASE_URL:-}
   AIC_TTS_API_KEY: ${AIC_TTS_API_KEY:-}
   AIC_TTS_MODEL: ${AIC_TTS_MODEL:-}

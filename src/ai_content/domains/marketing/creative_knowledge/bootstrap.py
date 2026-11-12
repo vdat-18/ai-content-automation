@@ -106,7 +106,8 @@ async def import_knowledge_proposals(
             contributor=contributor,
             non_conclusions=item.non_conclusions,
         )
-        if item.auto_approve and current is None:
+        # A curated rule keeps its approval when the team rewords it; one nobody approved waits for a person
+        if item.auto_approve and (current is None or current.status == KnowledgeStatus.APPROVED):
             proposed = await service.decide(
                 item.knowledge_id, status=KnowledgeStatus.APPROVED, reviewer=contributor
             )

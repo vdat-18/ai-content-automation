@@ -79,6 +79,7 @@ class ApiRuntimeSettings:
     video_base_url: str = ""
     video_api_key: str | None = None
     video_model: str = ""
+    video_frame_fields: str = "image,input_reference,image_url"
     tts_base_url: str = ""
     tts_api_key: str | None = None
     tts_model: str = ""
@@ -141,6 +142,7 @@ def get_runtime_settings() -> ApiRuntimeSettings:
         or application.screening_base_url,
         video_api_key=application.video_api_key_value,
         video_model=application.video_model,
+        video_frame_fields=application.video_frame_fields,
         tts_base_url=application.tts_base_url
         or application.video_base_url
         or application.image_base_url
@@ -356,6 +358,7 @@ def _video_client(settings: ApiRuntimeSettings) -> VideoClient | None:
         base_url=settings.video_base_url,
         api_key=settings.video_api_key,
         model=settings.video_model,
+        frame_fields=tuple(f.strip() for f in settings.video_frame_fields.split(",") if f.strip()),
     )
 
 

@@ -1,6 +1,6 @@
 {
   "schema_version": "creative-knowledge-bootstrap@2",
-  "bootstrap_id": "product-ad-v4",
+  "bootstrap_id": "product-ad-v5",
   "items": [
     {
       "knowledge_id": "product-ad-body-proportions",
@@ -101,7 +101,7 @@
       "knowledge_id": "product-ad-voice-length-narrated",
       "knowledge_type": "hard_rule",
       "title": "Narrated shot voiceover length",
-      "content": "WHEN: A shot is narrated (nobody is seen speaking). DO: Write 40 to 46 words (never below 38 or above 48) so the voice fills the shot's 11 seconds, spoken at about 4 words per second, and match what the shot shows. DO NOT: Leave long silences or run over.",
+      "content": "WHEN: A shot is narrated (nobody is seen speaking). DO: Write 40 to 46 words (never below 38 or above 48) so the voice speaks for 11 to 12 seconds (the voices read 3.5 to 4 words per second) inside the 13 second shot, and match what the shot shows. DO NOT: Leave long silences or run over.",
       "applies_to": [
         "preparation",
         "review"

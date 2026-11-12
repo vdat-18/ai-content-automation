@@ -763,3 +763,24 @@ async def test_the_opening_clip_of_a_hook_replaces_the_first_clip_in_the_video(
     opening.write_bytes(b"mp4")
     await service.build_video(PRODUCT_ID, tmp_path, variant="hook_1", hook="Bạn đã thử chưa?", opening_clip=opening)
     assert stitched == [opening, tmp_path / f"clips/{PRODUCT_ID}/shot_1.mp4"]
+
+
+async def test_the_first_frame_goes_only_under_the_fields_that_are_set() -> None:
+    bodies: list[dict] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        bodies.append(json.loads(request.content))
+        return httpx.Response(200, json={"id": "v1"})
+
+    both = VideoClient(
+        base_url="https://api.example/v1",
+        api_key="k",
+        model="m",
+        frame_fields=("image",),
+        http=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+    )
+    await both.submit("p", b"x", 6)
+    await _client(handler).submit("p", b"x", 6)
+    narrow, wide = bodies
+    assert "image" in narrow and "input_reference" not in narrow and "image_url" not in narrow
+    assert narrow["image"] == wide["image"] == wide["input_reference"] == wide["image_url"]

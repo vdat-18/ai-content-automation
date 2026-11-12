@@ -39,7 +39,7 @@ rồi dùng `just up`. Dashboard và API **không có đăng nhập**, nên mặ
 |---|---|
 | `AIC_SCREENING_*` | LLM viết brief, kiểm tra ảnh và clip, review kịch bản (OpenAI-compatible) |
 | `AIC_IMAGE_*`, `AIC_IMAGE_API` | Model tạo ảnh (`chat` hoặc `edits`) |
-| `AIC_VIDEO_*` | Model ảnh → video |
+| `AIC_VIDEO_*` | Model ảnh → video; `AIC_VIDEO_FRAME_FIELDS` chọn trường nhận khung hình đầu (thu còn một trường khi đã biết trường nào chạy) |
 | `AIC_TTS_*` | Giọng đọc |
 | `AIC_TEXT_EMBEDDING_MODEL` | Ghép ảnh tham chiếu cho từng cảnh (để trống thì tắt) |
 | `AIC_AI_DATABASE_BACKEND` | `sqlite` (dev) hoặc `postgresql` |

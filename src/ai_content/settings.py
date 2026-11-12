@@ -33,6 +33,9 @@ class ApplicationSettings(BaseSettings):
     video_base_url: str = Field("", validation_alias="AIC_VIDEO_BASE_URL")
     video_api_key: SecretStr | None = Field(None, validation_alias="AIC_VIDEO_API_KEY")
     video_model: str = Field("", validation_alias="AIC_VIDEO_MODEL")
+    video_frame_fields: str = Field(
+        "image,input_reference,image_url", validation_alias="AIC_VIDEO_FRAME_FIELDS"
+    )
     tts_base_url: str = Field("", validation_alias="AIC_TTS_BASE_URL")
     tts_api_key: SecretStr | None = Field(None, validation_alias="AIC_TTS_API_KEY")
     tts_model: str = Field("", validation_alias="AIC_TTS_MODEL")

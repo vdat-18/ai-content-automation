@@ -21,6 +21,9 @@ ASPECT = "9:16"
 _TIMEOUT = 120
 _OUTPUT_SIZE = "1080:1920"  # TikTok vertical spec
 _FPS = "24"
+# Services name the first-frame field differently, so it is sent under all of them; once one
+# is known to work, AIC_VIDEO_FRAME_FIELDS keeps only that one and the request gets smaller
+FRAME_FIELDS = ("image", "input_reference", "image_url")
 TRIM_SECONDS = 0.125
 _CAPTION_FONTS = (
     "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf",
@@ -78,8 +81,10 @@ class VideoClient:
         base_url: str,
         api_key: str,
         model: str,
+        frame_fields: tuple[str, ...] = FRAME_FIELDS,
         http: httpx.AsyncClient | None = None,
     ) -> None:
+        self._frame_fields = frame_fields
         self._base = base_url.rstrip("/")
         self._headers = {"Authorization": f"Bearer {api_key}"}
         self.model = model
@@ -93,9 +98,7 @@ class VideoClient:
             "prompt": prompt,
             "seconds": seconds,
             "size": ASPECT,
-            "image": frame,
-            "input_reference": frame,
-            "image_url": frame,
+            **dict.fromkeys(self._frame_fields, frame),
         }
         try:
             response = await self._http.post(
