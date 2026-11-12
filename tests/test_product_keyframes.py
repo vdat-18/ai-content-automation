@@ -611,3 +611,25 @@ def test_a_keyframe_that_is_not_9_by_16_is_cropped_to_it(size, expected) -> None
     kept = _to_vertical(_picture(*size))
     assert Image.open(io.BytesIO(kept)).size == expected
     assert _to_vertical(b"not an image") == b"not an image"
+
+
+class _PhotoChecker:
+    def __init__(self) -> None:
+        self.photos: list[int] = []
+
+    async def check(self, description, photos, keyframe, master=None, persona=None, previous=None):
+        self.photos.append(len(photos))
+        return ""
+
+
+async def test_the_check_sees_more_product_photos_than_the_image_model(tmp_path) -> None:
+    urls = [f"https://img.example/{i}.jpg" for i in range(1, 9)]
+    keyframer = _FakeKeyframer()
+    service = await _service(tmp_path, keyframer)
+    await service._repository.upsert_detail({"product_id": PRODUCT_ID, "title": "Giỏ", "images": urls})
+    checker = _PhotoChecker()
+    service._checker = checker
+    await service.generate_keyframes(PRODUCT_ID, tmp_path)
+    assert keyframer.calls[-1][1] == 2 and checker.photos == [4]
+    await service.recheck_keyframe(PRODUCT_ID, 0, tmp_path)
+    assert checker.photos == [4, 4]

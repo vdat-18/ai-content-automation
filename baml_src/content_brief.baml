@@ -53,7 +53,9 @@ function DraftContentBrief(
 
     The product photos are numbered. Put in product_photo_numbers the numbers of all the photos
     that show the product, most useful first: the main photo, other angles and photos that show
-    the size or real use. A photo that is a collage or carries text is fine when it shows the
+    the size or real use. Only the first two numbers reach the image model, so they must be the
+    photos that show the chosen product version and its front label most clearly, and together
+    show every item of a set. A photo that is a collage or carries text is fine when it shows the
     product or real facts such as a size chart. Read sizes and materials from all photos,
     including size charts, and use them in product_size and the prompts.
 

@@ -107,6 +107,9 @@ CLIP_CHECK_PHOTOS = 4
 # Few inputs keep the face accurate: with many pictures the model loses the person among them
 PERSONA_PHOTOS_PER_SHOT = 3
 PRODUCT_PHOTOS_PER_SHOT = 2
+# The check sees more of the product than the image model, so it can catch what the two
+# photos sent to the model do not show
+KEYFRAME_CHECK_PHOTOS = 4
 # The voice-over is added later, so the picture only has to look right: a talking shot shows
 # natural subtle speaking without exaggerated mouth movements, a narrated shot keeps lips closed.
 _DELIVERY_RULE = {
@@ -959,11 +962,12 @@ class ProductCatalogService:
                     "Upload the photos of the person again, or write a new brief without a person"
                 )
         detail = await self._repository.get_detail(product_id)
-        photos = await fetch_images(
-            _product_photo_urls(record["brief"], detail or {})[:PRODUCT_PHOTOS_PER_SHOT]
+        check_photos = await fetch_images(
+            _product_photo_urls(record["brief"], detail or {})[:KEYFRAME_CHECK_PHOTOS]
         )
-        if not photos:
+        if not check_photos:
             raise KeyframeUnavailable("No product photo could be downloaded")
+        photos = check_photos[:PRODUCT_PHOTOS_PER_SHOT]
         references = await self._shot_references(record["brief"], wanted)
         master = (
             await self.media(media_root).read(existing[0]["image_path"]) if master_ready else None
@@ -999,6 +1003,7 @@ class ProductCatalogService:
                         persona_images,
                         done.get(index - 1),
                         note,
+                        check_photos,
                     )
                 finally:
                     done[index].set()
@@ -1039,6 +1044,7 @@ class ProductCatalogService:
         persona: list[bytes] | None = None,
         previous_done: asyncio.Event | None = None,
         note: str = "",
+        check_photos: list[bytes] | None = None,
     ) -> None:
         assert self._keyframer is not None
         attempts = (previous or {}).get("attempts", 0)
@@ -1085,7 +1091,12 @@ class ProductCatalogService:
                     await previous_done.wait()  # the cut check needs the shot before this one
                 before = await self._keyframe_before(product_id, index, media_root)
                 before_loaded = True
-            problem = await self._check_keyframe(shot, photos, image, master, persona, before) or ""
+            problem = (
+                await self._check_keyframe(
+                    shot, check_photos or photos, image, master, persona, before
+                )
+                or ""
+            )
             if not problem or problem == NOT_CHECKED:
                 break
             await self._log(
@@ -1185,7 +1196,7 @@ class ProductCatalogService:
         }
         photos = await fetch_images(
             _product_photo_urls(brief, await self._repository.get_detail(product_id) or {})[
-                :PRODUCT_PHOTOS_PER_SHOT
+                :KEYFRAME_CHECK_PHOTOS
             ]
         )
         problem = (
