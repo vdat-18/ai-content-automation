@@ -104,8 +104,9 @@ DUPLICATE_HAMMING = 4
 MAX_KEYFRAME_FIXES = 2
 KEYFRAME_CONCURRENCY = 3
 CLIP_CHECK_PHOTOS = 4
-MODEL_IMAGE_LIMIT = 30  # pictures the image model takes in one request
-MODEL_IMAGE_RESERVE = 2  # kept free for the scene or master picture and a pose reference
+# Few inputs keep the face accurate: with many pictures the model loses the person among them
+PERSONA_PHOTOS_PER_SHOT = 3
+PRODUCT_PHOTOS_PER_SHOT = 2
 # The voice-over is added later, so the picture only has to look right: a talking shot shows
 # natural subtle speaking without exaggerated mouth movements, a narrated shot keeps lips closed.
 _DELIVERY_RULE = {
@@ -900,15 +901,16 @@ class ProductCatalogService:
         persona_images: list[bytes] | None = None
         if record["brief"].get("with_person"):
             persona_images = (await self.persona_photos(product_id, media_root))[
-                : MODEL_IMAGE_LIMIT - MODEL_IMAGE_RESERVE - 1
+                :PERSONA_PHOTOS_PER_SHOT
             ]
             if not persona_images:
                 raise KeyframeUnavailable(
                     "Upload the photos of the person again, or write a new brief without a person"
                 )
         detail = await self._repository.get_detail(product_id)
-        room = MODEL_IMAGE_LIMIT - MODEL_IMAGE_RESERVE - len(persona_images or [])
-        photos = await fetch_images(_product_photo_urls(record["brief"], detail or {})[:room])
+        photos = await fetch_images(
+            _product_photo_urls(record["brief"], detail or {})[:PRODUCT_PHOTOS_PER_SHOT]
+        )
         if not photos:
             raise KeyframeUnavailable("No product photo could be downloaded")
         references = await self._shot_references(record["brief"], wanted)

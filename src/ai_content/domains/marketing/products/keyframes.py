@@ -29,12 +29,14 @@ _PRODUCT_RULE = (
 )
 _NO_PEOPLE = "Do not show any human face; hands, the product and the space are enough."
 _PERSONA_RULE = (
-    "the person in the ad. Copy their face, hair length and colour, skin tone and body exactly "
-    "from these images in every shot and ignore any other description of their looks in the text "
-    "below; they must be recognisable as the same real person. Give the face clear, even skin: "
-    "remove any acne, pimples, spots, scars and blemishes seen in the images, but keep the "
-    "natural pores and every other feature unchanged. Wear the clothes the shot asks "
-    "for (the product, when it is clothing), otherwise the clothes seen in the images."
+    "the person in the ad. The face in the new picture must be exactly this face, as if the same "
+    "real person were photographed again: copy the face shape, jawline, forehead, eyebrows, eyes, "
+    "nose, lips, ears, hairline, hair length and style, skin tone, age and body from these images "
+    "in every shot, and ignore any other description of their looks in the text below. Retouch "
+    "only the skin, as a light phone beauty filter would: remove acne, pimples, dark spots, scars "
+    "and blemishes and even out the skin, but keep fine natural texture and never change the "
+    "shape or size of any feature. Wear the clothes the shot asks for (the product, when it is "
+    "clothing), otherwise the clothes seen in the images, without copying any logo or text on them."
 )
 
 
@@ -57,9 +59,17 @@ def _variant_note(shot: dict[str, Any]) -> str:
     )
 
 
+def _span(first: int, last: int, one: str, many: str) -> str:
+    """"Image 3 is" or "Images 3 to 4 are", for the numbered pictures sent to the model."""
+    return f"Image {first} {one}" if first == last else f"Images {first} to {last} {many}"
+
+
 def _persona_note(first: int, last: int) -> str:
-    which = f"Image {first} shows" if first == last else f"Images {first} to {last} show"
-    return f"{which} {_PERSONA_RULE}"
+    return f"{_span(first, last, 'shows', 'show')} {_PERSONA_RULE}"
+
+
+def _product_note(first: int, last: int) -> str:
+    return f"{_span(first, last, 'is', 'are')} the real product photos."
 
 
 def story_note(brief: dict[str, Any], index: int) -> str:
@@ -225,11 +235,14 @@ class KeyframeGenerator:
         fix: str = "",
         persona: list[bytes] | None = None,
     ) -> bytes:
-        parts = [f"Images 1 to {len(product_photos)} are the real product photos."]
-        images = list(product_photos)
+        # Order matters to the model: the face first, then the product, then the scene
+        images: list[bytes] = []
+        parts: list[str] = []
         if persona:
             images += persona
-            parts.append(_persona_note(len(images) - len(persona) + 1, len(images)))
+            parts.append(_persona_note(1, len(images)))
+        images += product_photos
+        parts.append(_product_note(len(images) - len(product_photos) + 1, len(images)))
         if scene is not None:
             images.append(scene)
             parts.append(
@@ -252,14 +265,18 @@ class KeyframeGenerator:
         persona: list[bytes] | None = None,
         reference: bytes | None = None,
     ) -> bytes:
-        images = [master]
-        parts = [
-            "Image 1 is the approved master keyframe: keep the same product, light, colors and "
-            "the same style of place."
-        ]
+        images: list[bytes] = []
+        parts: list[str] = []
         if persona:
             images += persona
-            parts.append(_persona_note(len(images) - len(persona) + 1, len(images)))
+            parts.append(_persona_note(1, len(images)))
+        images.append(master)
+        parts.append(
+            f"Image {len(images)} is the approved master keyframe: keep the same product, light, "
+            "colors and the same style of place."
+        )
+        images += product_photos
+        parts.append(_product_note(len(images) - len(product_photos) + 1, len(images)))
         if reference is not None:
             images.append(reference)
             parts.append(
@@ -267,8 +284,6 @@ class KeyframeGenerator:
                 "only: keep the room, light, person and product exactly as in the other images and "
                 "never copy its objects, brand, text or people."
             )
-        images += product_photos
-        parts.append("The remaining images are the real product photos.")
         parts += [_PRODUCT_RULE, "" if persona else _NO_PEOPLE]
         parts += [
             _variant_note(shot),
