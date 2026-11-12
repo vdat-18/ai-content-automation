@@ -1,6 +1,7 @@
 import asyncio
 import json
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from io import BytesIO
 from pathlib import Path
 
@@ -9,12 +10,14 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from openpyxl import load_workbook
 
+from ai_content.domains.marketing.products.pipeline import PipelineStopped
 from ai_content.domains.marketing.products.references import ReferenceProfile
 from ai_content.domains.marketing.products.repositories import SqliteProductRepository
 from ai_content.domains.marketing.products.service import ProductCatalogService
 from ai_content.entrypoints.api import products as products_api
 from ai_content.entrypoints.api.dependencies import get_product_catalog_service
 from ai_content.entrypoints.api.products import router
+from ai_content.platform.notifications import Notification
 
 PRODUCT_ID = "1730000000000000001"
 URL = f"https://shop.tiktok.com/vn/pdp/ao-thun/{PRODUCT_ID}"
@@ -598,3 +601,45 @@ def test_starting_over_removes_what_was_made_and_keeps_the_product(
     assert client.get(f"{base}/keyframes").json() == []
     assert not folder.exists()
     assert client.get(base).json()["title"] == "Áo thun"
+
+
+async def test_the_end_of_a_run_is_announced_with_a_notification(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    saved: list[Notification] = []
+
+    class _Notifications:
+        async def save(self, notification: Notification) -> None:
+            saved.append(notification)
+
+    class _Service:
+        async def detail(self, product_id: str) -> dict:
+            return {"title": "Sọt lưới"}
+
+    @asynccontextmanager
+    async def notifications():
+        yield _Notifications()
+
+    @asynccontextmanager
+    async def scope():
+        yield _Service()
+
+    async def finished(*args, **kwargs) -> None:
+        return None
+
+    async def stopped(*args, **kwargs) -> None:
+        raise PipelineStopped("Review the images")
+
+    for outcome, until, kind, title in (
+        (finished, "script", "pipeline_done", "The script is ready to read"),
+        (stopped, "video", "pipeline_paused", "The video needs a look"),
+    ):
+        monkeypatch.setattr(products_api, "run_pipeline", outcome)
+        run = {"status": "running", "step": "", "message": ""}
+        monkeypatch.setitem(products_api._pipeline_runs, PRODUCT_ID, run)
+        request = products_api.PipelineRequest(until=until)
+        await products_api._run_pipeline(scope, PRODUCT_ID, request, tmp_path, notifications)
+        note = saved[-1]
+        assert (note.kind, note.title) == (kind, title)
+        assert note.action_path == f"/studio/{PRODUCT_ID}" and "Sọt lưới" in note.detail
+    assert "Review the images" in saved[-1].detail

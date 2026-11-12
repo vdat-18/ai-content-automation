@@ -210,19 +210,30 @@ async def check_runtime_readiness(
     )
 
 
-async def get_notification_repository(
-    request: Request,
-) -> AsyncIterator[NotificationRepository]:
-    settings = get_runtime_settings()
-    postgres = _postgres_runtime(request)
+@asynccontextmanager
+async def notification_scope(postgres: Any) -> AsyncIterator[NotificationRepository]:
+    """Open the notifications, in a request or in a background task."""
     if postgres is not None:
         yield postgres.notification_repository
         return
-    repository = SqliteNotificationRepository(settings.db_path)
+    repository = SqliteNotificationRepository(get_runtime_settings().db_path)
     try:
         yield repository
     finally:
         repository.close()
+
+
+def notification_scope_for(request: Request):
+    """A scope that stays usable after the request that asked for it has ended."""
+    postgres = _postgres_runtime(request)
+    return lambda: notification_scope(postgres)
+
+
+async def get_notification_repository(
+    request: Request,
+) -> AsyncIterator[NotificationRepository]:
+    async with notification_scope(_postgres_runtime(request)) as repository:
+        yield repository
 
 
 async def get_ai_usage_repository(request: Request) -> AsyncIterator[AIUsageRepository]:

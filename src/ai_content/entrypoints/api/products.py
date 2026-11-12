@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import asyncio
 import json
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Literal
+from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi import Path as PathParam
@@ -34,11 +36,13 @@ from ai_content.domains.marketing.products.service import (
     ProductCatalogService,
 )
 from ai_content.domains.marketing.products.speech import VOICES
+from ai_content.platform.notifications import Notification
 
 from .dependencies import (
     get_creative_knowledge_service,
     get_product_catalog_service,
     get_runtime_settings,
+    notification_scope_for,
     product_catalog_scope_for,
 )
 
@@ -357,8 +361,49 @@ class PipelineRequest(BaseModel):
     until: Literal["script", "images", "video"] = "video"
 
 
+_DONE_TITLES = {
+    "script": "The script is ready to read",
+    "images": "The images are ready to review",
+    "video": "The video is ready",
+}
+
+
+async def _announce(
+    open_notifications: Any, open_scope: Any, product_id: str, until: str, run: dict[str, str]
+) -> None:
+    """Leave a notification when a run ends, so nobody has to watch the page."""
+    try:
+        async with open_scope() as service:
+            product = await service.detail(product_id) or {}
+        title = {"done": _DONE_TITLES[until], "paused": "The video needs a look"}.get(
+            run["status"], "The video could not be made"
+        )
+        name = product.get("title") or product_id
+        now = datetime.now(UTC)
+        async with open_notifications() as repository:
+            await repository.save(
+                Notification(
+                    notification_id=f"pipeline-{product_id}-{uuid4().hex}",
+                    scope_type="product",
+                    scope_id=product_id,
+                    kind=f"pipeline_{run['status']}",
+                    title=title,
+                    detail=f"{name}: {run['message']}" if run["message"] else str(name),
+                    created_at=now,
+                    updated_at=now,
+                    action_path=f"/studio/{product_id}",
+                )
+            )
+    except Exception as error:  # noqa: BLE001
+        logger.warning("Could not leave a notification for product {}: {}", product_id, error)
+
+
 async def _run_pipeline(
-    open_scope: Any, product_id: str, body: PipelineRequest, media_root: Path
+    open_scope: Any,
+    product_id: str,
+    body: PipelineRequest,
+    media_root: Path,
+    open_notifications: Any,
 ) -> None:
     run = _pipeline_runs[product_id]
 
@@ -384,6 +429,7 @@ async def _run_pipeline(
         run.update(status="failed", message=str(error)[:300])
     else:
         run.update(status="done", step="", message="")
+    await _announce(open_notifications, open_scope, product_id, body.until, run)
 
 
 @router.post("/{product_id}/pipeline")
@@ -404,7 +450,13 @@ async def start_pipeline(
         "message": "",
     }
     task = asyncio.create_task(
-        _run_pipeline(product_catalog_scope_for(request), product_id, body, _media_root())
+        _run_pipeline(
+            product_catalog_scope_for(request),
+            product_id,
+            body,
+            _media_root(),
+            notification_scope_for(request),
+        )
     )
     _pipeline_tasks.add(task)
     task.add_done_callback(_pipeline_tasks.discard)
