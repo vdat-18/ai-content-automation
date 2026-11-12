@@ -138,9 +138,9 @@ async def _run(*args: str, cwd: Path | None = None) -> None:
 def clip_speed() -> float:
     """How much faster than generated the clips play (AIC_CLIP_SPEED); video models drift slowly."""
     try:
-        return min(max(float(os.environ.get("AIC_CLIP_SPEED", "1.25")), 1.0), 2.0)
+        return min(max(float(os.environ.get("AIC_CLIP_SPEED", "1.1")), 1.0), 2.0)
     except ValueError:
-        return 1.25
+        return 1.1
 
 
 def _source_seconds(duration: float) -> float:

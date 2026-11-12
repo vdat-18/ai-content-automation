@@ -329,13 +329,13 @@ def test_clips_play_faster_by_the_configured_speed(monkeypatch) -> None:
     from ai_content.domains.marketing.products.clips import clip_speed, shot_seconds
 
     monkeypatch.delenv("AIC_CLIP_SPEED", raising=False)
-    assert clip_speed() == 1.25 and round(shot_seconds(15), 2) == 11.8
+    assert clip_speed() == 1.1 and round(shot_seconds(15), 2) == 13.41
     monkeypatch.setenv("AIC_CLIP_SPEED", "1")
     assert round(shot_seconds(15), 2) == 14.75
     monkeypatch.setenv("AIC_CLIP_SPEED", "9")
     assert clip_speed() == 2.0
     monkeypatch.setenv("AIC_CLIP_SPEED", "abc")
-    assert clip_speed() == 1.25
+    assert clip_speed() == 1.1
 
 
 class _FakeClipChecker:

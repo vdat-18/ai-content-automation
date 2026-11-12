@@ -232,7 +232,8 @@ async def _two_described_references(service: ProductCatalogService) -> dict[str,
     return found
 
 
-async def test_each_shot_gets_the_reference_that_fits_it(tmp_path) -> None:
+async def test_each_shot_gets_the_reference_that_fits_it(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("AIC_CLIP_SPEED", "1.25")  # 30 seconds is 3 shots
     service = await _service(tmp_path, _TwoShots())
     embedder, picker = _Embedder(), _Picker()
     service._text_embedder, service._reference_picker = embedder, picker
@@ -299,7 +300,8 @@ async def test_references_fall_back_to_text_when_the_product_cannot_be_embedded(
     assert record is not None and picker.seen[0] == [hand, room]
 
 
-async def test_a_reference_is_not_used_for_two_shots(tmp_path) -> None:
+async def test_a_reference_is_not_used_for_two_shots(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("AIC_CLIP_SPEED", "1.25")  # 30 seconds is 3 shots
     class _SameShots(_TwoShots):
         async def write(self, product, user_idea, shot_count=1, person_photos=None, rules=""):
             brief = await super().write(product, user_idea, shot_count, person_photos)
@@ -315,7 +317,8 @@ async def test_a_reference_is_not_used_for_two_shots(tmp_path) -> None:
     assert record["brief"]["shot_references"] == [ids["a hand holding a bottle"], None, None]
 
 
-async def test_shots_have_no_reference_without_an_embedding_model(tmp_path) -> None:
+async def test_shots_have_no_reference_without_an_embedding_model(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("AIC_CLIP_SPEED", "1.25")  # 30 seconds is 3 shots
     service = await _service(tmp_path, _TwoShots())
     await service._repository.select_product(PRODUCT_ID, "áo thun")
     await _two_described_references(service)

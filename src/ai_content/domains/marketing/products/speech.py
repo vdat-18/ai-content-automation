@@ -32,9 +32,9 @@ MIN_SHOT_SECONDS = 4.0  # a shorter shot would lose the soft transition into the
 def tts_speed() -> float:
     """Pace the voice-over is read at (AIC_TTS_SPEED); ad voice-overs are brisk."""
     try:
-        return min(max(float(os.environ.get("AIC_TTS_SPEED", "1.3")), 1.0), MAX_SPEEDUP)
+        return min(max(float(os.environ.get("AIC_TTS_SPEED", "1.1")), 1.0), MAX_SPEEDUP)
     except ValueError:
-        return 1.3
+        return 1.1
 
 
 _DEFAULT_VOICE = "auto"
