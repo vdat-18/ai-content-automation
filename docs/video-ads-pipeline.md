@@ -1,6 +1,6 @@
 # Thiết kế: từ brief đến video ads, ảnh làm mỏ neo
 
-Trạng thái: đề xuất, chưa code. Mục tiêu: video ads ngắn ghép từ nhiều clip, trong đó **sản phẩm và bối cảnh giống nhau ở mọi clip** và giống sản phẩm thật.
+Trạng thái: đã triển khai (xem README). Tài liệu giữ làm thiết kế gốc; vài chi tiết đã đổi: có người mẫu từ ảnh người dùng, giọng đọc, keyframe cắt 9:16, kịch bản được duyệt trước khi tạo ảnh. Mục tiêu: video ads ngắn ghép từ nhiều clip, trong đó **sản phẩm và bối cảnh giống nhau ở mọi clip** và giống sản phẩm thật.
 
 ## 1. Vì sao ảnh phải đi trước video
 

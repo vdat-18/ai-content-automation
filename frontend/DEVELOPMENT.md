@@ -5,10 +5,12 @@ anything, send messages, or fall back to browser mock data.
 
 ## Active Routes
 
-- `/research-crawler` (home): collect references from a public results URL
-- `/research-library`: review and approve references
-- `/second-brain`: rules and knowledge, edited in place
-- `/notifications`: notifications
+- `/` (home): videos in progress and finished
+- `/products`: collected products; pick one to make a video
+- `/studio/:productId`: the steps of one video (Idea, Script, Images, Finish)
+- `/videos`: every video, finished or in progress
+- `/memory`: rules the AI follows and reference scenes
+- `/notifications`: runs that ended or need a look
 
 Unknown URLs show a "Page not found" panel.
 
