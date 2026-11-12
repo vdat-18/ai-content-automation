@@ -12,6 +12,10 @@ from ai_content.domains.marketing.products.adapters.baml_client import types as 
 from ai_content.domains.marketing.products.adapters.baml_client.async_client import b
 from ai_content.domains.marketing.products.adapters.baml_registry import build_client_registry
 
+# Everyday scenes that fit any product; a product type without references of its own uses them.
+# Its search profile is added by a migration.
+GENERAL_TYPE = "cảnh đời thường chung"
+
 
 @dataclass
 class ReferenceProfile:

@@ -64,7 +64,12 @@ from .parsing import (
 from .posting import PostingPackageWriter
 from .reference_ad import AdAnalyzer, ReferenceAdUnavailable
 from .reference_picker import ShotReferencePicker
-from .references import ProfileGenerationError, ReferenceProfile, ReferenceProfileGenerator
+from .references import (
+    GENERAL_TYPE,
+    ProfileGenerationError,
+    ReferenceProfile,
+    ReferenceProfileGenerator,
+)
 from .repositories import ProductRepository
 from .speech import (
     MAX_SPEEDUP,
@@ -500,6 +505,16 @@ class ProductCatalogService:
         images = await self._repository.list_reference_images(status, product_type)
         return list(reversed(images))
 
+    async def _scene_pool(self, product_type: str) -> tuple[str, list[dict[str, Any]]]:
+        """The live references of the product type, else the general everyday scenes.
+
+        Returns the type that owns the pictures, since their embeddings are stored under it.
+        """
+        own = await self.reference_images("live", product_type)
+        if own:
+            return product_type, own
+        return GENERAL_TYPE, await self.reference_images("live", GENERAL_TYPE)
+
     async def screen_images(self, limit: int) -> dict[str, int]:
         """Review pending images with the vision model: usable ones go live, the rest are rejected."""
         if self._reviewer is None:
@@ -563,10 +578,11 @@ class ProductCatalogService:
         product_type = (await self._repository.selections()).get(product_id)
         if not product_type:
             raise BriefUnavailable("Select this product for content before writing a brief")
-        live = await self.reference_images("live", product_type)
+        pool_type, live = await self._scene_pool(product_type)
         if not live:
             raise BriefUnavailable(
-                f"No usable reference image of type '{product_type}' yet; crawl Pinterest first"
+                f"No usable reference image of type '{product_type}' or of everyday scenes yet; "
+                "crawl Pinterest first"
             )
         shot_count = max(1, round(video_seconds / shot_seconds(CLIP_SECONDS)))
         rules = await approved_rules(self._knowledge, KnowledgeStage.PREPARATION, "brief")
@@ -596,7 +612,7 @@ class ProductCatalogService:
         brief["quality_problems"] = problems
         brief["warnings"] = brief_warnings(brief, product_facts(detail, user_idea))
         brief["shot_references"] = await self._pick_shot_references(
-            product_id, detail, brief, live, product_type
+            product_id, detail, brief, live, pool_type
         )
         brief["selected_reference_ids"] = list(
             dict.fromkeys(item for item in brief["shot_references"] if item)
@@ -746,10 +762,10 @@ class ProductCatalogService:
         product_type = (await self._repository.selections()).get(product_id)
         if record is None or detail is None or not product_type:
             return None
-        live = await self.reference_images("live", product_type)
+        pool_type, live = await self._scene_pool(product_type)
         brief = dict(record["brief"])
         brief["shot_references"] = await self._pick_shot_references(
-            product_id, detail, brief, live, product_type
+            product_id, detail, brief, live, pool_type
         )
         brief["selected_reference_ids"] = list(
             dict.fromkeys(item for item in brief["shot_references"] if item)
