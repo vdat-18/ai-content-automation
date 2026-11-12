@@ -207,7 +207,7 @@ class ClipCheckAst:
     def __init__(self, tb: type_builder.TypeBuilder):
         _tb = tb._tb # type: ignore (we know how to use this private attribute)
         self._bldr = _tb.class_("ClipCheck")
-        self._properties: typing.Set[str] = set([  "passed",  "problem",  ])
+        self._properties: typing.Set[str] = set([  "passed",  "problem",  "category",  ])
         self._props = ClipCheckProperties(self._bldr, self._properties)
 
     def type(self) -> baml_py.FieldType:
@@ -243,6 +243,10 @@ class ClipCheckProperties:
     def problem(self) -> type_builder.ClassPropertyViewer:
         return type_builder.ClassPropertyViewer(self.__bldr.property("problem"))
     
+    @property
+    def category(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("category"))
+    
     
 
 
@@ -250,7 +254,7 @@ class ContentBriefAst:
     def __init__(self, tb: type_builder.TypeBuilder):
         _tb = tb._tb # type: ignore (we know how to use this private attribute)
         self._bldr = _tb.class_("ContentBrief")
-        self._properties: typing.Set[str] = set([  "title",  "format",  "script",  "product_photo_numbers",  "scene",  "product_placement",  "product_variant",  "product_size",  "selling_angle",  "target_audience",  "style",  "colors",  "shots",  ])
+        self._properties: typing.Set[str] = set([  "title",  "format",  "script",  "product_photo_numbers",  "scene",  "product_placement",  "product_variant",  "product_size",  "selling_angle",  "target_audience",  "style",  "colors",  "skin_sensitive",  "shots",  ])
         self._props = ContentBriefProperties(self._bldr, self._properties)
 
     def type(self) -> baml_py.FieldType:
@@ -325,6 +329,10 @@ class ContentBriefProperties:
     @property
     def colors(self) -> type_builder.ClassPropertyViewer:
         return type_builder.ClassPropertyViewer(self.__bldr.property("colors"))
+    
+    @property
+    def skin_sensitive(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("skin_sensitive"))
     
     @property
     def shots(self) -> type_builder.ClassPropertyViewer:
@@ -466,7 +474,7 @@ class KeyframeCheckAst:
     def __init__(self, tb: type_builder.TypeBuilder):
         _tb = tb._tb # type: ignore (we know how to use this private attribute)
         self._bldr = _tb.class_("KeyframeCheck")
-        self._properties: typing.Set[str] = set([  "passed",  "problem",  ])
+        self._properties: typing.Set[str] = set([  "passed",  "problem",  "category",  ])
         self._props = KeyframeCheckProperties(self._bldr, self._properties)
 
     def type(self) -> baml_py.FieldType:
@@ -501,6 +509,10 @@ class KeyframeCheckProperties:
     @property
     def problem(self) -> type_builder.ClassPropertyViewer:
         return type_builder.ClassPropertyViewer(self.__bldr.property("problem"))
+    
+    @property
+    def category(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("category"))
     
     
 

@@ -10,6 +10,7 @@ from PIL import Image
 
 from ai_content.domains.marketing.products import keyframes as keyframes_module
 from ai_content.domains.marketing.products import service as service_module
+from ai_content.domains.marketing.products.keyframe_check import QAProblem
 from ai_content.domains.marketing.products.keyframes import (
     KeyframeGenerationError,
     KeyframeGenerator,
@@ -633,3 +634,50 @@ async def test_the_check_sees_more_product_photos_than_the_image_model(tmp_path)
     assert keyframer.calls[-1][1] == 2 and checker.photos == [4]
     await service.recheck_keyframe(PRODUCT_ID, 0, tmp_path)
     assert checker.photos == [4, 4]
+
+
+class _FaceChecker:
+    """Fails every image on the face, as a strict check does."""
+
+    def __init__(self, category: str) -> None:
+        self.category = category
+        self.calls = 0
+
+    async def check(self, description, photos, keyframe, master=None, persona=None, previous=None):
+        self.calls += 1
+        return QAProblem(f"problem {self.calls}", self.category)
+
+
+async def test_the_same_kind_of_problem_twice_stops_the_retries(tmp_path) -> None:
+    keyframer = _FakeKeyframer()
+    service = await _service(tmp_path, keyframer)
+    checker = _FaceChecker("face")
+    service._checker = checker
+    [record] = await service.generate_keyframes(PRODUCT_ID, tmp_path)
+    assert checker.calls == 2 and len(keyframer.calls) == 2
+    assert record["qa_problem"] == "problem 2" and record["status"] == "ready"
+
+
+async def test_a_face_problem_is_not_proposed_as_a_rule_but_others_are(tmp_path) -> None:
+    from tests.test_product_knowledge import _knowledge
+
+    knowledge = _knowledge(tmp_path)
+    service = await _service(tmp_path, _FakeKeyframer())
+    service._knowledge = knowledge
+    service._checker = _FaceChecker("face")
+    await service.generate_keyframes(PRODUCT_ID, tmp_path)
+    assert await knowledge.repository.list() == []
+    service._checker = _FaceChecker("product")
+    await service.generate_keyframes(PRODUCT_ID, tmp_path, shot_index=0)
+    assert [item.content for item in await knowledge.repository.list()] == ["problem 1"]
+
+
+async def test_a_skin_product_keeps_the_skin_of_the_person_as_it_is() -> None:
+    client = _RecordingClient()
+    generator = KeyframeGenerator(client)  # type: ignore[arg-type]
+    shot = {"keyframe_prompt": "she holds the cream"}
+    await generator.master(shot, [b"p1"], None, persona=[b"face"])
+    await generator.master({**shot, "retouch": False}, [b"p1"], None, persona=[b"face"])
+    retouched, kept = (prompt for prompt, _ in client.calls)
+    assert "Retouch only the skin" in retouched and "Do not retouch" not in retouched
+    assert "Do not retouch the skin" in kept and "Retouch only the skin" not in kept

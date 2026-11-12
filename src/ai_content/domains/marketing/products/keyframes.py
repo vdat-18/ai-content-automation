@@ -34,11 +34,21 @@ _PERSONA_RULE = (
     "the person in the ad. The face in the new picture must be exactly this face, as if the same "
     "real person were photographed again: copy the face shape, jawline, forehead, eyebrows, eyes, "
     "nose, lips, ears, hairline, hair length and style, skin tone, age and body from these images "
-    "in every shot, and ignore any other description of their looks in the text below. Retouch "
-    "only the skin, as a light phone beauty filter would: remove acne, pimples, dark spots, scars "
-    "and blemishes and even out the skin, but keep fine natural texture and never change the "
-    "shape or size of any feature. Wear the clothes the shot asks for (the product, when it is "
-    "clothing), otherwise the clothes seen in the images, without copying any logo or text on them."
+    "in every shot, and ignore any other description of their looks in the text below. "
+)
+_RETOUCH = (
+    "Retouch only the skin, as a light phone beauty filter would: remove acne, pimples, dark spots, "
+    "scars and blemishes and even out the skin, but keep fine natural texture and never change the "
+    "shape or size of any feature. "
+)
+# A product for the skin must not be shown on skin that was made clearer than it is
+KEEP_SKIN_NOTE = (
+    "Keep the skin as in the photos of the person: this is a skin product, so the skin must match "
+    "the photos, marks included."
+)
+_CLOTHES = (
+    "Wear the clothes the shot asks for (the product, when it is clothing), otherwise the clothes "
+    "seen in the images, without copying any logo or text on them."
 )
 
 
@@ -66,8 +76,9 @@ def _span(first: int, last: int, one: str, many: str) -> str:
     return f"Image {first} {one}" if first == last else f"Images {first} to {last} {many}"
 
 
-def _persona_note(first: int, last: int) -> str:
-    return f"{_span(first, last, 'shows', 'show')} {_PERSONA_RULE}"
+def _persona_note(first: int, last: int, retouch: bool = True) -> str:
+    skin = _RETOUCH if retouch else f"Do not retouch the skin: {KEEP_SKIN_NOTE} "
+    return f"{_span(first, last, 'shows', 'show')} {_PERSONA_RULE}{skin}{_CLOTHES}"
 
 
 def _product_note(first: int, last: int) -> str:
@@ -262,7 +273,7 @@ class KeyframeGenerator:
         parts: list[str] = []
         if persona:
             images += persona
-            parts.append(_persona_note(1, len(images)))
+            parts.append(_persona_note(1, len(images), shot.get("retouch", True)))
         images += product_photos
         parts.append(_product_note(len(images) - len(product_photos) + 1, len(images)))
         if scene is not None:
@@ -291,7 +302,7 @@ class KeyframeGenerator:
         parts: list[str] = []
         if persona:
             images += persona
-            parts.append(_persona_note(1, len(images)))
+            parts.append(_persona_note(1, len(images), shot.get("retouch", True)))
         images.append(master)
         parts.append(
             f"Image {len(images)} is the approved master keyframe: keep the same product, light, "

@@ -27,6 +27,7 @@ class ContentBrief {
   target_audience string
   style string[]
   colors string[]
+  skin_sensitive bool
   shots StoryboardShot[]
 }
 
@@ -104,6 +105,10 @@ function DraftContentBrief(
     is clear. selling_angle: the single strongest reason to buy, in Vietnamese. target_audience: who buys it
     and why, in Vietnamese. style: up to 4 short words. colors: up to 4 color names. title: a
     short Vietnamese name for the brief.
+
+    skin_sensitive: true when the product is skincare, a cosmetic, an acne or hair treatment
+    or a health product, whose result a shopper would judge on the skin or the body; false for
+    everything else.
 
     format: the video style, one of problem_solution, step_by_step, before_after, unboxing or
     worth_it_text.

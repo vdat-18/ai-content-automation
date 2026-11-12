@@ -15,7 +15,7 @@ class _Flaky:
     def __init__(self, failures: int, passed: bool = True, problem: str = "") -> None:
         self.failures = failures
         self.calls = 0
-        self.answer = SimpleNamespace(passed=passed, problem=problem)
+        self.answer = SimpleNamespace(passed=passed, problem=problem, category="face")
 
     async def _answer(self):
         self.calls += 1
@@ -48,5 +48,6 @@ async def test_a_check_is_tried_again_before_it_gives_up(check) -> None:
 
 @pytest.mark.parametrize("check", [_keyframe, _clip])
 async def test_a_failed_check_reports_the_problem(check) -> None:
-    assert await check(_Flaky(failures=0, passed=False, problem="wrong color")) == "wrong color"
+    found = await check(_Flaky(failures=0, passed=False, problem="wrong color"))
+    assert found == "wrong color" and found.category == "face"
     assert await check(_Flaky(failures=0, passed=False, problem=" ")) != ""

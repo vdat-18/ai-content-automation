@@ -30,6 +30,17 @@ _TRIES = 3
 _RETRY_DELAY = 3.0
 
 
+class QAProblem(str):
+    """What a check found wrong, with the kind of problem it is (face, product, skin...)."""
+
+    category: str
+
+    def __new__(cls, text: str, category: str = "other") -> QAProblem:
+        problem = super().__new__(cls, text)
+        problem.category = category
+        return problem
+
+
 def _image(content: bytes) -> BamlImage:
     media_type = "image/png" if content[:4] == b"\x89PNG" else "image/jpeg"
     return BamlImage.from_base64(media_type, base64.b64encode(content).decode("ascii"))
@@ -81,5 +92,7 @@ class KeyframeChecker:
                 if attempt < _TRIES - 1:
                     await asyncio.sleep(self._retry_delay)
                 continue
-            return "" if result.passed else (result.problem.strip() or "The keyframe does not match.")
+            if result.passed:
+                return ""
+            return QAProblem(result.problem.strip() or "The keyframe does not match.", result.category)
         return None

@@ -258,3 +258,16 @@ async def test_a_check_problem_seen_in_two_videos_becomes_a_proposed_script_rule
     quiet = {"code": "silence", "severity": "minor", "message": "m"}
     await service._learn_from_check("p2", tmp_path, {"score": 90, "issues": [quiet]})
     assert len(await knowledge.repository.list()) == 1  # silence has not been seen before
+
+
+async def test_rules_can_be_skipped_and_are_capped(tmp_path, monkeypatch) -> None:
+    from ai_content.domains.marketing.products import knowledge as knowledge_module
+
+    knowledge = _knowledge(tmp_path)
+    for name in ("a", "b", "c"):
+        await _approved(knowledge, name, f"Rule {name}", (KnowledgeStage.ORCHESTRATION,))
+    stage = KnowledgeStage.ORCHESTRATION
+    skipped = await approved_rules(knowledge, stage, "keyframe", frozenset({"b"}))
+    assert skipped.ids == ["a", "c"]
+    monkeypatch.setattr(knowledge_module, "MAX_RULES", 2)
+    assert len((await approved_rules(knowledge, stage, "keyframe")).ids) == 2

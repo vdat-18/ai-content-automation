@@ -1,6 +1,7 @@
 class ClipCheck {
   passed bool
   problem string
+  category "face" | "product" | "skin" | "body" | "scene" | "other"
 }
 
 function CheckClip(
@@ -48,8 +49,17 @@ function CheckClip(
     clip because text changes or is garbled. Judge only what the frames show; frames are samples,
     so do not fail the clip for motion you cannot see.
 
+    When the shot description says to keep the skin as in the photos, ignore every rule about
+    clearer skin: the skin must match the photos, marks included.
+
     problem: empty when passed. Otherwise one or two short English sentences naming what is
     wrong and in which frame number (counting from 1), so a person can look at it.
+
+    category: when passed is false, the kind of the main problem: "face" when the person does not
+    look like the person in the photos, "product" for the shape, color, label, size or number of
+    the product, "skin" for skin marks or a waxy look, "body" for hands, limbs, proportions or a
+    twisted neck, "scene" for the room, the light or a jump between shots, otherwise "other".
+    Use "other" when it passed.
 
     {{ _.role("user") }}
     Shot description: {{ shot_description }}

@@ -13,6 +13,7 @@ from loguru import logger
 from ai_content.domains.marketing.products.adapters.baml_client import types as baml_types
 from ai_content.domains.marketing.products.adapters.baml_client.async_client import b
 from ai_content.domains.marketing.products.adapters.baml_registry import build_client_registry
+from ai_content.domains.marketing.products.keyframe_check import QAProblem
 
 
 class _BamlClipClient(Protocol):
@@ -78,5 +79,7 @@ class ClipChecker:
                 if attempt < _TRIES - 1:
                     await asyncio.sleep(self._retry_delay)
                 continue
-            return "" if result.passed else (result.problem.strip() or "The clip does not match.")
+            if result.passed:
+                return ""
+            return QAProblem(result.problem.strip() or "The clip does not match.", result.category)
         return None

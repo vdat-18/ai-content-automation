@@ -37,6 +37,7 @@ class ClaimCheck(BaseModel):
 class ClipCheck(BaseModel):
     passed: typing.Optional[bool] = None
     problem: typing.Optional[str] = None
+    category: typing.Optional[typing.Union[typing_extensions.Literal['face'], typing_extensions.Literal['product'], typing_extensions.Literal['skin'], typing_extensions.Literal['body'], typing_extensions.Literal['scene'], typing_extensions.Literal['other']]] = None
 
 class ContentBrief(BaseModel):
     title: typing.Optional[str] = None
@@ -51,6 +52,7 @@ class ContentBrief(BaseModel):
     target_audience: typing.Optional[str] = None
     style: typing.List[str]
     colors: typing.List[str]
+    skin_sensitive: typing.Optional[bool] = None
     shots: typing.List["StoryboardShot"]
 
 class CuratedRule(BaseModel):
@@ -68,6 +70,7 @@ class HookOptions(BaseModel):
 class KeyframeCheck(BaseModel):
     passed: typing.Optional[bool] = None
     problem: typing.Optional[str] = None
+    category: typing.Optional[typing.Union[typing_extensions.Literal['face'], typing_extensions.Literal['product'], typing_extensions.Literal['skin'], typing_extensions.Literal['body'], typing_extensions.Literal['scene'], typing_extensions.Literal['other']]] = None
 
 class LabeledReference(BaseModel):
     label: typing.Optional[str] = None

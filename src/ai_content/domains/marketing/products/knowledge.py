@@ -24,6 +24,7 @@ from ai_content.domains.marketing.products.adapters.baml_client.async_client imp
 from ai_content.domains.marketing.products.adapters.baml_registry import build_client_registry
 
 PRODUCT_AD_SCOPE = KnowledgeScope(task_type="product_ad")
+MAX_RULES = 24  # every rule is sent in every prompt, so the list must not grow forever
 FEEDBACK_SOURCE = "feedback:"  # source_refs prefix of items that came from feedback
 _FEEDBACK_STAGES = {
     "brief": (KnowledgeStage.PREPARATION, KnowledgeStage.REVIEW),
@@ -37,13 +38,20 @@ class ApprovedRules(NamedTuple):
 
 
 async def approved_rules(
-    knowledge: CreativeKnowledgeService | None, stage: KnowledgeStage, asset_type: str
+    knowledge: CreativeKnowledgeService | None,
+    stage: KnowledgeStage,
+    asset_type: str,
+    skip: frozenset[str] = frozenset(),
 ) -> ApprovedRules:
-    """The approved rules for one stage of making one kind of asset (brief, keyframe)."""
+    """The approved rules for one stage of making one kind of asset (brief, keyframe).
+
+    The hard rules come first, so the ones beyond MAX_RULES are the newest lessons.
+    """
     if knowledge is None:
         return ApprovedRules("", [])
     scope = replace(PRODUCT_AD_SCOPE, asset_type=asset_type)
-    items = await knowledge.resolve(scope, stage=stage)
+    resolved = await knowledge.resolve(scope, stage=stage)
+    items = [item for item in resolved if item.knowledge_id not in skip][:MAX_RULES]
     text = "\n".join(f"- {item.title}: {item.content}" for item in items)
     return ApprovedRules(text, [item.knowledge_id for item in items])
 

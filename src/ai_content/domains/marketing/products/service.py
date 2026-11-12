@@ -50,7 +50,13 @@ from .hooks import HookWriter
 from .identity import PIN_SIZE_DIR, media_source_fingerprint
 from .image_review import ReferenceImageReviewer
 from .keyframe_check import KeyframeChecker
-from .keyframes import KeyframeGenerationError, KeyframeGenerator, fetch_images, story_note
+from .keyframes import (
+    KEEP_SKIN_NOTE,
+    KeyframeGenerationError,
+    KeyframeGenerator,
+    fetch_images,
+    story_note,
+)
 from .knowledge import approved_rules, propose_feedback
 from .media import MediaDownloadReport, download_product_media
 from .media_store import MediaStore, RemoteMedia
@@ -110,6 +116,8 @@ PRODUCT_PHOTOS_PER_SHOT = 2
 # The check sees more of the product than the image model, so it can catch what the two
 # photos sent to the model do not show
 KEYFRAME_CHECK_PHOTOS = 4
+# Rules that ask for clearer skin than the person has; a product for the skin must not follow them
+SKIN_RETOUCH_RULES = frozenset({"product-ad-clear-skin"})
 # The voice-over is added later, so the picture only has to look right: a talking shot shows
 # natural subtle speaking without exaggerated mouth movements, a narrated shot keeps lips closed.
 _DELIVERY_RULE = {
@@ -976,8 +984,12 @@ class ProductCatalogService:
         )
         size = str(record["brief"].get("product_size") or "")
         variant = str(record["brief"].get("product_variant") or "")
-        rules = await approved_rules(self._knowledge, KnowledgeStage.ORCHESTRATION, "keyframe")
-        qa_rules = await approved_rules(self._knowledge, KnowledgeStage.REVIEW, "keyframe")
+        sensitive = bool(record["brief"].get("skin_sensitive"))
+        skip = SKIN_RETOUCH_RULES if sensitive else frozenset()
+        rules = await approved_rules(
+            self._knowledge, KnowledgeStage.ORCHESTRATION, "keyframe", skip
+        )
+        qa_rules = await approved_rules(self._knowledge, KnowledgeStage.REVIEW, "keyframe", skip)
         rule_ids = sorted({*rules.ids, *qa_rules.ids})
         limit = asyncio.Semaphore(KEYFRAME_CONCURRENCY)
         done = {index: asyncio.Event() for index in wanted}
@@ -992,6 +1004,7 @@ class ProductCatalogService:
                             **shots[index],
                             "product_size": size,
                             "product_variant": variant,
+                            "retouch": not sensitive,
                             "rules": rules.text,
                             "qa_rules": qa_rules.text,
                             "rule_ids": rule_ids,
@@ -1061,6 +1074,7 @@ class ProductCatalogService:
         image: bytes | None = None
         problem = note  # the user's note is the first thing to fix
         lesson_sent = False  # one proposal per keyframe keeps the review queue short
+        last_category = ""
         for _ in range(1 + MAX_KEYFRAME_FIXES):
             try:
                 if index == 0:
@@ -1104,7 +1118,9 @@ class ProductCatalogService:
             await self._log(
                 product_id, "keyframe", "retry", f"Attempt {attempts}: Gemini says {problem}", index
             )
-            if self._knowledge is not None and not lesson_sent:
+            category = getattr(problem, "category", "other")
+            # What is wrong with one person's face says nothing about other videos
+            if self._knowledge is not None and not lesson_sent and category != "face":
                 lesson_sent = True
                 await propose_feedback(
                     self._knowledge,
@@ -1113,6 +1129,9 @@ class ProductCatalogService:
                     contributor="gemini-qa",
                     authority=KnowledgeAuthority.EXTERNAL,
                 )
+            if category == last_category != "other":
+                break  # the same kind of problem twice: a third image would not fix it
+            last_category = category
         assert image is not None
         relative = f"keyframes/{product_id}/shot_{index}.jpg"
         await self.media(media_root).write(relative, image)
@@ -1123,7 +1142,7 @@ class ProductCatalogService:
                 "status": "ready",
                 "image_path": relative,
                 "error": None,
-                "qa_problem": problem,
+                "qa_problem": str(problem),
             }
         )
         await self._log(
@@ -1168,6 +1187,8 @@ class ProductCatalogService:
             description = f"{description}\n\nThe whole video, for context:\n{shot['story']}"
         if shot.get("qa_rules"):
             description = f"{description}\n\nApproved rules:\n{shot['qa_rules']}"
+        if shot.get("retouch") is False:
+            description = f"{description}\n\n{KEEP_SKIN_NOTE}"
         problem = await self._checker.check(description, photos, image, master, persona, before)
         return NOT_CHECKED if problem is None else problem
 
@@ -1188,11 +1209,18 @@ class ProductCatalogService:
             else []
         )
         master_path = keyframes.get(0, {}).get("image_path")
-        qa_rules = await approved_rules(self._knowledge, KnowledgeStage.REVIEW, "keyframe")
+        sensitive = bool(brief.get("skin_sensitive"))
+        qa_rules = await approved_rules(
+            self._knowledge,
+            KnowledgeStage.REVIEW,
+            "keyframe",
+            SKIN_RETOUCH_RULES if sensitive else frozenset(),
+        )
         shot = {
             **brief["shots"][shot_index],
             "product_size": brief.get("product_size"),
             "product_variant": brief.get("product_variant"),
+            "retouch": not sensitive,
             "qa_rules": qa_rules.text,
             "story": story_note(brief, shot_index),
         }
@@ -1212,7 +1240,7 @@ class ProductCatalogService:
             )
             or ""
         )
-        checked = {**keyframe, "qa_problem": problem}
+        checked = {**keyframe, "qa_problem": str(problem)}
         await self._repository.save_keyframe(checked)
         await self._log(
             product_id,
@@ -1238,7 +1266,7 @@ class ProductCatalogService:
         if clip is None:
             return None
         problem = await self._check_clip(clip, clip["video_path"], media_root) or ""
-        checked = {**clip, "qa_problem": problem}
+        checked = {**clip, "qa_problem": str(problem)}
         await self._repository.save_clip(checked)
         await self._log(
             product_id,
@@ -1301,7 +1329,8 @@ class ProductCatalogService:
                 relative = f"clips/{clip['product_id']}/shot_{clip['shot_index']}.mp4"
                 await self.media(media_root).write(relative, content)
                 problem = await self._check_clip(clip, relative, media_root)
-                if problem and problem != NOT_CHECKED and self._knowledge is not None:
+                face = getattr(problem, "category", "") == "face"
+                if problem and problem != NOT_CHECKED and not face and self._knowledge is not None:
                     await propose_feedback(
                         self._knowledge,
                         product_id=clip["product_id"],
@@ -1315,7 +1344,7 @@ class ProductCatalogService:
                     "status": "ready",
                     "video_path": relative,
                     "error": None,
-                    "qa_problem": problem or "",
+                    "qa_problem": str(problem or ""),
                 }
                 await self._log(
                     clip["product_id"],
@@ -1363,6 +1392,8 @@ class ProductCatalogService:
             await self.persona_photos(product_id, media_root) if brief.get("with_person") else []
         )
         description = str(shot.get("description") or shot.get("motion_prompt") or "")
+        if brief.get("skin_sensitive"):
+            description = f"{description}\n\n{KEEP_SKIN_NOTE}"
         problem = await self._clip_checker.check(
             description,
             photos,
