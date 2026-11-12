@@ -484,3 +484,14 @@ async def test_editing_the_script_flags_what_was_already_made_from_it(tmp_path) 
     first = (await repository.list_keyframes("42"))[0]
     assert first["status"] == "ready" and "image was made" in first["qa_problem"]
     assert (await repository.list_keyframes("42"))[1]["status"] == "approved"
+
+
+async def test_the_run_log_says_when_no_reference_has_been_described(tmp_path) -> None:
+    service = await _service(tmp_path, _TwoShots())
+    service._text_embedder, service._reference_picker = _Embedder(), _Picker()
+    await service._repository.select_product(PRODUCT_ID, "áo thun")
+    await _make_reference_live(service)  # live, but the review left no description on it
+    record = await service.create_brief(PRODUCT_ID, video_seconds=30)
+    assert set(record["brief"]["shot_references"]) == {None}
+    last = [e for e in await service.events(PRODUCT_ID) if e["step"] == "references"][-1]
+    assert last["status"] == "warning" and "has a description yet" in last["message"]

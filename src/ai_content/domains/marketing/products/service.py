@@ -759,6 +759,16 @@ class ProductCatalogService:
             await self._log(product_id, "references", "error", str(error))
             return none
         pool = [image for image in live if image["image_id"] in vectors]
+        if not pool:
+            # A picture only counts once the review has described it, so say why nothing matched
+            await self._log(
+                product_id,
+                "references",
+                "warning",
+                f"None of the {len(live)} live reference(s) has a description yet: "
+                "shots have no reference",
+            )
+            return none
         looks = await self._product_look(
             product, brief, product_type, {i["image_id"] for i in pool}
         )
@@ -794,7 +804,8 @@ class ProductCatalogService:
             product_id,
             "references",
             "ok",
-            f"Matched references to {sum(1 for item in result if item)} of {len(shots)} shot(s)",
+            f"Matched references to {sum(1 for item in result if item)} of {len(shots)} shot(s) "
+            f"from {len(pool)} described reference(s)",
         )
         return result
 
