@@ -40,3 +40,13 @@ def test_dashboard_listens_on_this_machine_only_by_default() -> None:
 
     assert "${AIC_HTTP_BIND_ADDRESS:-127.0.0.1}:${AIC_HTTP_PORT:-8080}:8080" in compose
     assert "AIC_HTTP_BIND_ADDRESS=127.0.0.1" in environment
+
+
+def test_dashboard_login_is_off_by_default_and_one_file_turns_it_on() -> None:
+    nginx = (_REPOSITORY_ROOT / "deploy/nginx/default.conf").read_text(encoding="utf-8")
+    compose = (_REPOSITORY_ROOT / "deploy/compose.yaml").read_text(encoding="utf-8")
+    example = (_REPOSITORY_ROOT / "deploy/nginx/auth.example.conf").read_text(encoding="utf-8")
+
+    assert "include /etc/nginx/auth.d/*.conf;" in nginx and "auth_basic off;" in nginx
+    assert "${AIC_NGINX_AUTH_CONF:-./nginx/auth.off.conf}:/etc/nginx/auth.d/auth.conf" in compose
+    assert "auth_basic_user_file /etc/nginx/htpasswd;" in example

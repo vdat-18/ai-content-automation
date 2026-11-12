@@ -1,6 +1,7 @@
 # secrets and local config
 .env
 deploy/.env
+deploy/nginx/htpasswd
 *.local.json
 *.local.yaml
 

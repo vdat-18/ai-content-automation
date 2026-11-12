@@ -30,7 +30,8 @@ pnpm --dir frontend dev -- --port 4174                         # http://localhos
 
 Docker (PostgreSQL, SeaweedFS, API, dashboard): sao chép `deploy/.env.example` thành `deploy/.env`, điền khoá
 rồi dùng `just up`. Dashboard và API **không có đăng nhập**, nên mặc định chỉ nghe trên `127.0.0.1`
-(`AIC_HTTP_BIND_ADDRESS`); chỉ mở ra ngoài khi có VPN hoặc proxy có xác thực.
+(`AIC_HTTP_BIND_ADDRESS`). Muốn mở ra ngoài thì bật đăng nhập nginx bằng `deploy/nginx/auth.example.conf`
+(hướng dẫn trong file) hoặc đặt sau VPN.
 
 ## Cấu hình chính (`deploy/.env.example`)
 

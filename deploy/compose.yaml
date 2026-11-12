@@ -160,6 +160,9 @@ services:
         condition: service_healthy
     ports:
       - "${AIC_HTTP_BIND_ADDRESS:-127.0.0.1}:${AIC_HTTP_PORT:-8080}:8080"
+    volumes:
+      - ${AIC_NGINX_AUTH_CONF:-./nginx/auth.off.conf}:/etc/nginx/auth.d/auth.conf:ro
+      - ${AIC_NGINX_HTPASSWD:-./nginx/auth.off.conf}:/etc/nginx/htpasswd:ro
     networks:
       - internal
     init: true
