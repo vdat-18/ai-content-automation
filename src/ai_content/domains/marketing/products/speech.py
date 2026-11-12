@@ -20,9 +20,6 @@ _TRIES = 3
 _RETRY_STATUSES = {429, 500, 502, 503, 504}
 _RETRY_DELAY = 4.0
 MAX_SPEEDUP = 1.5
-PHRASE_PAUSE = 0.28  # seconds of quiet after a comma-like mark
-SENTENCE_PAUSE = 0.4  # seconds of quiet after the end of a sentence
-MIN_PHRASE_WORDS = 2
 VOICE_LUFS = -16.0  # every reading is brought to this loudness
 MAX_GAIN_DB = 12.0
 TAIL_SECONDS = 1.2  # quiet kept after the last word of a shot before the cut
@@ -116,29 +113,7 @@ async def _probe_seconds(path: Path) -> float:
         raise StitchUnavailable("ffprobe could not read the voice-over audio") from error
 
 
-def phrases(text: str) -> list[tuple[str, float]]:
-    """Split a voice-over into breath groups with the pause that follows each.
-
-    A group ends at a comma-like mark (short pause) or a sentence end (longer pause). A group of
-    a single word is joined to its neighbour because one word read alone sounds clipped.
-    """
-    groups: list[tuple[str, float]] = []
-    for match in re.finditer(r"[^,;:.!?…]+[,;:.!?…]*", text):
-        piece = " ".join(match.group().split())
-        if not re.search(r"\w", piece):
-            continue
-        pause = SENTENCE_PAUSE if re.search(r"[.!?…]$", piece) else PHRASE_PAUSE
-        if groups and len(groups[-1][0].split()) < MIN_PHRASE_WORDS:
-            groups[-1] = (f"{groups[-1][0]} {piece}", pause)
-        else:
-            groups.append((piece, pause))
-    if len(groups) > 1 and len(groups[-1][0].split()) < MIN_PHRASE_WORDS:
-        last, _ = groups.pop()
-        groups[-1] = (f"{groups[-1][0]} {last}", groups[-1][1])
-    return groups
-
-
-async def _read_in_phrases(
+async def _read_whole(
     client: SpeechClient,
     text: str,
     voice: str | None,
@@ -147,38 +122,16 @@ async def _read_in_phrases(
     index: int,
     scratch: list[Path],
 ) -> float:
-    """Read each breath group on its own and join them with pauses; returns the total seconds."""
-    pieces: list[Path] = []
-    total = 0.0
-    groups = phrases(text) or [(text.strip(), 0.0)]
-    for number, (phrase, pause) in enumerate(groups):
-        raw = folder / f"voice_raw_{index}_{number}.mp3"
-        piece = folder / f"voice_piece_{index}_{number}.wav"
-        scratch.extend([raw, piece])
-        raw.write_bytes(await client.speak(phrase, voice))
-        total += await _probe_seconds(raw)
-        await _run(
-            "ffmpeg", "-v", "error", "-y", "-i", raw.name, "-ar", "24000", "-ac", "1", piece.name,
-            cwd=folder,
-        )  # fmt: skip
-        pieces.append(piece)
-        if number < len(groups) - 1:
-            gap = folder / f"voice_gap_{index}_{number}.wav"
-            scratch.append(gap)
-            await _run(
-                "ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "anullsrc=r=24000:cl=mono",
-                "-t", f"{pause:.3f}", gap.name, cwd=folder,
-            )  # fmt: skip
-            pieces.append(gap)
-            total += pause
-    listing = folder / f"voice_phrases_{index}.txt"
-    scratch.append(listing)
-    listing.write_text("".join(f"file '{p.name}'\n" for p in pieces), encoding="utf-8")
+    """Read the text in one request, as a voice reads a whole sentence more naturally."""
+    raw = folder / f"voice_raw_{index}.mp3"
+    scratch.append(raw)
+    raw.write_bytes(await client.speak(text.strip(), voice))
+    seconds = await _probe_seconds(raw)
     await _run(
-        "ffmpeg", "-v", "error", "-y", "-f", "concat", "-safe", "0", "-i", listing.name,
-        "-c:a", "pcm_s16le", target.name, cwd=folder,
+        "ffmpeg", "-v", "error", "-y", "-i", raw.name, "-ar", "24000", "-ac", "1", target.name,
+        cwd=folder,
     )  # fmt: skip
-    return total
+    return seconds
 
 
 async def _trim_silence(part: Path, seconds: float) -> float:
@@ -247,7 +200,7 @@ async def make_voiceover(
 ) -> list[float]:
     """Read each text so it starts with its shot, and join the readings into one mp3.
 
-    A reading is spoken one breath group at a time, with a short pause between groups, and each
+    Each reading is spoken in one request, and each
     shot's voice is brought to the same loudness. Every reading is sped up to the brisk pace of
     AIC_TTS_SPEED, and one longer than its shot
     further, to at most 1.5x, and then cut; a shorter one is
@@ -310,9 +263,7 @@ async def make_voiceover(
                     continue
             phrased = output.parent / f"voice_phrased_{index}.wav"
             scratch.append(phrased)
-            length = await _read_in_phrases(
-                client, text, voice, phrased, output.parent, index, scratch
-            )
+            length = await _read_whole(client, text, voice, phrased, output.parent, index, scratch)
             lengths.append(length)
             speed = min(max(length / seconds, tts_speed()), MAX_SPEEDUP)
             await _run(
