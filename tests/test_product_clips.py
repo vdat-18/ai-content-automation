@@ -586,3 +586,25 @@ async def test_an_unchecked_clip_can_be_checked_again_without_a_new_clip(
     assert (await service.clips(PRODUCT_ID, tmp_path))[0]["qa_problem"] == ""
     assert len(video.submitted) == 1
     assert await service.recheck_clip(PRODUCT_ID, 1, tmp_path) is None
+
+
+async def test_a_skin_product_clip_is_checked_against_the_skin_in_the_photos(
+    tmp_path, monkeypatch
+) -> None:
+    from ai_content.domains.marketing.products.keyframes import KEEP_SKIN_NOTE
+
+    video = _FakeVideo()
+    service = await _service(tmp_path, video)
+    brief = {"title": "b", "shots": SHOTS, "skin_sensitive": True}
+    await service._repository.save_brief(PRODUCT_ID, "", brief, "approved")
+    checker = _FakeClipChecker([""])
+    service._clip_checker = checker
+
+    async def frames(path, seconds):
+        return [b"a"]
+
+    monkeypatch.setattr(service_module, "clip_frames", frames)
+    await service.generate_clips(PRODUCT_ID, tmp_path)
+    video.states["job0"] = JobState("completed", video_url="https://v/x.mp4")
+    await service.clips(PRODUCT_ID, tmp_path)
+    assert KEEP_SKIN_NOTE in checker.calls[0][0]

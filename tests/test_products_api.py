@@ -595,8 +595,11 @@ def test_starting_over_removes_what_was_made_and_keeps_the_product(
     monkeypatch.setitem(products_api._pipeline_runs, PRODUCT_ID, run)
     assert client.delete(f"{base}/brief").status_code == 409
     monkeypatch.delitem(products_api._pipeline_runs, PRODUCT_ID)
+    ended = {"status": "paused", "step": "", "message": "Review the images"}
+    products_api._pipeline_runs[PRODUCT_ID] = ended
 
     assert client.delete(f"{base}/brief").json() == {"deleted": True}
+    assert client.get(f"{base}/pipeline").json()["status"] == "idle"
     assert client.get(f"{base}/brief").status_code == 404
     assert client.get(f"{base}/keyframes").json() == []
     assert not folder.exists()

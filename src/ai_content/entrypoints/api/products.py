@@ -301,6 +301,7 @@ async def start_over(
         raise HTTPException(status_code=409, detail="This product is being made right now")
     if not await service.start_over(product_id, _media_root()):
         raise HTTPException(status_code=404, detail="No brief for this product")
+    _pipeline_runs.pop(product_id, None)  # the last run belonged to the script that is gone
     return {"deleted": True}
 
 
@@ -466,16 +467,16 @@ async def start_pipeline(
 
 
 @router.get("/{product_id}/pipeline")
-async def pipeline_status(
-    product_id: str,
-    service: ProductCatalogService = Depends(get_product_catalog_service),
-) -> dict[str, str]:
-    """The run in progress, else how the last one ended (it survives a restart)."""
-    return (
-        _pipeline_runs.get(product_id)
-        or await service.get_run(product_id)
-        or {"status": "idle", "step": "", "message": ""}
-    )
+async def pipeline_status(product_id: str, request: Request) -> dict[str, str]:
+    """The run in progress, else how the last one ended (it survives a restart).
+
+    The page asks every two seconds while a run goes on, so the database is only opened when the
+    run is not in memory.
+    """
+    if product_id in _pipeline_runs:
+        return _pipeline_runs[product_id]
+    async with product_catalog_scope_for(request)() as service:
+        return await service.get_run(product_id) or {"status": "idle", "step": "", "message": ""}
 
 
 @router.get("/select-errors")
