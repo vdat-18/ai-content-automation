@@ -14,6 +14,7 @@ from ai_content.domains.marketing.products.keyframes import (
     KeyframeGenerationError,
     KeyframeGenerator,
     KeyframeImageClient,
+    _to_vertical,
 )
 from ai_content.domains.marketing.products.repositories import SqliteProductRepository
 from ai_content.domains.marketing.products.service import (
@@ -597,3 +598,16 @@ async def test_an_unchecked_keyframe_can_be_checked_again_without_a_new_image(tm
     assert (await service.list_keyframes(PRODUCT_ID))[0]["qa_problem"] == "wrong label"
     assert len(keyframer.calls) == 1 and checker.calls == 2
     assert await service.recheck_keyframe(PRODUCT_ID, 2, tmp_path) is None
+
+
+def _picture(width: int, height: int) -> bytes:
+    buffer = io.BytesIO()
+    Image.new("RGB", (width, height), "white").save(buffer, "PNG")
+    return buffer.getvalue()
+
+
+@pytest.mark.parametrize(("size", "expected"), [((1024, 1536), (864, 1536)), ((1792, 1024), (576, 1024)), ((864, 1536), (864, 1536))])
+def test_a_keyframe_that_is_not_9_by_16_is_cropped_to_it(size, expected) -> None:
+    kept = _to_vertical(_picture(*size))
+    assert Image.open(io.BytesIO(kept)).size == expected
+    assert _to_vertical(b"not an image") == b"not an image"

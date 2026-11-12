@@ -21,11 +21,13 @@ _RETRY_STATUSES = {429, 500, 502, 503, 504}
 _RETRY_DELAY = 5.0
 _DOWNLOAD_TIMEOUT = 40
 _MAX_INPUT_SIDE = 1792  # the long side of the generated keyframes
+_VERTICAL = 9 / 16  # the video is 9:16, so the keyframe it starts from must be too
 
 _PRODUCT_RULE = (
     "The product photos show the real product: keep its exact shape, color, proportions, "
     "material, label and details, and never add features it does not have. Do not copy text, "
-    "logos, prices or overlays from the photos. Vertical 9:16 photo."
+    "logos, prices or overlays from the photos. Vertical 9:16 photo; keep the product and any "
+    "face in the middle, away from the left and right edges."
 )
 _NO_PEOPLE = "Do not show any human face; hands, the product and the space are enough."
 _PERSONA_RULE = (
@@ -134,6 +136,26 @@ def _shrink(content: bytes) -> bytes:
     return buffer.getvalue()
 
 
+def _to_vertical(content: bytes) -> bytes:
+    """Crop the middle of an image that is not 9:16, so what is approved is what is filmed."""
+    try:
+        with Image.open(io.BytesIO(content)) as image:
+            width, height = image.size
+            if abs(width / height - _VERTICAL) < 0.01:
+                return content
+            if width / height > _VERTICAL:
+                crop = round(height * _VERTICAL)
+                box = ((width - crop) // 2, 0, (width - crop) // 2 + crop, height)
+            else:
+                crop = round(width / _VERTICAL)
+                box = (0, (height - crop) // 2, width, (height - crop) // 2 + crop)
+            buffer = io.BytesIO()
+            image.convert("RGB").crop(box).save(buffer, "JPEG", quality=92)
+    except OSError:  # a format Pillow cannot read: keep it as it is
+        return content
+    return buffer.getvalue()
+
+
 def _data_url(content: bytes) -> str:
     content = _shrink(content)
     return f"data:{_media_type(content)};base64,{base64.b64encode(content).decode()}"
@@ -190,7 +212,7 @@ class KeyframeImageClient:
                 if response.status_code == 200:
                     image = await self._extract(response.text)
                     if image:
-                        return image
+                        return _to_vertical(image)
                     last = "no image in the response"
                 elif response.status_code in _RETRY_STATUSES:
                     last = f"HTTP {response.status_code}: {response.text[:150]}"
