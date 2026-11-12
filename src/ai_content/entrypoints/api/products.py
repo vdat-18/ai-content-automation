@@ -667,7 +667,7 @@ async def run_log(
 async def video_info(
     product_id: str,
     service: ProductCatalogService = Depends(get_product_catalog_service),
-) -> dict[str, bool]:
+) -> dict[str, bool | str]:
     store = service.media(_media_root())
     return {
         "exists": await store.exists(f"videos/{product_id}/video.mp4"),
@@ -677,6 +677,7 @@ async def video_info(
                 for ext in VOICEOVER_TYPES.values()
             ]
         ),
+        "voice_id": await service.last_voice(product_id, _media_root()),
     }
 
 

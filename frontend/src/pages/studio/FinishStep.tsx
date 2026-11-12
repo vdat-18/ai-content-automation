@@ -3,7 +3,7 @@ import { Copy, Download, Info } from "lucide-react";
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ErrorNote, Spinner } from "../../components/ui";
-import { API, useStartPipeline, useVideoCheck, VOICE_KEY } from "../../hooks/useStudio";
+import { API, useStartPipeline, useVideoCheck, useVideoInfo, VOICE_KEY } from "../../hooks/useStudio";
 import { imagesApproved } from "../../lib/studio";
 import { getJson, postJson } from "../../services/http";
 import type { BriefRecord, Keyframe, PipelineRun, PostPackage, Voice } from "../../types/studio";
@@ -32,7 +32,10 @@ export function FinishStep({ productId, record, frames, hasVideo, run }: { produ
   const pack = record.brief.post_package;
   const check = useVideoCheck(productId, version).data;
   const voices = useQuery({ queryKey: ["voices"], queryFn: ({ signal }) => getJson<Voice[]>(`${API}/voices`, signal), staleTime: Infinity });
-  const selectedVoice = voice || voices.data?.find((option) => option.id !== "auto")?.id || "";
+  const lastVoice = useVideoInfo(productId).data?.voice_id;
+  // Until a voice is chosen here, keep the voice that read the current video, else let the AI pick
+  const selectedVoice = voice || lastVoice || "auto";
+  const sentVoice = selectedVoice === "auto" ? null : selectedVoice;
 
   const writePack = useMutation({
     mutationFn: () => postJson<PostPackage>(`${API}/${productId}/post-package`),
@@ -48,12 +51,12 @@ export function FinishStep({ productId, record, frames, hasVideo, run }: { produ
     onSuccess: () => client.invalidateQueries({ queryKey: ["hooks", productId] }),
   });
   const buildHook = useMutation({
-    mutationFn: (hook: Hook) => postJson(`${API}/${productId}/hooks/${hook.id}/video`, { voice: selectedVoice || null, captions, stickers }),
+    mutationFn: (hook: Hook) => postJson(`${API}/${productId}/hooks/${hook.id}/video`, { voice: sentVoice, captions, stickers }),
     onSuccess: () => client.invalidateQueries({ queryKey: ["hooks", productId] }),
   });
   const remake = useMutation({
     mutationFn: async () => {
-      await postJson(`${API}/${productId}/voiceover`, { voice: selectedVoice || null });
+      await postJson(`${API}/${productId}/voiceover`, { voice: sentVoice });
       await postJson(`${API}/${productId}/video`, { captions, stickers });
     },
     onSuccess: () => {
@@ -158,7 +161,7 @@ export function FinishStep({ productId, record, frames, hasVideo, run }: { produ
                     {(voices.data ?? []).map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
                   </select>
                 </label>
-                {selectedVoice && <audio key={selectedVoice} controls preload="none" src={`${API}/voices/${encodeURIComponent(selectedVoice)}/sample`} />}
+                {sentVoice && <audio key={selectedVoice} controls preload="none" src={`${API}/voices/${encodeURIComponent(selectedVoice)}/sample`} />}
                 <label className="check"><input type="checkbox" checked={captions} onChange={(event) => setCaptions(event.target.checked)} />Show the on-screen text in the video (it can cover the product).</label>
                 <label className="check"><input type="checkbox" checked={stickers} onChange={(event) => setStickers(event.target.checked)} />Show price, sales and rating stickers from the product data, in the shot that mentions them.</label>
                 <div><button className="btn" disabled={remake.isPending} onClick={() => remake.mutate()}>{remake.isPending ? <><Spinner size={14} />Remaking…</> : "Remake the video with these choices"}</button></div>

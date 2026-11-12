@@ -408,13 +408,14 @@ def test_video_info_reports_whether_a_stitched_video_exists(
     tmp_path: Path, client: TestClient
 ) -> None:
     url = f"/api/v1/products/{PRODUCT_ID}/video-info"
-    assert client.get(url).json() == {"exists": False, "voiceover": False}
+    assert client.get(url).json() == {"exists": False, "voiceover": False, "voice_id": ""}
     video = tmp_path / "media" / "videos" / PRODUCT_ID / "video.mp4"
     video.parent.mkdir(parents=True)
     video.write_bytes(b"v")
-    assert client.get(url).json() == {"exists": True, "voiceover": False}
+    assert client.get(url).json() == {"exists": True, "voiceover": False, "voice_id": ""}
     (video.parent / "voiceover.mp3").write_bytes(b"v")
-    assert client.get(url).json() == {"exists": True, "voiceover": True}
+    (video.parent / "voiceover.json").write_text('{"voice_id": "tiendat.mp3"}', encoding="utf-8")
+    assert client.get(url).json() == {"exists": True, "voiceover": True, "voice_id": "tiendat.mp3"}
     assert client.get(url.replace("video-info", "voiceover")).content == b"v"
 
 

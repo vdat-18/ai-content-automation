@@ -308,3 +308,10 @@ def test_low_room_noise_after_the_words_is_not_counted_as_speech() -> None:
     samples[: rate * 3] = 0.1 * np.sin(2 * np.pi * 200 * t[: rate * 3])
     first, last = _speech(_frames(samples.astype(np.float32)))  # type: ignore[misc]
     assert first == 0 and abs(last / 100 - 3.0) < 0.1
+
+
+async def test_the_voice_that_read_the_video_is_remembered(tmp_path) -> None:
+    service = ProductCatalogService(SqliteProductRepository(tmp_path / "v.db"))
+    assert await service.last_voice(PRODUCT_ID, tmp_path) == ""
+    await service.note_voice(PRODUCT_ID, tmp_path, "Tiến Đạt", voice_id="tiendat.mp3")
+    assert await service.last_voice(PRODUCT_ID, tmp_path) == "tiendat.mp3"

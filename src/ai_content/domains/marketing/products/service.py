@@ -1409,6 +1409,7 @@ class ProductCatalogService:
                 heard,
                 variant,
                 held,
+                voice or "",
             )
         except (SpeechError, StitchUnavailable) as error:
             raise KeyframeUnavailable(f"The voice-over could not be made: {error}") from error
@@ -1609,6 +1610,7 @@ class ProductCatalogService:
         heard: dict[str, float] | None = None,
         variant: str = "",
         held: dict[str, float] | None = None,
+        voice_id: str = "",
     ) -> None:
         """Remember which voice read the voice-over and how long each shot's words are heard."""
         await self._write_json(
@@ -1616,11 +1618,17 @@ class ProductCatalogService:
             f"{video_folder(product_id, variant)}/voiceover.json",
             {
                 "voice": voice,
+                "voice_id": voice_id,
                 "made_at": datetime.now(UTC).isoformat(),
                 "speech_seconds": heard or {},
                 "shot_seconds": held or {},
             },
         )
+
+    async def last_voice(self, product_id: str, media_root: Path) -> str:
+        """The id of the voice that read the current voice-over, or "" when there is none."""
+        made = await self._read_json(media_root, f"{video_folder(product_id)}/voiceover.json")
+        return str((made or {}).get("voice_id") or "")
 
     async def list_outputs(self, media_root: Path) -> list[dict[str, Any]]:
         """The finished videos, newest first."""
