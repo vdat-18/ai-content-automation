@@ -547,6 +547,18 @@ async def generate_clips(
     return clips
 
 
+@router.put("/{product_id}/clips/{shot_index}/review")
+async def accept_clip(
+    product_id: str,
+    shot_index: int,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> dict[str, str]:
+    """Accept a flagged clip as it is, so the video can be made with it."""
+    if not await service.accept_clip(product_id, shot_index):
+        raise HTTPException(status_code=404, detail="No such clip")
+    return {"status": "accepted"}
+
+
 @router.get("/{product_id}/clips/{shot_index}/video")
 async def clip_video(
     product_id: str,

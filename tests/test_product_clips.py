@@ -537,3 +537,25 @@ async def test_two_services_do_not_collect_the_same_clip_twice(tmp_path) -> None
     second = ProductCatalogService(first._repository, videographer=video)
     await asyncio.gather(first.clips(PRODUCT_ID, tmp_path), second.clips(PRODUCT_ID, tmp_path))
     assert len(downloads) == 1
+
+
+async def test_a_flagged_clip_can_be_accepted_as_it_is(tmp_path) -> None:
+    service = await _service(tmp_path, _FakeVideo())
+    clip = {
+        "product_id": PRODUCT_ID,
+        "shot_index": 0,
+        "status": "ready",
+        "job_id": "j",
+        "job_model": "m",
+        "video_path": "clips/x.mp4",
+        "seconds": 15,
+        "attempts": 1,
+        "error": None,
+        "qa_problem": "six fingers in frame 4",
+    }
+    await service._repository.save_clip(clip)
+    assert not await service.accept_clip(PRODUCT_ID, 1)
+    assert await service.accept_clip(PRODUCT_ID, 0)
+    assert (await service._repository.list_clips(PRODUCT_ID))[0]["qa_problem"] == ""
+    events = await service.events(PRODUCT_ID)
+    assert events[-1]["status"] == "accepted" and "six fingers" in events[-1]["message"]

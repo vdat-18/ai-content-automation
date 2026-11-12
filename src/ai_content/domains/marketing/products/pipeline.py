@@ -148,7 +148,7 @@ async def _wait_for_clips(
             shots = ", ".join(str(clip["shot_index"] + 1) for clip in broken)
             raise PipelineStopped(
                 f"The clip of shot {shots} failed: {broken[0]['error'] or 'video job failed'}. "
-                "Retry it in the Clips step"
+                "Make it again from the clips list on the Finish step"
             )
         busy = [clip["shot_index"] for clip in failed]
         if busy:
@@ -169,10 +169,10 @@ async def _wait_for_clips(
                 shots = ", ".join(str(clip["shot_index"] + 1) for clip in flagged)
                 raise PipelineStopped(
                     f"The clip of shot {shots} looks wrong ({flagged[0]['qa_problem']}). "
-                    "Make it again in the Clips step, or continue from the Voice and video step"
+                    "On the Finish step, make it again or use it as it is"
                 )
             return
         if waited >= CLIP_WAIT_SECONDS:
-            raise PipelineStopped("The clips are still being made; check the Clips step later")
+            raise PipelineStopped("The clips are still being made; come back to the Finish step later")
         await asyncio.sleep(poll_seconds)
         waited += poll_seconds

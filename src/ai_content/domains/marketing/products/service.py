@@ -1118,6 +1118,28 @@ class ProductCatalogService:
                 await self._collect_clip(clip, media_root)
         return await self._repository.list_clips(product_id)
 
+    async def accept_clip(self, product_id: str, shot_index: int) -> bool:
+        """Keep a flagged clip as it is: a person looked at it and accepts it."""
+        clip = next(
+            (
+                c
+                for c in await self._repository.list_clips(product_id)
+                if c["shot_index"] == shot_index and c["status"] == "ready"
+            ),
+            None,
+        )
+        if clip is None:
+            return False
+        await self._repository.save_clip({**clip, "qa_problem": ""})
+        await self._log(
+            product_id,
+            "clip",
+            "accepted",
+            f"Accepted as it is: {clip['qa_problem'] or 'no problem was flagged'}",
+            shot_index,
+        )
+        return True
+
     async def _collect_clip(self, clip: dict[str, Any], media_root: Path) -> None:
         assert self._videographer is not None
         key = (clip["product_id"], clip["shot_index"])

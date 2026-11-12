@@ -3,6 +3,7 @@ import { Copy, Download, Info } from "lucide-react";
 import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ErrorNote, Spinner } from "../../components/ui";
+import { ClipsPanel } from "./ClipsPanel";
 import { API, useStartPipeline, useVideoCheck, useVideoInfo, VOICE_KEY } from "../../hooks/useStudio";
 import { imagesApproved } from "../../lib/studio";
 import { getJson, postJson } from "../../services/http";
@@ -83,6 +84,7 @@ export function FinishStep({ productId, record, frames, hasVideo, run }: { produ
   if (!hasVideo) {
     const ready = imagesApproved(record, frames);
     return (
+      <>
       <div className="card pad stack" style={{ maxWidth: 640 }}>
         <h1 style={{ fontSize: 24 }}>{ready ? "Ready to make your video" : "Approve the images first"}</h1>
         <p className="muted">{ready ? "The AI films every scene, records the voice-over and puts it all together. It takes about 10 minutes and you can leave the page." : "Make sure every scene is approved, then come back here."}</p>
@@ -94,6 +96,8 @@ export function FinishStep({ productId, record, frames, hasVideo, run }: { produ
         )}
         <ErrorNote error={start.error} />
       </div>
+      {ready && <ClipsPanel productId={productId} />}
+      </>
     );
   }
 
