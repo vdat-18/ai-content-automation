@@ -14,6 +14,7 @@ from PIL import Image
 
 ASPECT_SIZE = "1024x1792"
 ASPECT_RATIO = "9:16"
+EDITS_SIZE = "1024x1536"  # the tallest size the edits models accept
 _REQUEST_TIMEOUT = 240
 _TRIES = 3
 _RETRY_STATUSES = {429, 500, 502, 503, 504}
@@ -159,6 +160,7 @@ class KeyframeImageClient:
                 "prompt": prompt,
                 "image": urls,
                 "aspect_ratio": ASPECT_RATIO,
+                "size": EDITS_SIZE,
             }
         else:
             content: list[dict[str, Any]] = [{"type": "text", "text": prompt}]
@@ -192,7 +194,9 @@ class KeyframeImageClient:
         raise KeyframeGenerationError(last)
 
     async def _extract(self, text: str) -> bytes | None:
-        inline = re.search(r"data:image/\w+;base64,([A-Za-z0-9+/=]+)", text)
+        inline = re.search(r"data:image/\w+;base64,([A-Za-z0-9+/=]+)", text) or re.search(
+            r'"b64_json"\s*:\s*"([A-Za-z0-9+/=]+)"', text
+        )
         if inline:
             return base64.b64decode(inline.group(1))
         link = re.search(r"https?://[^\s)\"'\\]+\.(?:jpe?g|png|webp)", text)
