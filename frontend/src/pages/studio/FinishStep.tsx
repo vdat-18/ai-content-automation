@@ -31,6 +31,8 @@ export function FinishStep({ productId, record, frames, hasVideo, run }: { produ
   const [review, setReview] = useState("");
   const [voice, setVoice] = useState(() => window.localStorage.getItem(VOICE_KEY) ?? "");
   const pack = record.brief.post_package;
+  // A person speaking in the opening scene says words that are fixed by the filmed clip
+  const talkingOpening = record.brief.shots?.[0]?.delivery === "talking";
   const check = useVideoCheck(productId, version).data;
   const voices = useQuery({ queryKey: ["voices"], queryFn: ({ signal }) => getJson<Voice[]>(`${API}/voices`, signal), staleTime: Infinity });
   const lastVoice = useVideoInfo(productId).data?.voice_id;
@@ -142,10 +144,10 @@ export function FinishStep({ productId, record, frames, hasVideo, run }: { produ
             <div className="stack">
               <div className="row">
                 <strong className="small">Try other opening lines</strong>
-                <button className="btn btn-sm" disabled={writeHooks.isPending} onClick={() => writeHooks.mutate()}>{writeHooks.isPending ? <><Spinner size={14} />Writing…</> : hooks.data?.length ? "Write new ones" : "Write 3 opening lines"}</button>
+                {!talkingOpening && <button className="btn btn-sm" disabled={writeHooks.isPending} onClick={() => writeHooks.mutate()}>{writeHooks.isPending ? <><Spinner size={14} />Writing…</> : hooks.data?.length ? "Write new ones" : "Write 3 opening lines"}</button>}
               </div>
-              <p className="muted small">Only the first line changes. The scenes are reused, so no new scene is paid for. It uses the voice and options chosen below.</p>
-              {hooks.data?.map((hook) => (
+              <p className="muted small">{talkingOpening ? "The opening scene shows the person speaking, so its words are fixed by the filmed clip. Another opening line would need a new clip." : "Only the first line changes. The scenes are reused, so no new scene is paid for. It uses the voice and options chosen below."}</p>
+              {!talkingOpening && hooks.data?.map((hook) => (
                 <div className="caption-box" key={hook.id}>
                   <p><span className="muted small">{hook.angle}</span><br />{hook.text}</p>
                   <div className="row">

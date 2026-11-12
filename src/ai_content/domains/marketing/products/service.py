@@ -122,6 +122,10 @@ _NO_PERSON_VIDEO = (
 )
 VIDEO_LENGTHS = (15, 30, 45, 60, 75, 90)
 _WORK_FOLDERS = ("keyframes", "clips", "videos")  # the media made from a script
+_TALKING_OPENING = (
+    "The opening scene shows the person speaking, so its words are fixed by the filmed clip: "
+    "another opening line would need a new clip"
+)
 BRIEF_ATTEMPTS = 3
 KEYFRAME_REVIEW_STATUSES = frozenset({"approved", "ready", "rejected"})
 BRIEF_FIELDS = (
@@ -264,6 +268,8 @@ class ProductCatalogService:
             return None
         if self._hook_writer is None:
             raise KeyframeUnavailable("The AI model is not configured (AIC_SCREENING_API_KEY)")
+        if (record["brief"].get("shots") or [{}])[0].get("delivery") == "talking":
+            raise KeyframeUnavailable(_TALKING_OPENING)
         rules = await approved_rules(self._knowledge, KnowledgeStage.PREPARATION, "brief")
         hooks = await self._hook_writer.write(detail, record["brief"], rules.text)
         if not hooks:
@@ -1402,9 +1408,7 @@ class ProductCatalogService:
             segments.append(Reading(str(shot.get("voiceover") or ""), shot_seconds(seconds), guide))
         if hook.strip():
             if segments[0].guide is not None:
-                raise KeyframeUnavailable(
-                    "The first shot is a talking shot: its words are fixed by its clip"
-                )
+                raise KeyframeUnavailable(_TALKING_OPENING)
             segments[0] = replace(segments[0], text=hook.strip())
         store = self.media(media_root)
         where = video_folder(product_id, variant)
