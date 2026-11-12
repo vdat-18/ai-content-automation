@@ -17,7 +17,7 @@ export function Working({ run, record, frames }: { productId: string; run: Pipel
         <h1 style={{ fontSize: 24 }}>{current}…</h1>
       </div>
       <p className="muted">
-        {toVideo ? "Making the video takes about 10 minutes." : "Writing the script and creating the images takes about 8 minutes."} You can leave this page. We keep working and tell you when it is done.
+        {toVideo ? "Making the video takes about 10 minutes." : index === 0 ? "Writing the script takes about a minute." : "Creating the images takes about 8 minutes."} You can leave this page. We keep working and tell you when it is done.
       </p>
       <ol className="stack" style={{ listStyle: "none", margin: 0, padding: 0, gap: 8 }}>
         {STAGES.filter((_, i) => (toVideo ? i >= 3 : i < 3)).map((label) => {

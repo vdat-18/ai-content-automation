@@ -31,7 +31,7 @@ export function IdeaStep({ productId, product, productType, record, run }: { pro
 
   const begin = () => {
     const prefix = styles.length ? `Style: ${styles.join(", ").toLowerCase()}. ` : "";
-    start.mutate({ until: "images", idea: `${prefix}${idea}`.trim(), video_seconds: seconds });
+    start.mutate({ until: "script", idea: `${prefix}${idea}`.trim(), video_seconds: seconds });
   };
 
   return (
@@ -57,7 +57,7 @@ export function IdeaStep({ productId, product, productType, record, run }: { pro
             <div className="row" role="group" aria-label="Video length">
               {LENGTHS.map((n) => <button key={n} type="button" className="chip" aria-pressed={seconds === n} onClick={() => setSeconds(n)}>{`${n} seconds`}</button>)}
             </div>
-            <p className="muted small">{`The AI needs about ${MINUTES[seconds]} minutes. You can leave the page, we tell you when it is done.`}</p>
+            <p className="muted small">{`The script takes about a minute and you read it first. After you approve it, the images and the video take about ${MINUTES[seconds]} more minutes. You can leave the page.`}</p>
           </section>
 
           <section className="card pad stack" aria-labelledby="idea">
@@ -78,6 +78,7 @@ export function IdeaStep({ productId, product, productType, record, run }: { pro
           <h2>What the AI does next</h2>
           <ol className="muted" style={{ margin: 0, paddingLeft: 20, display: "flex", flexDirection: "column", gap: 8 }}>
             <li>Writes the script in the voice of a young seller.</li>
+            <li>Stops so you can read and fix the script.</li>
             <li>Creates each scene and checks it matches the real product.</li>
             <li>Stops so you can review the images.</li>
             <li>Then makes the video, voice-over and caption.</li>

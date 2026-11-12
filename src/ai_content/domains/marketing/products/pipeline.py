@@ -50,7 +50,10 @@ async def run_pipeline(
 
     Anything already approved or made is kept. The run stops with PipelineStopped when a
     result needs a human look (a failed or flagged image or clip) instead of paying for more.
-    With until="images" it ends once every image exists, leaving the follow-up shots for review.
+    With until="script" it ends once the script is written, for a person to read before any image
+    is paid for. With until="images" it ends once every image exists, leaving the follow-up shots
+    for review. A master keyframe the check flagged always stops the run, since every other image
+    is made to match it.
     """
     record = await service.get_brief(product_id)
     if record is None:
@@ -63,6 +66,8 @@ async def run_pipeline(
         )
         if record is None:
             raise PipelineStopped("Product not captured")
+    if until == "script":
+        return
     if record["status"] != "approved":
         report("Approving brief")
         record = await service.update_brief(product_id, {}, "approved")
@@ -83,10 +88,10 @@ async def run_pipeline(
                 f"Master keyframe failed: {master.get('error') or 'no image'}. "
                 "Retry it in the Images step"
             )
-        if master.get("qa_problem") and until != "images":
+        if master.get("qa_problem"):
             raise PipelineStopped(
                 f"Master keyframe needs a look ({master['qa_problem']}). "
-                "Review it in the Images step, then run again"
+                "Review it in the Images step, then create the other scenes"
             )
         await service.set_keyframe_status(product_id, 0, "approved")
 

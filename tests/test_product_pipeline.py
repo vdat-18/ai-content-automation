@@ -199,10 +199,7 @@ async def test_clips_that_stay_busy_stop_the_run_instead_of_retrying_forever() -
     assert not any(call.startswith("voiceover") for call in service.calls)
 
 
-async def test_a_run_until_images_stops_with_the_follow_up_shots_left_for_review() -> None:
-    service = _FakeService()
-    service.made_keyframes = [_keyframe(0, "ready", "faint skin marks"), _keyframe(1, "ready")]
-    steps: list[str] = []
+async def _run_until(service: _FakeService, until: str) -> None:
     await run_pipeline(
         service,  # type: ignore[arg-type]
         PRODUCT_ID,
@@ -210,10 +207,31 @@ async def test_a_run_until_images_stops_with_the_follow_up_shots_left_for_review
         idea="",
         video_seconds=30,
         voice=None,
-        report=steps.append,
+        report=lambda step: None,
         poll_seconds=0,
-        until="images",
+        until=until,
     )
+
+
+async def test_a_run_until_the_script_writes_it_and_leaves_it_unapproved() -> None:
+    service = _FakeService()
+    await _run_until(service, "script")
+    assert service.calls == ["create_brief:30:1"]
+    assert service.brief_status == "draft"
+
+
+async def test_a_flagged_master_stops_a_run_until_images_before_the_other_scenes() -> None:
+    service = _FakeService()
+    service.made_keyframes = [_keyframe(0, "ready", "faint skin marks"), _keyframe(1, "ready")]
+    with pytest.raises(PipelineStopped, match="Master keyframe needs a look"):
+        await _run_until(service, "images")
+    assert "keyframe:0:approved" not in service.calls
+    assert "generate_keyframes:None" not in service.calls
+
+
+async def test_a_run_until_images_stops_with_the_follow_up_shots_left_for_review() -> None:
+    service = _FakeService()
+    await _run_until(service, "images")
     assert service.calls == [
         "create_brief:30:1",
         "update_brief:approved",

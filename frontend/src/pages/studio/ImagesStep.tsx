@@ -124,6 +124,9 @@ export function ImagesStep({ productId, record, frames, run }: { productId: stri
             <h2>{record.brief.title}</h2>
             <p><strong>{`${approved} of ${shots.length}`}</strong> scenes approved</p>
             <div className="progress ok" role="progressbar" aria-valuenow={approved} aria-valuemin={0} aria-valuemax={shots.length} aria-label="Scenes approved"><div style={{ width: `${shots.length ? (approved / shots.length) * 100 : 0}%` }} /></div>
+            {masterApproved && frames.length < shots.length && (
+              <button className="btn btn-primary btn-lg btn-block" disabled={start.isPending} onClick={() => start.mutate({ until: "images" })}>{start.isPending ? "Starting…" : "Create the other scenes"}</button>
+            )}
             {all ? (
               <button className="btn btn-primary btn-lg btn-block" disabled={start.isPending} onClick={() => start.mutate({ until: "video" })}>{start.isPending ? "Starting…" : "Make the video from these scenes"}</button>
             ) : (

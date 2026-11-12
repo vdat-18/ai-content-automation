@@ -354,7 +354,7 @@ class PipelineRequest(BaseModel):
     idea: str = ""
     video_seconds: Literal[15, 30, 45, 60, 75, 90] = 60
     voice: str | None = None
-    until: Literal["images", "video"] = "video"
+    until: Literal["script", "images", "video"] = "video"
 
 
 async def _run_pipeline(

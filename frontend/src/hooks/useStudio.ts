@@ -69,11 +69,11 @@ export const useEvents = (productId: string, running: boolean) =>
 
 export const VOICE_KEY = "aic-voice";
 
-/** Start the server-side run. until="images" stops for review; "video" goes on to the finished video. */
+/** Start the server-side run. until="script" stops to read the script, "images" to review the pictures, "video" goes on to the finished video. */
 export function useStartPipeline(productId: string) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (body: { until: "images" | "video"; idea?: string; video_seconds?: number }) =>
+    mutationFn: (body: { until: "script" | "images" | "video"; idea?: string; video_seconds?: number }) =>
       postJson<PipelineRun>(`${API}/${productId}/pipeline`, {
         idea: "",
         video_seconds: 30,

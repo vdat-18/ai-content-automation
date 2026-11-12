@@ -122,6 +122,8 @@ _NO_PERSON_VIDEO = (
 )
 VIDEO_LENGTHS = (15, 30, 45, 60, 75, 90)
 _WORK_FOLDERS = ("keyframes", "clips", "videos")  # the media made from a script
+_STALE_IMAGE = "The script of this scene changed after its image was made"
+_STALE_CLIP = "The script of this scene changed after it was filmed"
 # Kept as the problem of an image or clip whose AI check could not run, so a person looks at it
 NOT_CHECKED = "Not checked: the AI check could not run"
 _TALKING_OPENING = (
@@ -164,6 +166,14 @@ def _product_photo_urls(brief: dict[str, Any], detail: dict[str, Any]) -> list[s
     """The product photos the brief picked; the first photos of the product if it picked none."""
     urls = brief.get("product_photo_urls") or [u for u in detail.get("images") or [] if u]
     return urls
+
+
+def _changed(old: dict[str, Any], new: dict[str, Any], *fields: str) -> bool:
+    """Whether any of the fields of a scene differ, ignoring line breaks and extra spaces."""
+    return any(
+        " ".join(str(old.get(f) or "").split()) != " ".join(str(new.get(f) or "").split())
+        for f in fields
+    )
 
 
 def _clean_pins(pins: list[dict[str, Any]]) -> list[dict[str, str]]:
@@ -828,11 +838,41 @@ class ProductCatalogService:
         brief.setdefault("quality_problems", [])
         if brief.get("shots") != current["brief"].get("shots"):
             # only a changed storyboard is worth a new review, which takes a minute
+            await self._flag_changed_scenes(
+                product_id, current["brief"].get("shots") or [], brief.get("shots") or []
+            )
             brief["quality_problems"] = (
                 await self._review_storyboard(detail, brief) if detail else []
             )
         await self._repository.save_brief(product_id, current["user_idea"], brief, status)
         return await self._repository.get_brief(product_id)
+
+    async def _flag_changed_scenes(
+        self, product_id: str, before: list[dict[str, Any]], after: list[dict[str, Any]]
+    ) -> None:
+        """Mark the image or clip of a scene whose script changed after it was made.
+
+        The image needs a new approval and the clip a look, so nothing made from the old script
+        goes into the video unnoticed.
+        """
+        keyframes = {k["shot_index"]: k for k in await self._repository.list_keyframes(product_id)}
+        clips = {c["shot_index"]: c for c in await self._repository.list_clips(product_id)}
+
+        for index, (old, new) in enumerate(zip(before, after, strict=False)):
+            keyframe = keyframes.get(index)
+            if (
+                keyframe
+                and keyframe.get("image_path")
+                and _changed(old, new, "keyframe_prompt", "description")
+            ):
+                status = "ready" if keyframe["status"] == "approved" else keyframe["status"]
+                await self._repository.save_keyframe(
+                    {**keyframe, "status": status, "qa_problem": _STALE_IMAGE}
+                )
+            clip = clips.get(index)
+            says_words = new.get("delivery") == "talking" and _changed(old, new, "voiceover")
+            if clip and clip["status"] == "ready" and (_changed(old, new, "motion_prompt") or says_words):
+                await self._repository.save_clip({**clip, "qa_problem": _STALE_CLIP})
 
     async def list_keyframes(self, product_id: str) -> list[dict[str, Any]]:
         return await self._repository.list_keyframes(product_id)

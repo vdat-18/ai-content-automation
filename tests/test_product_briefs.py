@@ -432,3 +432,55 @@ async def test_brief_is_rewritten_until_it_has_the_requested_number_of_shots(
     counts[:] = [4, 4, 4]
     with pytest.raises(BriefGenerationError, match="4 shots instead of 3"):
         await service.create_brief(PRODUCT_ID, video_seconds=30)
+
+
+async def test_editing_the_script_flags_what_was_already_made_from_it(tmp_path) -> None:
+    repository = SqliteProductRepository(tmp_path / "s.db")
+    service = ProductCatalogService(repository)
+    shots = [
+        {"keyframe_prompt": "a", "motion_prompt": "m", "voiceover": "hello", "delivery": "talking"},
+        {"keyframe_prompt": "b", "motion_prompt": "n", "voiceover": "world", "delivery": "narrated"},
+    ]
+    await repository.save_brief("42", "", {"title": "t", "shots": shots}, "approved")
+    for index in range(2):
+        await repository.save_keyframe(
+            {
+                "product_id": "42",
+                "shot_index": index,
+                "status": "approved",
+                "prompt": "p",
+                "image_path": f"k{index}.jpg",
+                "attempts": 1,
+                "error": None,
+                "qa_problem": "",
+            }
+        )
+        await repository.save_clip(
+            {
+                "product_id": "42",
+                "shot_index": index,
+                "status": "ready",
+                "job_id": "j",
+                "job_model": "m",
+                "video_path": f"c{index}.mp4",
+                "seconds": 15,
+                "attempts": 1,
+                "error": None,
+                "qa_problem": "",
+            }
+        )
+    edited = [
+        {**shots[0], "voiceover": "hello there", "keyframe_prompt": "a  "},  # words only: its clip
+        {**shots[1], "voiceover": "a new line"},  # a narrated line is read later: nothing to flag
+    ]
+    await service.update_brief("42", {"shots": edited}, "approved")
+    keyframes = await repository.list_keyframes("42")
+    clips = await repository.list_clips("42")
+    assert [k["qa_problem"] for k in keyframes] == ["", ""]
+    assert [c["qa_problem"] for c in clips] == ["The script of this scene changed after it was filmed", ""]
+
+    moved = [{**edited[0], "keyframe_prompt": "another picture"}, edited[1]]
+    await service.update_brief("42", {"shots": moved}, "approved")
+    first = (await repository.list_keyframes("42"))[0]
+    assert first["status"] == "ready" and "image was made" in first["qa_problem"]
+    assert (await repository.list_keyframes("42"))[1]["status"] == "approved"
