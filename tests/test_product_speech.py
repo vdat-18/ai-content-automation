@@ -214,7 +214,7 @@ async def test_a_talking_shot_needs_its_clip_before_the_voice(tmp_path) -> None:
 
 
 @needs_ffmpeg
-async def test_a_clip_without_speech_is_reported_not_crashed(tmp_path) -> None:
+async def test_a_clip_without_speech_is_read_at_its_own_pace(tmp_path) -> None:
     repository = SqliteProductRepository(tmp_path / "s.db")
     shots = [{"voiceover": "Xin chào", "duration_seconds": 15, "delivery": "talking"}]
     await repository.save_brief(PRODUCT_ID, "", {"shots": shots}, "approved")
@@ -252,8 +252,8 @@ async def test_a_clip_without_speech_is_reported_not_crashed(tmp_path) -> None:
             return _tone(3.0)
 
     service = ProductCatalogService(repository, speaker=_Fake())  # type: ignore[arg-type]
-    with pytest.raises(KeyframeUnavailable, match="no speech to follow"):
-        await service.create_voiceover(PRODUCT_ID, tmp_path)
+    made = await service.create_voiceover(PRODUCT_ID, tmp_path)  # nothing to follow: not a crash
+    assert made["voiceover"] == "mp3" and (tmp_path / "videos" / PRODUCT_ID / "voiceover.mp3").is_file()
 
 
 async def test_service_needs_the_speaker_and_an_approved_keyframe(tmp_path) -> None:

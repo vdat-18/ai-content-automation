@@ -8,6 +8,7 @@ import pytest
 
 from ai_content.domains.marketing.products import service as service_module
 from ai_content.domains.marketing.products.clips import (
+    CHECK_FRAMES,
     ClipGenerationError,
     JobState,
     StitchClip,
@@ -425,7 +426,7 @@ async def test_clip_frames_are_stills_in_time_order(tmp_path) -> None:
     path = tmp_path / "clip.mp4"
     _make_clip(path, "red", seconds=4, audio=False)
     frames = await clip_frames(path, 4)
-    assert len(frames) == 3 and all(frame[:2] == b"\xff\xd8" for frame in frames)
+    assert len(frames) == CHECK_FRAMES and all(frame[:2] == b"\xff\xd8" for frame in frames)
     assert sorted(p.name for p in tmp_path.iterdir()) == ["clip.mp4"]
 
 
