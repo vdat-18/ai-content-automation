@@ -32,6 +32,9 @@ _STICKER_TOP = 130  # small and high, above the face of a person who fills the f
 _STICKER_STEP = 130  # space for one sticker
 _PART_ENCODES = 2
 _COLOR_GRADE = "eq=contrast=1.03:brightness=0.01:saturation=1.05"
+# Light grain, a little extra sharpness and soft dark corners: a phone-camera look instead of
+# the smooth, evenly lit picture that gives AI video away
+_FILM_LOOK = "unsharp=5:5:0.5,noise=alls=6:allf=t,vignette=PI/6"
 
 
 
@@ -275,7 +278,7 @@ async def stitch(
                 f"setpts=PTS/{clip_speed():.4f},"
                 f"scale={_OUTPUT_SIZE}:force_original_aspect_ratio=increase,"
                 f"crop={_OUTPUT_SIZE},setsar=1,fps={_FPS},"
-                f"{_COLOR_GRADE}"
+                f"{_COLOR_GRADE},{_FILM_LOOK}"
             )
             if clip.cues and font is not None:
                 subtitles = output.parent / f"caption_{index}.ass"
