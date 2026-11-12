@@ -41,7 +41,7 @@ def test_removed_workflows_are_gone(client: TestClient) -> None:
 def test_creative_knowledge_bootstrap_reads_the_config_directory(client: TestClient) -> None:
     response = client.post(
         "/api/v1/marketing/creative-knowledge/bootstrap",
-        json={"contributor": "tester", "manifest_id": "creative"},
+        json={"contributor": "tester", "manifest_id": "product_ad"},
     )
     assert response.status_code == 200, response.text
     assert client.get("/api/v1/marketing/creative-knowledge").json()["total"] > 0

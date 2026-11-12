@@ -213,7 +213,10 @@ def _probe(path, entries: str) -> str:
 
 
 @pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg is not installed")
-async def test_stitch_joins_trimmed_clips_without_the_clips_own_audio(tmp_path) -> None:
+async def test_stitch_joins_trimmed_clips_without_the_clips_own_audio(
+    tmp_path, monkeypatch
+) -> None:
+    monkeypatch.setenv("AIC_BGM_PATH", str(tmp_path / "no-music.wav"))
     clips = []
     for index, color in enumerate(("red", "blue")):
         path = tmp_path / f"c{index}.mp4"
@@ -608,3 +611,20 @@ async def test_a_skin_product_clip_is_checked_against_the_skin_in_the_photos(
     video.states["job0"] = JobState("completed", video_url="https://v/x.mp4")
     await service.clips(PRODUCT_ID, tmp_path)
     assert KEEP_SKIN_NOTE in checker.calls[0][0]
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg is not installed")
+async def test_a_video_without_a_voice_over_still_gets_the_background_music(
+    tmp_path, monkeypatch
+) -> None:
+    music = tmp_path / "music.wav"
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-f", "lavfi", "-i", "sine=frequency=220:duration=1", str(music)],
+        check=True,
+    )
+    monkeypatch.setenv("AIC_BGM_PATH", str(music))
+    clip = tmp_path / "c.mp4"
+    _make_clip(clip, "red", audio=False)
+    output = tmp_path / "out.mp4"
+    await stitch([StitchClip(clip, 3.0)], output)
+    assert sorted(_probe(output, "stream=codec_type").split()) == ["audio", "video"]

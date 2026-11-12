@@ -3,24 +3,13 @@ from pathlib import Path
 
 from ai_content.domains.marketing.creative_knowledge.bootstrap import load_knowledge_bootstrap
 
-_MANIFEST = Path(__file__).parents[1] / "config/creative_knowledge/creative.json"
-_BRANDS = {"brand:aurasleep", "brand:oaklinehome", "brand:lumiskin"}
+_PRODUCT_AD = Path(__file__).parents[1] / "config/creative_knowledge/product_ad.json"
 
 
 def test_manifest_loads_with_unique_ids_and_sources() -> None:
-    manifest = load_knowledge_bootstrap(_MANIFEST)
-    assert len(manifest.items) >= 50
+    manifest = load_knowledge_bootstrap(_PRODUCT_AD)
+    assert len(manifest.items) >= 15
     assert all(item.source_refs for item in manifest.items)
-
-
-def test_each_demo_brand_has_voice_look_depiction_and_claims_rules() -> None:
-    manifest = load_knowledge_bootstrap(_MANIFEST)
-    for brand in _BRANDS:
-        scoped = [item for item in manifest.items if item.scope.brand_id == brand]
-        assert len(scoped) >= 4, brand
-
-
-_PRODUCT_AD = Path(__file__).parents[1] / "config/creative_knowledge/product_ad.json"
 
 
 def test_product_ad_rules_change_only_together_with_their_bootstrap_id() -> None:

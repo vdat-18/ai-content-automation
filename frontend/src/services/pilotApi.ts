@@ -19,7 +19,7 @@ export const pilotApi = {
     const query = status ? `?status=${encodeURIComponent(status)}` : "";
     return getJson<CreativeKnowledgeList>(`/api/v1/marketing/creative-knowledge${query}`, signal);
   },
-  bootstrapCreativeKnowledge: (contributor: string, manifestId = "creative") =>
+  bootstrapCreativeKnowledge: (contributor: string, manifestId = "product_ad") =>
     postJson<CreativeKnowledgeBootstrapResult>("/api/v1/marketing/creative-knowledge/bootstrap", {
       contributor,
       manifest_id: manifestId,

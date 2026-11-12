@@ -270,7 +270,7 @@ async def stitch(
     output.parent.mkdir(parents=True, exist_ok=True)
     font = caption_font()
     scratch: list[Path] = []
-    bgm_path = bgm or (find_bgm() if voiceover is not None else None)
+    bgm_path = bgm or find_bgm()
     try:
         limit = asyncio.Semaphore(_PART_ENCODES)
 
