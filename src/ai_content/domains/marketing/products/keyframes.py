@@ -13,6 +13,7 @@ from loguru import logger
 from PIL import Image
 
 ASPECT_SIZE = "1024x1792"
+ASPECT_RATIO = "9:16"
 _REQUEST_TIMEOUT = 240
 _TRIES = 3
 _RETRY_STATUSES = {429, 500, 502, 503, 504}
@@ -136,23 +137,37 @@ class KeyframeImageClient:
         base_url: str,
         api_key: str,
         model: str,
+        api: str = "chat",
         http: httpx.AsyncClient | None = None,
         retry_delay: float = _RETRY_DELAY,
     ) -> None:
-        self._url = base_url.rstrip("/") + "/chat/completions"
+        """`api` is "chat" (chat completions) or "edits" (the images/edits endpoint)."""
+        path = "/images/edits" if api == "edits" else "/chat/completions"
+        self._edits = api == "edits"
+        self._url = base_url.rstrip("/") + path
         self._headers = {"Authorization": f"Bearer {api_key}"}
         self._model = model
         self._http = http or httpx.AsyncClient(timeout=_REQUEST_TIMEOUT, follow_redirects=True)
         self._retry_delay = retry_delay
 
     async def generate(self, prompt: str, images: list[bytes]) -> bytes:
-        content: list[dict[str, Any]] = [{"type": "text", "text": prompt}]
-        content += [{"type": "image_url", "image_url": {"url": _data_url(i)}} for i in images]
-        body = {
-            "model": self._model,
-            "size": ASPECT_SIZE,
-            "messages": [{"role": "user", "content": content}],
-        }
+        urls = [_data_url(i) for i in images]
+        body: dict[str, Any]
+        if self._edits:
+            body = {
+                "model": self._model,
+                "prompt": prompt,
+                "image": urls,
+                "aspect_ratio": ASPECT_RATIO,
+            }
+        else:
+            content: list[dict[str, Any]] = [{"type": "text", "text": prompt}]
+            content += [{"type": "image_url", "image_url": {"url": url}} for url in urls]
+            body = {
+                "model": self._model,
+                "size": ASPECT_SIZE,
+                "messages": [{"role": "user", "content": content}],
+            }
         last = "no response"
         for attempt in range(_TRIES):
             try:

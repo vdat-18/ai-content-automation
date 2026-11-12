@@ -66,6 +66,7 @@ class ApiRuntimeSettings:
     image_base_url: str = ""
     image_api_key: str | None = None
     image_model: str = ""
+    image_api: str = "chat"
     video_base_url: str = ""
     video_api_key: str | None = None
     video_model: str = ""
@@ -125,6 +126,7 @@ def get_runtime_settings() -> ApiRuntimeSettings:
         image_base_url=application.image_base_url or application.screening_base_url,
         image_api_key=application.image_api_key_value,
         image_model=application.image_model,
+        image_api=application.image_api,
         video_base_url=application.video_base_url
         or application.image_base_url
         or application.screening_base_url,
@@ -282,6 +284,7 @@ def _keyframer(settings: ApiRuntimeSettings) -> KeyframeGenerator | None:
             base_url=settings.image_base_url,
             api_key=settings.image_api_key,
             model=settings.image_model,
+            api=settings.image_api,
         )
     )
 

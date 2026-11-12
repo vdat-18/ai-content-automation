@@ -167,6 +167,29 @@ async def test_client_follows_image_link_sends_size_and_all_images() -> None:
     assert [p["type"] for p in parts] == ["text", "image_url", "image_url"]
 
 
+async def test_client_edits_mode_posts_images_to_the_edits_endpoint() -> None:
+    seen: dict = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.host == "cdn.example":
+            return httpx.Response(200, content=PNG)
+        seen["path"] = request.url.path
+        seen.update(json.loads(request.content))
+        return httpx.Response(200, json={"data": [{"url": "https://cdn.example/a.jpeg"}]})
+
+    client = KeyframeImageClient(
+        base_url="https://api.example/v1",
+        api_key="k",
+        model="m",
+        api="edits",
+        http=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+        retry_delay=0,
+    )
+    assert await client.generate("prompt", [b"one", b"two"]) == PNG
+    assert seen["path"] == "/v1/images/edits"
+    assert (seen["prompt"], seen["aspect_ratio"], len(seen["image"])) == ("prompt", "9:16", 2)
+
+
 async def test_client_reads_inline_base64_and_retries_overload() -> None:
     attempts = []
 

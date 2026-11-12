@@ -29,6 +29,7 @@ class ApplicationSettings(BaseSettings):
     image_base_url: str = Field("", validation_alias="AIC_IMAGE_BASE_URL")
     image_api_key: SecretStr | None = Field(None, validation_alias="AIC_IMAGE_API_KEY")
     image_model: str = Field("", validation_alias="AIC_IMAGE_MODEL")
+    image_api: Literal["chat", "edits"] = Field("chat", validation_alias="AIC_IMAGE_API")
     video_base_url: str = Field("", validation_alias="AIC_VIDEO_BASE_URL")
     video_api_key: SecretStr | None = Field(None, validation_alias="AIC_VIDEO_API_KEY")
     video_model: str = Field("", validation_alias="AIC_VIDEO_MODEL")
