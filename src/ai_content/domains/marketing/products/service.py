@@ -122,6 +122,8 @@ _NO_PERSON_VIDEO = (
 )
 VIDEO_LENGTHS = (15, 30, 45, 60, 75, 90)
 _WORK_FOLDERS = ("keyframes", "clips", "videos")  # the media made from a script
+# Kept as the problem of an image or clip whose AI check could not run, so a person looks at it
+NOT_CHECKED = "Not checked: the AI check could not run"
 _TALKING_OPENING = (
     "The opening scene shows the person speaking, so its words are fixed by the filmed clip: "
     "another opening line would need a new clip"
@@ -1044,7 +1046,7 @@ class ProductCatalogService:
                 before = await self._keyframe_before(product_id, index, media_root)
                 before_loaded = True
             problem = await self._check_keyframe(shot, photos, image, master, persona, before) or ""
-            if not problem:
+            if not problem or problem == NOT_CHECKED:
                 break
             await self._log(
                 product_id, "keyframe", "retry", f"Attempt {attempts}: Gemini says {problem}", index
@@ -1113,7 +1115,86 @@ class ProductCatalogService:
             description = f"{description}\n\nThe whole video, for context:\n{shot['story']}"
         if shot.get("qa_rules"):
             description = f"{description}\n\nApproved rules:\n{shot['qa_rules']}"
-        return await self._checker.check(description, photos, image, master, persona, before)
+        problem = await self._checker.check(description, photos, image, master, persona, before)
+        return NOT_CHECKED if problem is None else problem
+
+    async def recheck_keyframe(
+        self, product_id: str, shot_index: int, media_root: Path
+    ) -> dict[str, Any] | None:
+        """Run the AI check again on an image that is made; no new image is paid for."""
+        record = await self._repository.get_brief(product_id)
+        keyframes = {k["shot_index"]: k for k in await self._repository.list_keyframes(product_id)}
+        keyframe = keyframes.get(shot_index)
+        if record is None or keyframe is None or not keyframe.get("image_path"):
+            return None
+        brief = record["brief"]
+        store = self.media(media_root)
+        persona = (
+            (await self.persona_photos(product_id, media_root))[:PERSONA_PHOTOS_PER_SHOT]
+            if brief.get("with_person")
+            else []
+        )
+        master_path = keyframes.get(0, {}).get("image_path")
+        qa_rules = await approved_rules(self._knowledge, KnowledgeStage.REVIEW, "keyframe")
+        shot = {
+            **brief["shots"][shot_index],
+            "product_size": brief.get("product_size"),
+            "product_variant": brief.get("product_variant"),
+            "qa_rules": qa_rules.text,
+            "story": story_note(brief, shot_index),
+        }
+        photos = await fetch_images(
+            _product_photo_urls(brief, await self._repository.get_detail(product_id) or {})[
+                :PRODUCT_PHOTOS_PER_SHOT
+            ]
+        )
+        problem = (
+            await self._check_keyframe(
+                shot,
+                photos,
+                await store.read(keyframe["image_path"]),
+                await store.read(master_path) if shot_index and master_path else None,
+                persona or None,
+                await self._keyframe_before(product_id, shot_index, media_root),
+            )
+            or ""
+        )
+        checked = {**keyframe, "qa_problem": problem}
+        await self._repository.save_keyframe(checked)
+        await self._log(
+            product_id,
+            "keyframe",
+            "flagged" if problem else "ok",
+            "Checked again" + (f", flagged: {problem}" if problem else ""),
+            shot_index,
+        )
+        return checked
+
+    async def recheck_clip(
+        self, product_id: str, shot_index: int, media_root: Path
+    ) -> dict[str, Any] | None:
+        """Run the AI check again on a clip that is made; no new clip is paid for."""
+        clip = next(
+            (
+                c
+                for c in await self._repository.list_clips(product_id)
+                if c["shot_index"] == shot_index and c["status"] == "ready"
+            ),
+            None,
+        )
+        if clip is None:
+            return None
+        problem = await self._check_clip(clip, clip["video_path"], media_root) or ""
+        checked = {**clip, "qa_problem": problem}
+        await self._repository.save_clip(checked)
+        await self._log(
+            product_id,
+            "clip",
+            "flagged" if problem else "ok",
+            "Checked again" + (f", flagged: {problem}" if problem else ""),
+            shot_index,
+        )
+        return checked
 
     async def clips(self, product_id: str, media_root: Path) -> list[dict[str, Any]]:
         """List clips, first collecting the ones whose video job has finished."""
@@ -1167,7 +1248,7 @@ class ProductCatalogService:
                 relative = f"clips/{clip['product_id']}/shot_{clip['shot_index']}.mp4"
                 await self.media(media_root).write(relative, content)
                 problem = await self._check_clip(clip, relative, media_root)
-                if problem and self._knowledge is not None:
+                if problem and problem != NOT_CHECKED and self._knowledge is not None:
                     await propose_feedback(
                         self._knowledge,
                         product_id=clip["product_id"],
@@ -1229,13 +1310,14 @@ class ProductCatalogService:
             await self.persona_photos(product_id, media_root) if brief.get("with_person") else []
         )
         description = str(shot.get("description") or shot.get("motion_prompt") or "")
-        return await self._clip_checker.check(
+        problem = await self._clip_checker.check(
             description,
             photos,
             await store.read(keyframe["image_path"]),
             frames,
             persona_images or None,
         )
+        return NOT_CHECKED if problem is None else problem
 
     async def generate_clips(
         self, product_id: str, media_root: Path, shot_index: int | None = None

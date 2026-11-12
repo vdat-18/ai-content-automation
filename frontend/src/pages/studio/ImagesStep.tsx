@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import { ErrorNote, Spinner } from "../../components/ui";
 import { useLightbox } from "../../hooks/useLightbox";
 import { API, useStartPipeline } from "../../hooks/useStudio";
-import { imagesApproved } from "../../lib/studio";
+import { checkNote, imagesApproved, isUnchecked } from "../../lib/studio";
 import { pilotApi } from "../../services/pilotApi";
 import { postJson, putJson } from "../../services/http";
 import type { BriefRecord, Keyframe, PipelineRun } from "../../types/studio";
@@ -44,6 +44,7 @@ export function ImagesStep({ productId, record, frames, run }: { productId: stri
       void refresh();
     },
   });
+  const recheck = useMutation({ mutationFn: (index: number) => postJson(`${API}/${productId}/keyframes/${index}/check`), onSuccess: refresh });
   const start = useStartPipeline(productId);
   const rules = useQuery({ queryKey: ["creative-knowledge"], queryFn: ({ signal }) => pilotApi.creativeKnowledge(undefined, signal) });
   const imageRules = (rules.data?.items ?? []).filter((item) => item.status === "approved" && item.scope.asset_type === "keyframe");
@@ -72,7 +73,7 @@ export function ImagesStep({ productId, record, frames, run }: { productId: stri
       <div className="studio-cols">
         <div className="studio-main">
           {!masterApproved && byShot.has(0) && <div className="notice"><div>Approve scene 1 first. The other scenes are made to match it.</div></div>}
-          <ErrorNote error={review.error ?? redo.error} />
+          <ErrorNote error={review.error ?? redo.error ?? recheck.error} />
           <div className="shot-grid">
             {shots.map((shot, index) => {
               const frame = byShot.get(index);
@@ -90,7 +91,8 @@ export function ImagesStep({ productId, record, frames, run }: { productId: stri
                   <div className="body">
                     <strong>{`Scene ${index + 1} · ${ROLE_LABEL[shot.role] ?? shot.role.replaceAll("_", " ")}`}</strong>
                     <p className="line">{`"${shot.voiceover}"`}</p>
-                    {frame && <p className={frame.qa_problem ? "check-warn" : "check-ok"}>{frame.qa_problem ? `The AI suggests a second look: ${frame.qa_problem}` : "The AI checked: matches the real product"}</p>}
+                    {frame && <p className={frame.qa_problem ? "check-warn" : "check-ok"}>{checkNote(frame.qa_problem)}</p>}
+                    {frame && isUnchecked(frame.qa_problem) && !busy && <button className="btn btn-sm" disabled={recheck.isPending} onClick={() => recheck.mutate(index)}>{recheck.isPending && recheck.variables === index ? <><Spinner size={14} />Checking…</> : "Check again"}</button>}
                     {open ? (
                       <div className="stack" style={{ gap: 8 }}>
                         <label className="field" htmlFor={`note-${index}`}>What is not right?</label>

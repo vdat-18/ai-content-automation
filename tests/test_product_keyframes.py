@@ -17,6 +17,7 @@ from ai_content.domains.marketing.products.keyframes import (
 )
 from ai_content.domains.marketing.products.repositories import SqliteProductRepository
 from ai_content.domains.marketing.products.service import (
+    NOT_CHECKED,
     KeyframeUnavailable,
     ProductCatalogService,
 )
@@ -268,7 +269,7 @@ async def test_unchecked_keyframe_is_not_regenerated(tmp_path) -> None:
     service = await _service(tmp_path, keyframer)
     service._checker = _Checker([None])
     [record] = await service.generate_keyframes(PRODUCT_ID, tmp_path)
-    assert len(keyframer.calls) == 1 and record["qa_problem"] == ""
+    assert len(keyframer.calls) == 1 and record["qa_problem"] == NOT_CHECKED
 
 
 class _RecordingChecker:
@@ -581,3 +582,18 @@ async def test_a_note_is_the_first_thing_the_image_model_is_asked_to_fix(tmp_pat
     service = await _service(tmp_path, keyframer)
     await service.generate_keyframes(PRODUCT_ID, tmp_path, 0, "faint marks on the cheek")
     assert keyframer.calls == [("master", 2, "faint marks on the cheek")]
+
+
+async def test_an_unchecked_keyframe_can_be_checked_again_without_a_new_image(tmp_path) -> None:
+    keyframer = _FakeKeyframer()
+    service = await _service(tmp_path, keyframer)
+    checker = _Checker([None, "wrong label"])
+    service._checker = checker
+    [record] = await service.generate_keyframes(PRODUCT_ID, tmp_path)
+    assert record["qa_problem"] == NOT_CHECKED
+
+    checked = await service.recheck_keyframe(PRODUCT_ID, 0, tmp_path)
+    assert checked["qa_problem"] == "wrong label" and checked["status"] == "ready"
+    assert (await service.list_keyframes(PRODUCT_ID))[0]["qa_problem"] == "wrong label"
+    assert len(keyframer.calls) == 1 and checker.calls == 2
+    assert await service.recheck_keyframe(PRODUCT_ID, 2, tmp_path) is None

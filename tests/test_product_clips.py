@@ -20,6 +20,7 @@ from ai_content.domains.marketing.products.clips import (
 )
 from ai_content.domains.marketing.products.repositories import SqliteProductRepository
 from ai_content.domains.marketing.products.service import (
+    NOT_CHECKED,
     KeyframeUnavailable,
     ProductCatalogService,
 )
@@ -376,7 +377,7 @@ async def test_finished_clip_is_checked_and_a_flag_is_kept_until_it_is_made_agai
     await service.generate_clips(PRODUCT_ID, tmp_path, shot_index=0)
     video.states["job2"] = JobState("completed", video_url="https://v/z.mp4")
     [unchecked] = await service.clips(PRODUCT_ID, tmp_path)
-    assert (unchecked["status"], unchecked["qa_problem"]) == ("ready", "")
+    assert (unchecked["status"], unchecked["qa_problem"]) == ("ready", NOT_CHECKED)
 
 
 async def test_a_flagged_clip_proposes_a_script_rule_once(tmp_path, monkeypatch) -> None:
@@ -559,3 +560,25 @@ async def test_a_flagged_clip_can_be_accepted_as_it_is(tmp_path) -> None:
     assert (await service._repository.list_clips(PRODUCT_ID))[0]["qa_problem"] == ""
     events = await service.events(PRODUCT_ID)
     assert events[-1]["status"] == "accepted" and "six fingers" in events[-1]["message"]
+
+
+async def test_an_unchecked_clip_can_be_checked_again_without_a_new_clip(
+    tmp_path, monkeypatch
+) -> None:
+    video = _FakeVideo()
+    service = await _service(tmp_path, video)
+    service._clip_checker = _FakeClipChecker([None, ""])
+
+    async def frames(path, seconds):
+        return [b"a"]
+
+    monkeypatch.setattr(service_module, "clip_frames", frames)
+    await service.generate_clips(PRODUCT_ID, tmp_path)
+    video.states["job0"] = JobState("completed", video_url="https://v/x.mp4")
+    [unchecked] = await service.clips(PRODUCT_ID, tmp_path)
+    assert unchecked["qa_problem"] == NOT_CHECKED
+
+    assert (await service.recheck_clip(PRODUCT_ID, 0, tmp_path))["qa_problem"] == ""
+    assert (await service.clips(PRODUCT_ID, tmp_path))[0]["qa_problem"] == ""
+    assert len(video.submitted) == 1
+    assert await service.recheck_clip(PRODUCT_ID, 1, tmp_path) is None

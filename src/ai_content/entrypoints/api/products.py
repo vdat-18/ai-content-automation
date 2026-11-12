@@ -518,6 +518,19 @@ async def review_keyframe(
     return {"status": body.status}
 
 
+@router.post("/{product_id}/keyframes/{shot_index}/check")
+async def recheck_keyframe(
+    product_id: str,
+    shot_index: int,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> dict[str, Any]:
+    """Run the AI check again on an image that is made, without making a new one."""
+    keyframe = await service.recheck_keyframe(product_id, shot_index, _media_root())
+    if keyframe is None:
+        raise HTTPException(status_code=404, detail="No such keyframe")
+    return keyframe
+
+
 @router.get("/{product_id}/keyframes/{shot_index}/image")
 async def keyframe_image(
     product_id: str,
@@ -570,6 +583,19 @@ async def accept_clip(
     if not await service.accept_clip(product_id, shot_index):
         raise HTTPException(status_code=404, detail="No such clip")
     return {"status": "accepted"}
+
+
+@router.post("/{product_id}/clips/{shot_index}/check")
+async def recheck_clip(
+    product_id: str,
+    shot_index: int,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> dict[str, Any]:
+    """Run the AI check again on a clip that is made, without making a new one."""
+    clip = await service.recheck_clip(product_id, shot_index, _media_root())
+    if clip is None:
+        raise HTTPException(status_code=404, detail="No such clip")
+    return clip
 
 
 @router.get("/{product_id}/clips/{shot_index}/video")

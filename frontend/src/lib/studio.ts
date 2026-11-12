@@ -21,6 +21,12 @@ export function friendlyStep(step: string): string {
   return "Getting started";
 }
 
+/** The AI check could not run, so a person has to look at the picture or clip. */
+export const isUnchecked = (problem: string) => problem.startsWith("Not checked");
+
+/** What to tell the person about the AI check of one picture or clip. */
+export const checkNote = (problem: string) => (problem ? (isUnchecked(problem) ? problem : `The AI suggests a second look: ${problem}`) : "The AI checked: matches the real product");
+
 export function imagesApproved(brief: BriefRecord | null | undefined, keyframes: Keyframe[]): boolean {
   const shots = brief?.brief.shots?.length ?? 0;
   return shots > 0 && Array.from({ length: shots }, (_, index) => keyframes.find((k) => k.shot_index === index)?.status === "approved").every(Boolean);

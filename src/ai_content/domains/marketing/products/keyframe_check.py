@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import base64
 from typing import Protocol
 
@@ -25,6 +26,9 @@ class _BamlCheckClient(Protocol):
         previous_keyframe: BamlImage | None,
     ) -> baml_types.KeyframeCheck: ...
 
+_TRIES = 3
+_RETRY_DELAY = 3.0
+
 
 def _image(content: bytes) -> BamlImage:
     media_type = "image/png" if content[:4] == b"\x89PNG" else "image/jpeg"
@@ -34,8 +38,11 @@ def _image(content: bytes) -> BamlImage:
 class KeyframeChecker:
     """Ask the BAML screening model whether a keyframe matches the product photos."""
 
-    def __init__(self, client: _BamlCheckClient) -> None:
+    def __init__(
+        self, client: _BamlCheckClient, retry_delay: float = _RETRY_DELAY
+    ) -> None:
         self._client = client
+        self._retry_delay = retry_delay
 
     @classmethod
     def from_settings(cls, *, base_url: str, api_key: str, model: str) -> KeyframeChecker:
@@ -59,16 +66,20 @@ class KeyframeChecker:
         previous: bytes | None = None,
     ) -> str | None:
         """Return "" when the keyframe passes, the problem text when it fails, None if unchecked."""
-        try:
-            result = await self._client.CheckKeyframe(
-                shot_description,
-                [_image(photo) for photo in product_photos],
-                _image(master) if master else None,
-                _image(keyframe),
-                [_image(photo) for photo in persona or []],
-                _image(previous) if previous else None,
-            )
-        except BamlError as error:
-            logger.warning("Keyframe check failed: {}", str(error)[:300])
-            return None
-        return "" if result.passed else (result.problem.strip() or "The keyframe does not match.")
+        for attempt in range(_TRIES):
+            try:
+                result = await self._client.CheckKeyframe(
+                    shot_description,
+                    [_image(photo) for photo in product_photos],
+                    _image(master) if master else None,
+                    _image(keyframe),
+                    [_image(photo) for photo in persona or []],
+                    _image(previous) if previous else None,
+                )
+            except BamlError as error:
+                logger.warning("Keyframe check attempt {} failed: {}", attempt + 1, str(error)[:300])
+                if attempt < _TRIES - 1:
+                    await asyncio.sleep(self._retry_delay)
+                continue
+            return "" if result.passed else (result.problem.strip() or "The keyframe does not match.")
+        return None
