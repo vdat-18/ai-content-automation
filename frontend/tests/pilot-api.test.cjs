@@ -54,11 +54,12 @@ test("a rule the AI proposes waits for a human before it is used", () => {
   assert.doesNotMatch(rules, /autoApprove|auto_approve/);
 });
 
-test("the studio pauses for image review before the video is paid for", () => {
+test("the studio pauses for the script and for image review before they are paid for", () => {
   const idea = src("pages", "studio", "IdeaStep.tsx");
   const images = src("pages", "studio", "ImagesStep.tsx");
   const hook = src("hooks", "useStudio.ts");
-  assert.match(idea, /until: "images"/);
+  assert.match(idea, /until: "script"/);
+  assert.match(images, /until: "images"/);
   assert.match(images, /until: "video"/);
   assert.match(images, /Approve every scene to continue/);
   assert.match(hook, /pipeline/);
