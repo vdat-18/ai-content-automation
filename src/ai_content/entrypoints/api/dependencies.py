@@ -41,7 +41,11 @@ from ai_content.domains.marketing.products.storyboard_review import StoryboardRe
 from ai_content.domains.marketing.products.text_embedding import TextEmbedder
 from ai_content.domains.marketing.products.voice_picker import VoicePicker
 from ai_content.entrypoints.postgres_runtime import PostgresRuntimeContainer
-from ai_content.platform.ai_usage import AIUsageRepository, SqliteAIUsageRepository
+from ai_content.platform.ai_usage import (
+    AIUsageRepository,
+    AIUsageTracker,
+    SqliteAIUsageRepository,
+)
 from ai_content.platform.database import Database
 from ai_content.platform.notifications import (
     NotificationRepository,
@@ -492,6 +496,11 @@ async def product_catalog_scope(postgres: Any) -> AsyncIterator[ProductCatalogSe
         if postgres is not None
         else CreativeKnowledgeService(knowledge_repository)
     )
+    usage_repository = (
+        postgres.ai_usage_repository
+        if postgres is not None
+        else SqliteAIUsageRepository(settings.db_path)
+    )
     try:
         yield ProductCatalogService(
             repository,
@@ -513,11 +522,13 @@ async def product_catalog_scope(postgres: Any) -> AsyncIterator[ProductCatalogSe
             ad_analyzer=_ad_analyzer(settings),
             hook_writer=_hook_writer(settings),
             voice_picker=_voice_picker(settings),
+            usage=AIUsageTracker(usage_repository),
         )
     finally:
         if postgres is None:
             repository.close()
             knowledge_repository.close()
+            usage_repository.close()
 
 
 def product_catalog_scope_for(request: Request):

@@ -10,6 +10,8 @@ import { getJson, postJson } from "../../services/http";
 import type { BriefRecord, Keyframe, PipelineRun, PostPackage, Voice } from "../../types/studio";
 
 type Hook = { id: string; angle: string; text: string; built: boolean };
+type Usage = { by_operation: { key: string; request_count: number }[] };
+const USED = { keyframe: "images", clip: "clips", voiceover: "voice readings" } as Record<string, string>;
 const linkKey = (productId: string) => `aic-affiliate-${productId}`;
 const readLink = (productId: string) => {
   try {
@@ -34,6 +36,8 @@ export function FinishStep({ productId, record, frames, hasVideo, run }: { produ
   // A person speaking in the opening scene says words that are fixed by the filmed clip
   const talkingOpening = record.brief.shots?.[0]?.delivery === "talking";
   const check = useVideoCheck(productId, version).data;
+  const usage = useQuery({ queryKey: ["usage", productId, version], queryFn: ({ signal }) => getJson<Usage>(`/api/v1/ai-usage/summary?correlation_id=${productId}`, signal) });
+  const used = (usage.data?.by_operation ?? []).filter((item) => USED[item.key]);
   const voices = useQuery({ queryKey: ["voices"], queryFn: ({ signal }) => getJson<Voice[]>(`${API}/voices`, signal), staleTime: Infinity });
   const lastVoice = useVideoInfo(productId).data?.voice_id;
   // Until a voice is chosen here, keep the voice that read the current video, else let the AI pick
@@ -118,6 +122,7 @@ export function FinishStep({ productId, record, frames, hasVideo, run }: { produ
               <span className="pill">{`${record.brief.shots?.length ?? 0} scenes`}</span>
               <span className="pill">With voice-over</span>
             </div>
+            {used.length > 0 && <p className="muted small">{`Made with ${used.map((item) => `${item.request_count} ${USED[item.key]}`).join(", ")}`}</p>}
             <div className="row">
               <a className="btn btn-primary btn-lg" href={`${API}/${productId}/video?download=true`}><Download size={18} aria-hidden="true" />Download video</a>
               <a className="btn btn-lg" href={`${API}/${productId}/cover?download=true`}>Download cover picture</a>

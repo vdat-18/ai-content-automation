@@ -681,3 +681,25 @@ async def test_a_skin_product_keeps_the_skin_of_the_person_as_it_is() -> None:
     retouched, kept = (prompt for prompt, _ in client.calls)
     assert "Retouch only the skin" in retouched and "Do not retouch" not in retouched
     assert "Do not retouch the skin" in kept and "Retouch only the skin" not in kept
+
+
+async def test_every_image_call_is_counted_in_the_usage_ledger(tmp_path) -> None:
+    from datetime import UTC, datetime, timedelta
+
+    from ai_content.platform.ai_usage import (
+        AIUsageFilters,
+        AIUsageTracker,
+        SqliteAIUsageRepository,
+    )
+
+    service = await _service(tmp_path, _FakeKeyframer())
+    ledger = SqliteAIUsageRepository(tmp_path / "usage.db")
+    service._usage = AIUsageTracker(ledger)
+    service._checker = _Checker(["wrong color", ""])
+    await service.generate_keyframes(PRODUCT_ID, tmp_path)
+    now = datetime.now(UTC)
+    window = AIUsageFilters(
+        now - timedelta(hours=1), now + timedelta(hours=1), correlation_id=PRODUCT_ID
+    )
+    [counted] = (await ledger.summary(window)).by_operation
+    assert (counted.key, counted.request_count, counted.succeeded) == ("keyframe", 2, 2)

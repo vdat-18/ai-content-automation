@@ -82,14 +82,14 @@ class VideoClient:
     ) -> None:
         self._base = base_url.rstrip("/")
         self._headers = {"Authorization": f"Bearer {api_key}"}
-        self._model = model
+        self.model = model
         self._http = http or httpx.AsyncClient(timeout=_TIMEOUT, follow_redirects=True)
 
     async def submit(self, prompt: str, image: bytes, seconds: int) -> tuple[str, str]:
         """Start a job from a first-frame image; return (job id, model name to poll with)."""
         frame = f"data:{_media_type(image)};base64,{base64.b64encode(image).decode()}"
         body = {
-            "model": self._model,
+            "model": self.model,
             "prompt": prompt,
             "seconds": seconds,
             "size": ASPECT,
@@ -108,7 +108,7 @@ class VideoClient:
         job = response.json()
         if not job.get("id"):
             raise ClipGenerationError(f"no job id in the response: {response.text[:200]}")
-        return str(job["id"]), str(job.get("model") or self._model)
+        return str(job["id"]), str(job.get("model") or self.model)
 
     async def status(self, job_id: str, job_model: str) -> JobState:
         url = f"{self._base}/videos/{job_id}?model={quote(job_model, safe='')}"

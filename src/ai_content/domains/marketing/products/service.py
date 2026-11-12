@@ -22,6 +22,12 @@ from ai_content.domains.marketing.creative_knowledge.models import (
     KnowledgeStage,
 )
 from ai_content.domains.marketing.creative_knowledge.service import CreativeKnowledgeService
+from ai_content.platform.ai_usage import (
+    AIUsageCompletion,
+    AIUsageFailure,
+    AIUsageStart,
+    AIUsageTracker,
+)
 
 from .briefing import (
     BriefGenerationError,
@@ -262,7 +268,9 @@ class ProductCatalogService:
         ad_analyzer: AdAnalyzer | None = None,
         hook_writer: HookWriter | None = None,
         voice_picker: VoicePicker | None = None,
+        usage: AIUsageTracker | None = None,
     ) -> None:
+        self._usage = usage
         self._voice_picker = voice_picker
         self._ad_analyzer = ad_analyzer
         self._hook_writer = hook_writer
@@ -819,6 +827,44 @@ class ProductCatalogService:
         """The store of generated files: the local folder plus the remote copy, when set up."""
         return MediaStore(Path(media_root), self._remote_media)
 
+    async def _count_call(
+        self,
+        product_id: str,
+        operation: str,
+        backend: str,
+        client: object,
+        *,
+        count: int = 1,
+        output_bytes: int | None = None,
+        failure: str = "",
+    ) -> None:
+        """Write paid calls to the usage ledger; it must never break the step it counts."""
+        if self._usage is None:
+            return
+        try:
+            event = await self._usage.start(
+                AIUsageStart(
+                    workstream="product_ad",
+                    operation=operation,
+                    backend=backend,
+                    model=str(getattr(client, "model", "unknown")),
+                    run_id=product_id,
+                )
+            )
+            if failure:
+                await self._usage.fail(
+                    event, AIUsageFailure(error_code=failure[:80], request_count=count)
+                )
+            else:
+                await self._usage.succeed(
+                    event,
+                    AIUsageCompletion(
+                        request_count=count, output_count=count, output_bytes=output_bytes
+                    ),
+                )
+        except Exception as error:  # noqa: BLE001
+            logger.warning("Could not write the usage of {}: {}", operation, error)
+
     async def _log(
         self, product_id: str, step: str, status: str, message: str, shot_index: int | None = None
     ) -> None:
@@ -1094,6 +1140,9 @@ class ProductCatalogService:
             except KeyframeGenerationError as error:
                 attempts += 1
                 await self._log(product_id, "keyframe", "error", str(error), index)
+                await self._count_call(
+                    product_id, "keyframe", "image", self._keyframer, failure=str(error)
+                )
                 if image is None:
                     await self._repository.save_keyframe(
                         {
@@ -1108,6 +1157,9 @@ class ProductCatalogService:
                 break
             attempts += 1
             image = candidate
+            await self._count_call(
+                product_id, "keyframe", "image", self._keyframer, output_bytes=len(candidate)
+            )
             if not before_loaded:
                 if previous_done is not None:
                     await previous_done.wait()  # the cut check needs the shot before this one
@@ -1498,7 +1550,11 @@ class ProductCatalogService:
         except ClipGenerationError as error:
             await self._repository.save_clip({**clip, "status": "failed", "error": str(error)})
             await self._log(product_id, "clip", "error", str(error), index)
+            await self._count_call(
+                product_id, "clip", "video", self._videographer, failure=str(error)
+            )
             return
+        await self._count_call(product_id, "clip", "video", self._videographer)
         await self._repository.save_clip(
             {
                 **clip,
@@ -1592,6 +1648,13 @@ class ProductCatalogService:
         planned = [reading.seconds for reading in segments]
         try:
             lengths = await make_voiceover(self._speaker, segments, folder / "voiceover.mp3", voice)
+            await self._count_call(
+                product_id,
+                "voiceover",
+                "tts",
+                self._speaker,
+                count=sum(1 for reading in segments if reading.text.strip()),
+            )
             await store.push(f"{where}/voiceover.mp3")
             heard = {
                 str(index): round(spoken_seconds(n, planned_seconds, reading.guide is not None), 2)

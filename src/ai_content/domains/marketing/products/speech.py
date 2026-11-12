@@ -71,14 +71,14 @@ class SpeechClient:
     ) -> None:
         self._url = base_url.rstrip("/") + "/audio/speech"
         self._headers = {"Authorization": f"Bearer {api_key}"}
-        self._model = model
+        self.model = model
         self._voice = voice or _DEFAULT_VOICE
         self._http = http or httpx.AsyncClient(timeout=_TIMEOUT)
         self._retry_delay = retry_delay
 
     async def speak(self, text: str, voice: str | None = None) -> bytes:
         body = {
-            "model": self._model,
+            "model": self.model,
             "input": text,
             "voice": voice or self._voice,
             "response_format": "mp3",
