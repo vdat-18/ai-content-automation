@@ -1,3 +1,4 @@
+import asyncio
 import json
 import shutil
 import subprocess
@@ -518,3 +519,21 @@ async def test_a_shot_is_cut_when_its_voice_over_ends_early(tmp_path) -> None:
         (tmp_path / "videos" / PRODUCT_ID / "video.json").read_text(encoding="utf-8")
     )
     assert 2.9 < built["seconds"] < 3.1  # without the cut it would be 3.8
+
+
+async def test_two_services_do_not_collect_the_same_clip_twice(tmp_path) -> None:
+    downloads: list[int] = []
+
+    class _Slow(_FakeVideo):
+        async def download(self, video_url):
+            downloads.append(1)
+            await asyncio.sleep(0.01)
+            return b"mp4-bytes"
+
+    video = _Slow()
+    first = await _service(tmp_path, video)
+    await first.generate_clips(PRODUCT_ID, tmp_path)
+    video.states["job0"] = JobState("completed", video_url="https://v/x.mp4")
+    second = ProductCatalogService(first._repository, videographer=video)
+    await asyncio.gather(first.clips(PRODUCT_ID, tmp_path), second.clips(PRODUCT_ID, tmp_path))
+    assert len(downloads) == 1

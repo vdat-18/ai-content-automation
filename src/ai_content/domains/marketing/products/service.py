@@ -210,6 +210,9 @@ class KeyframeUnavailable(RuntimeError):
 
 
 class ProductCatalogService:
+    # Every request makes its own service, so the clips being collected are kept for the process
+    _collecting: set[tuple[str, int]] = set()
+
     def __init__(
         self,
         repository: ProductRepository,
@@ -251,7 +254,6 @@ class ProductCatalogService:
         self._reference_picker = reference_picker
         self._clip_checker = clip_checker
         self._knowledge = knowledge
-        self._collecting: set[tuple[str, int]] = set()
 
     async def write_hooks(self, product_id: str, media_root: Path) -> list[dict[str, str]] | None:
         """Write alternative opening lines for the brief and keep them; None without a brief."""

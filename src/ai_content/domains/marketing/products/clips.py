@@ -259,10 +259,10 @@ async def stitch(
     and are joined with hard cuts.
     Background music is auto-ducked under voice-over speech when available.
     """
-    if shutil.which("ffmpeg") is None:
-        raise StitchUnavailable("ffmpeg is not installed on this machine")
     if not clips:
         raise StitchUnavailable("No clip is ready to stitch")
+    if shutil.which("ffmpeg") is None:
+        raise StitchUnavailable("ffmpeg is not installed on this machine")
     output.parent.mkdir(parents=True, exist_ok=True)
     font = caption_font()
     scratch: list[Path] = []
