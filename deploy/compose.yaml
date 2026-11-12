@@ -159,7 +159,7 @@ services:
       api:
         condition: service_healthy
     ports:
-      - "${AIC_HTTP_PORT:-8080}:8080"
+      - "${AIC_HTTP_BIND_ADDRESS:-127.0.0.1}:${AIC_HTTP_PORT:-8080}:8080"
     networks:
       - internal
     init: true

@@ -32,3 +32,11 @@ def test_database_and_debug_ports_have_configurable_safe_bind_defaults() -> None
     assert "AIC_POSTGRES_BIND_ADDRESS=127.0.0.1" in environment
     assert "AIC_DEBUG_BIND_ADDRESS=127.0.0.1" in environment
     assert "AIC_DEBUG_SEAWEED_S3_PORT=8333" in environment
+
+
+def test_dashboard_listens_on_this_machine_only_by_default() -> None:
+    compose = (_REPOSITORY_ROOT / "deploy/compose.yaml").read_text(encoding="utf-8")
+    environment = (_REPOSITORY_ROOT / "deploy/.env.example").read_text(encoding="utf-8")
+
+    assert "${AIC_HTTP_BIND_ADDRESS:-127.0.0.1}:${AIC_HTTP_PORT:-8080}:8080" in compose
+    assert "AIC_HTTP_BIND_ADDRESS=127.0.0.1" in environment
