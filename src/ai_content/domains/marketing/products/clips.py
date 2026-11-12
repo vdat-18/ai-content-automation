@@ -46,7 +46,9 @@ class StitchUnavailable(RuntimeError):
     """The clips cannot be stitched yet; the message says what to do first."""
 
 
-_BUSY_MARKERS = ("HTTP 429", "HTTP 503", "lượng lớn")
+# A refused job costs nothing. A gateway error (502, 504) may rarely hide a job that did start, a
+# risk taken so that a hiccup of the service does not stop a whole run.
+_BUSY_MARKERS = ("HTTP 429", "HTTP 502", "HTTP 503", "HTTP 504", "lượng lớn")
 
 
 def is_busy_error(message: str | None) -> bool:
@@ -112,6 +114,8 @@ class VideoClient:
         url = f"{self._base}/videos/{job_id}?model={quote(job_model, safe='')}"
         try:
             response = await self._http.get(url, headers=self._headers)
+            if response.status_code == 404:  # the service forgot the job, so it will never finish
+                return JobState("failed", "The video job was lost; make the scene again")
             response.raise_for_status()
         except httpx.HTTPError as error:
             raise ClipGenerationError(f"status check failed: {error!r}"[:200]) from error

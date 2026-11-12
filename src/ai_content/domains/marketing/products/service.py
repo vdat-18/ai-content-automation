@@ -1366,7 +1366,8 @@ class ProductCatalogService:
                 )
             else:
                 return
-        except ClipGenerationError:
+        except ClipGenerationError as error:
+            logger.warning("Clip of shot {} could not be collected yet: {}", clip["shot_index"], error)
             return
         await self._repository.save_clip({**clip, **update})
 

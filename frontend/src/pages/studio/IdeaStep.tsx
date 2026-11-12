@@ -9,7 +9,8 @@ import { runStopped } from "../../lib/studio";
 import { deleteJson, putFile } from "../../services/http";
 import type { BriefRecord, PipelineRun, Product } from "../../types/studio";
 
-const LENGTHS = [15, 30, 45, 60];
+// Every scene is filmed for 15 seconds but plays about 13 in the video, so the length is not exact
+const LENGTHS: Record<number, { scenes: number; about: number }> = { 15: { scenes: 1, about: 13 }, 30: { scenes: 2, about: 27 }, 45: { scenes: 3, about: 40 }, 60: { scenes: 4, about: 54 } };
 const MINUTES: Record<number, number> = { 15: 5, 30: 8, 45: 11, 60: 14 };
 const STYLES = ["Natural, everyday", "Honest review", "Before and after", "Quick how-to"];
 
@@ -56,7 +57,10 @@ export function IdeaStep({ productId, product, productType, record, run }: { pro
           <section className="card pad stack" aria-labelledby="len">
             <h2 id="len">How long should the video be?</h2>
             <div className="row" role="group" aria-label="Video length">
-              {LENGTHS.map((n) => <button key={n} type="button" className="chip" aria-pressed={seconds === n} onClick={() => setSeconds(n)}>{`${n} seconds`}</button>)}
+              {Object.entries(LENGTHS).map(([key, { scenes, about }]) => {
+                const n = Number(key);
+                return <button key={n} type="button" className="chip" aria-pressed={seconds === n} onClick={() => setSeconds(n)}>{`${scenes} ${scenes === 1 ? "scene" : "scenes"}, about ${about} seconds`}</button>;
+              })}
             </div>
             <p className="muted small">{`The script takes about a minute and you read it first. After you approve it, the images and the video take about ${MINUTES[seconds]} more minutes. You can leave the page.`}</p>
           </section>

@@ -26,7 +26,12 @@ export function ClipsPanel({ productId }: { productId: string }) {
           <div key={clip.shot_index} className="stack" style={{ gap: 8 }}>
             <strong>{`Scene ${clip.shot_index + 1}`}</strong>
             {clip.status === "ready" && <video src={`${API}/${productId}/clips/${clip.shot_index}/video?v=${clip.attempts}`} controls playsInline preload="metadata" style={{ maxHeight: 260, alignSelf: "flex-start" }} />}
-            {clip.status === "processing" && <span className="muted small"><Spinner size={14} /> Still being filmed</span>}
+            {clip.status === "processing" && (
+              <div className="row">
+                <span className="muted small"><Spinner size={14} /> Still being filmed</span>
+                <button className="btn btn-sm" disabled={busy} onClick={() => remake.mutate(clip.shot_index)}>Taking too long? Make it again</button>
+              </div>
+            )}
             {clip.status === "failed" && <p className="check-warn">{`This scene could not be filmed: ${clip.error ?? "the video job failed"}`}</p>}
             {clip.qa_problem && <p className="check-warn">{isUnchecked(clip.qa_problem) ? clip.qa_problem : `The AI suggests a second look: ${clip.qa_problem}`}</p>}
             {clip.status !== "processing" && (
