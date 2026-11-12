@@ -32,6 +32,7 @@ from ai_content.domains.marketing.products.references import (
 )
 from ai_content.domains.marketing.products.service import (
     VOICEOVER_TYPES,
+    HookClipPending,
     KeyframeUnavailable,
     ProductCatalogService,
 )
@@ -737,17 +738,23 @@ async def build_hook_video(
     payload: HookVideoRequest | None = None,
     service: ProductCatalogService = Depends(get_product_catalog_service),
 ) -> dict[str, str]:
-    """Make the video for one hook from the clips already generated; no clip is paid for again."""
+    """Make the video for one hook from the clips already generated.
+
+    A hook on an opening where the person speaks films one new clip first: the answer is then
+    "filming" until it is ready, and asking again makes the video.
+    """
     options = payload or HookVideoRequest()
     try:
         path = await service.build_hook_video(
             product_id, _media_root(), hook_id, options.voice, options.captions, options.stickers
         )
+    except HookClipPending:
+        return {"status": "filming"}
     except (KeyframeUnavailable, StitchUnavailable) as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
     if path is None:
         raise HTTPException(status_code=404, detail="No such hook")
-    return {"video": f"/api/v1/products/{product_id}/hooks/{hook_id}/video"}
+    return {"status": "ready", "video": f"/api/v1/products/{product_id}/hooks/{hook_id}/video"}
 
 
 @router.get("/{product_id}/hooks/{hook_id}/video")

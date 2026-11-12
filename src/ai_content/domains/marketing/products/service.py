@@ -144,8 +144,8 @@ _STALE_CLIP = "The script of this scene changed after it was filmed"
 # Kept as the problem of an image or clip whose AI check could not run, so a person looks at it
 NOT_CHECKED = "Not checked: the AI check could not run"
 _TALKING_OPENING = (
-    "The opening scene shows the person speaking, so its words are fixed by the filmed clip: "
-    "another opening line would need a new clip"
+    "The opening scene shows the person speaking, so its words come from the filmed clip: "
+    "a hook needs a clip of its own"
 )
 BRIEF_ATTEMPTS = 3
 KEYFRAME_REVIEW_STATUSES = frozenset({"approved", "ready", "rejected"})
@@ -243,6 +243,32 @@ class KeyframeUnavailable(RuntimeError):
     """Keyframes cannot be made yet; the message says what to do first."""
 
 
+class HookClipPending(RuntimeError):
+    """The clip of a hook is still being filmed; ask again in a little while."""
+
+
+def _clip_prompt(shot: dict[str, Any], with_person: bool) -> str:
+    """What the video model is told to film for one shot."""
+    if str(shot.get("delivery") or "narrated") == "talking":
+        sound = (
+            f"{_DELIVERY_RULE[True]} The person says in Vietnamese, in one go: "
+            f'"{shot.get("voiceover") or ""}". '
+            "Audio: clear spoken Vietnamese dialogue at a steady pace, no background music, no text on screen."
+        )
+    else:
+        sound = (
+            f"{_DELIVERY_RULE[False]} Audio: no sound, no dialogue, no music, no text on screen."
+        )
+    return (
+        f"{shot.get('motion_prompt') or 'Slow gentle camera push-in.'} "
+        "Keep the product's exact shape, color and details; do not add or change objects. "
+        "Energetic TikTok pace: brisk natural movement and quick camera moves, "
+        "never slow motion, no long pauses. "
+        f"{'' if with_person else _NO_PERSON_VIDEO}"
+        f"{sound}"
+    )
+
+
 class ProductCatalogService:
     # Every request makes its own service, so the clips being collected are kept for the process
     _collecting: set[tuple[str, int]] = set()
@@ -299,8 +325,6 @@ class ProductCatalogService:
             return None
         if self._hook_writer is None:
             raise KeyframeUnavailable("The AI model is not configured (AIC_SCREENING_API_KEY)")
-        if (record["brief"].get("shots") or [{}])[0].get("delivery") == "talking":
-            raise KeyframeUnavailable(_TALKING_OPENING)
         rules = await approved_rules(self._knowledge, KnowledgeStage.PREPARATION, "brief")
         hooks = await self._hook_writer.write(detail, record["brief"], rules.text)
         if not hooks:
@@ -316,10 +340,17 @@ class ProductCatalogService:
         """The saved hooks, each with whether its video has been made."""
         saved = (await self._read_json(media_root, f"videos/{product_id}/hooks.json")) or {}
         store = self.media(media_root)
-        return [
-            {**hook, "built": await store.exists(f"videos/{product_id}/{hook['id']}/video.mp4")}
-            for hook in saved.get("hooks") or []
-        ]
+        hooks = []
+        for hook in saved.get("hooks") or []:
+            clip = await self._read_json(media_root, f"videos/{product_id}/{hook['id']}/clip.json")
+            hooks.append(
+                {
+                    **hook,
+                    "built": await store.exists(f"videos/{product_id}/{hook['id']}/video.mp4"),
+                    "filming": bool(clip and clip["status"] == "processing"),
+                }
+            )
+        return hooks
 
     async def build_hook_video(
         self,
@@ -330,18 +361,85 @@ class ProductCatalogService:
         captions: bool = False,
         stickers: bool = False,
     ) -> str | None:
-        """Make the video for one saved hook from the clips already generated: no new clip."""
+        """Make the video for one saved hook from the clips already generated.
+
+        When the opening scene is a person speaking, the hook needs one new clip of its own: the
+        first call starts filming it and raises HookClipPending until it is ready.
+        """
         hook = next(
             (h for h in await self.hooks(product_id, media_root) if h["id"] == hook_id), None
         )
         if hook is None:
             return None
+        opening = await self._opening_clip(product_id, media_root, hook_id, hook["text"])
         await self.create_voiceover(
-            product_id, media_root, voice, variant=hook_id, hook=hook["text"]
+            product_id,
+            media_root,
+            voice,
+            variant=hook_id,
+            hook=hook["text"],
+            opening_clip=opening,
         )
         return await self.build_video(
-            product_id, media_root, captions, stickers, variant=hook_id, hook=hook["text"]
+            product_id,
+            media_root,
+            captions,
+            stickers,
+            variant=hook_id,
+            hook=hook["text"],
+            opening_clip=opening,
         )
+
+    async def _opening_clip(
+        self, product_id: str, media_root: Path, hook_id: str, text: str
+    ) -> Path | None:
+        """The clip in which the person says a hook; None when the opening is not a person speaking.
+
+        Raises HookClipPending while that clip is being filmed.
+        """
+        record = await self._repository.get_brief(product_id)
+        keyframes = {k["shot_index"]: k for k in await self._repository.list_keyframes(product_id)}
+        approved = [i for i, k in sorted(keyframes.items()) if k["status"] == "approved"]
+        shots = (record or {}).get("brief", {}).get("shots") or []
+        if not approved or approved[0] >= len(shots) or shots[approved[0]].get("delivery") != "talking":
+            return None
+        if self._videographer is None:
+            raise KeyframeUnavailable("Video model is not configured (AIC_VIDEO_MODEL)")
+        where = video_folder(product_id, hook_id)
+        store = self.media(media_root)
+        state = await self._read_json(media_root, f"{where}/clip.json")
+        if state is None or state["text"] != text or state["status"] == "failed":
+            frame = await store.read(keyframes[approved[0]]["image_path"])
+            prompt = _clip_prompt(
+                {**shots[approved[0]], "voiceover": text}, bool(record["brief"].get("with_person"))
+            )
+            try:
+                job_id, job_model = await self._videographer.submit(prompt, frame, CLIP_SECONDS)
+            except ClipGenerationError as error:
+                raise KeyframeUnavailable(f"The opening clip could not be started: {error}") from error
+            await self._count_call(product_id, "clip", "video", self._videographer)
+            state = {"status": "processing", "job_id": job_id, "job_model": job_model, "text": text}
+            await self._write_json(media_root, f"{where}/clip.json", state)
+            await self._log(product_id, "clip", "started", f"Opening clip of {hook_id} started")
+        if state["status"] == "processing":
+            try:
+                job = await self._videographer.status(state["job_id"], state["job_model"])
+            except ClipGenerationError as error:
+                logger.warning("Opening clip of {} could not be checked yet: {}", hook_id, error)
+                raise HookClipPending(hook_id) from error
+            if job.status == "failed":
+                await self._write_json(media_root, f"{where}/clip.json", {**state, "status": "failed"})
+                raise KeyframeUnavailable(
+                    f"The opening clip failed: {job.error or 'the video job failed'}"
+                )
+            if job.status != "completed" or not job.video_url:
+                raise HookClipPending(hook_id)
+            await store.write(f"{where}/shot_0.mp4", await self._videographer.download(job.video_url))
+            await self._write_json(media_root, f"{where}/clip.json", {**state, "status": "ready"})
+        found = await store.fetch(f"{where}/shot_0.mp4")
+        if found is None:
+            raise KeyframeUnavailable("The opening clip file is missing; make the hook video again")
+        return found
 
     async def learn_from_reference_ad(self, content: bytes) -> list[dict[str, str]]:
         """Describe how an example ad is built and propose that as rules for a human to approve.
@@ -1536,26 +1634,8 @@ class ProductCatalogService:
             "qa_problem": "",
         }
         delivery = str(shot.get("delivery") or "narrated")
-        if delivery == "talking":
-            sound = (
-                f"{_DELIVERY_RULE[True]} The person says in Vietnamese, in one go: "
-                f'"{shot.get("voiceover") or ""}". '
-                "Audio: clear spoken Vietnamese dialogue at a steady pace, no background music, no text on screen."
-            )
-        else:
-            sound = (
-                f"{_DELIVERY_RULE[False]} Audio: no sound, no dialogue, no music, "
-                "no text on screen."
-            )
         frame = await self.media(media_root).read(keyframe["image_path"])
-        prompt = (
-            f"{shot.get('motion_prompt') or 'Slow gentle camera push-in.'} "
-            "Keep the product's exact shape, color and details; do not add or change objects. "
-            "Energetic TikTok pace: brisk natural movement and quick camera moves, "
-            "never slow motion, no long pauses. "
-            f"{'' if with_person else _NO_PERSON_VIDEO}"
-            f"{sound}"
-        )
+        prompt = _clip_prompt(shot, with_person)
         try:
             job_id, job_model = await self._videographer.submit(prompt, frame, seconds)
         except ClipGenerationError as error:
@@ -1602,6 +1682,7 @@ class ProductCatalogService:
         voice: str | None = None,
         variant: str = "",
         hook: str = "",
+        opening_clip: Path | None = None,
     ) -> dict[str, Any] | None:
         """Read each approved shot's voice-over so its words start with the shot."""
         record = await self._repository.get_brief(product_id)
@@ -1647,9 +1728,11 @@ class ProductCatalogService:
             seconds = min(float(shot.get("duration_seconds") or CLIP_SECONDS), CLIP_SECONDS)
             segments.append(Reading(str(shot.get("voiceover") or ""), shot_seconds(seconds), guide))
         if hook.strip():
-            if segments[0].guide is not None:
+            if segments[0].guide is not None and opening_clip is None:
                 raise KeyframeUnavailable(_TALKING_OPENING)
-            segments[0] = replace(segments[0], text=hook.strip())
+            segments[0] = replace(
+                segments[0], text=hook.strip(), guide=opening_clip or segments[0].guide
+            )
         store = self.media(media_root)
         where = video_folder(product_id, variant)
         folder = store.path(where)
@@ -1735,6 +1818,7 @@ class ProductCatalogService:
         stickers: bool = False,
         variant: str = "",
         hook: str = "",
+        opening_clip: Path | None = None,
     ) -> str | None:
         """Stitch the ready clips of approved shots, in story order, into one mp4.
 
@@ -1769,7 +1853,11 @@ class ProductCatalogService:
             if str(index) in held:  # the voice-over was cut to its words; cut the picture to match
                 duration = min(duration, clip_seconds_for(float(held[str(index)])))
             caption = str(shot.get("on_screen_text") or "") if captions else ""
-            local = await self.media(media_root).fetch(clip["video_path"])
+            local = (
+                opening_clip
+                if opening_clip is not None and not parts
+                else await self.media(media_root).fetch(clip["video_path"])
+            )
             if local is None:
                 raise StitchUnavailable(f"The clip file for shot {index + 1} is missing")
             cues = tuple(spoken_cues(str(shot.get("voiceover") or ""), heard.get(str(index), 0)))

@@ -76,10 +76,12 @@ async def test_hooks_are_saved_listed_and_need_the_model(tmp_path) -> None:
         await unset.write_hooks("42", root)
 
 
-async def test_a_talking_opening_scene_has_no_other_opening_lines(tmp_path) -> None:
+async def test_hooks_are_written_for_a_talking_opening_too(tmp_path) -> None:
     service = await _service(tmp_path, _Writer([_hook("Áo mát không?")]))
     await service._repository.save_brief(
         "42", "idea", {"title": "Áo", "shots": [{"delivery": "talking"}]}, "draft"
     )
-    with pytest.raises(KeyframeUnavailable, match="another opening line would need a new clip"):
-        await service.write_hooks("42", Path(tmp_path))
+    [saved] = await service.write_hooks("42", Path(tmp_path))
+    assert saved["text"] == "Áo mát không?"
+    [listed] = await service.hooks("42", Path(tmp_path))
+    assert listed["filming"] is False and listed["built"] is False

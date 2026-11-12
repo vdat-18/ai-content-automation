@@ -2,6 +2,7 @@ import asyncio
 import json
 import shutil
 import subprocess
+from pathlib import Path
 
 import httpx
 import pytest
@@ -23,6 +24,7 @@ from ai_content.domains.marketing.products.clips import (
 from ai_content.domains.marketing.products.repositories import SqliteProductRepository
 from ai_content.domains.marketing.products.service import (
     NOT_CHECKED,
+    HookClipPending,
     KeyframeUnavailable,
     ProductCatalogService,
 )
@@ -629,3 +631,135 @@ async def test_a_video_without_a_voice_over_still_gets_the_background_music(
     output = tmp_path / "out.mp4"
     await stitch([StitchClip(clip, 3.0)], output)
     assert sorted(_probe(output, "stream=codec_type").split()) == ["audio", "video"]
+
+
+async def test_a_hook_on_a_talking_opening_films_its_own_clip_first(
+    tmp_path, monkeypatch
+) -> None:
+    video = _FakeVideo()
+    service = await _service(tmp_path, video)
+    shots = [{**SHOTS[0], "delivery": "talking", "voiceover": "old words"}, SHOTS[1]]
+    await service._repository.save_brief(PRODUCT_ID, "", {"title": "b", "shots": shots}, "approved")
+    await service._repository.save_keyframe(
+        {
+            "product_id": PRODUCT_ID,
+            "shot_index": 0,
+            "status": "approved",
+            "prompt": "p",
+            "image_path": "frame0.jpg",
+            "attempts": 1,
+            "error": None,
+            "qa_problem": "",
+        }
+    )
+    await service._write_json(
+        tmp_path,
+        f"videos/{PRODUCT_ID}/hooks.json",
+        {"hooks": [{"id": "hook_1", "angle": "question", "text": "Bạn đã thử chưa?"}]},
+    )
+    seen: dict[str, object] = {}
+
+    async def voiceover(product_id, media_root, voice=None, variant="", hook="", opening_clip=None):
+        seen["voiceover"] = (hook, opening_clip)
+
+    async def build(product_id, media_root, captions=False, stickers=False, **options):
+        seen["build"] = options
+        return "built.mp4"
+
+    monkeypatch.setattr(service, "create_voiceover", voiceover)
+    monkeypatch.setattr(service, "build_video", build)
+
+    with pytest.raises(HookClipPending):  # the first call starts filming
+        await service.build_hook_video(PRODUCT_ID, tmp_path, "hook_1")
+    [(prompt, _)] = video.submitted
+    assert 'says in Vietnamese, in one go: "Bạn đã thử chưa?"' in prompt and "old words" not in prompt
+    assert [h["filming"] for h in await service.hooks(PRODUCT_ID, tmp_path)] == [True]
+    with pytest.raises(HookClipPending):  # still being filmed: no second clip is paid for
+        await service.build_hook_video(PRODUCT_ID, tmp_path, "hook_1")
+    assert len(video.submitted) == 1 and not seen
+
+    video.states["job0"] = JobState("completed", video_url="https://v/h.mp4")
+    assert await service.build_hook_video(PRODUCT_ID, tmp_path, "hook_1") == "built.mp4"
+    clip = tmp_path / "videos" / PRODUCT_ID / "hook_1" / "shot_0.mp4"
+    assert clip.read_bytes() == b"mp4-bytes"
+    assert seen["voiceover"] == ("Bạn đã thử chưa?", clip) and seen["build"]["opening_clip"] == clip
+    assert [h["filming"] for h in await service.hooks(PRODUCT_ID, tmp_path)] == [False]
+    assert len(video.submitted) == 1
+
+
+async def test_a_failed_opening_clip_is_reported_and_asked_for_again_on_the_next_try(
+    tmp_path,
+) -> None:
+    video = _FakeVideo()
+    service = await _service(tmp_path, video)
+    shots = [{**SHOTS[0], "delivery": "talking"}, SHOTS[1]]
+    await service._repository.save_brief(PRODUCT_ID, "", {"title": "b", "shots": shots}, "approved")
+    await service._repository.save_keyframe(
+        {
+            "product_id": PRODUCT_ID,
+            "shot_index": 0,
+            "status": "approved",
+            "prompt": "p",
+            "image_path": "frame0.jpg",
+            "attempts": 1,
+            "error": None,
+            "qa_problem": "",
+        }
+    )
+    await service._write_json(
+        tmp_path,
+        f"videos/{PRODUCT_ID}/hooks.json",
+        {"hooks": [{"id": "hook_1", "angle": "question", "text": "Bạn đã thử chưa?"}]},
+    )
+    with pytest.raises(HookClipPending):
+        await service.build_hook_video(PRODUCT_ID, tmp_path, "hook_1")
+    video.states["job0"] = JobState("failed", error="policy")
+    with pytest.raises(KeyframeUnavailable, match="opening clip failed: policy"):
+        await service.build_hook_video(PRODUCT_ID, tmp_path, "hook_1")
+    with pytest.raises(HookClipPending):  # a new try films it again
+        await service.build_hook_video(PRODUCT_ID, tmp_path, "hook_1")
+    assert len(video.submitted) == 2
+
+
+async def test_the_opening_clip_of_a_hook_replaces_the_first_clip_in_the_video(
+    tmp_path, monkeypatch
+) -> None:
+    service = await _service(tmp_path, _FakeVideo())
+    for index in range(2):
+        await service.set_keyframe_status(PRODUCT_ID, index, "approved")
+        clip = tmp_path / f"clips/{PRODUCT_ID}/shot_{index}.mp4"
+        clip.parent.mkdir(parents=True, exist_ok=True)
+        clip.write_bytes(b"mp4")
+        await service._repository.save_clip(
+            {
+                "product_id": PRODUCT_ID,
+                "shot_index": index,
+                "status": "ready",
+                "job_id": "j",
+                "job_model": "m",
+                "video_path": f"clips/{PRODUCT_ID}/shot_{index}.mp4",
+                "seconds": 15,
+                "attempts": 1,
+                "error": None,
+                "qa_problem": "",
+            }
+        )
+    stitched: list[Path] = []
+
+    async def fake_stitch(parts, output, voice=None, bgm=None):
+        stitched.extend(part.path for part in parts)
+
+    async def fake_cover(video, output):
+        return None
+
+    async def fake_measure(video, voice=None):
+        return None
+
+    monkeypatch.setattr(service_module, "stitch", fake_stitch)
+    monkeypatch.setattr(service_module, "cover_frame", fake_cover)
+    monkeypatch.setattr(service_module, "measure", fake_measure)
+    monkeypatch.setattr(service_module, "judge", lambda *a, **k: {"score": 100, "issues": []})
+    opening = tmp_path / "hook-opening.mp4"
+    opening.write_bytes(b"mp4")
+    await service.build_video(PRODUCT_ID, tmp_path, variant="hook_1", hook="Bạn đã thử chưa?", opening_clip=opening)
+    assert stitched == [opening, tmp_path / f"clips/{PRODUCT_ID}/shot_1.mp4"]

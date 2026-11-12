@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Copy, Download, Info } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ErrorNote, Spinner } from "../../components/ui";
 import { ClipsPanel } from "./ClipsPanel";
@@ -9,7 +9,7 @@ import { imagesApproved, runStopped } from "../../lib/studio";
 import { getJson, postJson } from "../../services/http";
 import type { BriefRecord, Keyframe, PipelineRun, PostPackage, Voice } from "../../types/studio";
 
-type Hook = { id: string; angle: string; text: string; built: boolean };
+type Hook = { id: string; angle: string; text: string; built: boolean; filming: boolean };
 type Usage = { by_operation: { key: string; request_count: number }[] };
 const USED = { keyframe: "images", clip: "clips", voiceover: "voice readings" } as Record<string, string>;
 const linkKey = (productId: string) => `aic-affiliate-${productId}`;
@@ -53,6 +53,7 @@ export function FinishStep({ productId, record, frames, hasVideo, run }: { produ
     onSuccess: () => setReview(""),
   });
   const hooks = useQuery({ queryKey: ["hooks", productId], queryFn: ({ signal }) => getJson<Hook[]>(`${API}/${productId}/hooks`, signal) });
+  const filmingId = hooks.data?.find((hook) => hook.filming)?.id;
   const writeHooks = useMutation({
     mutationFn: () => postJson(`${API}/${productId}/hooks`),
     onSuccess: () => client.invalidateQueries({ queryKey: ["hooks", productId] }),
@@ -61,6 +62,17 @@ export function FinishStep({ productId, record, frames, hasVideo, run }: { produ
     mutationFn: (hook: Hook) => postJson(`${API}/${productId}/hooks/${hook.id}/video`, { voice: sentVoice, captions, stickers }),
     onSuccess: () => client.invalidateQueries({ queryKey: ["hooks", productId] }),
   });
+  // While the opening is being filmed, ask every 10 seconds: the call that finds it ready makes the video
+  const latest = useRef({ hooks: hooks.data, build: buildHook.mutate });
+  latest.current = { hooks: hooks.data, build: buildHook.mutate };
+  useEffect(() => {
+    if (!filmingId) return;
+    const timer = window.setInterval(() => {
+      const hook = latest.current.hooks?.find((item) => item.id === filmingId);
+      if (hook) latest.current.build(hook);
+    }, 10000);
+    return () => window.clearInterval(timer);
+  }, [filmingId]);
   const remake = useMutation({
     mutationFn: async () => {
       await postJson(`${API}/${productId}/voiceover`, { voice: sentVoice });
@@ -149,14 +161,14 @@ export function FinishStep({ productId, record, frames, hasVideo, run }: { produ
             <div className="stack">
               <div className="row">
                 <strong className="small">Try other opening lines</strong>
-                {!talkingOpening && <button className="btn btn-sm" disabled={writeHooks.isPending} onClick={() => writeHooks.mutate()}>{writeHooks.isPending ? <><Spinner size={14} />Writing…</> : hooks.data?.length ? "Write new ones" : "Write 3 opening lines"}</button>}
+                <button className="btn btn-sm" disabled={writeHooks.isPending} onClick={() => writeHooks.mutate()}>{writeHooks.isPending ? <><Spinner size={14} />Writing…</> : hooks.data?.length ? "Write new ones" : "Write 3 opening lines"}</button>
               </div>
-              <p className="muted small">{talkingOpening ? "The opening scene shows the person speaking, so its words are fixed by the filmed clip. Another opening line would need a new clip." : "Only the first line changes. The scenes are reused, so no new scene is paid for. It uses the voice and options chosen below."}</p>
-              {!talkingOpening && hooks.data?.map((hook) => (
+              <p className="muted small">{talkingOpening ? "The opening scene shows the person speaking, so each opening line films one new scene (it costs one clip). The other scenes are reused. It uses the voice and options chosen below." : "Only the first line changes. The scenes are reused, so no new scene is paid for. It uses the voice and options chosen below."}</p>
+              {hooks.data?.map((hook) => (
                 <div className="caption-box" key={hook.id}>
                   <p><span className="muted small">{hook.angle}</span><br />{hook.text}</p>
                   <div className="row">
-                    <button className="btn btn-sm" disabled={buildHook.isPending} onClick={() => buildHook.mutate(hook)}>{buildHook.isPending && buildHook.variables?.id === hook.id ? <><Spinner size={14} />Making…</> : hook.built ? "Make again" : "Make this video"}</button>
+                    <button className="btn btn-sm" disabled={buildHook.isPending} onClick={() => buildHook.mutate(hook)}>{buildHook.isPending && buildHook.variables?.id === hook.id ? <><Spinner size={14} />Making…</> : hook.filming ? <><Spinner size={14} />Filming the opening…</> : hook.built ? "Make again" : talkingOpening ? "Make this video (1 clip)" : "Make this video"}</button>
                     {hook.built && <a className="btn btn-sm" href={`${API}/${productId}/hooks/${hook.id}/video?download=true`}><Download size={14} aria-hidden="true" />Download</a>}
                     {hook.built && <a className="btn btn-sm" href={`${API}/${productId}/hooks/${hook.id}/video`} target="_blank" rel="noreferrer">Watch</a>}
                   </div>
