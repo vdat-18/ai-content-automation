@@ -4,9 +4,16 @@ class StoryboardProblem {
   fix string
 }
 
+class ClaimCheck {
+  where string
+  claim string
+  evidence string?
+}
+
 class StoryboardReview {
   passed bool
   problems StoryboardProblem[]
+  claims ClaimCheck[]
 }
 
 function ReviewStoryboard(product_json: string, brief_json: string, rules: string) -> StoryboardReview {
@@ -26,6 +33,13 @@ function ReviewStoryboard(product_json: string, brief_json: string, rules: strin
     concerned. fix: the concrete replacement text or the exact change to make. List a problem only
     when you can give its fix. After finding one problem, look for the same mistake in the other
     shots and list each place. Do not repeat a problem the storyboard does not have.
+
+    claims: every statement in a voiceover or on_screen_text that tells the shopper what the
+    product does, how well or how fast it does it, what it is made of, what it costs or any
+    number about it. Statements about the shopper's situation or feelings are not claims. For
+    each claim, where is the shot number and field, claim is the words, and evidence is a short
+    exact quote copied from the product facts that supports it, or null when the product facts
+    do not say it. Never invent a quote.
 
     {{ _.role("user") }}
     Product facts:

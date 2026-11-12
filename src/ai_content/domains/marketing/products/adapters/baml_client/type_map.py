@@ -19,6 +19,9 @@ type_map = {
     "types.AdStructure": types.AdStructure,
     "stream_types.AdStructure": stream_types.AdStructure,
 
+    "types.ClaimCheck": types.ClaimCheck,
+    "stream_types.ClaimCheck": stream_types.ClaimCheck,
+
     "types.ClipCheck": types.ClipCheck,
     "stream_types.ClipCheck": stream_types.ClipCheck,
 

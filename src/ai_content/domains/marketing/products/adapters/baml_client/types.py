@@ -41,11 +41,16 @@ def all_succeeded(checks: typing.Dict[CheckName, Check]) -> bool:
 # #########################################################################
 
 # #########################################################################
-# Generated classes (17)
+# Generated classes (18)
 # #########################################################################
 
 class AdStructure(BaseModel):
     rules: typing.List[str]
+
+class ClaimCheck(BaseModel):
+    where: str
+    claim: str
+    evidence: typing.Optional[str] = None
 
 class ClipCheck(BaseModel):
     passed: bool
@@ -125,6 +130,7 @@ class StoryboardProblem(BaseModel):
 class StoryboardReview(BaseModel):
     passed: bool
     problems: typing.List["StoryboardProblem"]
+    claims: typing.List["ClaimCheck"]
 
 class StoryboardShot(BaseModel):
     role: typing.Union[typing_extensions.Literal['hook'], typing_extensions.Literal['problem'], typing_extensions.Literal['demo'], typing_extensions.Literal['benefit'], typing_extensions.Literal['call_to_action']]
@@ -147,13 +153,14 @@ class VoicePick(BaseModel):
 
 
 # #########################################################################
-# Model rebuilds (17)
+# Model rebuilds (18)
 # #########################################################################
 # Resolve string forward references now that every model above is defined so
 # class declaration order never breaks Pydantic construction (issue #793).
 # Recursive models are intentionally omitted (Pydantic resolves those lazily;
 # eagerly rebuilding them can recurse).
 AdStructure.model_rebuild()
+ClaimCheck.model_rebuild()
 ClipCheck.model_rebuild()
 ContentBrief.model_rebuild()
 CuratedRule.model_rebuild()

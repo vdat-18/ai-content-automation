@@ -1,8 +1,10 @@
 from ai_content.domains.marketing.products.compliance import (
     brief_warnings,
     find_flagged_terms,
+    numbers_in,
     package_warnings,
     product_facts,
+    spoken_numbers_as_digits,
 )
 
 
@@ -64,3 +66,27 @@ def test_warnings_say_where_the_word_was_found() -> None:
         'caption 2: "tốt nhất" (absolute claim)',
         'hashtags: "shopee" (other platform)',
     ]
+
+
+def test_numbers_a_voice_over_spells_out_become_digits() -> None:
+    spoken = {
+        "giảm năm mươi phần trăm": "giảm 50%",
+        "hai trăm chín mươi chín nghìn đồng": "299000 đồng",
+        "mười lăm ngàn": "15000",
+        "một trăm linh năm": "105",
+        "một nghìn hai trăm": "1200",
+        "ba mẹ mua năm nay": "ba mẹ mua năm nay",  # plain digit words stay words
+        "giảm 20 phần trăm": "giảm 20%",
+    }
+    for text, digits in spoken.items():
+        assert spoken_numbers_as_digits(text) == digits
+
+
+def test_a_spelled_out_number_is_checked_like_a_written_one() -> None:
+    facts = product_facts(DETAIL, "")
+    brief = {"shots": [{"voiceover": "giảm năm mươi phần trăm hôm nay", "on_screen_text": ""}]}
+    assert brief_warnings(brief, facts) == [
+        'shot 1 voiceover: "50%" is not in the product data (unverified number)'
+    ]
+    assert numbers_in("hai trăm chín mươi chín nghìn")[0][2] == 299000
+    assert brief_warnings({"shots": [{"voiceover": "giảm ba mươi phần trăm"}]}, facts) == []

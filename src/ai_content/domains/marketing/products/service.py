@@ -611,6 +611,7 @@ class ProductCatalogService:
             )
         shot_count = max(1, round(video_seconds / shot_seconds(CLIP_SECONDS)))
         rules = await approved_rules(self._knowledge, KnowledgeStage.PREPARATION, "brief")
+        facts = product_facts(detail, user_idea)
         fixes = ""
         attempts = 0
         for _ in range(BRIEF_ATTEMPTS):
@@ -624,18 +625,19 @@ class ProductCatalogService:
             )
             count_ok = "shots" not in brief or len(brief["shots"]) == shot_count
             problems = await self._review_storyboard(detail, brief) if count_ok else []
-            if count_ok and not problems:
+            warnings = brief_warnings(brief, facts) if count_ok else []
+            if count_ok and not problems and not warnings:
                 break
             wanted = [] if count_ok else [f"Write exactly {shot_count} shots."]
             fixes = "\n\nRewrite the storyboard and fix these problems:\n- " + "\n- ".join(
-                wanted + problems
+                wanted + problems + warnings
             )
         if not count_ok:
             raise BriefGenerationError(
                 f"The model wrote {len(brief['shots'])} shots instead of {shot_count}; try again"
             )
         brief["quality_problems"] = problems
-        brief["warnings"] = brief_warnings(brief, product_facts(detail, user_idea))
+        brief["warnings"] = warnings
         brief["shot_references"] = await self._pick_shot_references(
             product_id, detail, brief, live, pool_type
         )

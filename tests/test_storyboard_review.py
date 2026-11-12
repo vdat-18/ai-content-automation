@@ -21,7 +21,7 @@ def _reviewer(reply=None, error: Exception | None = None) -> StoryboardReviewer:
 
 
 async def test_a_passing_review_has_no_problems() -> None:
-    reviewer = _reviewer({"passed": True, "problems": []})
+    reviewer = _reviewer({"passed": True, "problems": [], "claims": []})
     assert await reviewer.review({}, {"shots": [SHOT]}) == []
 
 
@@ -29,14 +29,14 @@ async def test_a_failing_review_says_where_what_and_how_to_fix() -> None:
     problem = SimpleNamespace(
         where=" shot 2 motion_prompt ", problem=" Only drifts. ", fix=" Add a 3 to 6s beat. "
     )
-    reviewer = _reviewer({"passed": False, "problems": [problem]})
+    reviewer = _reviewer({"passed": False, "problems": [problem], "claims": []})
     assert await reviewer.review({}, {"shots": [SHOT]}) == [
         "shot 2 motion_prompt: Only drifts. Fix: Add a 3 to 6s beat."
     ]
 
 
 async def test_a_rejection_without_reasons_still_counts_as_a_failure() -> None:
-    reviewer = _reviewer({"passed": False, "problems": []})
+    reviewer = _reviewer({"passed": False, "problems": [], "claims": []})
     assert await reviewer.review({}, {"shots": [SHOT]})
 
 
@@ -124,3 +124,36 @@ async def test_editing_a_brief_reviews_it_again(tmp_path) -> None:
     changed = [{**SHOT, "voiceover": "edited"}] * 3
     record = await service.update_brief(PRODUCT_ID, {"shots": changed}, "draft")
     assert record["brief"]["quality_problems"] == ["Shot 1: add visible action."]
+
+
+async def test_a_claim_needs_a_quote_that_is_really_in_the_product_data() -> None:
+    def claim(text: str, evidence: str | None) -> SimpleNamespace:
+        return SimpleNamespace(where="shot 1 voiceover", claim=text, evidence=evidence)
+
+    claims = [
+        claim("chất liệu cotton", "Cotton thoáng mát"),  # backed: the quote is in the data
+        claim("sạch cực nhanh", "làm sạch trong 1 giây"),  # the model made the quote up
+        claim("giặt máy được", None),  # nothing backs it
+    ]
+    reviewer = _reviewer({"passed": True, "problems": [], "claims": claims})
+    product = {"title": "Áo", "description": "Cotton thoáng mát"}
+    assert await reviewer.review(product, {"shots": [SHOT]}) == [
+        'shot 1 voiceover: "sạch cực nhanh" is not in the product data. '
+        "Fix: remove it or say only what the product data says.",
+        'shot 1 voiceover: "giặt máy được" is not in the product data. '
+        "Fix: remove it or say only what the product data says.",
+    ]
+
+
+async def test_a_flagged_word_in_the_script_is_rewritten_like_a_reviewer_note(tmp_path) -> None:
+    class Writer(_Writer):
+        async def write(self, product, user_idea, shot_count=1, person_photos=None, rules=""):
+            self.ideas.append(user_idea)
+            voiceover = "rẻ nhất luôn" if len(self.ideas) == 1 else "giá tốt luôn"
+            return {"title": "T", "shots": [{**SHOT, "voiceover": voiceover}] * shot_count}
+
+    writer = Writer()
+    service = await _service(tmp_path, writer, _Judge(bad=0))
+    record = await service.create_brief(PRODUCT_ID, video_seconds=30)
+    assert len(writer.ideas) == 2 and '"rẻ nhất" (absolute claim)' in writer.ideas[1]
+    assert record["brief"]["warnings"] == []
