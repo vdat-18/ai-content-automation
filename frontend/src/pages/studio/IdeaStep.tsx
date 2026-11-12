@@ -17,8 +17,16 @@ export function IdeaStep({ productId, product, productType, record, run }: { pro
   const [seconds, setSeconds] = useState(30);
   const [styles, setStyles] = useState<string[]>([STYLES[0]]);
   const [idea, setIdea] = useState(record?.user_idea ?? "");
+  const client = useQueryClient();
   const person = usePerson(productId);
   const start = useStartPipeline(productId);
+  const startOver = useMutation({
+    mutationFn: () => deleteJson(`${API}/${productId}/brief`),
+    onSuccess: () => {
+      for (const key of ["brief", "briefs", "keyframes", "clips", "video-info", "outputs", "pipeline"]) void client.invalidateQueries({ queryKey: [key] });
+      setParams({});
+    },
+  });
   const photos = person.data?.photos ?? 0;
 
   const begin = () => {
@@ -78,6 +86,16 @@ export function IdeaStep({ productId, product, productType, record, run }: { pro
             <>
               <div className="notice"><div>This video is already in progress.</div></div>
               <button className="btn btn-primary btn-lg btn-block" onClick={() => setParams({})}>Continue where you left off</button>
+              <button
+                className="btn btn-block"
+                disabled={startOver.isPending}
+                onClick={() => {
+                  if (window.confirm("This removes the script, the images, the clips and the video of this product. The product and the person photos stay. Continue?")) startOver.mutate();
+                }}
+              >
+                {startOver.isPending ? "Removing…" : "Write a new script"}
+              </button>
+              <ErrorNote error={startOver.error} />
             </>
           ) : (
             <button className="btn btn-primary btn-lg btn-block" disabled={start.isPending || !productType} onClick={begin}>

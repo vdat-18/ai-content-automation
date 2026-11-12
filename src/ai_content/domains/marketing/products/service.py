@@ -121,6 +121,7 @@ _NO_PERSON_VIDEO = (
     "when needed, hands. "
 )
 VIDEO_LENGTHS = (15, 30, 45, 60, 75, 90)
+_WORK_FOLDERS = ("keyframes", "clips", "videos")  # the media made from a script
 BRIEF_ATTEMPTS = 3
 KEYFRAME_REVIEW_STATUSES = frozenset({"approved", "ready", "rejected"})
 BRIEF_FIELDS = (
@@ -1753,9 +1754,20 @@ class ProductCatalogService:
         deleted = await self._repository.delete_product(product_id)
         if deleted:
             store = self.media(media_root)
-            for folder in ("persona", "keyframes", "clips", "videos"):
+            for folder in ("persona", *_WORK_FOLDERS):
                 await store.remove_tree(f"{folder}/{product_id}")
         return deleted
+
+    async def start_over(self, product_id: str, media_root: Path) -> bool:
+        """Throw away the script, images, clips and video of a product; it and its person stay."""
+        if await self._repository.get_brief(product_id) is None:
+            return False
+        await self._repository.clear_work(product_id)
+        store = self.media(media_root)
+        for folder in _WORK_FOLDERS:
+            await store.remove_tree(f"{folder}/{product_id}")
+        await self._log(product_id, "brief", "reset", "Started over: the script and all made files were removed")
+        return True
 
     async def set_image_status(self, image_id: str, status: str) -> bool:
         return await self._repository.set_image_status(image_id, status)

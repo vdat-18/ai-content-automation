@@ -287,6 +287,19 @@ async def update_brief(
     return record
 
 
+@router.delete("/{product_id}/brief")
+async def start_over(
+    product_id: str,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> dict[str, bool]:
+    """Remove the script and everything made from it, to write a new one."""
+    if _pipeline_runs.get(product_id, {}).get("status") == "running":
+        raise HTTPException(status_code=409, detail="This product is being made right now")
+    if not await service.start_over(product_id, _media_root()):
+        raise HTTPException(status_code=404, detail="No brief for this product")
+    return {"deleted": True}
+
+
 # Keywords come from an LLM and take a while, so choosing a product only queues the work: the row
 # shows "queued" at once and the keyword appears when a background worker is done with it.
 _select_tasks: set[asyncio.Task[None]] = set()

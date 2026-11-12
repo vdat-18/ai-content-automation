@@ -106,6 +106,8 @@ class ProductRepository(Protocol):
 
     async def delete_product(self, product_id: str) -> bool: ...
 
+    async def clear_work(self, product_id: str) -> None: ...
+
 
 def _sold(value: object) -> int | None:
     try:
@@ -152,6 +154,8 @@ _PRODUCT_OWNED_TABLES = (
     "product_clips",
     "product_events",
 )
+# What is made for a product, as opposed to the product itself and its person
+_WORK_TABLES = ("product_briefs", "product_keyframes", "product_clips")
 _EVENT_COLUMNS = ("id", "at", "step", "shot_index", "status", "message")
 
 
@@ -550,6 +554,12 @@ class SqliteProductRepository:
             self._connection.execute(f"DELETE FROM {table} WHERE product_id=?", (product_id,))
         self._connection.commit()
         return cursor.rowcount > 0
+
+    async def clear_work(self, product_id: str) -> None:
+        """Drop the script, images and clips of a product, so it can be made again."""
+        for table in _WORK_TABLES:
+            self._connection.execute(f"DELETE FROM {table} WHERE product_id=?", (product_id,))
+        self._connection.commit()
 
     async def existing_image_ids(self, image_ids: list[str]) -> set[str]:
         if not image_ids:
@@ -964,6 +974,12 @@ class PostgresProductRepository:
             ):
                 await connection.execute(delete(table).where(table.c.product_id == product_id))
         return bool(result.rowcount)
+
+    async def clear_work(self, product_id: str) -> None:
+        """Drop the script, images and clips of a product, so it can be made again."""
+        async with self._engine.begin() as connection:
+            for table in (product_briefs, product_keyframes, product_clips):
+                await connection.execute(delete(table).where(table.c.product_id == product_id))
 
     async def existing_image_ids(self, image_ids: list[str]) -> set[str]:
         if not image_ids:

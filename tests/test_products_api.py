@@ -559,3 +559,42 @@ def test_outputs_list_the_videos_and_say_what_each_is_made_from(
     assert (first["has_keyframe"], first["keyframe_attempts"], first["in_video"]) == (True, 3, True)
     assert (second["delivery"], second["in_video"]) == ("narrated", False)
     assert output["video"]["voice"] == "Kim Oanh" and output["video"]["exists"] is True
+
+
+def test_starting_over_removes_what_was_made_and_keeps_the_product(
+    tmp_path: Path,
+    client: TestClient,
+    repository: SqliteProductRepository,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    base = f"/api/v1/products/{PRODUCT_ID}"
+    assert client.delete(f"{base}/brief").status_code == 404
+    _capture_product(client)
+    asyncio.run(repository.save_brief(PRODUCT_ID, "", {"shots": [{"role": "hook"}]}, "approved"))
+    folder = tmp_path / "media" / "keyframes" / PRODUCT_ID
+    folder.mkdir(parents=True)
+    (folder / "shot_0.jpg").write_bytes(b"jpeg")
+    asyncio.run(
+        repository.save_keyframe(
+            {
+                "product_id": PRODUCT_ID,
+                "shot_index": 0,
+                "status": "approved",
+                "prompt": "p",
+                "image_path": f"keyframes/{PRODUCT_ID}/shot_0.jpg",
+                "attempts": 1,
+                "error": None,
+                "qa_problem": "",
+            }
+        )
+    )
+    run = {"status": "running", "step": "", "message": ""}
+    monkeypatch.setitem(products_api._pipeline_runs, PRODUCT_ID, run)
+    assert client.delete(f"{base}/brief").status_code == 409
+    monkeypatch.delitem(products_api._pipeline_runs, PRODUCT_ID)
+
+    assert client.delete(f"{base}/brief").json() == {"deleted": True}
+    assert client.get(f"{base}/brief").status_code == 404
+    assert client.get(f"{base}/keyframes").json() == []
+    assert not folder.exists()
+    assert client.get(base).json()["title"] == "Áo thun"
