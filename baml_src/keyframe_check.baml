@@ -28,10 +28,16 @@ function CheckKeyframe(
     when a master keyframe is given, the light and color palette match it; when the previous
     shot's keyframe is given, the same person wears the same outfit in the same kind of room and
     light, so the two shots could be cut together without a jarring jump; when character images
-    are given, the person in the keyframe is clearly the same person as in them (face shape, eyes,
-    hair length and colour, skin tone; the clothes may differ when the shot asks for the product
-    to be worn) with clear skin: no acne, pimples, spots or scars even if the images show some,
-    and the face keeps its real features and natural pores; it also has natural hands and limbs with no extra or missing fingers; it follows
+    are given, the face in the keyframe is exactly the face in them: someone who knows the
+    person would say it is them, not just a similar-looking person. Compare face width and
+    length, jawline and chin, forehead and hairline, eyebrows, eye shape and spacing, nose, lips,
+    ears, hair length, parting and style, and skin tone one by one; fail on any clear difference
+    in one of them (a rounder or wider face, a different jaw, other eyes, other hair), also
+    when the face looks generic, younger or more handsome than in the images. Ignore the angle,
+    the expression and the light, and the clothes may differ when the shot asks for the product
+    to be worn. The skin must be clear: no acne, pimples, spots or scars even if the images show
+    some, and slightly smoothed skin is wanted, but the features keep their real shape and size
+    and the skin keeps fine natural texture, not a waxy look; it also has natural hands and limbs with no extra or missing fingers; it follows
     every rule listed after the shot description under "Approved rules" (when there are any), and
     a broken rule is a failure. Ignore
     all text and logos, on the product label, the packaging and the clothes alike: image models
