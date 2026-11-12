@@ -13,6 +13,10 @@ from typing import Any, Literal
 from fastapi import FastAPI, Request
 from loguru import logger
 
+from ai_content.domains.marketing.creative_knowledge.bootstrap import (
+    import_knowledge_proposals,
+    load_knowledge_bootstrap,
+)
 from ai_content.domains.marketing.creative_knowledge.repositories import (
     SqliteCreativeKnowledgeRepository,
 )
@@ -167,6 +171,29 @@ async def _interrupt_unfinished_runs(container: PostgresRuntimeContainer | None)
         logger.warning("Could not mark the unfinished runs as interrupted: {}", error)
 
 
+async def _load_product_ad_rules(container: PostgresRuntimeContainer | None) -> None:
+    """Make sure the standard rules for product ads exist, so a new install does not run without."""
+    settings = get_runtime_settings()
+    try:
+        manifest = load_knowledge_bootstrap(
+            settings.config_dir / "creative_knowledge" / "product_ad.json"
+        )
+        if container is not None:
+            await import_knowledge_proposals(
+                container.creative_knowledge_service, manifest, contributor="system"
+            )
+            return
+        repository = SqliteCreativeKnowledgeRepository(settings.db_path)
+        try:
+            await import_knowledge_proposals(
+                CreativeKnowledgeService(repository), manifest, contributor="system"
+            )
+        finally:
+            repository.close()
+    except Exception as error:  # noqa: BLE001
+        logger.warning("The standard rules for product ads could not be loaded: {}", error)
+
+
 @asynccontextmanager
 async def lifespan(application: FastAPI):
     """Own PostgreSQL resources for the lifetime of the API process."""
@@ -184,6 +211,7 @@ async def lifespan(application: FastAPI):
         application.state.postgres_runtime = container
         instrument_sqlalchemy(database.engine, observability)
     await _interrupt_unfinished_runs(container)
+    await _load_product_ad_rules(container)
     try:
         yield
     finally:

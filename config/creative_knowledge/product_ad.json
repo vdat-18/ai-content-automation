@@ -1,6 +1,6 @@
 {
   "schema_version": "creative-knowledge-bootstrap@2",
-  "bootstrap_id": "product-ad-v3",
+  "bootstrap_id": "product-ad-v4",
   "items": [
     {
       "knowledge_id": "product-ad-body-proportions",
@@ -18,7 +18,8 @@
       "authority": "lead",
       "source_refs": [
         "team:v2"
-      ]
+      ],
+      "auto_approve": true
     },
     {
       "knowledge_id": "product-ad-clear-skin",
@@ -36,7 +37,8 @@
       "authority": "lead",
       "source_refs": [
         "team:v2"
-      ]
+      ],
+      "auto_approve": true
     },
     {
       "knowledge_id": "product-ad-phone-photo-look",
@@ -54,7 +56,8 @@
       "authority": "lead",
       "source_refs": [
         "team:v2"
-      ]
+      ],
+      "auto_approve": true
     },
     {
       "knowledge_id": "product-ad-voice-register",
@@ -72,7 +75,8 @@
       "authority": "lead",
       "source_refs": [
         "team:v2"
-      ]
+      ],
+      "auto_approve": true
     },
     {
       "knowledge_id": "product-ad-voice-numbers",
@@ -90,7 +94,8 @@
       "authority": "lead",
       "source_refs": [
         "team:v2"
-      ]
+      ],
+      "auto_approve": true
     },
     {
       "knowledge_id": "product-ad-voice-length-narrated",
@@ -108,7 +113,8 @@
       "authority": "lead",
       "source_refs": [
         "team:v2"
-      ]
+      ],
+      "auto_approve": true
     },
     {
       "knowledge_id": "product-ad-voice-length-talking",
@@ -126,7 +132,8 @@
       "authority": "lead",
       "source_refs": [
         "team:v2"
-      ]
+      ],
+      "auto_approve": true
     },
     {
       "knowledge_id": "product-ad-claims-safety",
@@ -144,7 +151,8 @@
       "authority": "lead",
       "source_refs": [
         "team:v2"
-      ]
+      ],
+      "auto_approve": true
     },
     {
       "knowledge_id": "product-ad-script-flow",
@@ -162,7 +170,8 @@
       "authority": "lead",
       "source_refs": [
         "team:v2"
-      ]
+      ],
+      "auto_approve": true
     },
     {
       "knowledge_id": "product-ad-hook-first-seconds",
@@ -180,7 +189,8 @@
       "authority": "lead",
       "source_refs": [
         "team:v2"
-      ]
+      ],
+      "auto_approve": true
     },
     {
       "knowledge_id": "product-ad-shot-variety",
@@ -198,7 +208,8 @@
       "authority": "lead",
       "source_refs": [
         "team:v2"
-      ]
+      ],
+      "auto_approve": true
     },
     {
       "knowledge_id": "product-ad-product-always-visible",
@@ -216,7 +227,8 @@
       "authority": "lead",
       "source_refs": [
         "team:v2"
-      ]
+      ],
+      "auto_approve": true
     },
     {
       "knowledge_id": "product-ad-keyframe-prompt-style",
@@ -234,7 +246,8 @@
       "authority": "lead",
       "source_refs": [
         "team:v2"
-      ]
+      ],
+      "auto_approve": true
     },
     {
       "knowledge_id": "product-ad-motion-prompt-beats",
@@ -252,7 +265,8 @@
       "authority": "lead",
       "source_refs": [
         "team:v2"
-      ]
+      ],
+      "auto_approve": true
     },
     {
       "knowledge_id": "product-ad-video-format",
@@ -270,7 +284,8 @@
       "authority": "lead",
       "source_refs": [
         "team:v2"
-      ]
+      ],
+      "auto_approve": true
     }
   ]
 }

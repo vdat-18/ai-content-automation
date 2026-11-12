@@ -12,6 +12,7 @@ from .models import (
     KnowledgeAuthority,
     KnowledgeScope,
     KnowledgeStage,
+    KnowledgeStatus,
     KnowledgeType,
 )
 from .service import CreativeKnowledgeService
@@ -31,6 +32,7 @@ class KnowledgeBootstrapItem:
     evidence_refs: tuple[str, ...] = ()
     non_conclusions: tuple[str, ...] = ()
     applies_to: tuple[KnowledgeStage, ...] = LEGACY_GENERATION_STAGES
+    auto_approve: bool = False  # curated by the team: no one has to approve it again
 
 
 @dataclass(frozen=True)
@@ -104,6 +106,10 @@ async def import_knowledge_proposals(
             contributor=contributor,
             non_conclusions=item.non_conclusions,
         )
+        if item.auto_approve and current is None:
+            proposed = await service.decide(
+                item.knowledge_id, status=KnowledgeStatus.APPROVED, reviewer=contributor
+            )
         imported.append(proposed)
     application = AppliedKnowledgeBootstrap(
         bootstrap_id=manifest.bootstrap_id,
@@ -154,4 +160,5 @@ def _bootstrap_item(payload: object) -> KnowledgeBootstrapItem:
             KnowledgeStage(str(value))
             for value in payload.get("applies_to", LEGACY_GENERATION_STAGES)
         ),
+        auto_approve=bool(payload.get("auto_approve", False)),
     )

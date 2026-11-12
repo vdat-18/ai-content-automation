@@ -35,12 +35,12 @@ export function RulesTab() {
   const refresh = () => client.invalidateQueries({ queryKey: ["creative-knowledge"] });
 
   useEffect(() => {
-    // Loads the standard rules once; it does nothing when they are already there.
+    // The server loads them when it starts; this does nothing when they are already there.
     pilotApi
       .bootstrapCreativeKnowledge("system", MANIFEST)
       .then(() => client.invalidateQueries({ queryKey: ["creative-knowledge"] }))
-      .catch(() => undefined);
-  }, [client]);
+      .catch(() => notify("The standard rules could not be loaded. Ask whoever looks after the server.", "error"));
+  }, [client, notify]);
 
   const { pending, active } = useMemo(() => {
     const items = knowledge.data?.items ?? [];
