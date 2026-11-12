@@ -45,6 +45,7 @@ async def _round_trip() -> None:
                 "product_keyframes",
                 "product_clips",
                 "product_events",
+                "product_pipeline_runs",
             ):
                 await connection.exec_driver_sql(f"TRUNCATE marketing.{table}")
         service = ProductCatalogService(PostgresProductRepository(engine))
@@ -162,6 +163,20 @@ async def _round_trip() -> None:
             ("video", None, "second"),
         ]
         assert events[0]["at"]
+
+        runs = briefer._repository
+        assert await runs.get_run("1730000000000000001") is None
+        await runs.save_run("1730000000000000001", "running", "")
+        assert await runs.interrupt_runs() == 1
+        interrupted = await runs.get_run("1730000000000000001")
+        assert interrupted is not None and interrupted["status"] == "interrupted"
+        await runs.save_run("1730000000000000001", "paused", "Review the images")
+        assert (await runs.get_run("1730000000000000001"))["message"] == "Review the images"
+        await runs.clear_work("1730000000000000001")  # the script, images, clips and run go
+        assert await runs.get_brief("1730000000000000001") is None
+        assert await runs.list_clips("1730000000000000001") == []
+        assert await runs.get_run("1730000000000000001") is None
+        await runs.save_brief("1730000000000000001", "", {"title": "b"}, "draft")
 
         repository_for_delete = briefer._repository
         assert await repository_for_delete.delete_product("1730000000000000001") is True
