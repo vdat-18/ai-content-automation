@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from fastapi import FastAPI, Request
+from loguru import logger
 
 from ai_content.domains.marketing.creative_knowledge.repositories import (
     SqliteCreativeKnowledgeRepository,
@@ -147,6 +148,21 @@ def get_runtime_settings() -> ApiRuntimeSettings:
     )
 
 
+async def _interrupt_unfinished_runs(container: PostgresRuntimeContainer | None) -> None:
+    """A run cut off by a restart is no longer running: say so instead of showing nothing."""
+    try:
+        if container is not None:
+            await container.product_repository.interrupt_runs()
+            return
+        repository = SqliteProductRepository(get_runtime_settings().db_path)
+        try:
+            await repository.interrupt_runs()
+        finally:
+            repository.close()
+    except Exception as error:  # noqa: BLE001
+        logger.warning("Could not mark the unfinished runs as interrupted: {}", error)
+
+
 @asynccontextmanager
 async def lifespan(application: FastAPI):
     """Own PostgreSQL resources for the lifetime of the API process."""
@@ -163,6 +179,7 @@ async def lifespan(application: FastAPI):
         container = PostgresRuntimeContainer(database)
         application.state.postgres_runtime = container
         instrument_sqlalchemy(database.engine, observability)
+    await _interrupt_unfinished_runs(container)
     try:
         yield
     finally:

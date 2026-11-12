@@ -19,6 +19,7 @@ from ai_content.platform.database.schema import (
     product_clips,
     product_events,
     product_keyframes,
+    product_pipeline_runs,
     product_selections,
     reference_images,
     reference_profiles,
@@ -108,6 +109,12 @@ class ProductRepository(Protocol):
 
     async def clear_work(self, product_id: str) -> None: ...
 
+    async def save_run(self, product_id: str, status: str, message: str) -> None: ...
+
+    async def get_run(self, product_id: str) -> dict[str, str] | None: ...
+
+    async def interrupt_runs(self) -> int: ...
+
 
 def _sold(value: object) -> int | None:
     try:
@@ -153,9 +160,13 @@ _PRODUCT_OWNED_TABLES = (
     "product_keyframes",
     "product_clips",
     "product_events",
+    "product_pipeline_runs",
 )
 # What is made for a product, as opposed to the product itself and its person
-_WORK_TABLES = ("product_briefs", "product_keyframes", "product_clips")
+_WORK_TABLES = ("product_briefs", "product_keyframes", "product_clips", "product_pipeline_runs")
+INTERRUPTED_RUN = (
+    "The server restarted while this was running. Run it again: what is already made is kept."
+)
 _EVENT_COLUMNS = ("id", "at", "step", "shot_index", "status", "message")
 
 
@@ -266,6 +277,10 @@ class SqliteProductRepository:
             "id INTEGER PRIMARY KEY AUTOINCREMENT, product_id TEXT NOT NULL, step TEXT NOT NULL, "
             "shot_index INTEGER, status TEXT NOT NULL, message TEXT NOT NULL DEFAULT '', "
             "at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP)"
+        )
+        self._connection.execute(
+            "CREATE TABLE IF NOT EXISTS product_pipeline_runs ("
+            "product_id TEXT PRIMARY KEY, status TEXT NOT NULL, message TEXT NOT NULL DEFAULT '')"
         )
         self._connection.execute(
             "CREATE TABLE IF NOT EXISTS reference_searches ("
@@ -560,6 +575,29 @@ class SqliteProductRepository:
         for table in _WORK_TABLES:
             self._connection.execute(f"DELETE FROM {table} WHERE product_id=?", (product_id,))
         self._connection.commit()
+
+    async def save_run(self, product_id: str, status: str, message: str) -> None:
+        self._connection.execute(
+            "INSERT INTO product_pipeline_runs (product_id, status, message) VALUES (?, ?, ?) "
+            "ON CONFLICT(product_id) DO UPDATE SET status=excluded.status, "
+            "message=excluded.message",
+            (product_id, status, message),
+        )
+        self._connection.commit()
+
+    async def get_run(self, product_id: str) -> dict[str, str] | None:
+        row = self._connection.execute(
+            "SELECT status, message FROM product_pipeline_runs WHERE product_id=?", (product_id,)
+        ).fetchone()
+        return {"status": row[0], "step": "", "message": row[1]} if row else None
+
+    async def interrupt_runs(self) -> int:
+        cursor = self._connection.execute(
+            "UPDATE product_pipeline_runs SET status='interrupted', message=? WHERE status='running'",
+            (INTERRUPTED_RUN,),
+        )
+        self._connection.commit()
+        return cursor.rowcount
 
     async def existing_image_ids(self, image_ids: list[str]) -> set[str]:
         if not image_ids:
@@ -971,6 +1009,7 @@ class PostgresProductRepository:
                 product_keyframes,
                 product_clips,
                 product_events,
+                product_pipeline_runs,
             ):
                 await connection.execute(delete(table).where(table.c.product_id == product_id))
         return bool(result.rowcount)
@@ -978,8 +1017,36 @@ class PostgresProductRepository:
     async def clear_work(self, product_id: str) -> None:
         """Drop the script, images and clips of a product, so it can be made again."""
         async with self._engine.begin() as connection:
-            for table in (product_briefs, product_keyframes, product_clips):
+            for table in (product_briefs, product_keyframes, product_clips, product_pipeline_runs):
                 await connection.execute(delete(table).where(table.c.product_id == product_id))
+
+    async def save_run(self, product_id: str, status: str, message: str) -> None:
+        statement = insert(product_pipeline_runs).values(
+            product_id=product_id, status=status, message=message
+        )
+        statement = statement.on_conflict_do_update(
+            index_elements=["product_id"],
+            set_={"status": status, "message": message, "updated_at": func.now()},
+        )
+        async with self._engine.begin() as connection:
+            await connection.execute(statement)
+
+    async def get_run(self, product_id: str) -> dict[str, str] | None:
+        statement = select(product_pipeline_runs.c.status, product_pipeline_runs.c.message).where(
+            product_pipeline_runs.c.product_id == product_id
+        )
+        async with self._engine.connect() as connection:
+            row = (await connection.execute(statement)).one_or_none()
+        return {"status": row[0], "step": "", "message": row[1]} if row else None
+
+    async def interrupt_runs(self) -> int:
+        statement = (
+            update(product_pipeline_runs)
+            .where(product_pipeline_runs.c.status == "running")
+            .values(status="interrupted", message=INTERRUPTED_RUN, updated_at=func.now())
+        )
+        async with self._engine.begin() as connection:
+            return (await connection.execute(statement)).rowcount
 
     async def existing_image_ids(self, image_ids: list[str]) -> set[str]:
         if not image_ids:

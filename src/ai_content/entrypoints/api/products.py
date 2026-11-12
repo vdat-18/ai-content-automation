@@ -371,9 +371,10 @@ _DONE_TITLES = {
 async def _announce(
     open_notifications: Any, open_scope: Any, product_id: str, until: str, run: dict[str, str]
 ) -> None:
-    """Leave a notification when a run ends, so nobody has to watch the page."""
+    """Keep how a run ended and leave a notification, so nobody has to watch the page."""
     try:
         async with open_scope() as service:
+            await service.save_run(product_id, run["status"], run["message"])
             product = await service.detail(product_id) or {}
         title = {"done": _DONE_TITLES[until], "paused": "The video needs a look"}.get(
             run["status"], "The video could not be made"
@@ -449,6 +450,7 @@ async def start_pipeline(
         "step": "Starting automated creation",
         "message": "",
     }
+    await service.save_run(product_id, "running")
     task = asyncio.create_task(
         _run_pipeline(
             product_catalog_scope_for(request),
@@ -464,8 +466,16 @@ async def start_pipeline(
 
 
 @router.get("/{product_id}/pipeline")
-async def pipeline_status(product_id: str) -> dict[str, str]:
-    return _pipeline_runs.get(product_id) or {"status": "idle", "step": "", "message": ""}
+async def pipeline_status(
+    product_id: str,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> dict[str, str]:
+    """The run in progress, else how the last one ended (it survives a restart)."""
+    return (
+        _pipeline_runs.get(product_id)
+        or await service.get_run(product_id)
+        or {"status": "idle", "step": "", "message": ""}
+    )
 
 
 @router.get("/select-errors")

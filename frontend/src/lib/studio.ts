@@ -1,4 +1,4 @@
-import type { BriefRecord, Keyframe } from "../types/studio";
+import type { BriefRecord, Keyframe, PipelineRun } from "../types/studio";
 
 export type StepId = "idea" | "script" | "images" | "finish";
 export const STEPS: { id: StepId; label: string }[] = [
@@ -20,6 +20,9 @@ export function friendlyStep(step: string): string {
   if (text.includes("caption")) return "Writing the caption";
   return "Getting started";
 }
+
+/** The last run did not finish: it needs a look, failed, or was cut off by a restart. */
+export const runStopped = (run: PipelineRun | undefined) => !!run && ["paused", "failed", "interrupted"].includes(run.status);
 
 /** The AI check could not run, so a person has to look at the picture or clip. */
 export const isUnchecked = (problem: string) => problem.startsWith("Not checked");

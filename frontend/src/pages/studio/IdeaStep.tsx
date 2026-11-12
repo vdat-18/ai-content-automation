@@ -5,6 +5,7 @@ import { useSearchParams } from "react-router-dom";
 import { ErrorNote, Spinner } from "../../components/ui";
 import { useLightbox } from "../../hooks/useLightbox";
 import { API, usePerson, useStartPipeline } from "../../hooks/useStudio";
+import { runStopped } from "../../lib/studio";
 import { deleteJson, putFile } from "../../services/http";
 import type { BriefRecord, PipelineRun, Product } from "../../types/studio";
 
@@ -37,7 +38,7 @@ export function IdeaStep({ productId, product, productType, record, run }: { pro
   return (
     <>
       <header className="page-head"><div><h1>How should your video look?</h1><p>Fill in the basics, the AI does the rest. You can change things in the next steps.</p></div></header>
-      {run && (run.status === "paused" || run.status === "failed") && (
+      {run && runStopped(run) && (
         <div className="notice notice-warn" role="alert"><div>The last run stopped. {run.message}</div></div>
       )}
       <div className="studio-cols">

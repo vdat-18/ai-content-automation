@@ -834,6 +834,12 @@ class ProductCatalogService:
     async def get_brief(self, product_id: str) -> dict[str, Any] | None:
         return await self._repository.get_brief(product_id)
 
+    async def save_run(self, product_id: str, status: str, message: str = "") -> None:
+        await self._repository.save_run(product_id, status, message)
+
+    async def get_run(self, product_id: str) -> dict[str, str] | None:
+        return await self._repository.get_run(product_id)
+
     async def list_briefs(self) -> list[dict[str, Any]]:
         return await self._repository.list_briefs()
 

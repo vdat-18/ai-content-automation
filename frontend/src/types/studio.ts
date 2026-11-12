@@ -21,7 +21,7 @@ export type Brief = {
 export type BriefRecord = { product_id: string; user_idea: string; brief: Brief; status: "draft" | "approved" };
 export type Keyframe = { shot_index: number; status: "ready" | "approved" | "rejected" | "failed"; attempts: number; error: string | null; qa_problem: string };
 export type Clip = { shot_index: number; status: "processing" | "ready" | "failed"; seconds: number; attempts: number; error: string | null; qa_problem: string };
-export type PipelineRun = { status: "idle" | "running" | "paused" | "failed" | "done"; step: string; message: string };
+export type PipelineRun = { status: "idle" | "running" | "paused" | "failed" | "interrupted" | "done"; step: string; message: string };
 export type Product = {
   product_id: string;
   title: string | null;

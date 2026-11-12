@@ -612,9 +612,14 @@ async def test_the_end_of_a_run_is_announced_with_a_notification(
         async def save(self, notification: Notification) -> None:
             saved.append(notification)
 
+    runs: list[tuple[str, str]] = []
+
     class _Service:
         async def detail(self, product_id: str) -> dict:
             return {"title": "Sọt lưới"}
+
+        async def save_run(self, product_id: str, status: str, message: str = "") -> None:
+            runs.append((status, message))
 
     @asynccontextmanager
     async def notifications():
@@ -643,3 +648,20 @@ async def test_the_end_of_a_run_is_announced_with_a_notification(
         assert (note.kind, note.title) == (kind, title)
         assert note.action_path == f"/studio/{PRODUCT_ID}" and "Sọt lưới" in note.detail
     assert "Review the images" in saved[-1].detail
+    assert runs == [("done", ""), ("paused", "Review the images")]
+
+
+def test_how_a_run_ended_survives_a_restart(
+    client: TestClient, repository: SqliteProductRepository
+) -> None:
+    url = f"/api/v1/products/{PRODUCT_ID}/pipeline"
+    assert client.get(url).json()["status"] == "idle"
+    asyncio.run(repository.save_run(PRODUCT_ID, "running", ""))
+    assert asyncio.run(repository.interrupt_runs()) == 1
+    interrupted = client.get(url).json()
+    assert interrupted["status"] == "interrupted" and "restarted" in interrupted["message"]
+    asyncio.run(repository.save_run(PRODUCT_ID, "paused", "Review the images"))
+    assert asyncio.run(repository.interrupt_runs()) == 0
+    assert client.get(url).json() == {"status": "paused", "step": "", "message": "Review the images"}
+    asyncio.run(repository.clear_work(PRODUCT_ID))
+    assert client.get(url).json()["status"] == "idle"

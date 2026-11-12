@@ -5,7 +5,7 @@ import { useSearchParams } from "react-router-dom";
 import { ErrorNote, Spinner } from "../../components/ui";
 import { ClipsPanel } from "./ClipsPanel";
 import { API, useStartPipeline, useVideoCheck, useVideoInfo, VOICE_KEY } from "../../hooks/useStudio";
-import { imagesApproved } from "../../lib/studio";
+import { imagesApproved, runStopped } from "../../lib/studio";
 import { getJson, postJson } from "../../services/http";
 import type { BriefRecord, Keyframe, PipelineRun, PostPackage, Voice } from "../../types/studio";
 
@@ -90,7 +90,7 @@ export function FinishStep({ productId, record, frames, hasVideo, run }: { produ
       <div className="card pad stack" style={{ maxWidth: 640 }}>
         <h1 style={{ fontSize: 24 }}>{ready ? "Ready to make your video" : "Approve the images first"}</h1>
         <p className="muted">{ready ? "The AI films every scene, records the voice-over and puts it all together. It takes about 10 minutes and you can leave the page." : "Make sure every scene is approved, then come back here."}</p>
-        {run && (run.status === "paused" || run.status === "failed") && <div className="notice notice-warn" role="alert"><div>The last run stopped. {run.message}</div></div>}
+        {run && runStopped(run) && <div className="notice notice-warn" role="alert"><div>The last run stopped. {run.message}</div></div>}
         {ready ? (
           <button className="btn btn-primary btn-lg" style={{ alignSelf: "flex-start" }} disabled={start.isPending} onClick={() => start.mutate({ until: "video" })}>{start.isPending ? "Starting…" : "Make the video"}</button>
         ) : (

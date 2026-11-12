@@ -3,7 +3,7 @@ import { Film, Plus, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 import { PageHead, Skeleton, Spinner } from "../components/ui";
 import { API, useBriefs, useKeyframes, useOutputs, usePipeline, useProducts, useVideoInfo } from "../hooks/useStudio";
-import { friendlyStep, imagesApproved } from "../lib/studio";
+import { friendlyStep, imagesApproved, runStopped } from "../lib/studio";
 import { pilotApi } from "../services/pilotApi";
 import type { BriefRecord, OutputItem, Product } from "../types/studio";
 
@@ -74,7 +74,7 @@ function WorkCard({ record, product }: { record: BriefRecord; product: Product |
   const percent = hasVideo ? 100 : allApproved ? 60 : frames.length ? 40 : 15;
   const status = running
     ? friendlyStep(pipeline.data?.step ?? "")
-    : pipeline.data?.status === "paused" || pipeline.data?.status === "failed"
+    : runStopped(pipeline.data)
       ? "Stopped, needs a look"
       : needsReview
         ? `${approved} of ${total} images approved`

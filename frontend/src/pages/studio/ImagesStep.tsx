@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import { ErrorNote, Spinner } from "../../components/ui";
 import { useLightbox } from "../../hooks/useLightbox";
 import { API, useStartPipeline } from "../../hooks/useStudio";
-import { checkNote, imagesApproved, isUnchecked } from "../../lib/studio";
+import { checkNote, imagesApproved, isUnchecked, runStopped } from "../../lib/studio";
 import { pilotApi } from "../../services/pilotApi";
 import { postJson, putJson } from "../../services/http";
 import type { BriefRecord, Keyframe, PipelineRun } from "../../types/studio";
@@ -55,7 +55,7 @@ export function ImagesStep({ productId, record, frames, run }: { productId: stri
       <div className="card pad stack" style={{ maxWidth: 640 }}>
         <h1 style={{ fontSize: 24 }}>No images yet</h1>
         <p className="muted">The AI creates one picture for every scene of your script. It takes about 8 minutes and you can leave the page.</p>
-        {run && (run.status === "paused" || run.status === "failed") && <div className="notice notice-warn" role="alert"><div>The last run stopped. {run.message}</div></div>}
+        {run && runStopped(run) && <div className="notice notice-warn" role="alert"><div>The last run stopped. {run.message}</div></div>}
         <button className="btn btn-primary btn-lg" style={{ alignSelf: "flex-start" }} disabled={start.isPending} onClick={() => start.mutate({ until: "images" })}>{start.isPending ? "Starting…" : "Create the images"}</button>
         <ErrorNote error={start.error} />
       </div>
@@ -134,7 +134,7 @@ export function ImagesStep({ productId, record, frames, run }: { productId: stri
             )}
             <span className="muted small">Making the video takes about 10 minutes. You can leave the page.</span>
             <ErrorNote error={start.error} />
-            {run && (run.status === "paused" || run.status === "failed") && <div className="notice notice-warn" role="alert"><div>The last run stopped. {run.message}</div></div>}
+            {run && runStopped(run) && <div className="notice notice-warn" role="alert"><div>The last run stopped. {run.message}</div></div>}
           </div>
           {imageRules.length > 0 && (
             <div className="card pad stack">

@@ -116,6 +116,16 @@ product_clips = Table(
     schema="marketing",
 )
 
+product_pipeline_runs = Table(
+    "product_pipeline_runs",
+    metadata,
+    Column("product_id", Text, primary_key=True),
+    Column("status", Text, nullable=False),
+    Column("message", Text, nullable=False, server_default=sql_text("''")),
+    *_timestamps(),
+    schema="marketing",
+)
+
 product_events = Table(
     "product_events",
     metadata,
@@ -335,6 +345,7 @@ __all__ = [
     "product_clips",
     "product_events",
     "product_keyframes",
+    "product_pipeline_runs",
     "reference_images",
     "reference_profiles",
     "reference_searches",
