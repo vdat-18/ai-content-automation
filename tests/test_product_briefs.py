@@ -11,6 +11,7 @@ from ai_content.domains.marketing.products.briefing import (
     ContentBriefWriter,
     product_facts,
 )
+from ai_content.domains.marketing.products.reference_picker import ReferencePickerError
 from ai_content.domains.marketing.products.references import ProfileGenerationError
 from ai_content.domains.marketing.products.repositories import SqliteProductRepository
 from ai_content.domains.marketing.products.service import ProductCatalogService
@@ -489,3 +490,22 @@ async def test_the_run_log_says_when_no_reference_has_been_described(tmp_path) -
     assert set(record["brief"]["shot_references"]) == {None}
     last = [e for e in await service.events(PRODUCT_ID) if e["step"] == "references"][-1]
     assert last["status"] == "warning" and "has a description yet" in last["message"]
+
+
+class _DownPicker:
+    async def choose(self, product, shot, candidates):
+        raise ReferencePickerError("connection refused")
+
+
+async def test_a_picker_that_cannot_be_reached_is_reported_not_counted_as_no_match(
+    tmp_path, monkeypatch
+) -> None:
+    monkeypatch.setenv("AIC_CLIP_SPEED", "1.25")
+    service = await _service(tmp_path, _TwoShots())
+    service._text_embedder, service._reference_picker = _Embedder(), _DownPicker()
+    await service._repository.select_product(PRODUCT_ID, "áo thun")
+    await _two_described_references(service)
+    record = await service.create_brief(PRODUCT_ID, video_seconds=30)
+    assert record["brief"]["shot_references"] == [None, None, None]
+    [event] = [e for e in await service.events(PRODUCT_ID) if e["step"] == "references"]
+    assert event["status"] == "error" and "connection refused" in event["message"]

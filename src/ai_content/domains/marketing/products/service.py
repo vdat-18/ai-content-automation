@@ -75,7 +75,7 @@ from .parsing import (
 )
 from .posting import PostingPackageWriter
 from .reference_ad import AdAnalyzer, ReferenceAdUnavailable
-from .reference_picker import ShotReferencePicker
+from .reference_picker import ReferencePickerError, ShotReferencePicker
 from .references import ProfileGenerationError, ReferenceProfile, ReferenceProfileGenerator
 from .repositories import ProductRepository
 from .speech import (
@@ -851,6 +851,7 @@ class ProductCatalogService:
             return none
         looks = await self._product_look(product, brief, {i["image_id"] for i in pool})
         picker = self._reference_picker
+        failures: list[str] = []
 
         async def pick(shot: dict[str, Any], query: list[float]) -> str | None:
             text = _scaled({i["image_id"]: cosine(query, vectors[i["image_id"]]) for i in pool})
@@ -862,14 +863,22 @@ class ProductCatalogService:
                 ),
                 reverse=True,
             )[:REFERENCE_CANDIDATES]
-            return await picker.choose(
-                product,
-                shot,
-                [
-                    {"image_id": i["image_id"], "note": reference_note(i), "url": i["image_url"]}
-                    for i in closest
-                ],
-            )
+            try:
+                return await picker.choose(
+                    product,
+                    shot,
+                    [
+                        {
+                            "image_id": i["image_id"],
+                            "note": reference_note(i),
+                            "url": i["image_url"],
+                        }
+                        for i in closest
+                    ],
+                )
+            except ReferencePickerError as error:
+                failures.append(str(error))
+                return None
 
         picked = await asyncio.gather(*(pick(s, q) for s, q in zip(shots, queries, strict=True)))
         seen: set[str] = set()
@@ -878,13 +887,21 @@ class ProductCatalogService:
             result.append(image_id if image_id and image_id not in seen else None)
             if image_id:
                 seen.add(image_id)
-        await self._log(
-            product_id,
-            "references",
-            "ok",
-            f"Matched references to {sum(1 for item in result if item)} of {len(shots)} shot(s) "
-            f"from {len(pool)} described reference(s)",
-        )
+        matched = f"Matched references to {sum(1 for item in result if item)} of {len(shots)} shot(s)"
+        if failures:
+            await self._log(
+                product_id,
+                "references",
+                "error",
+                f"{matched}; the model could not choose for {len(failures)} shot(s): {failures[0]}",
+            )
+        else:
+            await self._log(
+                product_id,
+                "references",
+                "ok",
+                f"{matched} from {len(pool)} described reference(s)",
+            )
         return result
 
     async def match_references(self, product_id: str) -> dict[str, Any] | None:

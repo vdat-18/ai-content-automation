@@ -20,6 +20,10 @@ from ai_content.domains.marketing.products.briefing import product_facts
 _SHOT_KEYS = ("role", "description", "keyframe_prompt", "delivery")
 
 
+class ReferencePickerError(RuntimeError):
+    """The model could not be reached or did not answer, which is not the same as "none fits"."""
+
+
 class _BamlPickerClient(Protocol):
     async def ChooseShotReference(
         self,
@@ -52,7 +56,7 @@ class ShotReferencePicker:
         candidates: list[dict[str, str]],
         http: httpx.AsyncClient | None = None,
     ) -> str | None:
-        """candidates: image_id, note, url. Returns the chosen image_id, or None."""
+        """candidates: image_id, note, url. Returns the chosen image_id, or None when none fits."""
         owned = http is None
         http = http or httpx.AsyncClient(timeout=30, follow_redirects=True)
 
@@ -88,8 +92,7 @@ class ShotReferencePicker:
                 ],
             )
         except BamlError as error:
-            logger.warning("Choosing a shot reference failed: {}", str(error)[:300])
-            return None
+            raise ReferencePickerError(str(error)[:300]) from error
         logger.info("Shot reference: model chose {!r} among {}", result.choice, list(labeled))
         found = labeled.get(result.choice.strip())
         return found[0]["image_id"] if found else None
