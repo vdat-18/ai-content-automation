@@ -76,12 +76,7 @@ from .parsing import (
 from .posting import PostingPackageWriter
 from .reference_ad import AdAnalyzer, ReferenceAdUnavailable
 from .reference_picker import ShotReferencePicker
-from .references import (
-    GENERAL_TYPE,
-    ProfileGenerationError,
-    ReferenceProfile,
-    ReferenceProfileGenerator,
-)
+from .references import ProfileGenerationError, ReferenceProfile, ReferenceProfileGenerator
 from .repositories import ProductRepository
 from .speech import (
     MAX_SPEEDUP,
@@ -644,15 +639,9 @@ class ProductCatalogService:
         images = await self._repository.list_reference_images(status, product_type)
         return list(reversed(images))
 
-    async def _scene_pool(self, product_type: str) -> tuple[str, list[dict[str, Any]]]:
-        """The live references of the product type, else the general everyday scenes.
-
-        Returns the type that owns the pictures, since their embeddings are stored under it.
-        """
-        own = await self.reference_images("live", product_type)
-        if own:
-            return product_type, own
-        return GENERAL_TYPE, await self.reference_images("live", GENERAL_TYPE)
+    async def _scene_pool(self) -> list[dict[str, Any]]:
+        """Every live reference, whatever it was crawled for: all products draw from one pool."""
+        return await self.reference_images("live", None)
 
     async def screen_images(self, limit: int) -> dict[str, int]:
         """Review pending images with the vision model: usable ones go live, the rest are rejected."""
@@ -717,12 +706,9 @@ class ProductCatalogService:
         product_type = (await self._repository.selections()).get(product_id)
         if not product_type:
             raise BriefUnavailable("Select this product for content before writing a brief")
-        pool_type, live = await self._scene_pool(product_type)
+        live = await self._scene_pool()
         if not live:
-            raise BriefUnavailable(
-                f"No usable reference image of type '{product_type}' or of everyday scenes yet; "
-                "crawl Pinterest first"
-            )
+            raise BriefUnavailable("No usable reference image yet; crawl Pinterest first")
         shot_count = max(1, round(video_seconds / shot_seconds(CLIP_SECONDS)))
         rules = await approved_rules(self._knowledge, KnowledgeStage.PREPARATION, "brief")
         facts = product_facts(detail, user_idea)
@@ -753,7 +739,7 @@ class ProductCatalogService:
         brief["quality_problems"] = problems
         brief["warnings"] = warnings
         brief["shot_references"] = await self._pick_shot_references(
-            product_id, detail, brief, live, pool_type
+            product_id, detail, brief, live
         )
         brief["selected_reference_ids"] = list(
             dict.fromkeys(item for item in brief["shot_references"] if item)
@@ -771,13 +757,11 @@ class ProductCatalogService:
         )
         return await self._repository.get_brief(product_id)
 
-    async def _reference_vectors(
-        self, product_type: str, live: list[dict[str, Any]]
-    ) -> dict[str, list[float]]:
+    async def _reference_vectors(self, live: list[dict[str, Any]]) -> dict[str, list[float]]:
         """The embedding of every live reference description; new ones are embedded and kept."""
         assert self._text_embedder is not None
         model = self._text_embedder.model
-        stored = await self._repository.text_embeddings(product_type)
+        stored = await self._repository.text_embeddings()
         vectors = {
             image_id: item["vector"] for image_id, item in stored.items() if item["model"] == model
         }
@@ -797,7 +781,6 @@ class ProductCatalogService:
         self,
         product: dict[str, Any],
         brief: dict[str, Any],
-        product_type: str,
         wanted: set[str],
     ) -> dict[str, float]:
         """How much each reference picture looks like the product photos, by image embedding.
@@ -815,7 +798,7 @@ class ProductCatalogService:
         except Exception as error:
             logger.warning("Product photos could not be embedded: {}", str(error)[:200])
             return {}
-        stored = await self._repository.fingerprints(product_type)
+        stored = await self._repository.fingerprints()
         return _scaled(
             {
                 item["image_id"]: max(cosine(vector, item["embedding"]) for vector in vectors)
@@ -830,7 +813,6 @@ class ProductCatalogService:
         product: dict[str, Any],
         brief: dict[str, Any],
         live: list[dict[str, Any]],
-        product_type: str,
     ) -> list[str | None]:
         """For every shot, the image id of the reference that fits it best, or None.
 
@@ -849,7 +831,7 @@ class ProductCatalogService:
             )
             return none
         try:
-            vectors = await self._reference_vectors(product_type, live)
+            vectors = await self._reference_vectors(live)
             queries = await self._text_embedder.embed(
                 [f"{shot.get('role', '')}. {shot.get('keyframe_prompt', '')}" for shot in shots]
             )
@@ -867,9 +849,7 @@ class ProductCatalogService:
                 "shots have no reference",
             )
             return none
-        looks = await self._product_look(
-            product, brief, product_type, {i["image_id"] for i in pool}
-        )
+        looks = await self._product_look(product, brief, {i["image_id"] for i in pool})
         picker = self._reference_picker
 
         async def pick(shot: dict[str, Any], query: list[float]) -> str | None:
@@ -914,10 +894,9 @@ class ProductCatalogService:
         product_type = (await self._repository.selections()).get(product_id)
         if record is None or detail is None or not product_type:
             return None
-        pool_type, live = await self._scene_pool(product_type)
         brief = dict(record["brief"])
         brief["shot_references"] = await self._pick_shot_references(
-            product_id, detail, brief, live, pool_type
+            product_id, detail, brief, await self._scene_pool()
         )
         brief["selected_reference_ids"] = list(
             dict.fromkeys(item for item in brief["shot_references"] if item)

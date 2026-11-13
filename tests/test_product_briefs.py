@@ -11,7 +11,7 @@ from ai_content.domains.marketing.products.briefing import (
     ContentBriefWriter,
     product_facts,
 )
-from ai_content.domains.marketing.products.references import GENERAL_TYPE, ProfileGenerationError
+from ai_content.domains.marketing.products.references import ProfileGenerationError
 from ai_content.domains.marketing.products.repositories import SqliteProductRepository
 from ai_content.domains.marketing.products.service import ProductCatalogService
 
@@ -68,25 +68,19 @@ async def test_brief_needs_selection_and_live_references(tmp_path) -> None:
     assert record["brief"]["selected_reference_ids"] == []  # no embedding model is set up
 
 
-async def test_a_type_without_references_uses_the_general_scenes(tmp_path) -> None:
+async def test_every_product_draws_from_the_same_references(tmp_path) -> None:
     service = await _service(tmp_path, _FakeWriter())
     await service._repository.select_product(PRODUCT_ID, "nước tẩy")
-    with pytest.raises(BriefUnavailable, match="everyday scenes"):
+    with pytest.raises(BriefUnavailable, match="No usable reference image"):
         await service.create_brief(PRODUCT_ID)
 
-    await service.ingest(
-        {"kind": "pinterest", "product_type": GENERAL_TYPE, "query": "q", "pins": [PIN]}
-    )
-    [image] = await service.reference_images("pending", GENERAL_TYPE)
-    await service.set_image_status(image["image_id"], "live")
-    assert await service.create_brief(PRODUCT_ID) is not None
-    assert (await service._scene_pool("nước tẩy"))[0] == GENERAL_TYPE
-
-    own = {"image_url": "https://i.pinimg.com/236x/12/34/56.jpg", "pin_url": "/pin/2/", "title": "b"}
-    await service.ingest({"kind": "pinterest", "product_type": "nước tẩy", "query": "q", "pins": [own]})
-    [image] = await service.reference_images("pending", "nước tẩy")
-    await service.set_image_status(image["image_id"], "live")  # its own pictures win
-    assert (await service._scene_pool("nước tẩy"))[0] == "nước tẩy"
+    other = {"image_url": "https://i.pinimg.com/236x/12/34/56.jpg", "pin_url": "/pin/2/", "title": "b"}
+    for product_type, pin in (("áo thun", PIN), ("giày", other)):
+        await service.ingest({"kind": "pinterest", "product_type": product_type, "query": "q", "pins": [pin]})
+        [image] = await service.reference_images("pending", product_type)
+        await service.set_image_status(image["image_id"], "live")
+    assert await service.create_brief(PRODUCT_ID) is not None  # it has no references of its own type
+    assert len(await service._scene_pool()) == 2
 
 
 async def test_brief_records_whether_it_has_a_person(tmp_path) -> None:

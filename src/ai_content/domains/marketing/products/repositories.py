@@ -59,13 +59,13 @@ class ProductRepository(Protocol):
 
     async def existing_image_ids(self, image_ids: list[str]) -> set[str]: ...
 
-    async def fingerprints(self, product_type: str) -> list[dict[str, Any]]: ...
+    async def fingerprints(self, product_type: str | None = None) -> list[dict[str, Any]]: ...
 
     async def images_without_fingerprint(self, limit: int) -> list[dict[str, Any]]: ...
 
     async def set_fingerprint(self, image_id: str, phash: str, embedding: list[float]) -> None: ...
 
-    async def text_embeddings(self, product_type: str) -> dict[str, dict[str, Any]]: ...
+    async def text_embeddings(self) -> dict[str, dict[str, Any]]: ...
 
     async def set_text_embedding(self, image_id: str, model: str, vector: list[float]) -> None: ...
 
@@ -608,11 +608,11 @@ class SqliteProductRepository:
         )
         return {row[0] for row in rows}
 
-    async def fingerprints(self, product_type: str) -> list[dict[str, Any]]:
+    async def fingerprints(self, product_type: str | None = None) -> list[dict[str, Any]]:
         rows = self._connection.execute(
             "SELECT image_id, phash, embedding FROM reference_images "
-            "WHERE product_type=? AND phash IS NOT NULL",
-            (product_type,),
+            "WHERE (? IS NULL OR product_type=?) AND phash IS NOT NULL",
+            (product_type, product_type),
         ).fetchall()
         return [
             {"image_id": r[0], "phash": r[1], "embedding": json.loads(r[2]) if r[2] else None}
@@ -627,11 +627,10 @@ class SqliteProductRepository:
         ).fetchall()
         return [{"image_id": r[0], "image_url": r[1], "status": r[2]} for r in rows]
 
-    async def text_embeddings(self, product_type: str) -> dict[str, dict[str, Any]]:
+    async def text_embeddings(self) -> dict[str, dict[str, Any]]:
         rows = self._connection.execute(
             "SELECT image_id, text_embedding FROM reference_images "
-            "WHERE product_type=? AND text_embedding IS NOT NULL",
-            (product_type,),
+            "WHERE text_embedding IS NOT NULL"
         ).fetchall()
         return {row[0]: json.loads(row[1]) for row in rows}
 
@@ -1057,12 +1056,12 @@ class PostgresProductRepository:
         async with self._engine.connect() as connection:
             return set((await connection.execute(statement)).scalars().all())
 
-    async def fingerprints(self, product_type: str) -> list[dict[str, Any]]:
+    async def fingerprints(self, product_type: str | None = None) -> list[dict[str, Any]]:
         statement = select(
             reference_images.c.image_id, reference_images.c.phash, reference_images.c.embedding
-        ).where(
-            reference_images.c.product_type == product_type, reference_images.c.phash.is_not(None)
-        )
+        ).where(reference_images.c.phash.is_not(None))
+        if product_type is not None:
+            statement = statement.where(reference_images.c.product_type == product_type)
         async with self._engine.connect() as connection:
             rows = (await connection.execute(statement)).all()
         return [{"image_id": r[0], "phash": r[1], "embedding": r[2]} for r in rows]
@@ -1079,10 +1078,9 @@ class PostgresProductRepository:
             rows = (await connection.execute(statement)).all()
         return [{"image_id": r[0], "image_url": r[1], "status": r[2]} for r in rows]
 
-    async def text_embeddings(self, product_type: str) -> dict[str, dict[str, Any]]:
+    async def text_embeddings(self) -> dict[str, dict[str, Any]]:
         statement = select(reference_images.c.image_id, reference_images.c.text_embedding).where(
-            reference_images.c.product_type == product_type,
-            reference_images.c.text_embedding.is_not(None),
+            reference_images.c.text_embedding.is_not(None)
         )
         async with self._engine.connect() as connection:
             rows = (await connection.execute(statement)).all()
