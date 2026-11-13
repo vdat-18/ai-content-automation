@@ -79,7 +79,7 @@ class ApiRuntimeSettings:
     video_base_url: str = ""
     video_api_key: str | None = None
     video_model: str = ""
-    video_frame_fields: str = "image,input_reference,image_url"
+    video_frame_fields: str = "image"
     tts_base_url: str = ""
     tts_api_key: str | None = None
     tts_model: str = ""

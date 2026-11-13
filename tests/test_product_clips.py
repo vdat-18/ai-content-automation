@@ -772,15 +772,15 @@ async def test_the_first_frame_goes_only_under_the_fields_that_are_set() -> None
         bodies.append(json.loads(request.content))
         return httpx.Response(200, json={"id": "v1"})
 
-    both = VideoClient(
+    wide = VideoClient(
         base_url="https://api.example/v1",
         api_key="k",
         model="m",
-        frame_fields=("image",),
+        frame_fields=("image", "input_reference", "image_url"),
         http=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
     )
-    await both.submit("p", b"x", 6)
     await _client(handler).submit("p", b"x", 6)
+    await wide.submit("p", b"x", 6)
     narrow, wide = bodies
     assert "image" in narrow and "input_reference" not in narrow and "image_url" not in narrow
     assert narrow["image"] == wide["image"] == wide["input_reference"] == wide["image_url"]
