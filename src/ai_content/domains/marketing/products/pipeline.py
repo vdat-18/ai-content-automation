@@ -45,6 +45,7 @@ async def run_pipeline(
     poll_seconds: float = CLIP_POLL_SECONDS,
     busy_wait_seconds: float = CLIP_BUSY_WAIT_SECONDS,
     until: str = "video",
+    persona_id: str | None = None,
 ) -> None:
     """Brief, person, keyframes, clips, voice-over, video and post text, resuming what exists.
 
@@ -58,12 +59,8 @@ async def run_pipeline(
     record = await service.get_brief(product_id)
     if record is None:
         report("Writing storyboard brief")
-        record = await service.create_brief(
-            product_id,
-            idea,
-            video_seconds,
-            await service.persona_photos(product_id, media_root),
-        )
+        persona_id, photos = await service.brief_persona(media_root, persona_id)
+        record = await service.create_brief(product_id, idea, video_seconds, photos, persona_id)
         if record is None:
             raise PipelineStopped("Product not captured")
     if until == "script":

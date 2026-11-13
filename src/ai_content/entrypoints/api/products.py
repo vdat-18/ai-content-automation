@@ -96,6 +96,96 @@ async def list_products(
     return await service.details(include_junk)
 
 
+# Routes of the one shared person come first: `/persona` must not be read as a product id
+IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
+MAX_PERSONA_BYTES = 10 * 1024 * 1024
+
+
+class PersonaCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=60)
+
+
+# The people a video can follow are shared by every product, so these routes have no product id
+@router.get("/persona")
+async def list_personas(
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> list[dict[str, Any]]:
+    return await service.list_personas(_media_root())
+
+
+@router.post("/persona")
+async def create_persona(
+    body: PersonaCreate,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> dict[str, Any]:
+    return await service.create_persona(_media_root(), body.name)
+
+
+@router.put("/persona/{persona_id}/image")
+async def upload_persona_image(
+    persona_id: str,
+    request: Request,
+    rights: str = Query(default=""),
+    add: bool = Query(default=False),
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> dict[str, Any]:
+    """Use the user's own photo as this person (the user confirms the rights).
+
+    With add=true the photo joins the ones already uploaded instead of replacing them.
+    """
+    if rights != "confirmed":
+        raise HTTPException(
+            status_code=422, detail="Confirm that you have the right to use this person's image"
+        )
+    kind = request.headers.get("content-type", "").split(";")[0].strip()
+    if kind not in IMAGE_TYPES:
+        raise HTTPException(status_code=415, detail=f"Use one of {sorted(IMAGE_TYPES)}")
+    content = await request.body()
+    if not content:
+        raise HTTPException(status_code=422, detail="The file is empty")
+    if len(content) > MAX_PERSONA_BYTES:
+        raise HTTPException(status_code=413, detail="The photo is larger than 10 MB")
+    persona = await service.upload_persona(_media_root(), persona_id, content, add)
+    if persona is None:
+        raise HTTPException(status_code=404, detail="No such person")
+    return persona
+
+
+@router.get("/persona/{persona_id}/image")
+async def persona_image(
+    persona_id: str,
+    n: int = Query(default=0, ge=0),
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> FileResponse:
+    persona = await service.get_persona(_media_root(), persona_id)
+    paths = persona["image_paths"] if persona else []
+    path = await service.media(_media_root()).fetch(paths[n]) if n < len(paths) else None
+    if path is None:
+        raise HTTPException(status_code=404, detail="No person portrait yet")
+    return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "no-cache"})
+
+
+@router.put("/persona/{persona_id}/default")
+async def set_default_persona(
+    persona_id: str,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> list[dict[str, Any]]:
+    """New videos follow this person unless one is chosen."""
+    if not await service.set_default_persona(_media_root(), persona_id):
+        raise HTTPException(status_code=404, detail="No such person")
+    return await service.list_personas(_media_root())
+
+
+@router.delete("/persona/{persona_id}")
+async def delete_persona(
+    persona_id: str,
+    service: ProductCatalogService = Depends(get_product_catalog_service),
+) -> list[dict[str, Any]]:
+    if not await service.delete_persona(_media_root(), persona_id):
+        raise HTTPException(status_code=404, detail="No such person")
+    return await service.list_personas(_media_root())
+
+
 @router.delete("/{product_id}")
 async def delete_product(
     product_id: str,
@@ -221,6 +311,7 @@ async def remove_reference_image(
 class BriefRequest(BaseModel):
     idea: str = ""
     video_seconds: Literal[15, 30, 45, 60, 75, 90] = 15
+    persona_id: str | None = None  # the default person when empty
 
 
 class BriefUpdate(BaseModel):
@@ -254,11 +345,9 @@ async def create_brief(
     service: ProductCatalogService = Depends(get_product_catalog_service),
 ) -> dict[str, Any]:
     try:
+        persona_id, photos = await service.brief_persona(_media_root(), body.persona_id)
         record = await service.create_brief(
-            product_id,
-            body.idea,
-            body.video_seconds,
-            await service.persona_photos(product_id, _media_root()),
+            product_id, body.idea, body.video_seconds, photos, persona_id
         )
     except BriefUnavailable as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
@@ -361,6 +450,7 @@ class PipelineRequest(BaseModel):
     video_seconds: Literal[15, 30, 45, 60, 75, 90] = 60
     voice: str | None = None
     until: Literal["script", "images", "video"] = "video"
+    persona_id: str | None = None  # the default person when empty
 
 
 _DONE_TITLES = {
@@ -424,6 +514,7 @@ async def _run_pipeline(
                 voice=body.voice,
                 report=report,
                 until=body.until,
+                persona_id=body.persona_id,
             )
     except (PipelineStopped, *EXPECTED_STOPS) as error:
         run.update(status="paused", message=str(error)[:500])
@@ -896,58 +987,6 @@ async def upload_voiceover(
     return {"voiceover": extension}
 
 
-IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp"}
-MAX_PERSONA_BYTES = 10 * 1024 * 1024
-
-
-@router.put("/{product_id}/persona/image")
-async def upload_persona_image(
-    product_id: str,
-    request: Request,
-    rights: str = Query(default=""),
-    add: bool = Query(default=False),
-    service: ProductCatalogService = Depends(get_product_catalog_service),
-) -> dict[str, Any]:
-    """Use the user's own photo as the person in every shot (the user confirms the rights).
-
-    With add=true the photo joins the ones already uploaded instead of replacing them.
-    """
-    if rights != "confirmed":
-        raise HTTPException(
-            status_code=422, detail="Confirm that you have the right to use this person's image"
-        )
-    kind = request.headers.get("content-type", "").split(";")[0].strip()
-    if kind not in IMAGE_TYPES:
-        raise HTTPException(status_code=415, detail=f"Use one of {sorted(IMAGE_TYPES)}")
-    content = await request.body()
-    if not content:
-        raise HTTPException(status_code=422, detail="The file is empty")
-    if len(content) > MAX_PERSONA_BYTES:
-        raise HTTPException(status_code=413, detail="The photo is larger than 10 MB")
-    persona = await service.upload_persona(product_id, _media_root(), content, add)
-    if persona is None:
-        raise HTTPException(status_code=404, detail="Product not captured")
-    return persona
-
-
-@router.get("/{product_id}/persona")
-async def persona_summary(
-    product_id: str,
-    service: ProductCatalogService = Depends(get_product_catalog_service),
-) -> dict[str, int]:
-    persona = await service.get_persona(product_id, _media_root())
-    return {"photos": len(persona["image_paths"]), "attempts": persona["attempts"]}
-
-
-@router.delete("/{product_id}/persona")
-async def delete_persona(
-    product_id: str,
-    service: ProductCatalogService = Depends(get_product_catalog_service),
-) -> dict[str, int]:
-    await service.delete_persona(product_id, _media_root())
-    return {"photos": 0}
-
-
 class FeedbackRequest(BaseModel):
     text: str = Field(min_length=1)
     contributor: str = Field(default="user", min_length=1)
@@ -995,19 +1034,6 @@ async def learn_from_reference_ad(
     except KeyframeUnavailable as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
     return {"rules": rules}
-
-
-@router.get("/{product_id}/persona/image")
-async def persona_image(
-    product_id: str,
-    n: int = Query(default=0, ge=0),
-    service: ProductCatalogService = Depends(get_product_catalog_service),
-) -> FileResponse:
-    paths = (await service.get_persona(product_id, _media_root()))["image_paths"]
-    path = await service.media(_media_root()).fetch(paths[n]) if n < len(paths) else None
-    if path is None:
-        raise HTTPException(status_code=404, detail="No person portrait yet")
-    return FileResponse(path, media_type="image/jpeg", headers={"Cache-Control": "no-cache"})
 
 
 class VoiceoverRequest(BaseModel):

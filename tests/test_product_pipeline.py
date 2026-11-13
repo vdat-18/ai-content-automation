@@ -33,10 +33,10 @@ class _FakeService:
     async def get_brief(self, product_id):
         return self._record() if self.has_brief else None
 
-    async def persona_photos(self, product_id, media_root):
-        return [b"face"]
+    async def brief_persona(self, media_root, persona_id=None):
+        return "p1", [b"face"]
 
-    async def create_brief(self, product_id, idea, video_seconds, person_photos):
+    async def create_brief(self, product_id, idea, video_seconds, person_photos, persona_id):
         self.calls.append(f"create_brief:{video_seconds}:{len(person_photos)}")
         self.has_brief = True
         return self._record()

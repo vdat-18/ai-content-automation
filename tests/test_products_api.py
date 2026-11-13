@@ -260,8 +260,9 @@ class _FakeWriter:
 
 
 def test_brief_creation_reports_unmet_preconditions_then_succeeds(
-    tmp_path: Path, repository: SqliteProductRepository
+    tmp_path: Path, repository: SqliteProductRepository, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    monkeypatch.setenv("AIC_AI_DATA_ROOT", str(tmp_path))
     app = FastAPI()
     app.include_router(router)
 
@@ -283,6 +284,11 @@ def test_brief_creation_reports_unmet_preconditions_then_succeeds(
     client.post("/api/v1/products/ingest", json=body)
     image = client.get("/api/v1/products/reference-images?status=pending").json()[0]
     asyncio.run(repository.set_image_status(image["image_id"], "live"))
+    refused = client.post(url, json={"idea": "ban công"})
+    assert refused.status_code == 409 and "photo of the person" in refused.json()["detail"]
+    person = client.post("/api/v1/products/persona", json={"name": "Đạt"}).json()
+    photo = f"/api/v1/products/persona/{person['id']}/image?rights=confirmed"
+    client.put(photo, content=b"face", headers={"content-type": "image/jpeg"})
     created = client.post(url, json={"idea": "ban công"}).json()
     assert created["user_idea"] == "ban công" and created["brief"]["idea_seen"] == "ban công"
 
@@ -436,34 +442,42 @@ def test_voiceover_upload_replaces_the_previous_file(tmp_path: Path, client: Tes
     assert sorted(p.name for p in folder.iterdir()) == ["voiceover.json", "voiceover.wav"]
 
 
-def test_person_photos_are_uploaded_added_listed_and_removed(
-    client: TestClient,
-) -> None:
-    base = f"/api/v1/products/{PRODUCT_ID}/persona"
+def test_people_are_created_given_photos_made_default_and_removed(client: TestClient) -> None:
+    base = "/api/v1/products/persona"
     jpeg = {"content-type": "image/jpeg"}
-    assert client.get(base).json() == {"photos": 0, "attempts": 0}
-    assert client.get(f"{base}/image").status_code == 404
-    assert (
-        client.put(f"{base}/image?rights=confirmed", content=b"x", headers=jpeg).status_code == 404
-    )
-    _capture_product(client)
+    assert client.get(base).json() == []
+    assert client.post(base, json={"name": ""}).status_code == 422
+    dat = client.post(base, json={"name": "Đạt"}).json()
+    lan = client.post(base, json={"name": "Lan"}).json()
+    one = f"{base}/{dat['id']}/image"
+    assert client.get(one).status_code == 404
 
-    assert client.put(f"{base}/image", content=b"one", headers=jpeg).status_code == 422
-    confirmed = f"{base}/image?rights=confirmed"
+    assert client.put(one, content=b"one", headers=jpeg).status_code == 422
+    confirmed = f"{one}?rights=confirmed"
     assert client.put(confirmed, content=b"", headers=jpeg).status_code == 422
     assert (
         client.put(confirmed, content=b"x", headers={"content-type": "text/plain"}).status_code
         == 415
     )
+    assert client.put(f"{base}/nobody/image?rights=confirmed", content=b"x", headers=jpeg).status_code == 404
     assert client.put(confirmed, content=b"one", headers=jpeg).json()["attempts"] == 1
     assert client.put(f"{confirmed}&add=true", content=b"two", headers=jpeg).status_code == 200
-    assert client.get(base).json() == {"photos": 2, "attempts": 2}
-    assert client.get(f"{base}/image").content == b"one"
-    assert client.get(f"{base}/image?n=1").content == b"two"
-    assert client.get(f"{base}/image?n=2").status_code == 404
+    assert client.get(one).content == b"one"
+    assert client.get(f"{one}?n=1").content == b"two"
+    assert client.get(f"{one}?n=2").status_code == 404
 
-    assert client.delete(base).json() == {"photos": 0}
-    assert client.get(base).json() == {"photos": 0, "attempts": 0}
+    listed = client.get(base).json()
+    assert [(p["name"], p["photos"], p["default"]) for p in listed] == [
+        ("Đạt", 2, True),
+        ("Lan", 0, False),
+    ]
+    made = client.put(f"{base}/{lan['id']}/default").json()
+    assert [p["default"] for p in made] == [False, True]
+    assert client.put(f"{base}/nobody/default").status_code == 404
+
+    left = client.delete(f"{base}/{lan['id']}").json()  # the default moves on
+    assert [(p["name"], p["default"]) for p in left] == [("Đạt", True)]
+    assert client.delete(f"{base}/{lan['id']}").status_code == 404
 
 
 def test_voice_list_and_unknown_voice_sample(client: TestClient) -> None:

@@ -319,9 +319,10 @@ async def test_all_photos_of_the_person_reach_the_image_model_when_the_brief_has
     with pytest.raises(KeyframeUnavailable, match="Upload the photos of the person"):
         await service.generate_keyframes(PRODUCT_ID, tmp_path)
 
-    await service.upload_persona(PRODUCT_ID, tmp_path, b"one")
-    await service.upload_persona(PRODUCT_ID, tmp_path, b"two", add=True)
-    await service.upload_persona(PRODUCT_ID, tmp_path, b"three", add=True)
+    person = await service.create_persona(tmp_path, "Đạt")  # the first one is the default
+    await service.upload_persona(tmp_path, person["id"], b"one")
+    await service.upload_persona(tmp_path, person["id"], b"two", add=True)
+    await service.upload_persona(tmp_path, person["id"], b"three", add=True)
     await service.generate_keyframes(PRODUCT_ID, tmp_path)
     assert keyframer.personas == [[b"one", b"two", b"three"]]
 
@@ -330,34 +331,63 @@ async def test_a_brief_without_a_person_never_gets_one_even_when_photos_exist(tm
     keyframer = _PersonaKeyframer()
     service = await _service(tmp_path, keyframer)
     await _save_brief(service, with_person=False)
-    await service.upload_persona(PRODUCT_ID, tmp_path, b"one")
+    person = await service.create_persona(tmp_path, "Đạt")
+    await service.upload_persona(tmp_path, person["id"], b"one")
     await service.generate_keyframes(PRODUCT_ID, tmp_path)
     assert keyframer.personas == [None]
 
 
-async def test_person_photos_are_kept_per_product_and_can_be_replaced_or_removed(
-    tmp_path,
-) -> None:
+async def test_a_video_keeps_following_the_person_it_was_written_for(tmp_path) -> None:
+    keyframer = _PersonaKeyframer()
+    service = await _service(tmp_path, keyframer)
+    first = await service.create_persona(tmp_path, "Đạt")
+    second = await service.create_persona(tmp_path, "Lan")
+    await service.upload_persona(tmp_path, first["id"], b"dat")
+    await service.upload_persona(tmp_path, second["id"], b"lan")
+    brief = {"title": "b", "shots": SHOTS, "with_person": True, "persona_id": second["id"]}
+    await service._repository.save_brief(PRODUCT_ID, "", brief, "approved")
+    await service.set_default_persona(tmp_path, second["id"])
+    await service.set_default_persona(tmp_path, first["id"])  # the default moves on
+    await service.generate_keyframes(PRODUCT_ID, tmp_path)
+    assert keyframer.personas == [[b"lan"]]
+
+
+async def test_people_have_a_default_and_can_be_added_replaced_or_removed(tmp_path) -> None:
     service = await _service(tmp_path, _FakeKeyframer())
-    assert await service.upload_persona("missing", tmp_path, b"x") is None
-    assert (await service.get_persona(PRODUCT_ID, tmp_path))["image_paths"] == []
+    assert await service.list_personas(tmp_path) == []
+    assert await service.get_persona(tmp_path) is None
+    assert await service.brief_persona(tmp_path) == (None, [])
 
-    first = await service.upload_persona(PRODUCT_ID, tmp_path, b"one")
-    await service.upload_persona(PRODUCT_ID, tmp_path, b"two", add=True)
-    third = await service.upload_persona(PRODUCT_ID, tmp_path, b"three", add=True)
-    assert first is not None and third is not None
-    assert (first["attempts"], third["attempts"]) == (1, 3)
-    assert await service.persona_photos(PRODUCT_ID, tmp_path) == [b"one", b"two", b"three"]
-
-    replaced = await service.upload_persona(PRODUCT_ID, tmp_path, b"only")
-    assert replaced is not None and replaced["image_paths"] == [f"persona/{PRODUCT_ID}/photo_0.jpg"]
-    assert sorted(p.name for p in (tmp_path / "persona" / PRODUCT_ID).iterdir()) == [
-        "persona.json",
-        "photo_0.jpg",
+    dat = await service.create_persona(tmp_path, " Đạt ")
+    lan = await service.create_persona(tmp_path, "Lan")
+    assert dat["name"] == "Đạt"
+    assert [(p["name"], p["default"]) for p in await service.list_personas(tmp_path)] == [
+        ("Đạt", True),
+        ("Lan", False),
     ]
+    assert await service.upload_persona(tmp_path, "missing", b"x") is None
 
-    await service.delete_persona(PRODUCT_ID, tmp_path)
-    assert await service.persona_photos(PRODUCT_ID, tmp_path) == []
+    first = await service.upload_persona(tmp_path, dat["id"], b"one")
+    await service.upload_persona(tmp_path, dat["id"], b"two", add=True)
+    third = await service.upload_persona(tmp_path, dat["id"], b"three", add=True)
+    assert (first["attempts"], third["attempts"]) == (1, 3)
+    assert await service.persona_photos(tmp_path) == [b"one", b"two", b"three"]  # the default
+    assert await service.persona_photos(tmp_path, lan["id"]) == []
+    assert (await service.brief_persona(tmp_path))[0] == dat["id"]
+
+    replaced = await service.upload_persona(tmp_path, dat["id"], b"only")
+    assert replaced["image_paths"] == [f"persona/{dat['id']}/photo_3.jpg"]
+    assert sorted(p.name for p in (tmp_path / "persona" / dat["id"]).iterdir()) == ["photo_3.jpg"]
+
+    assert await service.set_default_persona(tmp_path, lan["id"]) is True
+    assert await service.set_default_persona(tmp_path, "missing") is False
+    assert (await service.get_persona(tmp_path))["id"] == lan["id"]
+
+    assert await service.delete_persona(tmp_path, lan["id"]) is True  # the default moves on
+    assert [p["default"] for p in await service.list_personas(tmp_path)] == [True]
+    assert await service.delete_persona(tmp_path, "missing") is False
+    assert await service.delete_persona(tmp_path, dat["id"]) is True
+    assert await service.list_personas(tmp_path) == []
 
 
 class _RecordingClient:

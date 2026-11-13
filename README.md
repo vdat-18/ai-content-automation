@@ -7,7 +7,10 @@ video ghép hoàn chỉnh và caption. Người dùng chỉ đọc và duyệt �
 
 1. **Thu thập** (extension Chrome trong `extension/`): sản phẩm TikTok Shop và ảnh tham chiếu Pinterest
    gửi về `POST /api/v1/products/ingest`.
-2. **Idea → Script**: AI viết kịch bản (brief). Kịch bản được kiểm tra: từ cấm của TikTok Shop, số liệu
+2. **Idea → Script**: mỗi video theo **một người** trong thư viện người (ảnh tải lên một lần, dùng cho mọi
+   sản phẩm; một người là mặc định, đổi được bất cứ lúc nào; bắt buộc có ảnh). Mặt trong ảnh sinh ra khớp
+   ảnh đó, quần áo và bối cảnh đổi theo từng cảnh; video giữ người nó được viết cho dù mặc định đổi.
+   AI viết kịch bản (brief). Kịch bản được kiểm tra: từ cấm của TikTok Shop, số liệu
    và khẳng định phải có trong dữ liệu sản phẩm (kể cả số đọc thành chữ). Pipeline dừng để bạn đọc.
 3. **Images**: ảnh master trước, các cảnh còn lại sau. Mỗi ảnh được kiểm tra với ảnh sản phẩm thật và ảnh
    người mẫu. Master bị đánh dấu thì pipeline dừng; ảnh chưa kiểm tra được hiện là "Not checked".

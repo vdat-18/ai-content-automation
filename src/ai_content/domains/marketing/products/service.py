@@ -6,6 +6,7 @@ import asyncio
 import json
 import os
 import tempfile
+import uuid
 from dataclasses import replace
 from datetime import UTC, datetime
 from io import BytesIO
@@ -134,6 +135,8 @@ _NO_PERSON_VIDEO = (
 )
 VIDEO_LENGTHS = (15, 30, 45, 60, 75, 90)
 _WORK_FOLDERS = ("keyframes", "clips", "videos")  # the media made from a script
+PERSONA_FOLDER = "persona"  # the photos of the people a video can follow, one folder each
+PEOPLE_FILE = f"{PERSONA_FOLDER}/people.json"  # their names, photos and which one is the default
 _STALE_IMAGE = "The script of this scene changed after its image was made"
 _STALE_CLIP = "The script of this scene changed after it was filmed"
 # Kept as the problem of an image or clip whose AI check could not run, so a person looks at it
@@ -690,11 +693,12 @@ class ProductCatalogService:
         user_idea: str = "",
         video_seconds: int = CLIP_SECONDS,
         person_photos: list[bytes] | None = None,
+        persona_id: str | None = None,
     ) -> dict[str, Any] | None:
         """Draft one brief for a selected product from varied live reference scenes.
 
         Every shot becomes one 15 second clip, so the video length sets the number of shots.
-        With person photos the video follows that person; without them it shows no person.
+        Every video follows one person of the library (persona_id), so there must be photos.
         """
         if video_seconds not in VIDEO_LENGTHS:
             raise BriefUnavailable(f"Video length must be one of {list(VIDEO_LENGTHS)} seconds")
@@ -709,6 +713,8 @@ class ProductCatalogService:
         live = await self._scene_pool()
         if not live:
             raise BriefUnavailable("No usable reference image yet; crawl Pinterest first")
+        if not person_photos:
+            raise BriefUnavailable("Upload the photo of the person first: every video shows them")
         shot_count = max(1, round(video_seconds / shot_seconds(CLIP_SECONDS)))
         rules = await approved_rules(self._knowledge, KnowledgeStage.PREPARATION, "brief")
         facts = product_facts(detail, user_idea)
@@ -744,7 +750,8 @@ class ProductCatalogService:
         brief["selected_reference_ids"] = list(
             dict.fromkeys(item for item in brief["shot_references"] if item)
         )
-        brief["with_person"] = bool(person_photos)
+        brief["with_person"] = True
+        brief["persona_id"] = persona_id  # later steps keep using this person, whatever the default
         brief["rule_ids"] = rules.ids
         await self._repository.save_brief(product_id, user_idea.strip(), brief, "draft")
         await self._log(
@@ -1055,39 +1062,94 @@ class ProductCatalogService:
             await self._log(product_id, "keyframe", status, f"Marked {status}", shot_index)
         return changed
 
-    async def get_persona(self, product_id: str, media_root: Path) -> dict[str, Any]:
-        """The photos the user uploaded of the person who appears in the video."""
-        stored = await self._read_json(media_root, f"persona/{product_id}/persona.json")
-        return stored or {"image_paths": [], "attempts": 0}
+    async def _people(self, media_root: Path) -> dict[str, Any]:
+        return await self._read_json(media_root, PEOPLE_FILE) or {"default": None, "people": []}
 
-    async def persona_photos(self, product_id: str, media_root: Path) -> list[bytes]:
+    async def list_personas(self, media_root: Path) -> list[dict[str, Any]]:
+        """The people a video can follow, with the default one marked."""
+        data = await self._people(media_root)
+        return [
+            {
+                "id": person["id"],
+                "name": person["name"],
+                "photos": len(person["image_paths"]),
+                "attempts": person["attempts"],
+                "default": person["id"] == data["default"],
+            }
+            for person in data["people"]
+        ]
+
+    async def get_persona(
+        self, media_root: Path, persona_id: str | None = None
+    ) -> dict[str, Any] | None:
+        """One person of the library: the one asked for, else the default."""
+        data = await self._people(media_root)
+        wanted = persona_id or data["default"]
+        return next((person for person in data["people"] if person["id"] == wanted), None)
+
+    async def persona_photos(self, media_root: Path, persona_id: str | None = None) -> list[bytes]:
+        persona = await self.get_persona(media_root, persona_id)
         store = self.media(media_root)
-        persona = await self.get_persona(product_id, media_root)
-        return [await store.read(path) for path in persona["image_paths"]]
+        return [await store.read(path) for path in persona["image_paths"]] if persona else []
+
+    async def brief_persona(
+        self, media_root: Path, persona_id: str | None = None
+    ) -> tuple[str | None, list[bytes]]:
+        """The id and photos of the person a new video follows (the default when none is named)."""
+        persona = await self.get_persona(media_root, persona_id)
+        if persona is None:
+            return None, []
+        return persona["id"], await self.persona_photos(media_root, persona["id"])
+
+    async def create_persona(self, media_root: Path, name: str) -> dict[str, Any]:
+        """Add a person to the library; the first one becomes the default."""
+        data = await self._people(media_root)
+        person = {"id": uuid.uuid4().hex[:8], "name": name.strip(), "image_paths": [], "attempts": 0}
+        data["people"].append(person)
+        data["default"] = data["default"] or person["id"]
+        await self._write_json(media_root, PEOPLE_FILE, data)
+        return person
 
     async def upload_persona(
-        self, product_id: str, media_root: Path, content: bytes, add: bool = False
+        self, media_root: Path, persona_id: str, content: bytes, add: bool = False
     ) -> dict[str, Any] | None:
-        """Keep a photo of the person; with `add` it joins the photos already uploaded."""
-        if await self._repository.get_detail(product_id) is None:
+        """Keep a photo of a person; with `add` it joins the photos already uploaded."""
+        data = await self._people(media_root)
+        person = next((p for p in data["people"] if p["id"] == persona_id), None)
+        if person is None:
             return None
         store = self.media(media_root)
-        previous = await self.get_persona(product_id, media_root)
-        kept = previous["image_paths"] if add else []
         if not add:
-            for old in previous["image_paths"]:
+            for old in person["image_paths"]:
                 await store.remove(old)
-        relative = f"persona/{product_id}/photo_{len(kept)}.jpg"
+            person["image_paths"] = []
+        relative = f"{PERSONA_FOLDER}/{persona_id}/photo_{person['attempts']}.jpg"
         await store.write(relative, content)
-        persona = {"image_paths": [*kept, relative], "attempts": previous["attempts"] + 1}
-        await self._write_json(media_root, f"persona/{product_id}/persona.json", persona)
-        await self._log(
-            product_id, "persona", "ok", f"Person photo uploaded ({len(persona['image_paths'])})"
-        )
-        return persona
+        person["image_paths"].append(relative)
+        person["attempts"] += 1
+        await self._write_json(media_root, PEOPLE_FILE, data)
+        return person
 
-    async def delete_persona(self, product_id: str, media_root: Path) -> None:
-        await self.media(media_root).remove_tree(f"persona/{product_id}")
+    async def set_default_persona(self, media_root: Path, persona_id: str) -> bool:
+        data = await self._people(media_root)
+        if all(person["id"] != persona_id for person in data["people"]):
+            return False
+        data["default"] = persona_id
+        await self._write_json(media_root, PEOPLE_FILE, data)
+        return True
+
+    async def delete_persona(self, media_root: Path, persona_id: str) -> bool:
+        """Remove a person; the default moves to the next one. Videos that followed them lose them."""
+        data = await self._people(media_root)
+        remaining = [person for person in data["people"] if person["id"] != persona_id]
+        if len(remaining) == len(data["people"]):
+            return False
+        await self.media(media_root).remove_tree(f"{PERSONA_FOLDER}/{persona_id}")
+        data["people"] = remaining
+        if data["default"] == persona_id:
+            data["default"] = remaining[0]["id"] if remaining else None
+        await self._write_json(media_root, PEOPLE_FILE, data)
+        return True
 
     async def generate_keyframes(
         self, product_id: str, media_root: Path, shot_index: int | None = None, note: str = ""
@@ -1121,7 +1183,7 @@ class ProductCatalogService:
             raise KeyframeUnavailable("Approve the master keyframe (shot 0) first")
         persona_images: list[bytes] | None = None
         if record["brief"].get("with_person"):
-            persona_images = (await self.persona_photos(product_id, media_root))[
+            persona_images = (await self.persona_photos(media_root, record["brief"].get("persona_id")))[
                 :PERSONA_PHOTOS_PER_SHOT
             ]
             if not persona_images:
@@ -1367,7 +1429,7 @@ class ProductCatalogService:
         brief = record["brief"]
         store = self.media(media_root)
         persona = (
-            (await self.persona_photos(product_id, media_root))[:PERSONA_PHOTOS_PER_SHOT]
+            (await self.persona_photos(media_root, brief.get("persona_id")))[:PERSONA_PHOTOS_PER_SHOT]
             if brief.get("with_person")
             else []
         )
@@ -1553,7 +1615,9 @@ class ProductCatalogService:
         detail = await self._repository.get_detail(product_id)
         photos = await fetch_images(_product_photo_urls(brief, detail or {})[:CLIP_CHECK_PHOTOS])
         persona_images = (
-            await self.persona_photos(product_id, media_root) if brief.get("with_person") else []
+            await self.persona_photos(media_root, brief.get("persona_id"))
+            if brief.get("with_person")
+            else []
         )
         description = str(shot.get("description") or shot.get("motion_prompt") or "")
         if brief.get("skin_sensitive"):
@@ -1691,7 +1755,7 @@ class ProductCatalogService:
         voice_reason = ""
         if not voice and self._voice_picker is not None:
             brief = record["brief"]
-            photos = (await self.persona_photos(product_id, media_root))[:2]
+            photos = (await self.persona_photos(media_root, brief.get("persona_id")))[:2]
             choice = await self._voice_picker.pick(brief, photos if brief.get("with_person") else [])
             if choice is not None:
                 voice, voice_reason = choice.voice, choice.reason
@@ -2051,7 +2115,7 @@ class ProductCatalogService:
             }
             for index, shot in enumerate(brief.get("shots") or [])
         ]
-        persona = await self.get_persona(product_id, media_root)
+        persona = await self.get_persona(media_root, brief.get("persona_id"))
         return {
             "product": {
                 "product_id": product_id,
@@ -2070,7 +2134,7 @@ class ProductCatalogService:
             },
             "product_photos": brief.get("product_photo_urls") or [],
             "references": references,
-            "persona": {"photos": len(persona["image_paths"])}
+            "persona": {"photos": len(persona["image_paths"]) if persona else 0}
             if brief.get("with_person")
             else None,
             "shots": shots,
@@ -2089,7 +2153,7 @@ class ProductCatalogService:
         deleted = await self._repository.delete_product(product_id)
         if deleted:
             store = self.media(media_root)
-            for folder in ("persona", *_WORK_FOLDERS):
+            for folder in _WORK_FOLDERS:
                 await store.remove_tree(f"{folder}/{product_id}")
         return deleted
 

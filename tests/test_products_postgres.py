@@ -115,7 +115,7 @@ async def _round_trip() -> None:
 
         briefer = ProductCatalogService(PostgresProductRepository(engine), briefer=_Writer())  # type: ignore[arg-type]
         await briefer.update_profile(ReferenceProfile("áo thun", ["q1"], "approved"))
-        record = await briefer.create_brief("1730000000000000001", "ý tưởng")
+        record = await briefer.create_brief("1730000000000000001", "ý tưởng", person_photos=[b"face"])
         assert record is not None and record["brief"]["idea"] == "ý tưởng"
         updated = await briefer.update_brief("1730000000000000001", {"scene": "mới"}, "approved")
         assert updated is not None and updated["brief"]["scene"] == "mới"

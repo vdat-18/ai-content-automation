@@ -187,7 +187,7 @@ async def test_brief_writer_gets_the_approved_preparation_rules(tmp_path) -> Non
     service._knowledge = knowledge
     await service._repository.select_product(BRIEF_PRODUCT, "áo thun")
     await _make_reference_live(service)
-    record = await service.create_brief(BRIEF_PRODUCT, video_seconds=15)
+    record = await service.create_brief(BRIEF_PRODUCT, video_seconds=15, person_photos=[b"face"])
     assert seen == ["- Hook fast: DO: Hook fast"]
     assert record["brief"]["rule_ids"] == ["b"]  # the brief keeps which rules shaped it
 

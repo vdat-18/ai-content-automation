@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError, getJson, postJson } from "../services/http";
-import type { BriefRecord, Clip, Keyframe, OutputItem, PersonSummary, PipelineRun, Product, RunEvent, VideoCheck, VideoInfo } from "../types/studio";
+import type { BriefRecord, Clip, Keyframe, OutputItem, Persona, PipelineRun, Product, RunEvent, VideoCheck, VideoInfo } from "../types/studio";
 
 export const API = "/api/v1/products";
 
@@ -57,8 +57,8 @@ export const useClips = (productId: string, enabled = true) =>
 export const useVideoInfo = (productId: string) =>
   useQuery({ queryKey: ["video-info", productId], queryFn: ({ signal }) => getJson<VideoInfo>(`${API}/${productId}/video-info`, signal) });
 
-export const usePerson = (productId: string) =>
-  useQuery({ queryKey: ["persona", productId], queryFn: ({ signal }) => getJson<PersonSummary>(`${API}/${productId}/persona`, signal) });
+export const usePeople = () =>
+  useQuery({ queryKey: ["persona"], queryFn: ({ signal }) => getJson<Persona[]>(`${API}/persona`, signal) });
 
 export const useEvents = (productId: string, running: boolean) =>
   useQuery({
@@ -73,7 +73,7 @@ export const VOICE_KEY = "aic-voice";
 export function useStartPipeline(productId: string) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (body: { until: "script" | "images" | "video"; idea?: string; video_seconds?: number }) =>
+    mutationFn: (body: { until: "script" | "images" | "video"; idea?: string; video_seconds?: number; persona_id?: string }) =>
       postJson<PipelineRun>(`${API}/${productId}/pipeline`, {
         idea: "",
         video_seconds: 30,

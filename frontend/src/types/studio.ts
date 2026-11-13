@@ -46,4 +46,4 @@ export type VideoCheck = { score: number; issues: { severity: "major" | "minor";
 export type VideoInfo = { exists: boolean; voiceover: boolean; voice_id: string };
 export type RunEvent = { id: number; at: string; step: string; shot_index: number | null; status: string; message: string };
 export type Voice = { id: string; label: string };
-export type PersonSummary = { photos: number; attempts: number };
+export type Persona = { id: string; name: string; photos: number; attempts: number; default: boolean };

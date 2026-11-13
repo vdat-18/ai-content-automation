@@ -88,7 +88,7 @@ async def _service(tmp_path, writer, judge):
 async def test_a_rejected_storyboard_is_rewritten_with_the_reviewers_notes(tmp_path) -> None:
     writer, judge = _Writer(), _Judge(bad=1)
     service = await _service(tmp_path, writer, judge)
-    record = await service.create_brief(PRODUCT_ID, "my idea", video_seconds=30)
+    record = await service.create_brief(PRODUCT_ID, "my idea", video_seconds=30, person_photos=[b"face"])
     assert len(writer.ideas) == 2 and writer.ideas[0] == "my idea"
     assert "Shot 1: add visible action." in writer.ideas[1]
     assert record["user_idea"] == "my idea"
@@ -100,7 +100,7 @@ async def test_a_rejected_storyboard_is_rewritten_with_the_reviewers_notes(tmp_p
 async def test_problems_that_survive_every_attempt_are_reported(tmp_path) -> None:
     writer, judge = _Writer(), _Judge(bad=99)
     service = await _service(tmp_path, writer, judge)
-    record = await service.create_brief(PRODUCT_ID, video_seconds=30)
+    record = await service.create_brief(PRODUCT_ID, video_seconds=30, person_photos=[b"face"])
     assert len(writer.ideas) == 3
     assert record["brief"]["quality_problems"] == ["Shot 1: add visible action."]
     assert (await service.events(PRODUCT_ID))[-1]["status"] == "flagged"
@@ -109,14 +109,14 @@ async def test_problems_that_survive_every_attempt_are_reported(tmp_path) -> Non
 async def test_an_unavailable_reviewer_does_not_block_the_brief(tmp_path) -> None:
     writer = _Writer()
     service = await _service(tmp_path, writer, _Judge(bad=0, unchecked=True))
-    record = await service.create_brief(PRODUCT_ID, video_seconds=30)
+    record = await service.create_brief(PRODUCT_ID, video_seconds=30, person_photos=[b"face"])
     assert len(writer.ideas) == 1 and record["brief"]["quality_problems"] == []
 
 
 async def test_editing_a_brief_reviews_it_again(tmp_path) -> None:
     judge = _Judge(bad=0)
     service = await _service(tmp_path, _Writer(), judge)
-    await service.create_brief(PRODUCT_ID, video_seconds=30)
+    await service.create_brief(PRODUCT_ID, video_seconds=30, person_photos=[b"face"])
     judge.bad, judge.calls = 99, 0
     # a title is not worth a review
     record = await service.update_brief(PRODUCT_ID, {"title": "New"}, "draft")
@@ -154,6 +154,6 @@ async def test_a_flagged_word_in_the_script_is_rewritten_like_a_reviewer_note(tm
 
     writer = Writer()
     service = await _service(tmp_path, writer, _Judge(bad=0))
-    record = await service.create_brief(PRODUCT_ID, video_seconds=30)
+    record = await service.create_brief(PRODUCT_ID, video_seconds=30, person_photos=[b"face"])
     assert len(writer.ideas) == 2 and '"rẻ nhất" (absolute claim)' in writer.ideas[1]
     assert record["brief"]["warnings"] == []
