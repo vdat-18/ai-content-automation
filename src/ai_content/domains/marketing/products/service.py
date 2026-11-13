@@ -49,6 +49,7 @@ from .clips import (
     clip_seconds_for,
     cover_frame,
     shot_seconds,
+    still_tail_seconds,
     stitch,
 )
 from .compliance import AI_LABEL_REMINDER, brief_warnings, package_warnings, product_facts
@@ -112,6 +113,7 @@ DUPLICATE_HAMMING = 4
 MAX_KEYFRAME_FIXES = 2
 KEYFRAME_CONCURRENCY = 3
 CLIP_CHECK_PHOTOS = 4
+STILL_TAIL_NOTE_SECONDS = 1.0  # a clip that ends this long without motion is noted in the run log
 # Few inputs keep the face accurate: with many pictures the model loses the person among them
 PERSONA_PHOTOS_PER_SHOT = 3
 PRODUCT_PHOTOS_PER_SHOT = 2
@@ -1578,6 +1580,16 @@ class ProductCatalogService:
                     "Clip downloaded" + (f", flagged: {problem}" if problem else ""),
                     clip["shot_index"],
                 )
+                still = await still_tail_seconds(self.media(media_root).path(relative))
+                if still >= STILL_TAIL_NOTE_SECONDS:
+                    await self._log(
+                        clip["product_id"],
+                        "clip",
+                        "ok",
+                        f"The last {still:.1f} s of this clip hardly move; "
+                        "the fixed trim only removes a fraction of a second",
+                        clip["shot_index"],
+                    )
             elif state.status == "failed":
                 update = {"status": "failed", "error": state.error or "The video job failed"}
                 await self._log(

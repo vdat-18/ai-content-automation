@@ -4,7 +4,10 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import json
+import math
 import os
+import re
 import shutil
 import textwrap
 from dataclasses import dataclass
@@ -145,6 +148,30 @@ async def _run(*args: str, cwd: Path | None = None) -> None:
         raise StitchUnavailable("ffmpeg could not process the clips")
 
 
+async def still_tail_seconds(video: Path) -> float:
+    """How long the end of a clip stays frozen; 0 when it keeps moving or cannot be measured."""
+    if shutil.which("ffmpeg") is None:
+        return 0.0
+    process = await asyncio.create_subprocess_exec(
+        "ffmpeg", "-hide_banner", "-nostats", "-i", str(video),
+        "-vf", "freezedetect=n=0.003:d=0.5", "-an", "-f", "null", "-",
+        stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE,
+    )  # fmt: skip
+    _, stderr = await process.communicate()
+    if process.returncode:
+        return 0.0
+    log = stderr.decode(errors="replace")
+    starts = re.findall(r"freeze_start: ([\d.]+)", log)
+    ends = re.findall(r"freeze_end: ([\d.]+)", log)
+    if len(starts) <= len(ends):  # the last freeze ended, so the clip ends in motion
+        return 0.0
+    duration = re.findall(r"Duration: (\d+):(\d+):([\d.]+)", log)
+    if not duration:
+        return 0.0
+    hours, minutes, seconds = duration[0]
+    return max(0.0, int(hours) * 3600 + int(minutes) * 60 + float(seconds) - float(starts[-1]))
+
+
 def clip_speed() -> float:
     """How much faster than generated the clips play (AIC_CLIP_SPEED); video models drift slowly."""
     try:
@@ -201,6 +228,12 @@ def find_bgm() -> Path | None:
 
 
 
+def _slide_in(start: float, left: int = 40, seconds: float = 0.35) -> str:
+    """An overlay x expression: the sticker glides in from the left edge and eases to a stop."""
+    progress = f"min(1,max(0,(t-{start:g})/{seconds:g}))"
+    return f"'{left}-(overlay_w+{left})*pow(1-{progress},3)'"
+
+
 def _font_family(font: Path) -> str:
     """The family name subtitles ask for; libass finds the file through its folder."""
     name = font.stem.lower()
@@ -250,6 +283,55 @@ async def clip_frames(video: Path, seconds: float) -> list[bytes]:
         finally:
             still.unlink(missing_ok=True)
     return frames
+
+
+_LOUDNORM = "loudnorm=I=-14:LRA=11:TP=-1"
+# default_bgm.wav measures -21 LUFS, so 0.25 left it ~19 dB under the voice before ducking and
+# nearly inaudible; 0.7 puts it ~10 dB under in pauses and ~16 dB under while the voice speaks
+_MUSIC_VOLUME = 0.7
+
+
+def _ducked_mix(voice: int, music: int) -> str:
+    """The voice-over over music that dips while it speaks; the result is labelled [pre]."""
+    return (
+        f"[{voice}:a]{_LOUDNORM},asplit=2[voice_main][voice_sc];"
+        f"[{music}:a]volume={_MUSIC_VOLUME}[music_base];"
+        "[music_base][voice_sc]sidechaincompress=threshold=0.08:ratio=4:attack=50:release=300"
+        "[music_ducked];"
+        "[voice_main][music_ducked]amix=inputs=2:duration=first:dropout_transition=2[pre]"
+    )
+
+
+async def _measured_loudnorm(inputs: list[str], graph: str) -> str:
+    """The loudness filter filled in with this audio's own measured levels.
+
+    A first run measures the audio (`graph` ends in the label [pre]); the real run then corrects
+    it exactly instead of estimating as it goes. Falls back to the plain filter when it cannot
+    measure, for example on silence.
+    """
+    process = await asyncio.create_subprocess_exec(
+        "ffmpeg", "-hide_banner", "-nostats", *inputs,
+        "-filter_complex", f"{graph};[pre]{_LOUDNORM}:print_format=json[m]",
+        "-map", "[m]", "-f", "null", "-",
+        stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.PIPE,
+    )  # fmt: skip
+    _, stderr = await process.communicate()
+    blocks = re.findall(r"\{[^{}]*\}", stderr.decode(errors="replace"))
+    try:
+        data = json.loads(blocks[-1])
+        measured = {
+            key: float(data[key])
+            for key in ("input_i", "input_tp", "input_lra", "input_thresh", "target_offset")
+        }
+    except (IndexError, KeyError, ValueError):
+        return _LOUDNORM
+    if process.returncode or not all(math.isfinite(value) for value in measured.values()):
+        return _LOUDNORM
+    return (
+        f"{_LOUDNORM}:measured_I={measured['input_i']}:measured_TP={measured['input_tp']}"
+        f":measured_LRA={measured['input_lra']}:measured_thresh={measured['input_thresh']}"
+        f":offset={measured['target_offset']}:linear=true"
+    )
 
 
 async def stitch(
@@ -306,7 +388,8 @@ async def stitch(
                 for number, sticker in enumerate(clip.stickers, start=1):
                     sticker_inputs += ["-loop", "1", "-i", str(sticker)]
                     graph += (
-                        f";[{last}][{number}:v]overlay=x=40:y={_STICKER_TOP + (number - 1) * _STICKER_STEP}"
+                        f";[{last}][{number}:v]overlay=x={_slide_in(0.5)}"
+                        f":y={_STICKER_TOP + (number - 1) * _STICKER_STEP}"
                         f":shortest=1:enable='between(t,0.5,{max(seconds - 0.3, 1):.2f})'[s{number}]"
                     )
                     last = f"s{number}"
@@ -342,26 +425,23 @@ async def stitch(
 
         # Audio mix: Voiceover + BGM Auto-Ducking (or voiceover only)
         if voiceover is not None and bgm_path is not None:
-            # Sidechain compression: Voice ducking BGM
-            audio_filter = (
-                "[1:a]loudnorm=I=-14:LRA=11:TP=-1,asplit=2[voice_main][voice_sc];"
-                "[2:a]volume=0.25[music_base];"
-                "[music_base][voice_sc]sidechaincompress=threshold=0.08:ratio=4:attack=50:release=300[music_ducked];"
-                "[voice_main][music_ducked]amix=inputs=2:duration=first:dropout_transition=2,"
-                "loudnorm=I=-14:LRA=11:TP=-1[aout]"
+            music = ["-stream_loop", "-1", "-i", str(bgm_path)]
+            final = await _measured_loudnorm(
+                ["-i", str(voiceover), *music], _ducked_mix(voice=0, music=1)
             )
+            audio_filter = f"{_ducked_mix(voice=1, music=2)};[pre]{final}[aout]"
             await _run(
-                "ffmpeg", "-v", "error", "-y", "-i", silent.name, "-i", str(voiceover),
-                "-stream_loop", "-1", "-i", str(bgm_path),
+                "ffmpeg", "-v", "error", "-y", "-i", silent.name, "-i", str(voiceover), *music,
                 "-filter_complex", audio_filter,
                 "-map", "0:v", "-map", "[aout]",
                 "-c:v", "copy", "-c:a", "aac", "-ar", "44100", "-ac", "2", "-shortest",
                 "-movflags", "+faststart", output.name, cwd=output.parent,
             )  # fmt: skip
         elif voiceover is not None:
+            final = await _measured_loudnorm(["-i", str(voiceover)], "[0:a]anull[pre]")
             await _run(
                 "ffmpeg", "-v", "error", "-y", "-i", silent.name, "-i", str(voiceover),
-                "-map", "0:v", "-map", "1:a", "-af", "loudnorm=I=-14:LRA=11:TP=-1",
+                "-map", "0:v", "-map", "1:a", "-af", final,
                 "-c:v", "copy", "-c:a", "aac", "-ar", "44100", "-ac", "2", "-shortest",
                 "-movflags", "+faststart", output.name, cwd=output.parent,
             )  # fmt: skip

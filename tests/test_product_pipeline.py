@@ -106,11 +106,22 @@ async def test_a_fresh_run_goes_through_every_stage_in_order() -> None:
         "clips",
         "generate_clips",
         "clips",
+        "generate_clips",
+        "clips",
         "voiceover:hamy.mp3",
         "build_video",
         "post_package",
     ]
     assert steps[0] == "Writing storyboard brief" and steps[-1].startswith("Writing TikTok")
+    assert service.restarted == [0]  # the first clip is made alone, then the rest
+
+
+async def test_a_bad_first_clip_stops_the_run_before_the_rest_are_made() -> None:
+    service = _FakeService()
+    service.clip_states = [[], [_clip(0, "ready", qa_problem="the product is missing")]]
+    with pytest.raises(PipelineStopped, match="shot 1 looks wrong"):
+        await _run(service)
+    assert service.calls.count("generate_clips") == 1
 
 
 async def test_a_repeated_run_keeps_what_is_already_made() -> None:
@@ -179,13 +190,14 @@ async def test_clips_refused_as_busy_are_sent_again_one_at_a_time_until_they_wor
     service = _FakeService(shots=3)
     service.clip_states = [
         [],  # the first look, before any clip is started
+        [_clip(0, "ready")],  # the first clip, made alone
         [_clip(0, "ready"), _clip(1, "failed", error=_BUSY), _clip(2, "failed", error=_BUSY)],
         [_clip(0, "ready"), _clip(1, "processing"), _clip(2, "failed", error=_BUSY)],
         [_clip(i, "ready") for i in range(3)],
     ]
     steps: list[str] = []
     await _run(service, steps)
-    assert service.restarted == [1, 2, 2]
+    assert service.restarted == [0, 1, 2, 2]
     assert "Video service is busy, trying again shortly" in steps
     assert service.calls[-3:] == ["voiceover:hamy.mp3", "build_video", "post_package"]
 

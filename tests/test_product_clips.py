@@ -15,10 +15,12 @@ from ai_content.domains.marketing.products.clips import (
     StitchClip,
     StitchUnavailable,
     VideoClient,
+    _measured_loudnorm,
     caption_font,
     clip_frames,
     cover_frame,
     is_busy_error,
+    still_tail_seconds,
     stitch,
 )
 from ai_content.domains.marketing.products.repositories import SqliteProductRepository
@@ -784,3 +786,56 @@ async def test_the_first_frame_goes_only_under_the_fields_that_are_set() -> None
     narrow, wide = bodies
     assert "image" in narrow and "input_reference" not in narrow and "image_url" not in narrow
     assert narrow["image"] == wide["image"] == wide["input_reference"] == wide["image_url"]
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg is not installed")
+async def test_stitch_slides_a_sticker_in_instead_of_popping_it(tmp_path, monkeypatch) -> None:
+    from PIL import Image
+
+    monkeypatch.setenv("AIC_BGM_PATH", str(tmp_path / "no-music.wav"))
+    clip = tmp_path / "c.mp4"
+    _make_clip(clip, "red", seconds=4, audio=False)
+    sticker = tmp_path / "sticker.png"
+    Image.new("RGBA", (200, 100), (255, 255, 255, 255)).save(sticker)
+    output = tmp_path / "out.mp4"
+    await stitch([StitchClip(clip, 3.0, stickers=(sticker,))], output)
+
+    def white_pixels(moment: float) -> int:
+        frame = tmp_path / f"frame_{moment}.png"
+        subprocess.run(
+            ["ffmpeg", "-v", "error", "-y", "-ss", str(moment), "-i", str(output),
+             "-frames:v", "1", str(frame)],
+            check=True,
+        )  # fmt: skip
+        pixels = Image.open(frame).convert("RGB").getdata()
+        return sum(1 for r, g, b in pixels if r > 240 and g > 240 and b > 240)
+
+    before, sliding, settled = white_pixels(0.3), white_pixels(0.6), white_pixels(1.5)
+    assert before == 0
+    assert 0 < sliding < settled
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg is not installed")
+async def test_still_tail_measures_a_clip_that_ends_frozen(tmp_path) -> None:
+    moving, frozen = tmp_path / "moving.mp4", tmp_path / "frozen.mp4"
+    for path, extra in ((moving, []), (frozen, ["-vf", "tpad=stop_mode=clone:stop_duration=2"])):
+        subprocess.run(
+            ["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc=s=160x284:d=2:r=24",
+             *extra, "-c:v", "libx264", "-pix_fmt", "yuv420p", str(path)],
+            check=True,
+        )  # fmt: skip
+    assert await still_tail_seconds(moving) == 0.0
+    assert 1.5 < await still_tail_seconds(frozen) < 2.5
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg is not installed")
+async def test_loudnorm_is_filled_in_with_the_audios_own_measurements(tmp_path) -> None:
+    voice, silence = tmp_path / "voice.wav", tmp_path / "silence.wav"
+    for path, source in ((voice, "sine=frequency=300:duration=3"), (silence, "anullsrc=d=3")):
+        subprocess.run(
+            ["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", source, str(path)], check=True
+        )
+    measured = await _measured_loudnorm(["-i", str(voice)], "[0:a]anull[pre]")
+    assert "measured_I=" in measured and "linear=true" in measured
+    plain = await _measured_loudnorm(["-i", str(silence)], "[0:a]anull[pre]")
+    assert plain == "loudnorm=I=-14:LRA=11:TP=-1"

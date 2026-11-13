@@ -1,6 +1,6 @@
 {
   "schema_version": "creative-knowledge-bootstrap@2",
-  "bootstrap_id": "product-ad-v5",
+  "bootstrap_id": "product-ad-v6",
   "items": [
     {
       "knowledge_id": "product-ad-body-proportions",
@@ -273,6 +273,25 @@
       "knowledge_type": "hard_rule",
       "title": "Pick a fitting video format",
       "content": "WHEN: Choosing the video format. DO: Choose the one that suits the product and idea: problem_solution, step_by_step (how to use it), before_after (a messy situation then a tidy one), unboxing, or worth_it_text. DO NOT: Fake or exaggerate results.",
+      "applies_to": [
+        "preparation",
+        "review"
+      ],
+      "scope": {
+        "task_type": "product_ad",
+        "asset_type": "brief"
+      },
+      "authority": "lead",
+      "source_refs": [
+        "team:v2"
+      ],
+      "auto_approve": true
+    },
+    {
+      "knowledge_id": "product-ad-caption-safe-zone",
+      "knowledge_type": "hard_rule",
+      "title": "Keep faces clear of the caption and sticker areas",
+      "content": "WHEN: Writing the picture and motion of any shot with a person. DO: Frame the face and mouth in the middle of the picture, above the lower fifth where the spoken words appear and away from the top left corner where price stickers slide in. DO NOT: Put the mouth, chin or the product's label at the very bottom or in the top left corner, where a caption or sticker would cover it.",
       "applies_to": [
         "preparation",
         "review"

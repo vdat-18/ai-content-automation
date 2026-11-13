@@ -117,6 +117,13 @@ async def run_pipeline(
     report("Creating video clips (this takes a few minutes)")
     clips = await service.clips(product_id, media_root)
     if sum(clip["status"] in ("ready", "processing") for clip in clips) < shot_count:
+        if not clips and shot_count > 1:
+            # the first clip alone: if it is bad, the run stops before the rest are paid for
+            report("Making the first clip alone to check it before the rest")
+            await service.generate_clips(product_id, media_root, 0)
+            await _wait_for_clips(
+                service, product_id, media_root, 1, poll_seconds, report, busy_wait_seconds
+            )
         await service.generate_clips(product_id, media_root)
     await _wait_for_clips(
         service, product_id, media_root, shot_count, poll_seconds, report, busy_wait_seconds
