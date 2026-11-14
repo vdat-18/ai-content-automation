@@ -770,6 +770,7 @@ async def clip_video(
 class VideoRequest(BaseModel):
     captions: bool = False
     stickers: bool = False
+    music: bool = True  # false leaves the background music out
 
 
 @router.post("/{product_id}/video")
@@ -785,6 +786,7 @@ async def build_video(
             _media_root(),
             payload.captions if payload else False,
             payload.stickers if payload else False,
+            music=payload.music if payload else True,
         )
     except StitchUnavailable as error:
         raise HTTPException(status_code=409, detail=str(error)) from error

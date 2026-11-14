@@ -12,14 +12,17 @@ import shutil
 import textwrap
 from collections.abc import Callable
 from dataclasses import dataclass
+from itertools import accumulate
 from pathlib import Path
 from urllib.parse import quote
 
 import httpx
 from loguru import logger
-from PIL import ImageFont
+from PIL import Image, ImageFont
 
 from .captions import CAPTION_SIZE, Cue, ass_document
+from .sounds import effects_track_args, sound_events
+from .stickers import quietest_spot
 
 # The video model is billed per request, not per second or pixel (docs/model-limits.md), so every
 # clip is asked for at the longest length it accepts and cut afterwards
@@ -40,6 +43,11 @@ _CAPTION_FONTS = (
 CHECK_FRAMES = 6  # stills of a clip the quality check looks at
 _STICKER_TOP = 130  # small and high, above the face of a person who fills the frame
 _STICKER_STEP = 130  # space for one sticker
+# Other tops a sticker may take when the first would cover the product. It stays on the left,
+# because the voice-over may say where the price is, and ends well above the captions
+_STICKER_LEFT = 40
+_STICKER_TOPS = (_STICKER_TOP, 560, 900, 1200)
+_STICKER_BOTTOM_LIMIT = 1350
 _PART_ENCODES = 2
 _COLOR_GRADE = "eq=contrast=1.03:brightness=0.01:saturation=1.05"
 # Light grain, a little extra sharpness and soft dark corners: a phone-camera look instead of
@@ -326,15 +334,25 @@ _LOUDNORM = "loudnorm=I=-14:LRA=11:TP=-1"
 _MUSIC_VOLUME = 0.7
 
 
-def _ducked_mix(voice: int, music: int) -> str:
-    """The voice-over over music that dips while it speaks; the result is labelled [pre]."""
+def _ducked_mix(voice: int, music: int, effects: int | None = None) -> str:
+    """The voice-over over music that dips while it speaks, plus the sound effects track when
+    there is one; the result is labelled [pre]."""
+    extra = "" if effects is None else f"[{effects}:a]"
     return (
         f"[{voice}:a]{_LOUDNORM},asplit=2[voice_main][voice_sc];"
         f"[{music}:a]volume={_MUSIC_VOLUME}[music_base];"
         "[music_base][voice_sc]sidechaincompress=threshold=0.08:ratio=4:attack=50:release=300"
         "[music_ducked];"
-        "[voice_main][music_ducked]amix=inputs=2:duration=first:dropout_transition=2[pre]"
+        f"[voice_main][music_ducked]{extra}"
+        f"amix=inputs={2 if effects is None else 3}:duration=first:dropout_transition=2[pre]"
     )
+
+
+def _voice_mix(voice: int, effects: int | None = None) -> str:
+    """The voice-over alone, or with the sound effects track laid under it; labelled [pre]."""
+    if effects is None:
+        return f"[{voice}:a]anull[pre]"
+    return f"[{voice}:a][{effects}:a]amix=inputs=2:normalize=0:duration=first[pre]"
 
 
 async def _measured_loudnorm(inputs: list[str], graph: str) -> str:
@@ -369,11 +387,47 @@ async def _measured_loudnorm(inputs: list[str], graph: str) -> str:
     )
 
 
+def _sticker_shown_from(clip: StitchClip, seconds: float) -> float:
+    """Seconds into the part where its stickers start to slide in."""
+    return min(clip.sticker_at, max(seconds - 1.0, 0.5))
+
+
+async def _sticker_spot(
+    clip: StitchClip, shown_from: float, seconds: float, look: Path
+) -> tuple[int, int]:
+    """Where the stickers rest: the usual high place on the left, or a calmer one when frames of
+    the shot, from where the sticker has landed to its end, show that place is busy, say a
+    product held up there."""
+    first, last = shown_from + 0.6, max(seconds - 0.4, shown_from + 0.6)
+    frames: list[Image.Image] = []
+    for moment in (first, (first + last) / 2, last):
+        await _run(
+            "ffmpeg", "-v", "error", "-y", "-ss", f"{TRIM_SECONDS + moment * clip_speed():.3f}",
+            "-i", str(clip.path), "-frames:v", "1", "-vf",
+            f"scale={_OUTPUT_SIZE}:force_original_aspect_ratio=increase,crop={_OUTPUT_SIZE}",
+            look.name, cwd=look.parent,
+        )  # fmt: skip
+        if look.is_file():
+            with Image.open(look) as frame:
+                frames.append(frame.copy())
+    if not frames:
+        return _STICKER_LEFT, _STICKER_TOP
+    with Image.open(clip.stickers[0]) as card:
+        height = card.height + (len(clip.stickers) - 1) * _STICKER_STEP
+        spots = [
+            (_STICKER_LEFT, top)
+            for top in _STICKER_TOPS
+            if top + height <= _STICKER_BOTTOM_LIMIT
+        ]
+        return quietest_spot(frames, (card.width, height), spots or [(_STICKER_LEFT, _STICKER_TOP)])
+
+
 async def stitch(
     clips: list[StitchClip],
     output: Path,
     voiceover: Path | None = None,
     bgm: Path | None = None,
+    music: bool = True,
 ) -> None:
     """Join the clips into one seamless mp4, burn in captions, and lay audio on top.
 
@@ -381,7 +435,9 @@ async def stitch(
     of each clip are trimmed to avoid static or frozen frames.
     Clips receive subtle color-grading to ensure consistency across AI-generated scenes,
     and are joined with hard cuts.
-    Background music is auto-ducked under voice-over speech when available.
+    Background music is auto-ducked under voice-over speech when available; `music=False` leaves
+    it out, for someone who adds their own sound on the platform. With a voice-over, a whoosh is
+    laid on each cut and a pop on each sticker.
     """
     if not clips:
         raise StitchUnavailable("No clip is ready to stitch")
@@ -390,7 +446,7 @@ async def stitch(
     output.parent.mkdir(parents=True, exist_ok=True)
     font = caption_font()
     scratch: list[Path] = []
-    bgm_path = bgm or find_bgm()
+    bgm_path = (bgm or find_bgm()) if music else None
     try:
         limit = asyncio.Semaphore(_PART_ENCODES)
 
@@ -420,12 +476,15 @@ async def stitch(
             sticker_inputs: list[str] = []
             if clip.stickers:
                 graph, last = f"[0:v]{filters}[base]", "base"
-                shown_from = min(clip.sticker_at, max(seconds - 1.0, 0.5))
+                shown_from = _sticker_shown_from(clip, seconds)
+                look = output.parent / f"look_{index}.jpg"
+                scratch.append(look)
+                left, top = await _sticker_spot(clip, shown_from, seconds, look)
                 for number, sticker in enumerate(clip.stickers, start=1):
                     sticker_inputs += ["-loop", "1", "-i", str(sticker)]
                     graph += (
-                        f";[{last}][{number}:v]overlay=x={_slide_in(shown_from)}"
-                        f":y={_STICKER_TOP + (number - 1) * _STICKER_STEP}"
+                        f";[{last}][{number}:v]overlay=x={_slide_in(shown_from, left)}"
+                        f":y={top + (number - 1) * _STICKER_STEP}"
                         f":shortest=1:enable='between(t,{shown_from:.2f},{max(seconds - 0.3, 1):.2f})'[s{number}]"
                     )
                     last = f"s{number}"
@@ -451,6 +510,23 @@ async def stitch(
         if has_audio:
             scratch.append(silent)
 
+        effects = output.parent / "effects.wav" if voiceover is not None else None
+        events = sound_events(
+            list(accumulate(part_durations[:-1])),
+            [
+                start + _sticker_shown_from(clip, seconds)
+                for clip, seconds, start in zip(
+                    clips, part_durations, accumulate([0.0, *part_durations]), strict=False
+                )
+                if clip.stickers
+            ],
+        )
+        if effects is not None and events:
+            scratch.append(effects)
+            await _run("ffmpeg", *effects_track_args(events, effects), cwd=output.parent)
+        else:
+            effects = None
+
         listing = output.parent / "parts.txt"
         listing.write_text("".join(f"file '{part.name}'\n" for part in parts), encoding="utf-8")
         scratch.append(listing)
@@ -461,23 +537,31 @@ async def stitch(
 
         # Audio mix: Voiceover + BGM Auto-Ducking (or voiceover only)
         if voiceover is not None and bgm_path is not None:
-            music = ["-stream_loop", "-1", "-i", str(bgm_path)]
+            backing = ["-stream_loop", "-1", "-i", str(bgm_path)]
+            extra = ["-i", effects.name] if effects is not None else []
             final = await _measured_loudnorm(
-                ["-i", str(voiceover), *music], _ducked_mix(voice=0, music=1)
+                ["-i", str(voiceover), *backing, *extra],
+                _ducked_mix(voice=0, music=1, effects=None if effects is None else 2),
             )
-            audio_filter = f"{_ducked_mix(voice=1, music=2)};[pre]{final}[aout]"
+            mixed = _ducked_mix(voice=1, music=2, effects=None if effects is None else 3)
+            audio_filter = f"{mixed};[pre]{final}[aout]"
             await _run(
-                "ffmpeg", "-v", "error", "-y", "-i", silent.name, "-i", str(voiceover), *music,
-                "-filter_complex", audio_filter,
+                "ffmpeg", "-v", "error", "-y", "-i", silent.name, "-i", str(voiceover), *backing,
+                *extra, "-filter_complex", audio_filter,
                 "-map", "0:v", "-map", "[aout]",
                 "-c:v", "copy", "-c:a", "aac", "-ar", "44100", "-ac", "2", "-shortest",
                 "-movflags", "+faststart", output.name, cwd=output.parent,
             )  # fmt: skip
         elif voiceover is not None:
-            final = await _measured_loudnorm(["-i", str(voiceover)], "[0:a]anull[pre]")
+            extra = ["-i", effects.name] if effects is not None else []
+            final = await _measured_loudnorm(
+                ["-i", str(voiceover), *extra], _voice_mix(0, None if effects is None else 1)
+            )
+            mixed = _voice_mix(1, None if effects is None else 2)
             await _run(
-                "ffmpeg", "-v", "error", "-y", "-i", silent.name, "-i", str(voiceover),
-                "-map", "0:v", "-map", "1:a", "-af", final,
+                "ffmpeg", "-v", "error", "-y", "-i", silent.name, "-i", str(voiceover), *extra,
+                "-filter_complex", f"{mixed};[pre]{final}[aout]",
+                "-map", "0:v", "-map", "[aout]",
                 "-c:v", "copy", "-c:a", "aac", "-ar", "44100", "-ac", "2", "-shortest",
                 "-movflags", "+faststart", output.name, cwd=output.parent,
             )  # fmt: skip

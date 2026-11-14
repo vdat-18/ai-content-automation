@@ -27,6 +27,7 @@ _PAD, _GAP, _RADIUS = 22, 12, 24
 _BIG, _MEDIUM, _SMALL = 50, 34, 26
 _LEAD = 0.2  # a sticker starts sliding in this long before its figure is said
 _EARLIEST = 0.3  # and never before the shot has settled
+_CLEARLY_CALMER = 0.7  # a lower slot must have under this share of the first slot's edges
 
 
 class Sticker(NamedTuple):
@@ -121,6 +122,30 @@ def sticker_start(
         if (index := mention_word(voiceover, kind, lines[kind].figure)) is not None
     ]
     return max(min(spoken) - _LEAD, _EARLIEST) if spoken else None
+
+
+def quietest_spot(
+    frames: Sequence[Image.Image], size: tuple[int, int], spots: Sequence[tuple[int, int]]
+) -> tuple[int, int]:
+    """The (left, top) among `spots`, the first being preferred, where a sticker of `size` hides
+    the least of the pictures (frames spread over the time it is shown). A busy area (a product,
+    a face) has many edges and a plain wall or shirt has few, so another spot is only taken when
+    it is clearly calmer than the first, in the worst of the frames."""
+    edges = [frame.convert("L").filter(ImageFilter.FIND_EDGES) for frame in frames]
+    width, height = size
+
+    def busyness(spot: tuple[int, int]) -> float:
+        left, top = spot
+        box = (left, top, left + width, top + height)
+        return max(sum(e.crop(box).tobytes()) / max(width * height, 1) for e in edges)
+
+    best = spots[0]
+    best_busyness = busyness(best)
+    for spot in spots[1:]:
+        value = busyness(spot)
+        if value < best_busyness * _CLEARLY_CALMER:
+            best, best_busyness = spot, value
+    return best
 
 
 def _font(path: Path, size: int) -> ImageFont.FreeTypeFont:

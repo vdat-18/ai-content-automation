@@ -7,6 +7,7 @@ from PIL import Image
 from ai_content.domains.marketing.products.clips import StitchClip, caption_font, stitch
 from ai_content.domains.marketing.products.stickers import (
     mention_word,
+    quietest_spot,
     render_stickers,
     sticker_lines,
     sticker_start,
@@ -94,3 +95,31 @@ async def test_stickers_are_laid_over_the_shot_they_belong_to(tmp_path) -> None:
     )
     picture = Image.open(frame).convert("RGB")
     assert picture.getpixel((100, 180))[0] > 200 and picture.getpixel((900, 1500)) == (0, 0, 0)
+
+
+def _frame_busy_at(top: int, bottom: int) -> Image.Image:
+    """A plain grey picture whose rows between top and bottom are a fine black and white grid."""
+    frame = Image.new("RGB", (400, 800), (120, 120, 120))
+    for y in range(top, bottom):
+        for x in range(0, 400, 2):
+            frame.putpixel((x, y), (0, 0, 0) if (x // 2 + y) % 2 else (255, 255, 255))
+    return frame
+
+
+def test_the_sticker_moves_off_a_busy_place_to_a_calmer_one() -> None:
+    frame = _frame_busy_at(100, 260)  # a product held up high
+    assert quietest_spot([frame], (200, 100), [(40, 130), (40, 400), (40, 600)]) == (40, 400)
+
+
+def test_the_sticker_stays_high_when_nothing_is_calmer() -> None:
+    plain = Image.new("RGB", (400, 800), (120, 120, 120))
+    spots = [(40, 130), (40, 400), (40, 600)]
+    assert quietest_spot([plain], (200, 100), spots) == (40, 130)
+    busy = _frame_busy_at(0, 800)
+    assert quietest_spot([busy], (200, 100), spots) == (40, 130)
+
+
+def test_a_spot_that_is_busy_in_any_frame_is_not_taken() -> None:
+    early, late = _frame_busy_at(100, 260), _frame_busy_at(400, 560)
+    spots = [(40, 130), (40, 400), (40, 650)]
+    assert quietest_spot([early, late], (200, 100), spots) == (40, 650)

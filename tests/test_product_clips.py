@@ -1,5 +1,6 @@
 import asyncio
 import json
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -753,7 +754,7 @@ async def test_the_opening_clip_of_a_hook_replaces_the_first_clip_in_the_video(
         )
     stitched: list[Path] = []
 
-    async def fake_stitch(parts, output, voice=None, bgm=None):
+    async def fake_stitch(parts, output, voice=None, bgm=None, music=True):
         stitched.extend(part.path for part in parts)
 
     async def fake_cover(video, output):
@@ -938,3 +939,56 @@ async def test_a_clip_flagged_only_because_its_script_changed_is_not_given_a_pro
     await service._repository.save_clip({**clip, "qa_problem": stale})
     await service.generate_clips(PRODUCT_ID, tmp_path, shot_index=0)
     assert "fix only this problem" not in video.submitted[-1][0]
+
+
+def _loudest(path, start: float, length: float) -> float:
+    """The peak level in dB of `length` seconds of a file's audio from `start`."""
+    result = subprocess.run(
+        ["ffmpeg", "-hide_banner", "-ss", str(start), "-t", str(length), "-i", str(path),
+         "-af", "volumedetect", "-vn", "-f", "null", "-"],
+        capture_output=True, text=True, check=True,
+    )  # fmt: skip
+    found = re.search(r"max_volume: (-?[\d.]+|-inf) dB", result.stderr)
+    return -120.0 if found is None else float(found.group(1))
+
+
+def _silent_voice(path, seconds: int) -> None:
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", f"anullsrc=d={seconds}", str(path)],
+        check=True,
+    )  # fmt: skip
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg is not installed")
+async def test_a_whoosh_is_heard_on_the_cut_between_shots(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("AIC_BGM_PATH", str(tmp_path / "no-music.wav"))
+    first, second = tmp_path / "a.mp4", tmp_path / "b.mp4"
+    _make_clip(first, "red", seconds=5, audio=False)
+    _make_clip(second, "blue", seconds=5, audio=False)
+    voice = tmp_path / "voice.wav"
+    _silent_voice(voice, 8)
+    output = tmp_path / "out.mp4"
+    await stitch([StitchClip(first, 3.0), StitchClip(second, 3.0)], output, voiceover=voice)
+    cut = shot_seconds(3.0)
+    assert _loudest(output, cut - 0.3, 0.5) > -40  # the swell on the cut
+    assert _loudest(output, 0.0, 1.0) < -60  # and nothing where nothing happens
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg is not installed")
+async def test_the_music_can_be_left_out(tmp_path, monkeypatch) -> None:
+    music = tmp_path / "music.wav"
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "sine=frequency=220:duration=5",
+         str(music)],
+        check=True,
+    )  # fmt: skip
+    monkeypatch.setenv("AIC_BGM_PATH", str(music))
+    clip = tmp_path / "c.mp4"
+    _make_clip(clip, "red", seconds=5, audio=False)
+    voice = tmp_path / "voice.wav"
+    _silent_voice(voice, 4)
+    with_music, without = tmp_path / "with.mp4", tmp_path / "without.mp4"
+    await stitch([StitchClip(clip, 3.0)], with_music, voiceover=voice)
+    await stitch([StitchClip(clip, 3.0)], without, voiceover=voice, music=False)
+    assert _loudest(with_music, 0.5, 1.0) > -30
+    assert _loudest(without, 0.5, 1.0) < -60

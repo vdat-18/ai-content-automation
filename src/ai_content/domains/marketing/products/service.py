@@ -1959,6 +1959,7 @@ class ProductCatalogService:
         variant: str = "",
         hook: str = "",
         opening_clip: Path | None = None,
+        music: bool = True,
     ) -> str | None:
         """Stitch the ready clips of approved shots, in story order, into one mp4.
 
@@ -2039,7 +2040,7 @@ class ProductCatalogService:
                     parts[number] = replace(
                         part, stickers=tuple(images), sticker_at=0.5 if at is None else at
                     )
-            await stitch(parts, store.path(relative), voice)
+            await stitch(parts, store.path(relative), voice, music=music)
         await store.push(relative)
         cover = f"{where}/cover.jpg"
         await cover_frame(store.path(relative), store.path(cover))
@@ -2067,6 +2068,7 @@ class ProductCatalogService:
                 "hook": hook.strip(),
                 "built_at": datetime.now(UTC).isoformat(),
                 "captions": captions,
+                "music": music,
                 "stickers": [kind for kinds in shown for kind in kinds],
                 "seconds": round(sum(shot_seconds(p.duration) for p in parts), 1),
                 "clip_attempts": used,
