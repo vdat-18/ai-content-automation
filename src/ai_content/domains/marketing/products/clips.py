@@ -280,6 +280,28 @@ def _slide_in(start: float, left: int = 40) -> str:
     return f"'{left}-(overlay_w+{left})*{swing}'"
 
 
+_FLOAT_REACH = 5  # pixels a settled sticker drifts up and down
+_FLOAT_RATE = 2.4  # radians per second, about one bob every 2.6 s
+_SHAKE_MARGIN = 12  # pixels of picture kept in reserve on each side for the handheld drift
+
+
+def _float_y(top: int, start: float, phase: float) -> str:
+    """An overlay y expression: after the spring settles, the sticker bobs like it is floating."""
+    ease = f"min(1,max(0,t-{start:g}-0.5)/0.5)"
+    return f"'{top}+{_FLOAT_REACH}*{ease}*sin({_FLOAT_RATE:g}*t+{phase:g})'"
+
+
+def _handheld() -> str:
+    """Crop filter that drifts the picture a few pixels, slowly, like a hand holding the phone."""
+    m = _SHAKE_MARGIN
+    width, height = (int(side) for side in _OUTPUT_SIZE.split(":"))
+    return (
+        f"scale={width + 2 * m}:{height + 2 * m},crop={width}:{height}"
+        f":x='{m}+{m / 2:g}*sin(2.1*t)+{m / 4:g}*sin(5.3*t)'"
+        f":y='{m}+{m / 2:g}*sin(1.7*t+1)+{m / 4:g}*sin(4.1*t+2)'"
+    )
+
+
 def _font_family(font: Path) -> str:
     """The family name subtitles ask for; libass finds the file through its folder."""
     name = font.stem.lower()
@@ -486,7 +508,7 @@ async def stitch(
             filters = (
                 f"setpts=PTS/{clip_speed():.4f},"
                 f"scale={_OUTPUT_SIZE}:force_original_aspect_ratio=increase,"
-                f"crop={_OUTPUT_SIZE},setsar=1,fps={_FPS},"
+                f"crop={_OUTPUT_SIZE},setsar=1,fps={_FPS},{_handheld()},"
                 f"{zoom_filter(clip.zoom) + ',' if clip.zoom else ''}"
                 f"{_COLOR_GRADE},{_FILM_LOOK}"
             )
@@ -514,7 +536,7 @@ async def stitch(
                     sticker_inputs += ["-loop", "1", "-i", str(sticker)]
                     graph += (
                         f";[{last}][{number}:v]overlay=x={_slide_in(shown_from, left)}"
-                        f":y={top + (number - 1) * _STICKER_STEP}"
+                        f":y={_float_y(top + (number - 1) * _STICKER_STEP, shown_from, number)}"
                         f":shortest=1:enable='between(t,{shown_from:.2f},{max(seconds - 0.3, 1):.2f})'[s{number}]"
                     )
                     last = f"s{number}"

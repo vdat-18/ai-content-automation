@@ -20,6 +20,8 @@ from ai_content.domains.marketing.products.clips import (
     StitchUnavailable,
     VideoClient,
     _ducked_mix,
+    _float_y,
+    _handheld,
     _measured_loudnorm,
     caption_font,
     clip_frames,
@@ -251,6 +253,19 @@ async def test_cover_is_a_jpeg_frame_of_the_video(tmp_path) -> None:
     cover = tmp_path / "cover.jpg"
     await cover_frame(clip, cover)
     assert cover.read_bytes()[:2] == b"\xff\xd8"
+
+
+def test_sticker_floats_only_after_the_spring_has_settled() -> None:
+    expression = _float_y(170, 2.0, 1)
+    assert expression.startswith("'170+")
+    assert "min(1,max(0,t-2-0.5)/0.5)" in expression  # no drift until half a second after entry
+
+
+def test_handheld_drift_stays_inside_the_spare_picture() -> None:
+    graph = _handheld()
+    assert graph.startswith("scale=1104:1944,crop=1080:1920")
+    # the crop origin is 12 +- 9 px at most, so it never leaves the 24 px of spare picture
+    assert "x='12+6*sin(2.1*t)+3*sin(5.3*t)'" in graph
 
 
 def test_sharpness_ranks_a_crisp_picture_above_a_blurred_one(tmp_path) -> None:
