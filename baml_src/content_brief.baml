@@ -69,13 +69,17 @@ function DraftContentBrief(
     The brief is a storyboard for one vertical ad video made of exactly {{ shot_count }} shot(s).
     Every shot is first made as a still keyframe image and later animated into a 15 second clip.
     {% if with_person %}
-    The video follows one recurring person, the one in the person photos below, who uses the real
-    product, and every shot shows that same person doing something concrete with it (picking it
-    up, using it, trying it, comparing before and after, reacting). Write actions, outfit and
-    setting that suit the person you see in the photos. The product is the star: it is clearly
-    visible and recognisable in every shot, from the first frame to the last, held, worn or placed
-    in frame while the person acts (a close-up of skin or a face still has the product in the
-    picture).
+    The video sells the product: what it does and how well it does it. One recurring person, the
+    one in the person photos below, only uses it. Every shot shows the product and its effect (the
+    problem, the product at work, the result, a before and after), never a portrait. The product
+    and its effect fill at least half of the frame in every shot, and the product is clearly
+    visible and recognisable from the first frame to the last. Write actions, outfit and setting
+    that suit the person you see in the photos, but keep the person in the background of the
+    story: mostly hands, arms and body doing something concrete with the product (picking it up,
+    using it, trying it, comparing before and after). Only the first and the last shot may show
+    the face, and then the product is held up close to the camera, at least as big in the frame
+    as the face; in every other shot the face is not seen (turned away, cut off by the frame or
+    small in a wide frame).
     {% else %}
     The video shows no person: no face and no body in any shot, only the real product, the place
     and, when the action needs it, hands. The product is the star: it is clearly visible and
@@ -89,8 +93,9 @@ function DraftContentBrief(
     with the product and nobody is seen speaking, so frame it with the mouth hidden or not the
     focus (seen from behind or the side, hands and product close-up, face turned down or away,
     or small in a wide frame). talking: the person is seen speaking in a relaxed conversation
-    to the camera while the voice-over is heard, framed at chest or waist level so the face is
-    clear. Use talking for the hook and the call to action and narrated for the middle shots.
+    to the camera while the voice-over is heard, framed at chest level with the product held
+    up close to the camera. Use talking for the hook and the call to action and narrated for the
+    middle shots.
     {% else %}
     Every shot is narrated: the voice-over is heard while the picture shows only the product, the
     place and hands, and nobody is seen speaking. Never use talking.
@@ -113,7 +118,10 @@ function DraftContentBrief(
     format: the video style, one of problem_solution, step_by_step, before_after, unboxing or
     worth_it_text.
 
-    Write on_screen_text and voiceover in everyday Vietnamese shoppers use.
+    Write on_screen_text and voiceover in everyday Vietnamese shoppers use. The voiceover of every
+    shot says one concrete thing the product does or one fact the buyer cares about (the problem it
+    solves, how it works or is used, the result, what is in the box or the price), taken from the
+    product facts, and never talks about the person or introduces them.
 
     script: the whole voice-over of the video as one continuous Vietnamese text, written first and
     then cut into consecutive parts, one per shot, so the voiceovers in order give the script again.

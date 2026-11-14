@@ -20,7 +20,8 @@ function CheckKeyframe(
     response schema.
 
     passed=true only when all of these hold: the product is clearly visible in the keyframe and
-    not hidden, cut off or tiny; the product in the keyframe is clearly the same
+    not hidden, cut off or tiny, and when a face is in the picture the product is at least as big in
+    the frame as the face; the product in the keyframe is clearly the same
     product as in the photos (same shape, color, proportions, material, label layout,
     same number of items); its size next to the person, the furniture and the room matches the
     real size stated in the shot description (not oversized, not tiny); it has no extra or missing parts and no warped geometry; the picture shows what the shot description asks for;
@@ -29,7 +30,8 @@ function CheckKeyframe(
     when a master keyframe is given, the light and color palette match it; when the previous
     shot's keyframe is given, the same person wears the same outfit in the same kind of room and
     light, so the two shots could be cut together without a jarring jump; when character images
-    are given, the face in the keyframe is exactly the face in them: someone who knows the
+    are given and a face is visible in the keyframe, that face is exactly the face in them (a
+    keyframe that shows no face passes this rule): someone who knows the
     person would say it is them, not just a similar-looking person. Compare face width and
     length, jawline and chin, forehead and hairline, eyebrows, eye shape and spacing, nose, lips,
     ears, hair length, parting and style, and skin tone one by one; fail on any clear difference
