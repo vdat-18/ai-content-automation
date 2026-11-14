@@ -61,6 +61,7 @@ from .embedding import ImageEmbedder, cosine, dhash, download_images, hamming
 from .hooks import HookWriter
 from .identity import PIN_SIZE_DIR, media_source_fingerprint
 from .image_review import ReferenceImageReviewer
+from .jumpcuts import zoom_windows
 from .keyframe_check import KeyframeChecker
 from .keyframes import (
     KEEP_SKIN_NOTE,
@@ -2012,7 +2013,18 @@ class ProductCatalogService:
                     caption_width,
                 )
             )
-            parts.append(StitchClip(local, duration, caption, cues if captions else ()))
+            closer = (
+                zoom_windows(
+                    str(shot.get("voiceover") or "").split(),
+                    word_times.get(str(index)) or (),
+                    shot_seconds(duration),
+                )
+                if shot.get("delivery") == "talking"
+                else ()
+            )
+            parts.append(
+                StitchClip(local, duration, caption, cues if captions else (), zoom=closer)
+            )
             spoken_texts.append(f"{shot.get('voiceover') or ''} {shot.get('on_screen_text') or ''}")
             scripts.append((index, str(shot.get("voiceover") or "")))
             if not parts[1:]:

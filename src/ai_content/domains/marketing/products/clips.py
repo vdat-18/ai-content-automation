@@ -21,6 +21,7 @@ from loguru import logger
 from PIL import Image, ImageFont
 
 from .captions import CAPTION_SIZE, Cue, ass_document
+from .jumpcuts import zoom_filter
 from .sounds import effects_track_args, sound_events
 from .stickers import quietest_spot
 
@@ -229,6 +230,7 @@ class StitchClip:
     cues: tuple[Cue, ...] = ()  # spoken words; when present they replace the caption
     stickers: tuple[Path, ...] = ()  # label images laid over the shot, stacked from the top
     sticker_at: float = 0.5  # seconds into the shot where the stickers start to slide in
+    zoom: tuple[tuple[float, float], ...] = ()  # seconds of the shot shown a little closer
 
 
 def caption_font() -> Path | None:
@@ -458,6 +460,7 @@ async def stitch(
                 f"setpts=PTS/{clip_speed():.4f},"
                 f"scale={_OUTPUT_SIZE}:force_original_aspect_ratio=increase,"
                 f"crop={_OUTPUT_SIZE},setsar=1,fps={_FPS},"
+                f"{zoom_filter(clip.zoom) + ',' if clip.zoom else ''}"
                 f"{_COLOR_GRADE},{_FILM_LOOK}"
             )
             if clip.cues and font is not None:

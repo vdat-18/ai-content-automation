@@ -941,6 +941,38 @@ async def test_a_clip_flagged_only_because_its_script_changed_is_not_given_a_pro
     assert "fix only this problem" not in video.submitted[-1][0]
 
 
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg is not installed")
+async def test_the_picture_moves_closer_only_in_the_windows_it_is_given(
+    tmp_path, monkeypatch
+) -> None:
+    from PIL import Image, ImageChops, ImageStat
+
+    monkeypatch.setenv("AIC_BGM_PATH", str(tmp_path / "no-music.wav"))
+    clip = tmp_path / "c.mp4"
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "testsrc=s=320x568:d=5:r=24",
+         "-c:v", "libx264", "-pix_fmt", "yuv420p", str(clip)],
+        check=True,
+    )  # fmt: skip
+    output = tmp_path / "out.mp4"
+    await stitch([StitchClip(clip, clip_seconds_for(3.0), zoom=((1.5, 2.5),))], output)
+
+    def frame(moment: float) -> Image.Image:
+        path = tmp_path / f"f_{moment}.png"
+        subprocess.run(
+            ["ffmpeg", "-v", "error", "-y", "-ss", str(moment), "-i", str(output),
+             "-frames:v", "1", str(path)],
+            check=True,
+        )  # fmt: skip
+        return Image.open(path).convert("RGB")
+
+    def change(a: Image.Image, b: Image.Image) -> float:
+        return sum(ImageStat.Stat(ImageChops.difference(a, b)).mean) / 3
+
+    wide, still_wide, closer = frame(0.5), frame(0.6), frame(2.0)
+    assert change(wide, still_wide) < 8 < change(wide, closer)  # the test picture barely moves by itself
+
+
 def _loudest(path, start: float, length: float) -> float:
     """The peak level in dB of `length` seconds of a file's audio from `start`."""
     result = subprocess.run(
