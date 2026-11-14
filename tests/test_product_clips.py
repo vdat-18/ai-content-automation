@@ -23,6 +23,7 @@ from ai_content.domains.marketing.products.clips import (
     clip_seconds_for,
     cover_frame,
     is_busy_error,
+    sharpness,
     shot_seconds,
     still_tail_seconds,
     stitch,
@@ -247,6 +248,25 @@ async def test_cover_is_a_jpeg_frame_of_the_video(tmp_path) -> None:
     cover = tmp_path / "cover.jpg"
     await cover_frame(clip, cover)
     assert cover.read_bytes()[:2] == b"\xff\xd8"
+
+
+def test_sharpness_ranks_a_crisp_picture_above_a_blurred_one(tmp_path) -> None:
+    from PIL import Image, ImageDraw, ImageFilter
+
+    crisp = Image.new("RGB", (120, 120), "white")
+    ImageDraw.Draw(crisp).rectangle((30, 30, 90, 90), fill="black")
+    crisp.save(tmp_path / "crisp.jpg")
+    crisp.filter(ImageFilter.GaussianBlur(6)).save(tmp_path / "blur.jpg")
+    assert sharpness(tmp_path / "crisp.jpg") > sharpness(tmp_path / "blur.jpg")
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg is not installed")
+async def test_cover_of_a_video_shorter_than_every_moment_still_exists(tmp_path) -> None:
+    clip = tmp_path / "c.mp4"
+    _make_clip(clip, "blue", seconds=0.3, audio=False)
+    await cover_frame(clip, tmp_path / "cover.jpg")
+    assert (tmp_path / "cover.jpg").read_bytes()[:2] == b"\xff\xd8"
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["c.mp4", "cover.jpg"]
 
 
 @pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg is not installed")

@@ -18,7 +18,7 @@ from urllib.parse import quote
 
 import httpx
 from loguru import logger
-from PIL import Image, ImageFont
+from PIL import Image, ImageFilter, ImageFont, ImageStat
 
 from .captions import CAPTION_SIZE, Cue, ass_document
 from .jumpcuts import zoom_filter
@@ -50,6 +50,7 @@ _STICKER_LEFT = 40
 _STICKER_TOPS = (_STICKER_TOP, 560, 900, 1200)
 _STICKER_BOTTOM_LIMIT = 1350
 _PART_ENCODES = 2
+_COVER_MOMENTS = (0.5, 1.0, 1.5, 2.0, 2.5)  # seconds in; the sharpest becomes the cover
 _COLOR_GRADE = "eq=contrast=1.03:brightness=0.01:saturation=1.05"
 # Light grain, a little extra sharpness and soft dark corners: a phone-camera look instead of
 # the smooth, evenly lit picture that gives AI video away
@@ -299,14 +300,35 @@ def _caption_filter(font: Path, textfile: str, end: float) -> str:
     )
 
 
+def sharpness(frame: Path) -> float:
+    """How crisp a picture is: the mean strength of its edges, which blur and shut eyes lower."""
+    with Image.open(frame) as image:
+        edges = image.convert("L").filter(ImageFilter.FIND_EDGES)
+    return ImageStat.Stat(edges).mean[0]
+
+
 async def cover_frame(video: Path, output: Path) -> None:
-    """Save the frame one second into the video as its cover picture."""
+    """Save the sharpest of a few frames from the first seconds as the video's cover picture."""
     if shutil.which("ffmpeg") is None:
         raise StitchUnavailable("ffmpeg is not installed on this machine")
-    await _run(
-        "ffmpeg", "-v", "error", "-y", "-ss", "1", "-i", str(video),
-        "-frames:v", "1", "-q:v", "2", output.name, cwd=output.parent,
-    )  # fmt: skip
+    candidates = [output.parent / f"{output.stem}_try_{n}.jpg" for n in range(len(_COVER_MOMENTS))]
+    try:
+        for moment, still in zip(_COVER_MOMENTS, candidates, strict=True):
+            await _run(
+                "ffmpeg", "-v", "error", "-y", "-ss", str(moment), "-i", str(video),
+                "-frames:v", "1", "-q:v", "2", still.name, cwd=output.parent,
+            )  # fmt: skip
+        made = [still for still in candidates if still.is_file()]
+        if not made:  # the video is shorter than every moment
+            await _run(
+                "ffmpeg", "-v", "error", "-y", "-i", str(video),
+                "-frames:v", "1", "-q:v", "2", output.name, cwd=output.parent,
+            )  # fmt: skip
+            return
+        shutil.copyfile(max(made, key=sharpness), output)
+    finally:
+        for still in candidates:
+            still.unlink(missing_ok=True)
 
 
 async def clip_frames(video: Path, seconds: float) -> list[bytes]:
