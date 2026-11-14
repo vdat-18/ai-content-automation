@@ -168,6 +168,15 @@ def unsupported_numbers(text: str, facts: str) -> list[str]:
     return missing
 
 
+MAX_UNBROKEN_WORDS = 14
+_PAUSE = re.compile(r"[,.;:!?…\n]")
+
+
+def longest_unbroken_run(text: str) -> int:
+    """The most words in a row with no comma or full stop for the voice to pause at."""
+    return max((len(part.split()) for part in _PAUSE.split(text)), default=0)
+
+
 def brief_warnings(brief: dict[str, Any], facts: str = "") -> list[str]:
     texts = [(field, str(brief.get(field) or "")) for field in _BRIEF_TEXT_FIELDS]
     for index, shot in enumerate(brief.get("shots") or [], start=1):
@@ -175,6 +184,12 @@ def brief_warnings(brief: dict[str, Any], facts: str = "") -> list[str]:
             (f"shot {index} {field}", str(shot.get(field) or "")) for field in _SHOT_TEXT_FIELDS
         ]
     warnings = _warnings(texts)
+    warnings += [
+        f"{where}: {run} words in a row with no comma or full stop, too long to say in one "
+        f"breath; split it into sentences of {MAX_UNBROKEN_WORDS - 2} words or fewer"
+        for where, text in texts
+        if where.endswith("voiceover") and (run := longest_unbroken_run(text)) > MAX_UNBROKEN_WORDS
+    ]
     if facts.strip():
         warnings += [
             f'{where}: "{number}" is not in the product data (unverified number)'

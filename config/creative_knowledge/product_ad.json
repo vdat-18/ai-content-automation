@@ -1,6 +1,6 @@
 {
   "schema_version": "creative-knowledge-bootstrap@2",
-  "bootstrap_id": "product-ad-v7",
+  "bootstrap_id": "product-ad-v8",
   "items": [
     {
       "knowledge_id": "product-ad-body-proportions",
@@ -140,6 +140,25 @@
       "knowledge_type": "hard_rule",
       "title": "A figure comes with what it means to the shopper",
       "content": "WHEN: A voiceover speaks a size, a quantity, a duration or a price taken from the product facts. DO: Follow it at once with what it means in everyday life, worked out only from the same facts (a 300 ml bottle fills a big glass, a 40 cm length reaches the knee). DO NOT: Recite a bare figure, or let the meaning add a benefit or result that the product facts do not state.",
+      "applies_to": [
+        "preparation",
+        "review"
+      ],
+      "scope": {
+        "task_type": "product_ad",
+        "asset_type": "brief"
+      },
+      "authority": "lead",
+      "source_refs": [
+        "team:v2"
+      ],
+      "auto_approve": true
+    },
+    {
+      "knowledge_id": "product-ad-voice-short-runs",
+      "knowledge_type": "hard_rule",
+      "title": "Short sentences the voice can breathe in",
+      "content": "WHEN: Writing any voiceover. DO: Cut the speech into sentences of 12 words or fewer, with a comma or a full stop at least every 8 words, so the voice pauses naturally. DO NOT: Write more than 12 words in a row without a comma or a full stop.",
       "applies_to": [
         "preparation",
         "review"

@@ -1,6 +1,7 @@
 from ai_content.domains.marketing.products.compliance import (
     brief_warnings,
     find_flagged_terms,
+    longest_unbroken_run,
     numbers_in,
     package_warnings,
     product_facts,
@@ -90,3 +91,17 @@ def test_a_spelled_out_number_is_checked_like_a_written_one() -> None:
     ]
     assert numbers_in("hai trăm chín mươi chín nghìn")[0][2] == 299000
     assert brief_warnings({"shots": [{"voiceover": "giảm ba mươi phần trăm"}]}, facts) == []
+
+
+def test_a_voice_over_with_a_long_run_and_no_pause_is_warned_about() -> None:
+    long_run = (
+        "Mọi người có áo quần bị thâm kim mốc ẩn giặt mãi không sạch thì thử ngay bộ tẩy này nha."
+    )
+    assert longest_unbroken_run(long_run) == 21
+    assert longest_unbroken_run("Áo thâm kim, giặt mãi không sạch? Thử bộ tẩy này nha.") == 5
+    brief = {"shots": [{"voiceover": long_run, "on_screen_text": long_run}]}
+    assert brief_warnings(brief) == [
+        "shot 1 voiceover: 21 words in a row with no comma or full stop, too long to say in one "
+        "breath; split it into sentences of 12 words or fewer"
+    ]  # only the spoken text needs to be breathable, not the caption
+    assert brief_warnings({"shots": [{"voiceover": "Áo thâm kim, giặt mãi không sạch?"}]}) == []
