@@ -16,6 +16,7 @@ from ai_content.domains.marketing.products.clips import (
     StitchClip,
     StitchUnavailable,
     VideoClient,
+    _ducked_mix,
     _measured_loudnorm,
     caption_font,
     clip_frames,
@@ -261,6 +262,32 @@ async def test_stitch_lays_one_voiceover_over_the_whole_video(tmp_path) -> None:
     await stitch([StitchClip(clip, 3.0)], output, voiceover=voice)
     assert sorted(_probe(output, "stream=codec_type").split()) == ["audio", "video"]
     assert float(_probe(output, "format=duration")) < 2.3
+
+
+def test_the_music_fades_out_to_end_with_the_voice_over() -> None:
+    assert "afade=t=out:st=3.200:d=0.8" in _ducked_mix(0, 1, ends_at=4.0)
+    assert "afade" not in _ducked_mix(0, 1)
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg is not installed")
+async def test_stitch_fades_the_music_out_at_the_end(tmp_path) -> None:
+    clip = tmp_path / "c.mp4"
+    _make_clip(clip, "green", seconds=6, audio=False)
+    voice, music = tmp_path / "voice.wav", tmp_path / "music.wav"
+    for path, tone in ((voice, "sine=frequency=150:duration=4"), (music, "sine=frequency=800:duration=10")):
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", tone, str(path)], check=True)  # fmt: skip
+    output = tmp_path / "videos" / "out.mp4"
+    await stitch([StitchClip(clip, 5.0)], output, voiceover=voice, bgm=music)
+
+    def level(start: float) -> float:
+        result = subprocess.run(
+            ["ffmpeg", "-v", "info", "-ss", str(start), "-t", "0.2", "-i", str(output), "-vn",
+             "-af", "highpass=f=700,highpass=f=700,lowpass=f=900,astats", "-f", "null", "-"],
+            capture_output=True, text=True, check=True,
+        )  # fmt: skip
+        return float(re.findall(r"RMS level dB: (-?[\d.inf]+)", result.stderr)[-1])
+
+    assert level(3.7) < level(1.0) - 6  # the 800 Hz music is much quieter near the end
 
 
 @pytest.mark.skipif(

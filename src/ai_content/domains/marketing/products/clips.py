@@ -334,15 +334,20 @@ _LOUDNORM = "loudnorm=I=-14:LRA=11:TP=-1"
 # default_bgm.wav measures -21 LUFS, so 0.25 left it ~19 dB under the voice before ducking and
 # nearly inaudible; 0.7 puts it ~10 dB under in pauses and ~16 dB under while the voice speaks
 _MUSIC_VOLUME = 0.7
+_MUSIC_FADE = 0.8  # the music eases out over the last seconds instead of stopping mid-beat
 
 
-def _ducked_mix(voice: int, music: int, effects: int | None = None) -> str:
+def _ducked_mix(
+    voice: int, music: int, effects: int | None = None, ends_at: float = 0.0
+) -> str:
     """The voice-over over music that dips while it speaks, plus the sound effects track when
-    there is one; the result is labelled [pre]."""
+    there is one; the result is labelled [pre]. The music fades out to end with the voice-over
+    at `ends_at` seconds (no fade when that is 0)."""
+    fade = f",afade=t=out:st={max(ends_at - _MUSIC_FADE, 0):.3f}:d={_MUSIC_FADE}" if ends_at else ""
     extra = "" if effects is None else f"[{effects}:a]"
     return (
         f"[{voice}:a]{_LOUDNORM},asplit=2[voice_main][voice_sc];"
-        f"[{music}:a]volume={_MUSIC_VOLUME}[music_base];"
+        f"[{music}:a]volume={_MUSIC_VOLUME}{fade}[music_base];"
         "[music_base][voice_sc]sidechaincompress=threshold=0.08:ratio=4:attack=50:release=300"
         "[music_ducked];"
         f"[voice_main][music_ducked]{extra}"
@@ -542,11 +547,12 @@ async def stitch(
         if voiceover is not None and bgm_path is not None:
             backing = ["-stream_loop", "-1", "-i", str(bgm_path)]
             extra = ["-i", effects.name] if effects is not None else []
+            ends_at = await video_seconds(voiceover)
             final = await _measured_loudnorm(
                 ["-i", str(voiceover), *backing, *extra],
-                _ducked_mix(voice=0, music=1, effects=None if effects is None else 2),
+                _ducked_mix(0, 1, None if effects is None else 2, ends_at),
             )
-            mixed = _ducked_mix(voice=1, music=2, effects=None if effects is None else 3)
+            mixed = _ducked_mix(1, 2, None if effects is None else 3, ends_at)
             audio_filter = f"{mixed};[pre]{final}[aout]"
             await _run(
                 "ffmpeg", "-v", "error", "-y", "-i", silent.name, "-i", str(voiceover), *backing,
