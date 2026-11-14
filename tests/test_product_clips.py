@@ -331,6 +331,7 @@ async def test_clip_prompt_follows_the_shots_delivery(tmp_path) -> None:
     )
     await service.generate_clips(PRODUCT_ID, tmp_path)
     assert "speaks naturally to the camera" in video.submitted[0][0]
+    assert "in exact sync with the spoken Vietnamese" in video.submitted[0][0]
     assert 'says in Vietnamese, in one go: "Xin chào các bạn"' in video.submitted[0][0]
     assert "no dialogue" not in video.submitted[0][0]
 
@@ -814,7 +815,7 @@ async def test_stitch_slides_a_sticker_in_instead_of_popping_it(tmp_path, monkey
         pixels = Image.open(frame).convert("RGB").getdata()
         return sum(1 for r, g, b in pixels if r > 240 and g > 240 and b > 240)
 
-    before, sliding, settled = white_pixels(0.3), white_pixels(0.6), white_pixels(1.5)
+    before, sliding, settled = white_pixels(0.3), white_pixels(0.4), white_pixels(1.5)
     assert before == 0
     assert 0 < sliding < settled
 

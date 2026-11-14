@@ -17,7 +17,8 @@ _MIN_WORD = 0.08  # a word heard at the same moment as the one before still show
 _LAST_WORD = 0.25  # seconds the last word stays highlighted when the shot's speech ends sooner
 _HIGHLIGHT = r"{\c&H00D7FF&}"  # ASS colours are BGR: this is amber
 _PLAIN = r"{\c&HFFFFFF&}"
-_POP = r"{\fscx115\fscy115}"  # the word being said is a little larger
+# The word being said springs up, overshoots a little and settles at 115%
+_POP = r"{\fscx100\fscy100\t(0,70,\fscx125\fscy125)\t(70,170,\fscx115\fscy115)}"
 _NORMAL = r"{\fscx100\fscy100}"
 # The voice-over is written the way it is read aloud; captions show the usual spelling.
 _DISPLAY_SPELLING = {

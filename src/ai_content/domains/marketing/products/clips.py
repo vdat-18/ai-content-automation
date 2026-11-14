@@ -240,10 +240,18 @@ def find_bgm() -> Path | None:
 
 
 
-def _slide_in(start: float, left: int = 40, seconds: float = 0.35) -> str:
-    """An overlay x expression: the sticker glides in from the left edge and eases to a stop."""
-    progress = f"min(1,max(0,(t-{start:g})/{seconds:g}))"
-    return f"'{left}-(overlay_w+{left})*pow(1-{progress},3)'"
+_SPRING_DAMPING = 8.0  # how fast the sticker's bounce dies out (per second)
+_SPRING_RATE = 10.7  # how fast it swings; with the damping this overshoots by about a tenth
+
+
+def _slide_in(start: float, left: int = 40) -> str:
+    """An overlay x expression: the sticker springs in from the left edge, overshoots a little."""
+    tau = f"max(0,t-{start:g})"
+    swing = (
+        f"exp(-{_SPRING_DAMPING:g}*{tau})*(cos({_SPRING_RATE:g}*{tau})"
+        f"+{_SPRING_DAMPING / _SPRING_RATE:.3f}*sin({_SPRING_RATE:g}*{tau}))"
+    )
+    return f"'{left}-(overlay_w+{left})*{swing}'"
 
 
 def _font_family(font: Path) -> str:
