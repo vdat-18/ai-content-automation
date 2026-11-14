@@ -250,8 +250,26 @@ class HookClipPending(RuntimeError):
     """The clip of a hook is still being filmed; ask again in a little while."""
 
 
-def _clip_prompt(shot: dict[str, Any], with_person: bool) -> str:
-    """What the video model is told to film for one shot."""
+_KEEP_PERSON = (
+    "Keep the same person (face, hair, clothes, body proportions) and the product's exact shape, "
+    "color and details in every frame; do not add, remove or change objects. "
+)
+_KEEP_PRODUCT = (
+    "Keep the product's exact shape, color and details in every frame; do not add, remove or "
+    "change objects. "
+)
+_NO_ARTIFACTS = (
+    "No morphing, warping, flicker or ghosting, no extra, missing or fused fingers or limbs, "
+    "no watermark. "
+)
+
+
+def _clip_prompt(shot: dict[str, Any], with_person: bool, fix: str = "") -> str:
+    """What the video model is told to film for one shot.
+
+    `fix` is what the quality check found wrong in the last version of this clip; it is asked
+    to be fixed and nothing else changed.
+    """
     if str(shot.get("delivery") or "narrated") == "talking":
         sound = (
             f"{_DELIVERY_RULE[True]} The person says in Vietnamese, in one go: "
@@ -264,11 +282,12 @@ def _clip_prompt(shot: dict[str, Any], with_person: bool) -> str:
         )
     return (
         f"{shot.get('motion_prompt') or 'Slow gentle camera push-in.'} "
-        "Keep the product's exact shape, color and details; do not add or change objects. "
+        f"{_KEEP_PERSON if with_person else _KEEP_PRODUCT}{_NO_ARTIFACTS}"
         "Energetic TikTok pace: brisk natural movement and quick camera moves, "
         "never slow motion, no long pauses. "
         f"{'' if with_person else _NO_PERSON_VIDEO}"
         f"{sound}"
+        f"{f' Keep everything else as before and fix only this problem of the last version: {fix}' if fix else ''}"
     )
 
 
@@ -1710,7 +1729,8 @@ class ProductCatalogService:
         }
         delivery = str(shot.get("delivery") or "narrated")
         frame = await self.media(media_root).read(keyframe["image_path"])
-        prompt = _clip_prompt(shot, with_person)
+        last_problem = str((previous or {}).get("qa_problem") or "")
+        prompt = _clip_prompt(shot, with_person, "" if last_problem == NOT_CHECKED else last_problem)
         try:
             job_id, job_model = await self._videographer.submit(prompt, frame, seconds)
         except ClipGenerationError as error:

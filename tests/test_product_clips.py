@@ -865,3 +865,22 @@ async def test_every_part_lasts_as_long_as_its_voice_over_so_later_shots_do_not_
     await stitch(clips, output)
     assert abs(float(_probe(output, "format=duration")) - 3.5) < 0.12
 
+
+async def test_a_flagged_clip_is_made_again_with_only_its_problem_to_fix(tmp_path) -> None:
+    video = _FakeVideo()
+    service = await _service(tmp_path, video)
+    await service.generate_clips(PRODUCT_ID, tmp_path)
+    first = video.submitted[0][0]
+    assert "No morphing, warping, flicker or ghosting" in first
+    assert "Keep the product's exact shape" in first and "fix only this problem" not in first
+
+    clip = (await service._repository.list_clips(PRODUCT_ID))[0]
+    problem = "Frame 3: the left hand has six fingers."
+    await service._repository.save_clip({**clip, "qa_problem": problem})
+    await service.generate_clips(PRODUCT_ID, tmp_path, shot_index=0)
+    assert f"fix only this problem of the last version: {problem}" in video.submitted[-1][0]
+
+    await service._repository.save_clip({**clip, "qa_problem": NOT_CHECKED})
+    await service.generate_clips(PRODUCT_ID, tmp_path, shot_index=0)
+    last = video.submitted[-1][0]
+    assert "fix only this problem" not in last  # nothing was found, nothing to fix
