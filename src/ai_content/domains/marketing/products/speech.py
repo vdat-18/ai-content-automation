@@ -25,8 +25,8 @@ _RETRY_DELAY = 4.0
 MAX_SPEEDUP = 1.5
 VOICE_LUFS = -16.0  # every reading is brought to this loudness
 MAX_GAIN_DB = 12.0
-TAIL_SECONDS = 1.2  # quiet kept after the last word of a shot before the cut
-MIN_SHOT_SECONDS = 4.0  # a shorter shot would lose the soft transition into the next
+TAIL_SECONDS = 0.4  # quiet kept after the last word of a shot before the hard cut: a natural beat
+MIN_SHOT_SECONDS = 2.5  # the shortest a shot may be cut to, so a very short line is still seen
 
 
 def tts_speed() -> float:

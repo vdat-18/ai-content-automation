@@ -129,7 +129,8 @@ async def test_each_reading_is_fitted_to_its_shot(tmp_path) -> None:
         ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(output)],
         capture_output=True, text=True, check=True,
     ).stdout  # fmt: skip
-    assert 8.8 < float(duration) < 9.4
+    # the short line is cut to the 2.5 s minimum, the empty one keeps its 2 s, the long one fills 4 s
+    assert 8.3 < float(duration) < 8.8
     assert sorted(p.name for p in output.parent.iterdir()) == ["voiceover.mp3"]
 
 
@@ -142,13 +143,25 @@ async def test_the_quiet_after_the_last_word_of_a_shot_is_cut_off(tmp_path) -> N
     output = tmp_path / "videos" / "voiceover.mp3"
     readings = [Reading("nói ngắn", 12.0), Reading("kể", 3.0)]
     await make_voiceover(_Fake(), readings, output)  # type: ignore[arg-type]
-    # 3 s of words at the brisk pace is about 2.3 s, so the shot keeps the 4 s minimum
-    assert 3.9 < readings[0].seconds < 4.1 and readings[1].seconds == 3.0
+    # 3 s of words at the brisk pace is about 2.8 s, and the shot keeps 0.4 s of quiet after them
+    assert 3.0 < readings[0].seconds < 3.3 and readings[1].seconds == 3.0
     duration = subprocess.run(
         ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(output)],
         capture_output=True, text=True, check=True,
     ).stdout  # fmt: skip
-    assert 6.8 < float(duration) < 7.2
+    assert 6.0 < float(duration) < 6.4
+
+
+@needs_ffmpeg
+async def test_a_very_short_line_still_gets_the_minimum_shot_length(tmp_path) -> None:
+    class _Fake:
+        async def speak(self, text, voice=None):
+            return _tone(0.5)
+
+    output = tmp_path / "videos" / "voiceover.mp3"
+    readings = [Reading("ừ", 12.0)]
+    await make_voiceover(_Fake(), readings, output)  # type: ignore[arg-type]
+    assert 2.4 < readings[0].seconds < 2.6  # not cut down to the half second of words plus 0.4 s
 
 
 @needs_ffmpeg
@@ -191,7 +204,8 @@ async def test_a_talking_shot_whose_clip_speech_cannot_be_followed_is_read_at_it
         ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", str(output)],
         capture_output=True, text=True, check=True,
     ).stdout  # fmt: skip
-    assert 5.8 < float(duration) < 6.3
+    # the first shot ends 0.4 s after its words, the second is cut to its 2 s
+    assert 5.0 < float(duration) < 5.5
 
 
 async def test_a_talking_shot_needs_its_clip_before_the_voice(tmp_path) -> None:
