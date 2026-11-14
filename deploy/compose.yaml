@@ -209,6 +209,9 @@ services:
       - ../config:/app/config:ro
       - ../deploy:/app/deploy:ro
       - ../baml_src:/app/baml_src:ro
+      - test_whisper_models:/models  # the speech model is downloaded once, not on every run
+    environment:
+      AIC_TEST_WHISPER_DIR: /models
     profiles:
       - tools
 
@@ -249,3 +252,4 @@ volumes:
   api_scratch:
   object_storage_data:
   postgres_data:
+  test_whisper_models:

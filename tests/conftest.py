@@ -2,10 +2,19 @@
 
 import hashlib
 import io
+import os
 from pathlib import Path
 
 import pytest
 from PIL import Image
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _shared_whisper_models(tmp_path_factory: pytest.TempPathFactory) -> None:
+    """Keep the speech model between runs: tests look for it in `<temp base>/whisper`."""
+    shared = os.environ.get("AIC_TEST_WHISPER_DIR")
+    if shared:
+        (tmp_path_factory.getbasetemp() / "whisper").symlink_to(shared, target_is_directory=True)
 
 
 @pytest.fixture
