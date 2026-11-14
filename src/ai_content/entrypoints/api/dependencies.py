@@ -497,6 +497,7 @@ def _ad_analyzer(settings: ApiRuntimeSettings) -> AdAnalyzer | None:
         base_url=settings.screening_base_url,
         api_key=settings.screening_api_key,
         model=settings.screening_model,
+        model_dir=settings.db_path.parent / "whisper",
     )
 
 

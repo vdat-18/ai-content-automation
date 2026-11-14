@@ -22,14 +22,14 @@ _MODEL = "small"  # CPU, int8: about 1 s per shot reading and about 1.5 GB of me
 
 
 @cache
-def _model(model_dir: Path):  # noqa: ANN202
+def whisper_model(model_dir: Path):  # noqa: ANN202
     from faster_whisper import WhisperModel  # heavy: loaded on first use only
 
     return WhisperModel(_MODEL, device="cpu", compute_type="int8", download_root=str(model_dir))
 
 
 def _heard(audio: Path, model_dir: Path) -> list[tuple[str, float]]:
-    segments, _ = _model(model_dir).transcribe(
+    segments, _ = whisper_model(model_dir).transcribe(
         str(audio), language="vi", word_timestamps=True, vad_filter=True
     )
     return [(w.word, float(w.start)) for s in segments for w in s.words if w.word.strip()]

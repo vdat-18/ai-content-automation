@@ -23,6 +23,8 @@ from ai_content.domains.marketing.products.adapters.baml_client import types as 
 from ai_content.domains.marketing.products.adapters.baml_client.async_client import b
 from ai_content.domains.marketing.products.adapters.baml_registry import build_client_registry
 
+from .speech_pace import measure_pace
+
 FRAME_COUNT = 40
 FRAME_WIDTH = 320
 CUT_THRESHOLD = 0.3
@@ -36,7 +38,7 @@ class ReferenceAdUnavailable(RuntimeError):
 
 class _BamlAdClient(Protocol):
     async def AnalyzeAdStructure(
-        self, frames: list[BamlImage], frame_times: str, cut_times: str
+        self, frames: list[BamlImage], frame_times: str, cut_times: str, voice_pace: str
     ) -> baml_types.AdStructure: ...
 
 
@@ -64,8 +66,9 @@ async def _duration(video: Path) -> float:
         raise ReferenceAdUnavailable("ffprobe could not read the video") from error
 
 
-async def sample(video: Path, folder: Path) -> tuple[list[bytes], list[float], list[float]]:
-    """Return evenly spaced small frames, the time of each, and the measured cut times."""
+async def sample(video: Path, folder: Path) -> tuple[list[bytes], list[float], list[float], float]:
+    """Return evenly spaced small frames, the time of each, the measured cut times and the
+    video's length in seconds."""
     if shutil.which("ffmpeg") is None or shutil.which("ffprobe") is None:
         raise ReferenceAdUnavailable("ffmpeg is not installed on this machine")
     seconds = await _duration(video)
@@ -81,17 +84,20 @@ async def sample(video: Path, folder: Path) -> tuple[list[bytes], list[float], l
         "-i", str(video), "-vf", f"select='gt(scene,{CUT_THRESHOLD})',showinfo", "-f", "null", "-"
     )
     cuts = [round(float(t), 1) for t in re.findall(r"pts_time:([\d.]+)", log)]
-    return frames, times, cuts
+    return frames, times, cuts, seconds
 
 
 class AdAnalyzer:
     """Ask the BAML screening model how a sampled ad is built."""
 
-    def __init__(self, client: _BamlAdClient) -> None:
+    def __init__(self, client: _BamlAdClient, model_dir: Path) -> None:
         self._client = client
+        self._model_dir = model_dir  # where the speech model is kept
 
     @classmethod
-    def from_settings(cls, *, base_url: str, api_key: str, model: str) -> AdAnalyzer:
+    def from_settings(
+        cls, *, base_url: str, api_key: str, model: str, model_dir: Path
+    ) -> AdAnalyzer:
         registry = build_client_registry(
             name="ReferenceAd",
             base_url=base_url,
@@ -100,12 +106,18 @@ class AdAnalyzer:
             reasoning_effort=None,
             temperature=0,
         )
-        return cls(b.with_options(client_registry=registry))
+        return cls(b.with_options(client_registry=registry), model_dir)
 
     async def analyze(self, video: Path) -> list[str] | None:
         """Return the structure rules, or None when the model did not answer."""
         with tempfile.TemporaryDirectory() as scratch:
-            frames, times, cuts = await sample(video, Path(scratch))
+            frames, times, cuts, seconds = await sample(video, Path(scratch))
+            try:
+                voice = await measure_pace(video, self._model_dir, seconds)
+            except Exception as error:  # noqa: BLE001 - the model may be missing or fail to download
+                raise ReferenceAdUnavailable(
+                    f"The voice in the video could not be measured: {error}"
+                ) from error
         if not frames:
             raise ReferenceAdUnavailable("No picture could be read from the video")
         try:
@@ -116,6 +128,7 @@ class AdAnalyzer:
                 ],
                 json.dumps(times),
                 json.dumps(cuts),
+                json.dumps(voice),
             )
         except BamlError as error:
             logger.warning("Reference ad analysis failed: {}", str(error)[:300])
