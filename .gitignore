@@ -29,3 +29,6 @@ frontend/dist/
 
 # Local run data: database, generated media and removed env lines
 .creative-pilot/
+
+# Working notes about reference repos
+docs/reference-repos-*.md
