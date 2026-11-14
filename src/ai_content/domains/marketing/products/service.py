@@ -11,6 +11,7 @@ from dataclasses import replace
 from datetime import UTC, datetime
 from functools import partial
 from io import BytesIO
+from itertools import accumulate
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote_plus, urlsplit
@@ -53,6 +54,7 @@ from .clips import (
     shot_seconds,
     still_tail_seconds,
     stitch,
+    video_seconds,
 )
 from .compliance import AI_LABEL_REMINDER, brief_warnings, package_warnings, product_facts
 from .embedding import ImageEmbedder, cosine, dhash, download_images, hamming
@@ -262,7 +264,7 @@ _KEEP_PRODUCT = (
     "change objects. "
 )
 _NO_ARTIFACTS = (
-    "No morphing, warping, flicker or ghosting, no extra, missing or fused fingers or limbs, "
+    "One continuous take with no cuts or dissolves. No morphing, warping, flicker or ghosting, no extra, missing or fused fingers or limbs, "
     "no watermark, and no icon, symbol, logo or graphic drawn on the picture, even when the "
     "words mention a cart or a link. "
 )
@@ -1599,6 +1601,16 @@ class ProductCatalogService:
                     "error": None,
                     "qa_problem": str(problem or ""),
                 }
+                real = await video_seconds(self.media(media_root).path(relative))
+                if 0 < real < clip["seconds"] - 0.3:  # the model gave less than asked for
+                    update["seconds"] = int(real)
+                    await self._log(
+                        clip["product_id"],
+                        "clip",
+                        "ok",
+                        f"The clip is {real:.1f} s long, not the {clip['seconds']} s asked for",
+                        clip["shot_index"],
+                    )
                 await self._log(
                     clip["product_id"],
                     "clip",
@@ -1745,6 +1757,9 @@ class ProductCatalogService:
             )
             return
         await self._count_call(product_id, "clip", "video", self._videographer)
+        await self.media(media_root).write(
+            f"clips/{product_id}/shot_{index}.prompt.txt", prompt.encode()
+        )  # what the model was told, to see why a clip came out as it did
         await self._repository.save_clip(
             {
                 **clip,
@@ -2036,6 +2051,9 @@ class ProductCatalogService:
                 hook_text=first_words,
                 burned_texts=[p.caption for p in parts if p.caption and not p.cues],
                 wants_audio=voice is not None,
+                shot_starts=list(
+                    accumulate(shot_seconds(p.duration) for p in parts[:-1])
+                ),
             )
         except VideoCheckUnavailable as error:
             logger.warning("Final video check skipped: {}", error)

@@ -1,4 +1,9 @@
-from ai_content.domains.marketing.products.video_check import Measures, judge
+import shutil
+import subprocess
+
+import pytest
+
+from ai_content.domains.marketing.products.video_check import Measures, judge, measure
 
 
 def _good(**changes) -> Measures:
@@ -51,3 +56,38 @@ def test_score_never_goes_below_zero() -> None:
         burned_texts=["a b c d e f"] * 5,
     )
     assert result["score"] == 0
+
+
+def test_a_shot_whose_picture_changes_away_from_its_voice_over_is_a_major_problem() -> None:
+    # the voice-over says shot 2 starts at 5.2 s and shot 3 at 14.3 s
+    drifted = _judge(_good(cuts=[5.7, 15.7]), shot_starts=[5.2, 14.3])
+    assert [(i["code"], i["severity"]) for i in drifted["issues"]] == [
+        ("sync", "major"),
+        ("sync", "major"),
+    ]
+    assert "shot 3 starts at 15.7 s but its voice-over starts at 14.3 s" in (
+        drifted["issues"][1]["message"]
+    )
+    assert _judge(_good(cuts=[5.21, 14.25]), shot_starts=[5.2, 14.3])["issues"] == []
+    # no cut found near a start (two similar shots) says nothing either way
+    assert _judge(_good(cuts=[]), shot_starts=[5.2, 14.3])["issues"] == []
+
+
+def test_a_jump_in_the_middle_of_a_shot_is_a_minor_problem() -> None:
+    result = _judge(_good(cuts=[5.2, 9.9]), shot_starts=[5.2])
+    assert [(i["code"], i["severity"]) for i in result["issues"]] == [("cut", "minor")]
+    assert "jumps at 9.9 s" in result["issues"][0]["message"]
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg is not installed")
+async def test_the_measure_finds_where_the_picture_cuts(tmp_path) -> None:
+    video = tmp_path / "v.mp4"
+    subprocess.run(
+        ["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "color=red:s=160x284:d=2:r=24",
+         "-f", "lavfi", "-i", "color=blue:s=160x284:d=2:r=24",
+         "-filter_complex", "[0:v][1:v]concat=n=2:v=1", "-c:v", "libx264", "-pix_fmt", "yuv420p",
+         str(video)],
+        check=True,
+    )  # fmt: skip
+    measures = await measure(video)
+    assert len(measures.cuts) == 1 and abs(measures.cuts[0] - 2.0) < 0.1

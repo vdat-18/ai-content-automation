@@ -176,6 +176,21 @@ async def still_tail_seconds(video: Path) -> float:
     return max(0.0, int(hours) * 3600 + int(minutes) * 60 + float(seconds) - float(starts[-1]))
 
 
+async def video_seconds(video: Path) -> float:
+    """The real length of a video file in seconds; 0 when it cannot be read."""
+    if shutil.which("ffprobe") is None:
+        return 0.0
+    process = await asyncio.create_subprocess_exec(
+        "ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0",
+        str(video), stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.DEVNULL,
+    )  # fmt: skip
+    stdout, _ = await process.communicate()
+    try:
+        return float(stdout.decode().strip())
+    except ValueError:
+        return 0.0
+
+
 def clip_speed() -> float:
     """How much faster than generated the clips play (AIC_CLIP_SPEED); video models drift slowly."""
     try:

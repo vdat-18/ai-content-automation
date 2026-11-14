@@ -24,6 +24,9 @@ VOICE_SILENCE_DB = -38
 MAX_FROZEN_SECONDS = 6.0
 MAX_LENGTH_DRIFT = 2.0
 MAX_CAPTION_WORDS = 5
+CUT_SCENE_SCORE = 0.25  # how different two frames must be to count as a cut
+MAX_CUT_DRIFT = 0.25  # a shot may start this long before or after its voice-over
+CUT_WINDOW = 2.0  # a cut this near the start of a shot is that shot's own cut
 _PENALTY = {"major": 25, "minor": 10}
 # Problems a better script can prevent: what to tell the next script when they keep coming back.
 LESSONS = {
@@ -48,6 +51,7 @@ class Measures:
     true_peak: float | None = None  # dBTP
     silences: list[float] = field(default_factory=list)  # lengths of quiet gaps, seconds
     freezes: list[float] = field(default_factory=list)  # lengths of stretches without motion
+    cuts: list[float] = field(default_factory=list)  # seconds where the picture jumps
 
 
 @dataclass(frozen=True)
@@ -64,6 +68,7 @@ def judge(
     hook_text: str,
     burned_texts: list[str],
     wants_audio: bool = True,
+    shot_starts: list[float] | None = None,
 ) -> dict:
     """Turn the measurements into issues and a 0-100 score."""
     issues: list[Issue] = []
@@ -120,8 +125,36 @@ def judge(
             issues.append(
                 Issue("long_text", "minor", f'On-screen text is too long to read fast: "{text}"')
             )
+    issues += _cut_issues(measures.cuts, shot_starts or [])
     score = max(0, 100 - sum(_PENALTY[issue.severity] for issue in issues))
     return {"score": score, "issues": [asdict(issue) for issue in issues]}
+
+
+def _cut_issues(cuts: list[float], shot_starts: list[float]) -> list[Issue]:
+    """A shot whose picture changes away from its voice-over, and a jump inside a shot.
+
+    shot_starts are the seconds at which the second and later shots begin in the voice-over.
+    """
+    issues: list[Issue] = []
+    for number, start in enumerate(shot_starts, start=2):
+        near = [cut for cut in cuts if abs(cut - start) <= CUT_WINDOW]
+        if near and (cut := min(near, key=lambda c: abs(c - start))) and (
+            abs(cut - start) > MAX_CUT_DRIFT
+        ):
+            issues.append(
+                Issue(
+                    "sync",
+                    "major",
+                    f"The picture of shot {number} starts at {cut:.1f} s but its voice-over "
+                    f"starts at {start:.1f} s",
+                )
+            )
+    issues += [
+        Issue("cut", "minor", f"The picture jumps at {cut:.1f} s in the middle of a shot")
+        for cut in cuts
+        if all(abs(cut - start) > CUT_WINDOW for start in shot_starts)
+    ]
+    return issues
 
 
 async def _output(*args: str) -> str:
@@ -161,7 +194,8 @@ async def measure(video: Path, voice: Path | None = None) -> Measures:
     sound = ["-af", "ebur128=peak=true,silencedetect=n=-45dB:d=1"] if has_audio else ["-an"]
     log = await _output(
         "ffmpeg", "-hide_banner", "-nostats", "-i", str(video),
-        "-vf", "freezedetect=n=0.003:d=3", *sound, "-f", "null", "-",
+        "-vf", f"freezedetect=n=0.003:d=3,select='gt(scene,{CUT_SCENE_SCORE})',showinfo",
+        *sound, "-f", "null", "-",
     )  # fmt: skip
     quiet = log
     if voice is not None and has_audio:
@@ -178,6 +212,7 @@ async def measure(video: Path, voice: Path | None = None) -> Measures:
         _last_number(r"\bPeak:\s+(-?[\d.]+) dBFS", log) if has_audio else None,
         [float(n) for n in re.findall(r"silence_duration: ([\d.]+)", quiet)],
         [float(n) for n in re.findall(r"freeze_duration: ([\d.]+)", log)],
+        [float(n) for n in re.findall(r"pts_time:([\d.]+)", log)],
     )
 
 

@@ -873,6 +873,7 @@ async def test_a_flagged_clip_is_made_again_with_only_its_problem_to_fix(tmp_pat
     await service.generate_clips(PRODUCT_ID, tmp_path)
     first = video.submitted[0][0]
     assert "No morphing, warping, flicker or ghosting" in first
+    assert "One continuous take with no cuts or dissolves" in first
     assert "no icon, symbol, logo or graphic drawn on the picture" in first
     assert "Keep the product's exact shape" in first and "fix only this problem" not in first
 
@@ -886,3 +887,41 @@ async def test_a_flagged_clip_is_made_again_with_only_its_problem_to_fix(tmp_pat
     await service.generate_clips(PRODUCT_ID, tmp_path, shot_index=0)
     last = video.submitted[-1][0]
     assert "fix only this problem" not in last  # nothing was found, nothing to fix
+
+
+async def test_the_prompt_sent_for_a_clip_is_kept_next_to_it(tmp_path) -> None:
+    video = _FakeVideo()
+    service = await _service(tmp_path, video)
+    await service.generate_clips(PRODUCT_ID, tmp_path)
+    kept = (tmp_path / "clips" / PRODUCT_ID / "shot_0.prompt.txt").read_text(encoding="utf-8")
+    assert kept == video.submitted[0][0]
+
+
+async def test_a_clip_shorter_than_asked_for_is_remembered_with_its_real_length(
+    tmp_path, monkeypatch
+) -> None:
+    from ai_content.domains.marketing.products import service as service_module
+
+    video = _FakeVideo()
+    service = await _service(tmp_path, video)
+    await service.generate_clips(PRODUCT_ID, tmp_path)
+    video.states["job0"] = JobState("completed", video_url="https://x/clip.mp4")
+
+    async def real_length(_path) -> float:
+        return 12.4
+
+    monkeypatch.setattr(service_module, "video_seconds", real_length)
+    [clip, *_] = await service.clips(PRODUCT_ID, tmp_path)
+    assert clip["status"] == "ready" and clip["seconds"] == 12
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg is not installed")
+async def test_video_seconds_reads_the_real_length_and_zero_when_unreadable(tmp_path) -> None:
+    from ai_content.domains.marketing.products.clips import video_seconds
+
+    clip = tmp_path / "c.mp4"
+    _make_clip(clip, "red", seconds=3, audio=False)
+    assert abs(await video_seconds(clip) - 3.0) < 0.1
+    broken = tmp_path / "b.mp4"
+    broken.write_bytes(b"mp4-bytes")
+    assert await video_seconds(broken) == 0.0
