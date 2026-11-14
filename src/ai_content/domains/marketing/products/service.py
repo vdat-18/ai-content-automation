@@ -9,6 +9,7 @@ import tempfile
 import uuid
 from dataclasses import replace
 from datetime import UTC, datetime
+from functools import partial
 from io import BytesIO
 from pathlib import Path
 from typing import Any
@@ -95,6 +96,7 @@ from .storyboard_review import StoryboardReviewer
 from .text_embedding import TextEmbedder, TextEmbeddingError
 from .video_check import LESSONS, VideoCheckUnavailable, judge, measure
 from .voice_picker import VoicePicker
+from .word_timing import word_starts
 
 _PINTEREST_SEARCH = "https://www.pinterest.com/search/pins/?q="
 _SCREEN_BATCH = 200
@@ -1813,7 +1815,13 @@ class ProductCatalogService:
             await store.remove(f"{where}/voiceover.{extension}")
         planned = [reading.seconds for reading in segments]
         try:
-            lengths = await make_voiceover(self._speaker, segments, folder / "voiceover.mp3", voice)
+            lengths = await make_voiceover(
+                self._speaker,
+                segments,
+                folder / "voiceover.mp3",
+                voice,
+                partial(word_starts, model_dir=media_root.parent / "whisper"),
+            )
             await self._count_call(
                 product_id,
                 "voiceover",
@@ -1833,6 +1841,11 @@ class ProductCatalogService:
                 str(index): round(reading.seconds, 2)
                 for index, reading in zip(approved, segments, strict=True)
             }
+            words = {
+                str(index): [round(start, 2) for start in reading.starts]
+                for index, reading in zip(approved, segments, strict=True)
+                if reading.starts
+            }
             await self.note_voice(
                 product_id,
                 media_root,
@@ -1841,6 +1854,7 @@ class ProductCatalogService:
                 variant,
                 held,
                 voice or "",
+                words,
             )
         except (SpeechError, StitchUnavailable) as error:
             raise KeyframeUnavailable(f"The voice-over could not be made: {error}") from error
@@ -1913,6 +1927,7 @@ class ProductCatalogService:
         made = (await self._read_json(media_root, f"{where}/voiceover.json")) or {}
         heard = made.get("speech_seconds") or {}
         held = made.get("shot_seconds") or {}
+        word_times = made.get("word_starts") or {}
         for index, shot in enumerate(shots):
             if keyframes.get(index, {}).get("status") != "approved":
                 continue
@@ -1932,7 +1947,13 @@ class ProductCatalogService:
             )
             if local is None:
                 raise StitchUnavailable(f"The clip file for shot {index + 1} is missing")
-            cues = tuple(spoken_cues(str(shot.get("voiceover") or ""), heard.get(str(index), 0)))
+            cues = tuple(
+                spoken_cues(
+                    str(shot.get("voiceover") or ""),
+                    heard.get(str(index), 0),
+                    word_times.get(str(index)) or (),
+                )
+            )
             parts.append(StitchClip(local, duration, caption, cues if captions else ()))
             spoken_texts.append(f"{shot.get('voiceover') or ''} {shot.get('on_screen_text') or ''}")
             if not parts[1:]:
@@ -2047,8 +2068,10 @@ class ProductCatalogService:
         variant: str = "",
         held: dict[str, float] | None = None,
         voice_id: str = "",
+        words: dict[str, list[float]] | None = None,
     ) -> None:
-        """Remember which voice read the voice-over and how long each shot's words are heard."""
+        """Remember which voice read the voice-over, how long each shot's words are heard and,
+        when measured, when each word starts."""
         await self._write_json(
             media_root,
             f"{video_folder(product_id, variant)}/voiceover.json",
@@ -2058,6 +2081,7 @@ class ProductCatalogService:
                 "made_at": datetime.now(UTC).isoformat(),
                 "speech_seconds": heard or {},
                 "shot_seconds": held or {},
+                "word_starts": words or {},
             },
         )
 

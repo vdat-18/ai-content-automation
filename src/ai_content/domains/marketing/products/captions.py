@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Sequence
 from dataclasses import dataclass
+from itertools import accumulate
 
 MAX_WORDS = 4
 _PAUSE_MARKS = ",.;:!?…"
 _PAUSE_WEIGHT = 4  # a mark at the end of a word costs about this many letters of speaking time
+_MIN_WORD = 0.08  # a word heard at the same moment as the one before still shows this long
+_LAST_WORD = 0.25  # seconds the last word stays highlighted when the shot's speech ends sooner
 _HIGHLIGHT = r"{\c&H00D7FF&}"  # ASS colours are BGR: this is amber
 _PLAIN = r"{\c&HFFFFFF&}"
 _POP = r"{\fscx115\fscy115}"  # the word being said is a little larger
@@ -29,27 +33,35 @@ class Cue:
     text: str
 
 
-def spoken_cues(text: str, speech_seconds: float) -> list[Cue]:
-    """Spread the words of one shot over the time its voice-over is actually speaking.
+def spoken_cues(text: str, speech_seconds: float, starts: Sequence[float] = ()) -> list[Cue]:
+    """Time the words of one shot over the time its voice-over is actually speaking.
 
-    The voice-over is read per shot and starts with the shot, so the shot's text is timed from 0
-    to speech_seconds, each word taking time in proportion to its letters (a pause after a
-    comma or full stop counts as a few more). A line breaks after MAX_WORDS words or a pause.
+    The voice-over is read per shot and starts with the shot. With `starts`, the time each word
+    was heard, a word is shown from its start to the start of the next. Without them (or when
+    their count differs from the words), the shot's text is spread from 0 to speech_seconds, each
+    word taking time in proportion to its letters (a pause after a comma or full stop counts as a
+    few more). A line breaks after MAX_WORDS words or a pause.
     """
     words = text.split()
     if not words or speech_seconds <= 0:
         return []
-    weights = [len(w) + (_PAUSE_WEIGHT if w[-1] in _PAUSE_MARKS else 0) for w in words]
-    unit = speech_seconds / sum(weights)
+    if len(starts) == len(words):
+        edges = [0.0, *starts[1:]]
+        for i in range(1, len(edges)):
+            edges[i] = max(edges[i], edges[i - 1] + _MIN_WORD)
+        edges.append(max(speech_seconds, edges[-1] + _LAST_WORD))
+    else:
+        weights = [len(w) + (_PAUSE_WEIGHT if w[-1] in _PAUSE_MARKS else 0) for w in words]
+        unit = speech_seconds / sum(weights)
+        edges = [0.0, *accumulate(w * unit for w in weights)]
     cues: list[Cue] = []
-    clock = 0.0
     position = 0
     for size in _line_sizes(words):
         line = [_display(w) for w in words[position : position + size]]
-        for number, weight in enumerate(weights[position : position + size]):
-            started = clock
-            clock += weight * unit
-            cues.append(Cue(started, clock, _styled(line, number)))
+        for number in range(size):
+            cues.append(
+                Cue(edges[position + number], edges[position + number + 1], _styled(line, number))
+            )
         position += size
     return cues
 

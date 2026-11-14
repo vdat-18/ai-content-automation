@@ -6,6 +6,7 @@ import asyncio
 import os
 import re
 import shutil
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, replace
 from pathlib import Path
 
@@ -15,6 +16,7 @@ from loguru import logger
 from .clips import TRIM_SECONDS, StitchUnavailable, _run, clip_speed
 from .lip_alignment import GuideMismatch, align_to_guide, speech_end
 
+WordTimer = Callable[[Path, str], Awaitable[list[float]]]  # audio, text -> start of each word
 _TIMEOUT = 120
 _TRIES = 3
 _RETRY_STATUSES = {429, 500, 502, 503, 504}
@@ -149,6 +151,21 @@ async def _trim_silence(part: Path, seconds: float) -> float:
     return keep
 
 
+async def _time_words(
+    timer: WordTimer | None, part: Path, segments: list[Reading], index: int
+) -> None:
+    """Listen to one finished reading and note when each of its words is spoken."""
+    if timer is None:
+        return
+    try:
+        starts = await timer(part, segments[index].text)
+    except Exception as error:  # noqa: BLE001 - the model may be missing or fail to download
+        raise StitchUnavailable(
+            f"The words of shot {index + 1} could not be timed: {error}"
+        ) from error
+    segments[index] = replace(segments[index], starts=tuple(starts))
+
+
 async def _loudness(path: Path) -> float | None:
     """Integrated loudness of a reading in LUFS, or None when there is nothing to measure."""
     process = await asyncio.create_subprocess_exec(
@@ -182,6 +199,7 @@ class Reading:
     text: str
     seconds: float  # how long the shot plays in the finished video
     guide: Path | None = None  # the clip whose own speech sets the pace of a talking shot
+    starts: tuple[float, ...] = ()  # when each word of `text` is spoken in the shot, if measured
 
 
 def spoken_seconds(length: float, seconds: float, guided: bool = False) -> float:
@@ -197,6 +215,7 @@ async def make_voiceover(
     segments: list[Reading],
     output: Path,
     voice: str | None = None,
+    timer: WordTimer | None = None,
 ) -> list[float]:
     """Read each text so it starts with its shot, and join the readings into one mp3.
 
@@ -210,7 +229,8 @@ async def make_voiceover(
     to follow, the shot is read like any other and its guide is dropped from `segments`. A shot
     whose words end well before the shot does is cut short after them, and its new length is
     written back to `segments`, so the picture can be cut to match. Returns the natural length of each reading so a
-    caller can tell which shots need shorter text.
+    caller can tell which shots need shorter text. With a `timer`, the finished reading of each
+    shot is listened to and the time each word is spoken is written back to `segments`.
     """
     if shutil.which("ffmpeg") is None or shutil.which("ffprobe") is None:
         raise StitchUnavailable("ffmpeg is not installed on this machine")
@@ -260,6 +280,7 @@ async def make_voiceover(
                     segments[index] = replace(
                         segments[index], seconds=await _trim_silence(part, seconds)
                     )
+                    await _time_words(timer, part, segments, index)
                     continue
             phrased = output.parent / f"voice_phrased_{index}.wav"
             scratch.append(phrased)
@@ -274,6 +295,7 @@ async def make_voiceover(
             )  # fmt: skip
             await _level(part)
             segments[index] = replace(segments[index], seconds=await _trim_silence(part, seconds))
+            await _time_words(timer, part, segments, index)
         listing = output.parent / "voice_parts.txt"
         scratch.append(listing)
         listing.write_text("".join(f"file '{p.name}'\n" for p in parts), encoding="utf-8")
