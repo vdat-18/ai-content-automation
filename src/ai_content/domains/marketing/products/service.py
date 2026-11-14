@@ -1746,7 +1746,8 @@ class ProductCatalogService:
         delivery = str(shot.get("delivery") or "narrated")
         frame = await self.media(media_root).read(keyframe["image_path"])
         last_problem = str((previous or {}).get("qa_problem") or "")
-        prompt = _clip_prompt(shot, with_person, "" if last_problem == NOT_CHECKED else last_problem)
+        found = last_problem not in (NOT_CHECKED, _STALE_CLIP)
+        prompt = _clip_prompt(shot, with_person, last_problem if found else "")
         try:
             job_id, job_model = await self._videographer.submit(prompt, frame, seconds)
         except ClipGenerationError as error:

@@ -1,6 +1,6 @@
 {
   "schema_version": "creative-knowledge-bootstrap@2",
-  "bootstrap_id": "product-ad-v8",
+  "bootstrap_id": "product-ad-v9",
   "items": [
     {
       "knowledge_id": "product-ad-body-proportions",
@@ -329,7 +329,7 @@
       "knowledge_id": "product-ad-motion-prompt-beats",
       "knowledge_type": "hard_rule",
       "title": "Motion prompt as timed beats",
-      "content": "WHEN: Writing a motion_prompt for a 15 second clip. DO: Name the subject in a few words, then write four or five sentences as timed beats of about 3 seconds, each a new clearly visible action or camera move; name the shot size, camera height and every move with its exact term (dolly, zoom, pan, tilt, tracking, orbit, handheld); keep one continuous camera path with brisk TikTok-style energy; for a narrated shot lips stay closed or relaxed, for a talking shot the person talks naturally. DO NOT: Re-describe the face, outfit or product, use mood words, add sound or music, cut scenes, add new objects, or use slow motion or a slow drift.",
+      "content": "WHEN: Writing a motion_prompt for a 15 second clip. DO: Name the subject in a few words, then write four or five sentences as timed beats of about 3 seconds, each a new clearly visible action or camera move; name the shot size, camera height and every move with its exact term (dolly, zoom, pan, tilt, tracking, orbit, handheld); keep one continuous camera path with brisk TikTok-style energy; for a narrated shot lips stay closed or relaxed, for a talking shot the person talks naturally. DO NOT: Re-describe the face, outfit or product, use mood words, add sound or music, cut scenes, add new objects, refer to an icon, button, sticker or any on-screen graphic (the clip has none, so the model would draw one; point at a place in the frame instead), or use slow motion or a slow drift.",
       "applies_to": [
         "preparation",
         "review"

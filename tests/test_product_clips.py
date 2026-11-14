@@ -925,3 +925,16 @@ async def test_video_seconds_reads_the_real_length_and_zero_when_unreadable(tmp_
     broken = tmp_path / "b.mp4"
     broken.write_bytes(b"mp4-bytes")
     assert await video_seconds(broken) == 0.0
+
+
+async def test_a_clip_flagged_only_because_its_script_changed_is_not_given_a_problem_to_fix(
+    tmp_path,
+) -> None:
+    video = _FakeVideo()
+    service = await _service(tmp_path, video)
+    await service.generate_clips(PRODUCT_ID, tmp_path)
+    clip = (await service._repository.list_clips(PRODUCT_ID))[0]
+    stale = "The script of this scene changed after it was filmed"
+    await service._repository.save_clip({**clip, "qa_problem": stale})
+    await service.generate_clips(PRODUCT_ID, tmp_path, shot_index=0)
+    assert "fix only this problem" not in video.submitted[-1][0]

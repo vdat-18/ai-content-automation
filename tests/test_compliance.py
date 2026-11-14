@@ -105,3 +105,16 @@ def test_a_voice_over_with_a_long_run_and_no_pause_is_warned_about() -> None:
         "breath; split it into sentences of 12 words or fewer"
     ]  # only the spoken text needs to be breathable, not the caption
     assert brief_warnings({"shots": [{"voiceover": "Áo thâm kim, giặt mãi không sạch?"}]}) == []
+
+
+def test_a_motion_prompt_that_points_at_an_icon_is_warned_about() -> None:
+    brief = {
+        "shots": [
+            {"motion_prompt": "He points down toward the shopping basket icon."},
+            {"motion_prompt": "He lifts the laundry basket and shows its handle."},
+        ]
+    }
+    assert brief_warnings(brief) == [
+        'shot 1 motion_prompt: refers to "icon", but the clip has no on-screen graphics, '
+        "so the video model would draw one; point at a place in the frame instead"
+    ]  # a real basket the product is made of is fine

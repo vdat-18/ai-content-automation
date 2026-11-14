@@ -169,6 +169,7 @@ def unsupported_numbers(text: str, facts: str) -> list[str]:
 
 
 MAX_UNBROKEN_WORDS = 14
+_GRAPHIC = re.compile(r"\b(icon|emoji|sticker|overlay|banner|on-?screen)\b", re.IGNORECASE)
 _PAUSE = re.compile(r"[,.;:!?…\n]")
 
 
@@ -184,6 +185,12 @@ def brief_warnings(brief: dict[str, Any], facts: str = "") -> list[str]:
             (f"shot {index} {field}", str(shot.get(field) or "")) for field in _SHOT_TEXT_FIELDS
         ]
     warnings = _warnings(texts)
+    warnings += [
+        f'shot {index} motion_prompt: refers to "{found.group()}", but the clip has no on-screen '
+        "graphics, so the video model would draw one; point at a place in the frame instead"
+        for index, shot in enumerate(brief.get("shots") or [], start=1)
+        if (found := _GRAPHIC.search(str(shot.get("motion_prompt") or "")))
+    ]
     warnings += [
         f"{where}: {run} words in a row with no comma or full stop, too long to say in one "
         f"breath; split it into sentences of {MAX_UNBROKEN_WORDS - 2} words or fewer"
