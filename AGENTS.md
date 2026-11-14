@@ -6,6 +6,14 @@ Read `README.md` before working on this repository. Do not store credentials, pe
 
 This file defines the default working agreements for Python repositories. More specific repository or module instructions take precedence.
 
+## AI Generation Cost
+
+- The video model is billed per request (999 đ), whatever the length or the resolution, so always
+  ask for the longest clip and the highest resolution it accepts (see `docs/model-limits.md`):
+  15 seconds, 9:16, with the keyframe as the first frame. Never request a shorter or smaller clip
+  to save money; trim the clip afterwards instead. Measure the limits again when the model or the
+  provider changes.
+
 ## Workflow
 
 - Read the relevant code, tests, configuration, and documentation before editing.

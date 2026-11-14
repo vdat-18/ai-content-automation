@@ -21,6 +21,8 @@ from PIL import ImageFont
 
 from .captions import CAPTION_SIZE, Cue, ass_document
 
+# The video model is billed per request, not per second or pixel (docs/model-limits.md), so every
+# clip is asked for at the longest length it accepts and cut afterwards
 CLIP_SECONDS = 15
 ASPECT = "9:16"
 _TIMEOUT = 120

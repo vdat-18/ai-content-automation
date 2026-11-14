@@ -28,6 +28,11 @@ cấp. Ghi ngày đo ở mỗi mục.
 | Âm thanh | Clip có sẵn một track âm thanh (AAC) do Grok tự tạo, kể cả khi prompt bảo "không tiếng"; có thể ra lệnh cho Grok nói câu tiếng Việt, miệng cử động theo tiếng đó |
 | Giá | 999 đ mỗi yêu cầu, không phụ thuộc số giây |
 
+**Quy tắc dùng (chốt 2026-11-14):** giá tính theo yêu cầu, không theo số giây hay độ phân giải, nên
+mỗi lần tạo clip luôn xin mức dài nhất và nét nhất model nhận: `seconds = 15` (`CLIP_SECONDS` trong
+`clips.py`), khung 9:16 với keyframe làm khung đầu (704x1280, không có mức cao hơn). Không xin clip
+ngắn hơn hay nhỏ hơn để tiết kiệm; cần ngắn thì cắt sau khi tạo. Đo lại khi đổi model hoặc nhà cung cấp.
+
 Hệ quả: clip chỉ chọn một trong hai cách, keyframe làm khung đầu (đang dùng, tối đa 15 giây) hoặc tối
 đa 7 ảnh tham chiếu (tối đa 10 giây). Sản phẩm phải đúng ngay ở keyframe.
 
