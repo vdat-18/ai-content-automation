@@ -270,14 +270,21 @@ _SPRING_DAMPING = 8.0  # how fast the sticker's bounce dies out (per second)
 _SPRING_RATE = 10.7  # how fast it swings; with the damping this overshoots by about a tenth
 
 
-def _slide_in(start: float, left: int = 40) -> str:
-    """An overlay x expression: the sticker springs in from the left edge, overshoots a little."""
+_STICKER_STAGGER = 0.15  # seconds between one sticker sliding in and the next
+_STICKER_EXIT = 0.25  # seconds a sticker takes to slide back out before it goes
+
+
+def _slide_in(start: float, left: int = 40, leave: float | None = None) -> str:
+    """An overlay x expression: the sticker springs in from the left edge, overshoots a little,
+    and, when `leave` is given, slides back out to the left edge starting at that time."""
     tau = f"max(0,t-{start:g})"
     swing = (
         f"exp(-{_SPRING_DAMPING:g}*{tau})*(cos({_SPRING_RATE:g}*{tau})"
         f"+{_SPRING_DAMPING / _SPRING_RATE:.3f}*sin({_SPRING_RATE:g}*{tau}))"
     )
-    return f"'{left}-(overlay_w+{left})*{swing}'"
+    if leave is not None:
+        swing += f"+pow(min(1,max(0,t-{leave:g})/{_STICKER_EXIT:g}),2)"
+    return f"'{left}-(overlay_w+{left})*({swing})'"
 
 
 _FLOAT_REACH = 5  # pixels a settled sticker drifts up and down
@@ -532,12 +539,15 @@ async def stitch(
                 look = output.parent / f"look_{index}.jpg"
                 scratch.append(look)
                 left, top = await _sticker_spot(clip, shown_from, seconds, look)
+                gone = max(seconds - 0.3, 1)
                 for number, sticker in enumerate(clip.stickers, start=1):
                     sticker_inputs += ["-loop", "1", "-i", str(sticker)]
+                    start = shown_from + (number - 1) * _STICKER_STAGGER
+                    leave = max(gone - _STICKER_EXIT, start + 0.6)
                     graph += (
-                        f";[{last}][{number}:v]overlay=x={_slide_in(shown_from, left)}"
-                        f":y={_float_y(top + (number - 1) * _STICKER_STEP, shown_from, number)}"
-                        f":shortest=1:enable='between(t,{shown_from:.2f},{max(seconds - 0.3, 1):.2f})'[s{number}]"
+                        f";[{last}][{number}:v]overlay=x={_slide_in(start, left, leave)}"
+                        f":y={_float_y(top + (number - 1) * _STICKER_STEP, start, number)}"
+                        f":shortest=1:enable='between(t,{start:.2f},{gone:.2f})'[s{number}]"
                     )
                     last = f"s{number}"
                 picture = ["-filter_complex", graph, "-map", f"[{last}]"]

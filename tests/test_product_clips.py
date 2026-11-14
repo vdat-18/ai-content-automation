@@ -23,6 +23,7 @@ from ai_content.domains.marketing.products.clips import (
     _float_y,
     _handheld,
     _measured_loudnorm,
+    _slide_in,
     caption_font,
     clip_frames,
     clip_seconds_for,
@@ -259,6 +260,12 @@ def test_sticker_floats_only_after_the_spring_has_settled() -> None:
     expression = _float_y(170, 2.0, 1)
     assert expression.startswith("'170+")
     assert "min(1,max(0,t-2-0.5)/0.5)" in expression  # no drift until half a second after entry
+
+
+def test_sticker_slides_back_out_to_the_left_edge_before_it_goes() -> None:
+    entry, exit_ = _slide_in(1.0, 40), _slide_in(1.0, 40, leave=3.0)
+    assert "pow(" not in entry
+    assert "+pow(min(1,max(0,t-3)/0.25),2)" in exit_  # no movement until 3 s, done 0.25 s later
 
 
 def test_handheld_drift_stays_inside_the_spare_picture() -> None:
@@ -890,6 +897,36 @@ async def test_stitch_slides_a_sticker_in_instead_of_popping_it(tmp_path, monkey
     output = later
     assert white_pixels(1.0) == 0  # the sticker waits for the moment it is told
     assert white_pixels(1.9) > 0
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg is not installed")
+async def test_stickers_come_in_one_after_another_and_slide_out_at_the_end(tmp_path, monkeypatch):
+    from PIL import Image
+
+    monkeypatch.setenv("AIC_BGM_PATH", str(tmp_path / "no-music.wav"))
+    clip = tmp_path / "c.mp4"
+    _make_clip(clip, "red", seconds=4, audio=False)
+    white, blue = tmp_path / "white.png", tmp_path / "blue.png"
+    Image.new("RGBA", (200, 100), (255, 255, 255, 255)).save(white)
+    Image.new("RGBA", (200, 100), (0, 0, 255, 255)).save(blue)
+    output = tmp_path / "out.mp4"
+    await stitch([StitchClip(clip, 3.0, stickers=(white, blue), sticker_at=1.0)], output)
+
+    def pixels_of(moment: float, color: tuple[int, int, int]) -> int:
+        frame = tmp_path / f"frame_{moment}.png"
+        subprocess.run(
+            ["ffmpeg", "-v", "error", "-y", "-ss", str(moment), "-i", str(output),
+             "-frames:v", "1", str(frame)],
+            check=True,
+        )  # fmt: skip
+        found = Image.open(frame).convert("RGB").getdata()
+        return sum(1 for px in found if all(abs(a - b) < 20 for a, b in zip(px, color, strict=True)))
+
+    assert pixels_of(1.2, (255, 255, 255)) > pixels_of(1.2, (0, 0, 255)) > 0  # the second is behind
+    settled = pixels_of(1.9, (255, 255, 255))
+    assert pixels_of(1.9, (0, 0, 255)) == settled  # both have landed by now
+    leaving = shot_seconds(3.0) - 0.3 - 0.12
+    assert pixels_of(leaving, (255, 255, 255)) < settled  # sliding out, not popping out
 
 
 @pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg is not installed")
