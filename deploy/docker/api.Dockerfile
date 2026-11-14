@@ -69,3 +69,21 @@ RUN apt-get update \
 USER 10001:10001
 
 CMD ["python", "-m", "ai_content.entrypoints.backup", "--help"]
+
+# Everything the checks need, with ffmpeg and the fonts, so tests run the same on any machine.
+# The source, tests and config are mounted at run time (compose service `test`), so editing
+# them needs no rebuild; only a change of dependencies does.
+FROM runtime-base AS test
+
+COPY --from=uv /uv /uvx /bin/
+ENV UV_COMPILE_BYTECODE=0 \
+    UV_LINK_MODE=copy \
+    UV_PROJECT_ENVIRONMENT=/app/.venv
+COPY pyproject.toml uv.lock README.md ./
+COPY src ./src
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --extra dev
+COPY config /app/config
+COPY tests /app/tests
+
+CMD ["python", "-m", "pytest", "-q"]

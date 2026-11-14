@@ -52,6 +52,15 @@ khởi động. Sửa nội dung file thì phải đổi `bootstrap_id`, test s�
 
 ## Kiểm tra
 
+Chạy trong Docker (có sẵn ffmpeg và font, giống mọi máy; không cần cài gì trên máy):
+
+```bash
+just test            # hoặc: just test tests/test_stickers.py
+just lint
+```
+
+Chạy thẳng trên máy (các test cần ffmpeg sẽ bị bỏ qua nếu máy không có):
+
 ```bash
 uv run ruff check .
 uv run pytest

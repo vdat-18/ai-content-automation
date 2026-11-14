@@ -36,6 +36,14 @@ rebuild-frontend: config
 down:
     {{ stack }} down
 
+# Run the tests in Docker (ffmpeg and fonts included); pass pytest arguments, for example a file.
+test *args:
+    {{ compose }} --profile tools run --rm --build test python -m pytest -q {{ args }}
+
+# Run the Ruff lint check in Docker.
+lint:
+    {{ compose }} --profile tools run --rm --build test ruff check src tests
+
 # Show container and health status for the complete local stack.
 ps:
     {{ stack }} ps

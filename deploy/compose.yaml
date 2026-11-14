@@ -196,6 +196,22 @@ services:
     profiles:
       - tools
 
+  test:
+    image: ai-content-automation-test:local
+    build:
+      context: ..
+      dockerfile: deploy/docker/api.Dockerfile
+      target: test
+    working_dir: /app
+    volumes:
+      - ../src:/app/src:ro
+      - ../tests:/app/tests:ro
+      - ../config:/app/config:ro
+      - ../deploy:/app/deploy:ro
+      - ../baml_src:/app/baml_src:ro
+    profiles:
+      - tools
+
   maintenance:
     image: ai-content-automation-maintenance:local
     build:
