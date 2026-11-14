@@ -130,7 +130,10 @@ SKIN_RETOUCH_RULES = frozenset({"product-ad-clear-skin"})
 _DELIVERY_RULE = {
     True: (
         "The person speaks naturally to the camera, subtle and gentle lip movement, "
-        "relaxed facial expression, mouth does not open wide, no exaggerated mouth shapes."
+        "relaxed facial expression, mouth does not open wide, no exaggerated mouth shapes. "
+        "The lips move in exact sync with the spoken Vietnamese: every syllable gets its own "
+        "matching mouth shape at the moment it is said, the lips close on b, m and p sounds and "
+        "round on o and u vowels, and the mouth rests the moment a pause begins."
     ),
     False: "Nobody speaks: lips stay closed or relaxed, no lip movement.",
 }
