@@ -20,7 +20,7 @@ import httpx
 from loguru import logger
 from PIL import Image, ImageFilter, ImageFont, ImageStat
 
-from .captions import CAPTION_SIZE, Cue, ass_document
+from .captions import CAPTION_BOTTOM, CAPTION_SIZE, Cue, ass_document
 from .jumpcuts import zoom_filter
 from .sounds import effects_track_args, sound_events
 from .stickers import quietest_spot
@@ -42,13 +42,13 @@ _CAPTION_FONTS = (
     "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
 )
 CHECK_FRAMES = 6  # stills of a clip the quality check looks at
-_STICKER_TOP = 130  # small and high, above the face of a person who fills the frame
+_STICKER_TOP = 170  # small and high, below the status bar TikTok draws over the top 168 px
 _STICKER_STEP = 130  # space for one sticker
 # Other tops a sticker may take when the first would cover the product. It stays on the left,
-# because the voice-over may say where the price is, and ends well above the captions
+# because the voice-over may say where the price is, and ends above the two lines of captions
 _STICKER_LEFT = 40
-_STICKER_TOPS = (_STICKER_TOP, 560, 900, 1200)
-_STICKER_BOTTOM_LIMIT = 1350
+_STICKER_TOPS = (_STICKER_TOP, 560, 900)
+_STICKER_BOTTOM_LIMIT = CAPTION_BOTTOM - 230
 _PART_ENCODES = 2
 _COVER_MOMENTS = (0.5, 1.0, 1.5, 2.0, 2.5)  # seconds in; the sharpest becomes the cover
 _COLOR_GRADE = "eq=contrast=1.03:brightness=0.01:saturation=1.05"

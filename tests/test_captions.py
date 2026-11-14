@@ -1,6 +1,10 @@
 import re
 
-from ai_content.domains.marketing.products.captions import ass_document, spoken_cues
+from ai_content.domains.marketing.products.captions import (
+    CAPTION_BOTTOM,
+    ass_document,
+    spoken_cues,
+)
 
 
 def plain(text: str) -> str:
@@ -45,6 +49,13 @@ def test_the_subtitle_file_lists_each_line_with_its_times() -> None:
     assert "Style: Default,DejaVu Sans," in document
     assert "Dialogue: 0,0:00:00.00,0:00:" in document
     assert "PlayResY: 1920" in document
+
+
+def test_the_captions_end_above_the_part_of_the_picture_tiktok_draws_over() -> None:
+    document = ass_document(spoken_cues("Gấp gọn trong 3 giây", 2.5), "DejaVu Sans")
+    style = next(line for line in document.splitlines() if line.startswith("Style: Default"))
+    margin_v = int(style.split(",")[-2])
+    assert 1920 - margin_v == CAPTION_BOTTOM <= 1330
 
 
 def test_captions_use_the_usual_spelling_not_the_read_aloud_one() -> None:

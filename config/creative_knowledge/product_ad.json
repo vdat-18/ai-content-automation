@@ -1,6 +1,6 @@
 {
   "schema_version": "creative-knowledge-bootstrap@2",
-  "bootstrap_id": "product-ad-v9",
+  "bootstrap_id": "product-ad-v10",
   "items": [
     {
       "knowledge_id": "product-ad-body-proportions",
@@ -367,7 +367,7 @@
       "knowledge_id": "product-ad-caption-safe-zone",
       "knowledge_type": "hard_rule",
       "title": "Keep faces clear of the caption and sticker areas",
-      "content": "WHEN: Writing the picture and motion of any shot with a person. DO: Frame the face and mouth in the middle of the picture, above the lower fifth where the spoken words appear and away from the top left corner where price stickers slide in. DO NOT: Put the mouth, chin or the product's label at the very bottom or in the top left corner, where a caption or sticker would cover it.",
+      "content": "WHEN: Writing the picture and motion of any shot with a person. DO: Frame the face and mouth in the middle of the picture, above the lower third where the spoken words appear and away from the top left corner where price stickers slide in. DO NOT: Put the mouth, chin or the product's label in the lower third or in the top left corner, where a caption or sticker would cover it.",
       "applies_to": [
         "preparation",
         "review"

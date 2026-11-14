@@ -10,6 +10,9 @@ import pytest
 
 from ai_content.domains.marketing.products import service as service_module
 from ai_content.domains.marketing.products.clips import (
+    _STICKER_BOTTOM_LIMIT,
+    _STICKER_TOP,
+    _STICKER_TOPS,
     CHECK_FRAMES,
     ClipGenerationError,
     JobState,
@@ -1071,3 +1074,11 @@ async def test_the_music_can_be_left_out(tmp_path, monkeypatch) -> None:
     await stitch([StitchClip(clip, 3.0)], without, voiceover=voice, music=False)
     assert _loudest(with_music, 0.5, 1.0) > -30
     assert _loudest(without, 0.5, 1.0) < -60
+
+
+def test_stickers_stay_between_the_status_bar_and_the_captions() -> None:
+    from ai_content.domains.marketing.products.captions import CAPTION_BOTTOM
+
+    assert _STICKER_TOP >= 168
+    assert min(_STICKER_TOPS) >= 168
+    assert _STICKER_BOTTOM_LIMIT <= CAPTION_BOTTOM - 2 * 100  # two caption lines are about 200 px

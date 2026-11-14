@@ -10,6 +10,9 @@ from itertools import accumulate
 MAX_WORDS = 4
 CAPTION_SIZE = 88  # font size in the 1080 x 1920 picture
 _SIDE_MARGIN = 70
+# TikTok draws its own text and buttons below this line of the 1920 px picture, so the captions
+# end above it, 1330 minus room for the outline and the letters' tails
+CAPTION_BOTTOM = 1310
 _PAUSE_MARKS = ",.;:!?…"
 _PAUSE_WEIGHT = 4  # a mark at the end of a word costs about this many letters of speaking time
 _MIN_WORD = 0.08  # a word heard at the same moment as the one before still shows this long
@@ -144,7 +147,7 @@ def _stamp(seconds: float) -> str:
 
 
 def ass_document(cues: list[Cue], font_family: str, width: int = 1080, height: int = 1920) -> str:
-    """An ASS subtitle file: big white bold text with a dark outline, in the lower middle."""
+    """An ASS subtitle file: big white bold text with a dark outline, ending at CAPTION_BOTTOM."""
     header = (
         "[Script Info]\nScriptType: v4.00+\n"
         f"PlayResX: {width}\nPlayResY: {height}\nWrapStyle: 2\n\n"
@@ -153,7 +156,7 @@ def ass_document(cues: list[Cue], font_family: str, width: int = 1080, height: i
         "BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, "
         "BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n"
         f"Style: Default,{font_family},{CAPTION_SIZE},&H00FFFFFF,&H00FFFFFF,&H00101010,&H90000000,"
-        f"-1,0,0,0,100,100,1,0,1,9,5,2,{_SIDE_MARGIN},{_SIDE_MARGIN},330,1\n\n"
+        f"-1,0,0,0,100,100,1,0,1,9,5,2,{_SIDE_MARGIN},{_SIDE_MARGIN},{height - CAPTION_BOTTOM},1\n\n"
         "[Events]\n"
         "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n"
     )
