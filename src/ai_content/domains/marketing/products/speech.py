@@ -15,8 +15,9 @@ from loguru import logger
 
 from .clips import TRIM_SECONDS, StitchUnavailable, _run, clip_speed
 from .lip_alignment import GuideMismatch, align_to_guide, speech_end
+from .word_timing import Timing
 
-WordTimer = Callable[[Path, str], Awaitable[list[float]]]  # audio, text -> start of each word
+WordTimer = Callable[[Path, str], Awaitable[Timing]]  # audio, text -> when each word starts
 _TIMEOUT = 120
 _TRIES = 3
 _RETRY_STATUSES = {429, 500, 502, 503, 504}
@@ -158,12 +159,12 @@ async def _time_words(
     if timer is None:
         return
     try:
-        starts = await timer(part, segments[index].text)
+        timing = await timer(part, segments[index].text)
     except Exception as error:  # noqa: BLE001 - the model may be missing or fail to download
         raise StitchUnavailable(
             f"The words of shot {index + 1} could not be timed: {error}"
         ) from error
-    segments[index] = replace(segments[index], starts=tuple(starts))
+    segments[index] = replace(segments[index], starts=tuple(timing.starts), heard=timing.heard)
 
 
 async def _loudness(path: Path) -> float | None:
@@ -200,6 +201,7 @@ class Reading:
     seconds: float  # how long the shot plays in the finished video
     guide: Path | None = None  # the clip whose own speech sets the pace of a talking shot
     starts: tuple[float, ...] = ()  # when each word of `text` is spoken in the shot, if measured
+    heard: float | None = None  # share of the words of `text` heard as written, if measured
 
 
 def spoken_seconds(length: float, seconds: float, guided: bool = False) -> float:

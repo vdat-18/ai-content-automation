@@ -9,10 +9,15 @@ from __future__ import annotations
 
 import asyncio
 import re
+import unicodedata
+from dataclasses import dataclass
 from difflib import SequenceMatcher
 from functools import cache
 from pathlib import Path
 
+# A reading heard with less of the script than this is flagged. A right reading scored 0.57 to
+# 0.87 on a real product: Whisper writes spoken numbers as digits and mishears a few words.
+MISREAD_BELOW = 0.4
 _MODEL = "small"  # CPU, int8: about 1 s per shot reading and about 1.5 GB of memory
 
 
@@ -30,8 +35,29 @@ def _heard(audio: Path, model_dir: Path) -> list[tuple[str, float]]:
     return [(w.word, float(w.start)) for s in segments for w in s.words if w.word.strip()]
 
 
+@dataclass(frozen=True)
+class Timing:
+    starts: list[float]  # seconds into the audio where each script word starts
+    heard: float  # share of the script words Whisper heard as written, 0 to 1
+
+
 def _key(word: str) -> str:
-    return re.sub(r"[^\w]", "", word.lower())
+    """A word without tone marks, case and punctuation, so a tone Whisper hears differently still
+    counts as the same word."""
+    plain = unicodedata.normalize("NFD", word.lower().replace("đ", "d"))
+    return re.sub(r"[^\w]", "", "".join(c for c in plain if not unicodedata.combining(c)))
+
+
+def _matched(words: list[str], heard: list[tuple[str, float]]) -> dict[int, float]:
+    """For each script word Whisper heard as written, the time it started."""
+    matcher = SequenceMatcher(
+        None, [_key(w) for w in words], [_key(w) for w, _ in heard], autojunk=False
+    )
+    return {
+        block.a + offset: heard[block.b + offset][1]
+        for block in matcher.get_matching_blocks()
+        for offset in range(block.size)
+    }
 
 
 def align(words: list[str], heard: list[tuple[str, float]]) -> list[float]:
@@ -39,13 +65,7 @@ def align(words: list[str], heard: list[tuple[str, float]]) -> list[float]:
     letters between the matched neighbours where it did not. Never decreasing."""
     if not words or not heard:
         return []
-    matcher = SequenceMatcher(
-        None, [_key(w) for w in words], [_key(w) for w, _ in heard], autojunk=False
-    )
-    known: dict[int, float] = {}
-    for block in matcher.get_matching_blocks():
-        for offset in range(block.size):
-            known[block.a + offset] = heard[block.b + offset][1]
+    known = _matched(words, heard)
     known.setdefault(0, heard[0][1])
     known.setdefault(len(words) - 1, heard[-1][1])
     anchors = sorted(known)
@@ -62,7 +82,8 @@ def align(words: list[str], heard: list[tuple[str, float]]) -> list[float]:
     return result
 
 
-async def word_starts(audio: Path, text: str, model_dir: Path) -> list[float]:
-    """Seconds into `audio` where each word of `text` starts; empty when nothing was heard."""
+async def word_starts(audio: Path, text: str, model_dir: Path) -> Timing:
+    """When each word of `text` starts in `audio` and how much of it was heard as written."""
+    words = text.split()
     heard = await asyncio.to_thread(_heard, audio, model_dir)
-    return align(text.split(), heard)
+    return Timing(align(words, heard), len(_matched(words, heard)) / len(words) if words else 1.0)

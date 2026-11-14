@@ -6,7 +6,7 @@ import pytest
 from ai_content.domains.marketing.products.captions import spoken_cues
 from ai_content.domains.marketing.products.clips import StitchUnavailable
 from ai_content.domains.marketing.products.speech import Reading, make_voiceover
-from ai_content.domains.marketing.products.word_timing import align
+from ai_content.domains.marketing.products.word_timing import MISREAD_BELOW, Timing, _matched, align
 
 needs_ffmpeg = pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg is not installed")
 
@@ -39,6 +39,19 @@ def test_nothing_heard_gives_no_times() -> None:
     assert align(["áo", "mát"], []) == []
 
 
+def test_a_tone_whisper_hears_differently_still_counts_as_the_word() -> None:
+    heard = [("co", 0.5), ("giản", 0.9), ("tốt", 1.2)]
+    assert sorted(_matched(["co", "giãn", "Tốt,"], heard)) == [0, 1, 2]
+
+
+def test_a_reading_that_says_other_words_is_heard_with_a_low_share() -> None:
+    script = ["Áo", "này", "mát", "lắm", "giá", "chỉ", "chín", "mươi", "chín", "nghìn"]
+    said_right = _heard(" ".join(script))
+    said_wrong = _heard("Xin chào các bạn hôm nay mình giới thiệu")
+    assert len(_matched(script, said_right)) / len(script) >= MISREAD_BELOW
+    assert len(_matched(script, said_wrong)) / len(script) < MISREAD_BELOW
+
+
 def test_captions_follow_the_measured_starts() -> None:
     cues = spoken_cues("Áo mát lắm", 2.0, [0.4, 0.9, 1.5])
     assert [(c.start, c.end) for c in cues] == [(0.0, 0.9), (0.9, 1.5), (1.5, 2.0)]
@@ -66,11 +79,12 @@ class _Tone:
 @needs_ffmpeg
 async def test_make_voiceover_notes_when_each_word_starts(tmp_path) -> None:
     async def timer(audio, text):
-        return [0.1 * i for i, _ in enumerate(text.split())]
+        return Timing([0.1 * i for i, _ in enumerate(text.split())], 0.8)
 
     readings = [Reading("áo mát lắm", 4.0)]
     await make_voiceover(_Tone(), readings, tmp_path / "videos" / "voiceover.mp3", timer=timer)  # type: ignore[arg-type]
     assert readings[0].starts == pytest.approx((0.0, 0.1, 0.2))
+    assert readings[0].heard == 0.8
 
 
 @needs_ffmpeg

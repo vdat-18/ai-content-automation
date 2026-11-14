@@ -4,6 +4,7 @@ import subprocess
 import httpx
 import pytest
 
+from ai_content.domains.marketing.products import service as service_module
 from ai_content.domains.marketing.products.repositories import SqliteProductRepository
 from ai_content.domains.marketing.products.service import (
     KeyframeUnavailable,
@@ -15,6 +16,7 @@ from ai_content.domains.marketing.products.speech import (
     SpeechError,
     make_voiceover,
 )
+from ai_content.domains.marketing.products.word_timing import Timing
 
 PRODUCT_ID = "1730000000000000001"
 needs_ffmpeg = pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg is not installed")
@@ -214,7 +216,11 @@ async def test_a_talking_shot_needs_its_clip_before_the_voice(tmp_path) -> None:
 
 
 @needs_ffmpeg
-async def test_a_clip_without_speech_is_read_at_its_own_pace(tmp_path) -> None:
+async def test_a_clip_without_speech_is_read_at_its_own_pace(tmp_path, monkeypatch) -> None:
+    async def heard_nothing_like_it(audio, text, model_dir):
+        return Timing([0.0], 0.1)
+
+    monkeypatch.setattr(service_module, "word_starts", heard_nothing_like_it)
     repository = SqliteProductRepository(tmp_path / "s.db")
     shots = [{"voiceover": "Xin chào", "duration_seconds": 15, "delivery": "talking"}]
     await repository.save_brief(PRODUCT_ID, "", {"shots": shots}, "approved")
@@ -254,6 +260,7 @@ async def test_a_clip_without_speech_is_read_at_its_own_pace(tmp_path) -> None:
     service = ProductCatalogService(repository, speaker=_Fake())  # type: ignore[arg-type]
     made = await service.create_voiceover(PRODUCT_ID, tmp_path)  # nothing to follow: not a crash
     assert made["voiceover"] == "mp3" and (tmp_path / "videos" / PRODUCT_ID / "voiceover.mp3").is_file()
+    assert made["misread_shots"] == [1]  # only a tenth of its words were heard
 
 
 async def test_service_needs_the_speaker_and_an_approved_keyframe(tmp_path) -> None:

@@ -96,7 +96,7 @@ from .storyboard_review import StoryboardReviewer
 from .text_embedding import TextEmbedder, TextEmbeddingError
 from .video_check import LESSONS, VideoCheckUnavailable, judge, measure
 from .voice_picker import VoicePicker
-from .word_timing import word_starts
+from .word_timing import MISREAD_BELOW, word_starts
 
 _PINTEREST_SEARCH = "https://www.pinterest.com/search/pins/?q="
 _SCREEN_BATCH = 200
@@ -1846,6 +1846,11 @@ class ProductCatalogService:
                 for index, reading in zip(approved, segments, strict=True)
                 if reading.starts
             }
+            shares = {
+                str(index): round(reading.heard, 2)
+                for index, reading in zip(approved, segments, strict=True)
+                if reading.heard is not None
+            }
             await self.note_voice(
                 product_id,
                 media_root,
@@ -1855,6 +1860,7 @@ class ProductCatalogService:
                 held,
                 voice or "",
                 words,
+                shares,
             )
         except (SpeechError, StitchUnavailable) as error:
             raise KeyframeUnavailable(f"The voice-over could not be made: {error}") from error
@@ -1863,13 +1869,19 @@ class ProductCatalogService:
             for i, (n, planned_seconds) in enumerate(zip(lengths, planned, strict=True))
             if n > planned_seconds * MAX_SPEEDUP
         ]
+        misread = [
+            i + 1
+            for i, reading in enumerate(segments)
+            if reading.heard is not None and reading.heard < MISREAD_BELOW
+        ]
         await self._log(
             product_id,
             "voiceover",
-            "warning" if too_long else "ok",
+            "warning" if too_long or misread else "ok",
             f"Read in voice {voice or 'default'}; shots {[round(n, 1) for n in lengths]} s"
             + (f"; chosen because: {voice_reason}" if voice_reason else "")
-            + (f"; too long: {too_long}" if too_long else ""),
+            + (f"; too long: {too_long}" if too_long else "")
+            + (f"; the voice does not say the script in shots {misread}" if misread else ""),
         )
         return {
             "voiceover": "mp3",
@@ -1877,6 +1889,7 @@ class ProductCatalogService:
             "voice_reason": voice_reason,
             "seconds": [round(n, 1) for n in lengths],
             "too_long_shots": too_long,
+            "misread_shots": misread,
         }
 
     async def voice_sample(self, voice: str, media_root: Path) -> Path:
@@ -2075,6 +2088,7 @@ class ProductCatalogService:
         held: dict[str, float] | None = None,
         voice_id: str = "",
         words: dict[str, list[float]] | None = None,
+        heard_share: dict[str, float] | None = None,
     ) -> None:
         """Remember which voice read the voice-over, how long each shot's words are heard and,
         when measured, when each word starts."""
@@ -2088,6 +2102,7 @@ class ProductCatalogService:
                 "speech_seconds": heard or {},
                 "shot_seconds": held or {},
                 "word_starts": words or {},
+                "heard_share": heard_share or {},
             },
         )
 
