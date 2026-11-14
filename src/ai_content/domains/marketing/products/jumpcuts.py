@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-ZOOM = 1.15  # how much closer the closer picture is
+ZOOM = 1.10  # how much closer the closer picture is; more pushes the face into the corner sticker
 ANCHOR_Y = 0.3  # the closer picture keeps this height of the frame fixed, so the face stays in it
 FIRST_CUT = 0.9  # the first cut is not before this many seconds into the shot
 MIN_SEGMENT = 1.3  # no picture, closer or not, lasts less than this long
