@@ -56,3 +56,20 @@ def test_captions_use_the_usual_spelling_not_the_read_aloud_one() -> None:
 
 def test_a_phrase_is_split_into_even_lines() -> None:
     assert [len(t.split()) for t in lines("một hai ba bốn năm", 5.0)] == [3, 2]
+
+
+def test_a_line_too_wide_for_the_picture_is_split_where_a_measure_is_given() -> None:
+    def wide(text: str) -> float:
+        return 50.0 * len(text)  # 50 px a letter, the room between the margins is 940 px
+
+    def shown(text: str, measure=None) -> list[str]:
+        found: list[str] = []
+        for cue in spoken_cues(text, 4.0, measure=measure):
+            if not found or found[-1] != plain(cue.text):
+                found.append(plain(cue.text))
+        return found
+
+    assert shown("Xin chào các bạn", wide) == ["Xin chào các bạn"]  # 16 letters, 800 px: fits
+    assert shown("thương hiệu chuyển nghiệp", wide) == ["thương hiệu", "chuyển nghiệp"]
+    assert shown("thương hiệu chuyển nghiệp") == ["thương hiệu chuyển nghiệp"]  # no measure
+    assert shown("nghiêm", wide) == ["nghiêm"]  # one word is never split

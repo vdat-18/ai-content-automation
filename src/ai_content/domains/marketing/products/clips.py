@@ -10,14 +10,16 @@ import os
 import re
 import shutil
 import textwrap
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import quote
 
 import httpx
 from loguru import logger
+from PIL import ImageFont
 
-from .captions import Cue, ass_document
+from .captions import CAPTION_SIZE, Cue, ass_document
 
 CLIP_SECONDS = 15
 ASPECT = "9:16"
@@ -211,6 +213,13 @@ def caption_font() -> Path | None:
         if candidate.is_file():
             return candidate
     return None
+
+
+def caption_measure(font: Path | None) -> Callable[[str], float] | None:
+    """The pixel width of a caption text drawn in the caption font, or None without a font."""
+    if font is None:
+        return None
+    return ImageFont.truetype(str(font), CAPTION_SIZE).getlength
 
 
 def find_bgm() -> Path | None:

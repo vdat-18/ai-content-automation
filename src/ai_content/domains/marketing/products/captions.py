@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from itertools import accumulate
 
 MAX_WORDS = 4
+CAPTION_SIZE = 88  # font size in the 1080 x 1920 picture
+_SIDE_MARGIN = 70
+_POP_GROWTH = 0.15  # the word being said is drawn this much wider
 _PAUSE_MARKS = ",.;:!?…"
 _PAUSE_WEIGHT = 4  # a mark at the end of a word costs about this many letters of speaking time
 _MIN_WORD = 0.08  # a word heard at the same moment as the one before still shows this long
@@ -33,14 +36,20 @@ class Cue:
     text: str
 
 
-def spoken_cues(text: str, speech_seconds: float, starts: Sequence[float] = ()) -> list[Cue]:
+def spoken_cues(
+    text: str,
+    speech_seconds: float,
+    starts: Sequence[float] = (),
+    measure: Callable[[str], float] | None = None,
+) -> list[Cue]:
     """Time the words of one shot over the time its voice-over is actually speaking.
 
     The voice-over is read per shot and starts with the shot. With `starts`, the time each word
     was heard, a word is shown from its start to the start of the next. Without them (or when
     their count differs from the words), the shot's text is spread from 0 to speech_seconds, each
     word taking time in proportion to its letters (a pause after a comma or full stop counts as a
-    few more). A line breaks after MAX_WORDS words or a pause.
+    few more). A line breaks after MAX_WORDS words or a pause, and with `measure` (the width of a
+    text in pixels at CAPTION_SIZE) also where it would not fit between the side margins.
     """
     words = text.split()
     if not words or speech_seconds <= 0:
@@ -56,7 +65,7 @@ def spoken_cues(text: str, speech_seconds: float, starts: Sequence[float] = ()) 
         edges = [0.0, *accumulate(w * unit for w in weights)]
     cues: list[Cue] = []
     position = 0
-    for size in _line_sizes(words):
+    for size in _fit_lines(words, _line_sizes(words), measure):
         line = [_display(w) for w in words[position : position + size]]
         for number in range(size):
             cues.append(
@@ -76,6 +85,29 @@ def _line_sizes(words: list[str]) -> list[int]:
             sizes += _even(phrase)
             phrase = 0
     return sizes + (_even(phrase) if phrase else [])
+
+
+def _fit_lines(
+    words: list[str], sizes: list[int], measure: Callable[[str], float] | None
+) -> list[int]:
+    """Words per line, with a line that is too wide for the picture split in halves."""
+    if measure is None:
+        return sizes
+    fitted: list[int] = []
+    position = 0
+    for size in sizes:
+        fitted += _halve([_display(w) for w in words[position : position + size]], measure)
+        position += size
+    return fitted
+
+
+def _halve(line: list[str], measure: Callable[[str], float]) -> list[int]:
+    widest = max(measure(word) for word in line)
+    room = 1080 - 2 * _SIDE_MARGIN
+    if len(line) < 2 or measure(" ".join(line)) + _POP_GROWTH * widest <= room:
+        return [len(line)]
+    half = (len(line) + 1) // 2
+    return _halve(line[:half], measure) + _halve(line[half:], measure)
 
 
 def _even(count: int) -> list[int]:
@@ -126,8 +158,8 @@ def ass_document(cues: list[Cue], font_family: str, width: int = 1080, height: i
         "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, "
         "BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, "
         "BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding\n"
-        f"Style: Default,{font_family},88,&H00FFFFFF,&H00FFFFFF,&H00101010,&H90000000,"
-        "-1,0,0,0,100,100,1,0,1,9,5,2,70,70,330,1\n\n"
+        f"Style: Default,{font_family},{CAPTION_SIZE},&H00FFFFFF,&H00FFFFFF,&H00101010,&H90000000,"
+        f"-1,0,0,0,100,100,1,0,1,9,5,2,{_SIDE_MARGIN},{_SIDE_MARGIN},330,1\n\n"
         "[Events]\n"
         "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text\n"
     )

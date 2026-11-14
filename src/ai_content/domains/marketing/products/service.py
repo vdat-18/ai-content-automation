@@ -46,6 +46,7 @@ from .clips import (
     StitchUnavailable,
     VideoClient,
     caption_font,
+    caption_measure,
     clip_frames,
     clip_seconds_for,
     cover_frame,
@@ -1942,6 +1943,7 @@ class ProductCatalogService:
         heard = made.get("speech_seconds") or {}
         held = made.get("shot_seconds") or {}
         word_times = made.get("word_starts") or {}
+        caption_width = caption_measure(caption_font())
         for index, shot in enumerate(shots):
             if keyframes.get(index, {}).get("status") != "approved":
                 continue
@@ -1966,6 +1968,7 @@ class ProductCatalogService:
                     str(shot.get("voiceover") or ""),
                     heard.get(str(index), 0),
                     word_times.get(str(index)) or (),
+                    caption_width,
                 )
             )
             parts.append(StitchClip(local, duration, caption, cues if captions else ()))
