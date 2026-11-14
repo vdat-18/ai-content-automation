@@ -18,8 +18,10 @@ from ai_content.domains.marketing.products.clips import (
     _measured_loudnorm,
     caption_font,
     clip_frames,
+    clip_seconds_for,
     cover_frame,
     is_busy_error,
+    shot_seconds,
     still_tail_seconds,
     stitch,
 )
@@ -229,7 +231,9 @@ async def test_stitch_joins_trimmed_clips_without_the_clips_own_audio(
         clips.append(StitchClip(path, 2.0, "Phòng giặt gọn hơn" if index == 0 else ""))
     output = tmp_path / "videos" / "out.mp4"
     await stitch(clips, output)
-    assert 3.3 < float(_probe(output, "format=duration")) < 3.8
+    # each part is its source length (2.0 s minus the trims) shortened by the speed-up, so the
+    # picture keeps the length the voice-over was cut to
+    assert abs(float(_probe(output, "format=duration")) - 2 * shot_seconds(2.0)) < 0.15
     assert _probe(output, "stream=codec_type").split() == ["video"]
     assert sorted(p.name for p in output.parent.iterdir()) == ["out.mp4"]
 
@@ -340,7 +344,7 @@ async def test_clip_prompt_follows_the_shots_delivery(tmp_path) -> None:
 
 
 def test_clips_play_faster_by_the_configured_speed(monkeypatch) -> None:
-    from ai_content.domains.marketing.products.clips import clip_speed, shot_seconds
+    from ai_content.domains.marketing.products.clips import clip_speed
 
     monkeypatch.delenv("AIC_CLIP_SPEED", raising=False)
     assert clip_speed() == 1.1 and round(shot_seconds(15), 2) == 13.41
@@ -508,7 +512,7 @@ async def test_a_hook_variant_reuses_the_clips_and_keeps_its_own_files(tmp_path)
 
 
 def test_a_clip_is_cut_to_the_length_its_shot_should_have() -> None:
-    from ai_content.domains.marketing.products.clips import clip_seconds_for, shot_seconds
+    from ai_content.domains.marketing.products.clips import clip_seconds_for
 
     assert abs(shot_seconds(clip_seconds_for(6.0)) - 6.0) < 1e-6
 
@@ -845,3 +849,19 @@ async def test_loudnorm_is_filled_in_with_the_audios_own_measurements(tmp_path) 
     assert "measured_I=" in measured and "linear=true" in measured
     plain = await _measured_loudnorm(["-i", str(silence)], "[0:a]anull[pre]")
     assert plain == "loudnorm=I=-14:LRA=11:TP=-1"
+
+
+@pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg is not installed")
+async def test_every_part_lasts_as_long_as_its_voice_over_so_later_shots_do_not_drift(
+    tmp_path, monkeypatch
+) -> None:
+    monkeypatch.setenv("AIC_BGM_PATH", str(tmp_path / "no-music.wav"))
+    clips = []
+    for index, (color, voiced) in enumerate((("red", 1.0), ("blue", 1.5), ("green", 1.0))):
+        path = tmp_path / f"c{index}.mp4"
+        _make_clip(path, color, seconds=4, audio=False)
+        clips.append(StitchClip(path, clip_seconds_for(voiced)))
+    output = tmp_path / "out" / "out.mp4"
+    await stitch(clips, output)
+    assert abs(float(_probe(output, "format=duration")) - 3.5) < 0.12
+

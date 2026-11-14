@@ -408,7 +408,7 @@ async def stitch(
             async with limit:
                 await _run(
                     "ffmpeg", "-v", "error", "-y", "-ss", f"{TRIM_SECONDS:g}", "-i", str(clip.path),
-                    *sticker_inputs, "-t", f"{_source_seconds(clip.duration):.3f}", "-an", *picture,
+                    *sticker_inputs, "-t", f"{seconds:.3f}", "-an", *picture,
                     "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-maxrate", "12M",
                     "-bufsize", "24M", "-pix_fmt", "yuv420p", part.name,
                     cwd=output.parent,
