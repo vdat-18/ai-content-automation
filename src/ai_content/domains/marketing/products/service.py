@@ -91,7 +91,7 @@ from .speech import (
     make_voiceover,
     spoken_seconds,
 )
-from .stickers import render_stickers, sticker_lines, stickers_by_shot
+from .stickers import render_stickers, sticker_lines, sticker_start, stickers_by_shot
 from .storyboard_review import StoryboardReviewer
 from .text_embedding import TextEmbedder, TextEmbeddingError
 from .video_check import LESSONS, VideoCheckUnavailable, judge, measure
@@ -1923,6 +1923,7 @@ class ProductCatalogService:
         first_words = ""
         used: dict[int, int] = {}
         spoken_texts: list[str] = []
+        scripts: list[tuple[int, str]] = []  # per part: its shot number and what the voice says
         where = video_folder(product_id, variant)
         made = (await self._read_json(media_root, f"{where}/voiceover.json")) or {}
         heard = made.get("speech_seconds") or {}
@@ -1956,6 +1957,7 @@ class ProductCatalogService:
             )
             parts.append(StitchClip(local, duration, caption, cues if captions else ()))
             spoken_texts.append(f"{shot.get('voiceover') or ''} {shot.get('on_screen_text') or ''}")
+            scripts.append((index, str(shot.get("voiceover") or "")))
             if not parts[1:]:
                 first_words = str(shot.get("on_screen_text") or shot.get("voiceover") or "")
             used[index] = clip["attempts"]
@@ -1976,7 +1978,11 @@ class ProductCatalogService:
                         image = Path(scratch) / f"stickers_{number}.png"
                         render_stickers([(kind, lines[kind]) for kind in kinds], font, image)
                         images.append(image)
-                    parts[number] = replace(part, stickers=tuple(images))
+                    shot_number, script = scripts[number]
+                    at = sticker_start(kinds, lines, script, word_times.get(str(shot_number), ()))
+                    parts[number] = replace(
+                        part, stickers=tuple(images), sticker_at=0.5 if at is None else at
+                    )
             await stitch(parts, store.path(relative), voice)
         await store.push(relative)
         cover = f"{where}/cover.jpg"

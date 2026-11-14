@@ -201,6 +201,7 @@ class StitchClip:
     caption: str = ""
     cues: tuple[Cue, ...] = ()  # spoken words; when present they replace the caption
     stickers: tuple[Path, ...] = ()  # label images laid over the shot, stacked from the top
+    sticker_at: float = 0.5  # seconds into the shot where the stickers start to slide in
 
 
 def caption_font() -> Path | None:
@@ -385,12 +386,13 @@ async def stitch(
             sticker_inputs: list[str] = []
             if clip.stickers:
                 graph, last = f"[0:v]{filters}[base]", "base"
+                shown_from = min(clip.sticker_at, max(seconds - 1.0, 0.5))
                 for number, sticker in enumerate(clip.stickers, start=1):
                     sticker_inputs += ["-loop", "1", "-i", str(sticker)]
                     graph += (
-                        f";[{last}][{number}:v]overlay=x={_slide_in(0.5)}"
+                        f";[{last}][{number}:v]overlay=x={_slide_in(shown_from)}"
                         f":y={_STICKER_TOP + (number - 1) * _STICKER_STEP}"
-                        f":shortest=1:enable='between(t,0.5,{max(seconds - 0.3, 1):.2f})'[s{number}]"
+                        f":shortest=1:enable='between(t,{shown_from:.2f},{max(seconds - 0.3, 1):.2f})'[s{number}]"
                     )
                     last = f"s{number}"
                 picture = ["-filter_complex", graph, "-map", f"[{last}]"]

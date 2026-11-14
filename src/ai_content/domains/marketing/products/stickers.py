@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import math
 import re
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, NamedTuple
 
@@ -24,6 +25,8 @@ DARK = (18, 18, 22, 170)
 SCALE = 3  # drawn three times larger and scaled down, so the edges are smooth
 _PAD, _GAP, _RADIUS = 22, 12, 24
 _BIG, _MEDIUM, _SMALL = 50, 34, 26
+_LEAD = 0.2  # a sticker starts sliding in this long before its figure is said
+_EARLIEST = 0.3  # and never before the shot has settled
 
 
 class Sticker(NamedTuple):
@@ -92,6 +95,32 @@ def stickers_by_shot(lines: dict[str, Sticker], shot_texts: list[str]) -> list[l
             if kind == "price" and chosen:
                 chosen[-1].append(kind)
     return chosen
+
+
+def mention_word(text: str, kind: str, figure: float) -> int | None:
+    """Index of the first word of `text` that starts the mention of the figure, if it has one."""
+    words = text.split()
+    for end in range(1, len(words) + 1):
+        if _mentions(" ".join(words[:end]), kind, figure):
+            for begin in range(end - 1, -1, -1):
+                if _mentions(" ".join(words[begin:end]), kind, figure):
+                    return begin
+    return None
+
+
+def sticker_start(
+    kinds: list[str], lines: dict[str, Sticker], voiceover: str, starts: Sequence[float]
+) -> float | None:
+    """Seconds into the shot where the voice first says a figure the stickers show, if it is
+    spoken and timed; the sticker then lands as the figure is said."""
+    if len(starts) != len(voiceover.split()):
+        return None
+    spoken = [
+        starts[index]
+        for kind in kinds
+        if (index := mention_word(voiceover, kind, lines[kind].figure)) is not None
+    ]
+    return max(min(spoken) - _LEAD, _EARLIEST) if spoken else None
 
 
 def _font(path: Path, size: int) -> ImageFont.FreeTypeFont:

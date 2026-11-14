@@ -814,6 +814,12 @@ async def test_stitch_slides_a_sticker_in_instead_of_popping_it(tmp_path, monkey
     assert before == 0
     assert 0 < sliding < settled
 
+    later = tmp_path / "later.mp4"
+    await stitch([StitchClip(clip, 3.0, stickers=(sticker,), sticker_at=1.5)], later)
+    output = later
+    assert white_pixels(1.0) == 0  # the sticker waits for the moment it is told
+    assert white_pixels(1.9) > 0
+
 
 @pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg is not installed")
 async def test_still_tail_measures_a_clip_that_ends_frozen(tmp_path) -> None:

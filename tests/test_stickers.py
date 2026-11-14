@@ -6,8 +6,10 @@ from PIL import Image
 
 from ai_content.domains.marketing.products.clips import StitchClip, caption_font, stitch
 from ai_content.domains.marketing.products.stickers import (
+    mention_word,
     render_stickers,
     sticker_lines,
+    sticker_start,
     stickers_by_shot,
 )
 
@@ -40,6 +42,24 @@ def test_prices_written_with_a_dot_for_thousands_are_read_correctly() -> None:
 def test_each_sticker_goes_to_the_shot_that_mentions_it() -> None:
     texts = ["Áo gì mà mát vậy", "Đã bán hơn 3.200 cái, đánh giá 4,6 sao", "Chỉ 199k, bấm giỏ hàng"]
     assert stickers_by_shot(sticker_lines(DETAIL), texts) == [[], ["sold", "rating"], ["price"]]
+
+
+def test_a_figure_is_found_at_the_word_where_it_starts_being_said() -> None:
+    price = sticker_lines(DETAIL)["price"]
+    assert mention_word("Áo mát lắm, chỉ 199k thôi nha", "price", price.figure) == 4
+    spelled = "Giá chỉ một trăm chín mươi chín nghìn thôi"
+    assert mention_word(spelled, "price", price.figure) == 2  # "một", where the number begins
+    assert mention_word("Áo mát lắm", "price", price.figure) is None
+
+
+def test_the_sticker_lands_as_its_figure_is_said() -> None:
+    lines = sticker_lines(DETAIL)
+    script = "Áo mát lắm chỉ 199k thôi"
+    starts = [0.0, 0.3, 0.6, 1.0, 1.4, 1.9]
+    assert sticker_start(["price"], lines, script, starts) == pytest.approx(1.2)  # 1.4 - 0.2
+    assert sticker_start(["price"], lines, script, [0.0, 0.1]) is None  # words not timed
+    assert sticker_start(["price"], lines, "Áo mát lắm", starts[:3]) is None  # figure not spoken
+    assert sticker_start(["price"], lines, "199k ngay", [0.0, 0.5]) == pytest.approx(0.3)
 
 
 def test_the_price_falls_back_to_the_last_shot_and_others_are_left_out() -> None:
