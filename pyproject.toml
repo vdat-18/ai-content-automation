@@ -5,14 +5,15 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "ai-content-automation"
 version = "0.1.0"
-description = "AI Content Automation - Modular monolith for company-wide AI/agent/automation"
+description = "Turns a TikTok Shop product into a Vietnamese affiliate video ad: script, images, clips, voice-over, captions"
 readme = "README.md"
 requires-python = ">=3.11"
-license = { text = "Proprietary" }
-authors = [{ name = "AI Content", email = "dev@aicontent.com" }]
+license = { text = "MIT" }
+authors = [{ name = "Dat (vdat-18)" }]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
 ]

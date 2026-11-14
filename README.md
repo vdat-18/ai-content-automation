@@ -1,28 +1,40 @@
+**English** · [Tiếng Việt](README.vi.md)
+
 # AI Content Automation
 
-Tạo video quảng cáo TikTok Shop Việt Nam từ một sản phẩm: kịch bản, ảnh từng cảnh, clip, giọng đọc,
-video ghép hoàn chỉnh và caption. Người dùng chỉ đọc và duyệt ở hai chốt: **kịch bản** và **ảnh**.
+Turns one TikTok Shop product into a finished Vietnamese affiliate video ad: script, scene images,
+video clips, natural voice-over, stitched 9:16 video, captions and hashtags. The user only reads and
+approves at two gates: the **script** and the **images**.
 
-## Luồng làm một video
+> Built for the Vietnamese market. Prompts, the banned-word list, captions and voices are Vietnamese
+> on purpose. Code, configuration and the dashboard are English.
 
-1. **Thu thập** (extension Chrome trong `extension/`): sản phẩm TikTok Shop và ảnh tham chiếu Pinterest
-   gửi về `POST /api/v1/products/ingest`.
-2. **Idea → Script**: mỗi video theo **một người** trong thư viện người (ảnh tải lên một lần, dùng cho mọi
-   sản phẩm; một người là mặc định, đổi được bất cứ lúc nào; bắt buộc có ảnh). Mặt trong ảnh sinh ra khớp
-   ảnh đó, quần áo và bối cảnh đổi theo từng cảnh; video giữ người nó được viết cho dù mặc định đổi.
-   AI viết kịch bản (brief). Kịch bản được kiểm tra: từ cấm của TikTok Shop, số liệu
-   và khẳng định phải có trong dữ liệu sản phẩm (kể cả số đọc thành chữ). Pipeline dừng để bạn đọc.
-3. **Images**: ảnh master trước, các cảnh còn lại sau. Mỗi ảnh được kiểm tra với ảnh sản phẩm thật và ảnh
-   người mẫu. Master bị đánh dấu thì pipeline dừng; ảnh chưa kiểm tra được hiện là "Not checked".
-4. **Finish**: clip (ảnh → video), giọng đọc, ghép video 9:16, caption và hashtag. Clip lỗi hoặc bị đánh dấu
-   nằm trong danh sách "Scenes that need a look" để làm lại hoặc dùng luôn.
+## How one video is made
 
-Pipeline chạy nền trên server, kết quả và lý do dừng được lưu (xem `product_pipeline_runs`) và có thông báo
-khi xong. Chạy lại luôn tiếp tục từ phần đã làm, không làm lại phần đã có.
+```mermaid
+flowchart LR
+    A[Collect<br/>Chrome extension] --> B[Idea → Script<br/>LLM brief + checks]
+    B -->|you approve| C[Images<br/>master first, then scenes]
+    C -->|you approve| D[Finish<br/>clips · voice · stitch · captions]
+```
 
-## Chạy
+1. **Collect** (Chrome extension in `extension/`): TikTok Shop products and Pinterest reference images
+   are sent to `POST /api/v1/products/ingest`.
+2. **Idea → Script**: each video follows **one person** from a library (photo uploaded once, reused for
+   every product). The generated face matches that photo; clothes and setting change per scene. An LLM
+   writes the brief. The script is checked for TikTok Shop banned words and for numbers and claims that
+   are not in the product data (including numbers spelled out). The pipeline pauses for you to read it.
+3. **Images**: the master image first, then the other scenes. Every image is checked against the real
+   product photo and the model photo. A flagged master stops the pipeline.
+4. **Finish**: image → video clips, voice-over, 9:16 stitching with stickers, captions timed to the
+   speech, and hashtags. Failed or flagged clips are listed under "Scenes that need a look".
 
-Yêu cầu: Python 3.11+, [uv](https://docs.astral.sh/uv/), Node + pnpm, ffmpeg (ghép video, giọng, kiểm tra).
+The pipeline runs in the background, stores results and the reason it stopped (`product_pipeline_runs`),
+and always resumes from what is already done.
+
+## Quick start
+
+Requirements: Python 3.11+, [uv](https://docs.astral.sh/uv/), Node + pnpm, ffmpeg.
 
 ```bash
 uv sync --extra dev
@@ -31,35 +43,50 @@ pnpm --dir frontend install --frozen-lockfile
 pnpm --dir frontend dev -- --port 4174                         # http://localhost:4174/dashboard/
 ```
 
-Docker (PostgreSQL, SeaweedFS, API, dashboard): sao chép `deploy/.env.example` thành `deploy/.env`, điền khoá
-rồi dùng `just up`. Dashboard và API **không có đăng nhập**, nên mặc định chỉ nghe trên `127.0.0.1`
-(`AIC_HTTP_BIND_ADDRESS`). Muốn mở ra ngoài thì bật đăng nhập nginx bằng `deploy/nginx/auth.example.conf`
-(hướng dẫn trong file) hoặc đặt sau VPN.
+Docker (PostgreSQL, SeaweedFS, API, dashboard): copy `deploy/.env.example` to `deploy/.env`, fill in the
+keys, then `just up`.
 
-## Cấu hình chính (`deploy/.env.example`)
+**Security:** the dashboard and API have **no login**, so they listen on `127.0.0.1` only
+(`AIC_HTTP_BIND_ADDRESS`). Do not expose them to the internet. To open them up, enable nginx basic auth
+with `deploy/nginx/auth.example.conf` or put them behind a VPN. See [SECURITY.md](SECURITY.md).
 
-| Biến | Dùng cho |
+## What you need to bring
+
+You supply the model endpoints and keys; nothing is bundled.
+
+| Setting | Used for |
 |---|---|
-| `AIC_SCREENING_*` | LLM viết brief, kiểm tra ảnh và clip, review kịch bản (OpenAI-compatible) |
-| `AIC_IMAGE_*`, `AIC_IMAGE_API` | Model tạo ảnh (`chat` hoặc `edits`) |
-| `AIC_VIDEO_*` | Model ảnh → video; `AIC_VIDEO_FRAME_FIELDS` chọn trường nhận khung hình đầu (mặc định `image`, đã thử thật) |
-| `AIC_TTS_*` | Giọng đọc |
-| `AIC_TEXT_EMBEDDING_MODEL` | Ghép ảnh tham chiếu cho từng cảnh (để trống thì tắt) |
-| `AIC_AI_DATABASE_BACKEND` | `sqlite` (dev) hoặc `postgresql` |
+| `AIC_SCREENING_*` | LLM that writes the brief, checks images and clips, reviews the script (OpenAI-compatible) |
+| `AIC_IMAGE_*`, `AIC_IMAGE_API` | Image model (`chat` or `edits`) |
+| `AIC_VIDEO_*` | Image → video model; `AIC_VIDEO_FRAME_FIELDS` picks the first-frame field |
+| `AIC_TTS_*` | Voice-over |
+| `AIC_TEXT_EMBEDDING_MODEL` | Matches reference images to scenes (empty = off) |
+| `AIC_AI_DATABASE_BACKEND` | `sqlite` (dev) or `postgresql` |
 
-Quy tắc mặc định cho quảng cáo nằm trong `config/creative_knowledge/product_ad.json`. Server nạp chúng khi
-khởi động. Sửa nội dung file thì phải đổi `bootstrap_id`, test sẽ nhắc.
+Video models are usually billed per request, so each clip costs real money. See
+[docs/model-limits.md](docs/model-limits.md) for the limits measured so far.
 
-## Kiểm tra
+Default ad rules live in `config/creative_knowledge/product_ad.json` and load at startup. If you edit
+the file, change its `bootstrap_id`; a test reminds you.
 
-Chạy trong Docker (có sẵn ffmpeg và font, giống mọi máy; không cần cài gì trên máy):
+## Responsible use
+
+- Use a person's face only with their consent. The dashboard asks you to confirm you have the rights.
+- Label AI-generated content as TikTok requires.
+- The extension collects pages from TikTok Shop and Pinterest while you are logged in. Check their terms
+  of service before you use it. You are responsible for how you use it.
+- Check your music and voice files for licensing. Confirm the licence of `config/default_bgm.wav` and of any voice files you add.
+
+## Development
+
+Run in Docker (ffmpeg and fonts included, same on every machine):
 
 ```bash
-just test            # hoặc: just test tests/test_stickers.py
+just test            # or: just test tests/test_stickers.py
 just lint
 ```
 
-Chạy thẳng trên máy (các test cần ffmpeg sẽ bị bỏ qua nếu máy không có):
+Or directly on your machine (tests that need ffmpeg are skipped if it is missing):
 
 ```bash
 uv run ruff check .
@@ -67,11 +94,19 @@ uv run pytest
 pnpm --dir frontend lint && pnpm --dir frontend test && pnpm --dir frontend build
 ```
 
-Sau khi sửa `baml_src/`, sinh lại client: `uv run baml-cli generate` (không sửa tay `adapters/baml_client`).
-Migration PostgreSQL nằm trong `migrations/`; SQLite tự tạo bảng khi mở.
+After editing `baml_src/`, regenerate the client with `uv run baml-cli generate` (never edit
+`adapters/baml_client` by hand). PostgreSQL migrations are in `migrations/`; SQLite creates its tables
+on open. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## Tài liệu
+## Docs
 
-- `docs/video-ads-pipeline.md`: thiết kế gốc của luồng ảnh → clip → video.
-- `docs/model-limits.md`, `docs/affiliate-vietnam.md`, `docs/reference-corpus-and-content-plan.md`.
-- `frontend/DEVELOPMENT.md`, `extension/README.md`.
+Most design notes are in Vietnamese.
+
+- [docs/video-ads-pipeline.md](docs/video-ads-pipeline.md): original design of the image → clip → video flow.
+- [docs/model-limits.md](docs/model-limits.md), [docs/affiliate-vietnam.md](docs/affiliate-vietnam.md),
+  [docs/reference-corpus-and-content-plan.md](docs/reference-corpus-and-content-plan.md)
+- [frontend/DEVELOPMENT.md](frontend/DEVELOPMENT.md), [extension/README.md](extension/README.md)
+
+## License
+
+[MIT](LICENSE)
