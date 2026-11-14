@@ -10,16 +10,12 @@ from itertools import accumulate
 MAX_WORDS = 4
 CAPTION_SIZE = 88  # font size in the 1080 x 1920 picture
 _SIDE_MARGIN = 70
-_POP_GROWTH = 0.15  # the word being said is drawn this much wider
 _PAUSE_MARKS = ",.;:!?…"
 _PAUSE_WEIGHT = 4  # a mark at the end of a word costs about this many letters of speaking time
 _MIN_WORD = 0.08  # a word heard at the same moment as the one before still shows this long
 _LAST_WORD = 0.25  # seconds the last word stays highlighted when the shot's speech ends sooner
 _HIGHLIGHT = r"{\c&H00D7FF&}"  # ASS colours are BGR: this is amber
 _PLAIN = r"{\c&HFFFFFF&}"
-# The word being said springs up, overshoots a little and settles at 115%
-_POP = r"{\fscx100\fscy100\t(0,70,\fscx125\fscy125)\t(70,170,\fscx115\fscy115)}"
-_NORMAL = r"{\fscx100\fscy100}"
 # The voice-over is written the way it is read aloud; captions show the usual spelling.
 _DISPLAY_SPELLING = {
     "phom": "form",
@@ -103,9 +99,8 @@ def _fit_lines(
 
 
 def _halve(line: list[str], measure: Callable[[str], float]) -> list[int]:
-    widest = max(measure(word) for word in line)
     room = 1080 - 2 * _SIDE_MARGIN
-    if len(line) < 2 or measure(" ".join(line)) + _POP_GROWTH * widest <= room:
+    if len(line) < 2 or measure(" ".join(line)) <= room:
         return [len(line)]
     half = (len(line) + 1) // 2
     return _halve(line[:half], measure) + _halve(line[half:], measure)
@@ -127,12 +122,10 @@ def _display(word: str) -> str:
 
 
 def _styled(line: list[str], active: int) -> str:
-    """The whole line, with the word being said bigger and in amber (digit words stay amber)."""
+    """The whole line, the word being said in amber (digit words too); sizes never change."""
     out = []
     for number, word in enumerate(line):
-        if number == active:
-            out.append(f"{_HIGHLIGHT}{_POP}{_escape(word)}{_PLAIN}{_NORMAL}")
-        elif re.search(r"\d", word):
+        if number == active or re.search(r"\d", word):
             out.append(f"{_HIGHLIGHT}{_escape(word)}{_PLAIN}")
         else:
             out.append(_escape(word))

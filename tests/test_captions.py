@@ -29,11 +29,10 @@ def test_a_pause_mark_ends_the_line_and_takes_extra_time() -> None:
     assert cues[1].end > 4.0 * len("Xin chào,") / len("Xin chào,bạn ơi")
 
 
-def test_the_word_being_said_is_marked_and_digit_words_stay_amber() -> None:
+def test_the_word_being_said_is_amber_without_changing_size() -> None:
     cues = spoken_cues("199k còn 2 cái", 3.0)
-    assert r"\fscx115" in cues[1].text and cues[1].text.index("còn") > cues[1].text.index(
-        r"\fscx115"
-    )
+    assert r"\fsc" not in cues[1].text  # a bigger word would shift the whole line
+    assert cues[1].text.index("còn") > cues[1].text.index(r"{\c&H00D7FF&}")
     assert cues[0].text.count(r"{\c&H00D7FF&}") >= 2  # 199k said now, 2 amber too
 
 
