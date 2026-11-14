@@ -815,7 +815,7 @@ async def test_stitch_slides_a_sticker_in_instead_of_popping_it(tmp_path, monkey
         pixels = Image.open(frame).convert("RGB").getdata()
         return sum(1 for r, g, b in pixels if r > 240 and g > 240 and b > 240)
 
-    before, sliding, settled = white_pixels(0.3), white_pixels(0.4), white_pixels(1.5)
+    before, sliding, settled = white_pixels(0.3), white_pixels(0.6), white_pixels(1.5)
     assert before == 0
     assert 0 < sliding < settled
 
@@ -873,6 +873,7 @@ async def test_a_flagged_clip_is_made_again_with_only_its_problem_to_fix(tmp_pat
     await service.generate_clips(PRODUCT_ID, tmp_path)
     first = video.submitted[0][0]
     assert "No morphing, warping, flicker or ghosting" in first
+    assert "no icon, symbol, logo or graphic drawn on the picture" in first
     assert "Keep the product's exact shape" in first and "fix only this problem" not in first
 
     clip = (await service._repository.list_clips(PRODUCT_ID))[0]

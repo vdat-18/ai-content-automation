@@ -263,7 +263,8 @@ _KEEP_PRODUCT = (
 )
 _NO_ARTIFACTS = (
     "No morphing, warping, flicker or ghosting, no extra, missing or fused fingers or limbs, "
-    "no watermark. "
+    "no watermark, and no icon, symbol, logo or graphic drawn on the picture, even when the "
+    "words mention a cart or a link. "
 )
 
 
