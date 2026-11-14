@@ -20,7 +20,7 @@ from .globals import DO_NOT_USE_DIRECTLY_UNLESS_YOU_KNOW_WHAT_YOURE_DOING_RUNTIM
 class TypeBuilder(type_builder.TypeBuilder):
     def __init__(self):
         super().__init__(classes=set(
-          ["AdStructure","ClaimCheck","ClipCheck","ContentBrief","CuratedRule","HookOption","HookOptions","KeyframeCheck","LabeledReference","PostingPackage","ReferenceCandidate","ReferenceImageReview","ReferenceSearchProfileDraft","ShotReferenceChoice","StoryboardProblem","StoryboardReview","StoryboardShot","VoicePick",]
+          ["AdStructure","ClaimCheck","ClipCheck","ContentBrief","CuratedRule","HookOption","HookOptions","KeyframeCheck","LabeledReference","PostingPackage","ReferenceCandidate","ReferenceImageReview","ReferenceSearchProfileDraft","ShortenedLine","ShotReferenceChoice","StoryboardProblem","StoryboardReview","StoryboardShot","VoicePick",]
         ), enums=set(
           []
         ), runtime=DO_NOT_USE_DIRECTLY_UNLESS_YOU_KNOW_WHAT_YOURE_DOING_RUNTIME)
@@ -31,7 +31,7 @@ class TypeBuilder(type_builder.TypeBuilder):
 
 
     # #########################################################################
-    # Generated classes 18
+    # Generated classes 19
     # #########################################################################
 
     @property
@@ -87,6 +87,10 @@ class TypeBuilder(type_builder.TypeBuilder):
         return ReferenceSearchProfileDraftViewer(self)
 
     @property
+    def ShortenedLine(self) -> "ShortenedLineViewer":
+        return ShortenedLineViewer(self)
+
+    @property
     def ShotReferenceChoice(self) -> "ShotReferenceChoiceViewer":
         return ShotReferenceChoiceViewer(self)
 
@@ -114,7 +118,7 @@ class TypeBuilder(type_builder.TypeBuilder):
 
 
 # #########################################################################
-# Generated classes 18
+# Generated classes 19
 # #########################################################################
 
 class AdStructureAst:
@@ -776,6 +780,45 @@ class ReferenceSearchProfileDraftProperties:
     @property
     def keywords(self) -> type_builder.ClassPropertyViewer:
         return type_builder.ClassPropertyViewer(self.__bldr.property("keywords"))
+    
+    
+
+
+class ShortenedLineAst:
+    def __init__(self, tb: type_builder.TypeBuilder):
+        _tb = tb._tb # type: ignore (we know how to use this private attribute)
+        self._bldr = _tb.class_("ShortenedLine")
+        self._properties: typing.Set[str] = set([  "text",  ])
+        self._props = ShortenedLineProperties(self._bldr, self._properties)
+
+    def type(self) -> baml_py.FieldType:
+        return self._bldr.field()
+
+    @property
+    def props(self) -> "ShortenedLineProperties":
+        return self._props
+
+
+class ShortenedLineViewer(ShortenedLineAst):
+    def __init__(self, tb: type_builder.TypeBuilder):
+        super().__init__(tb)
+
+    
+    def list_properties(self) -> typing.List[typing.Tuple[str, type_builder.ClassPropertyViewer]]:
+        return [(name, type_builder.ClassPropertyViewer(self._bldr.property(name))) for name in self._properties]
+    
+
+
+class ShortenedLineProperties:
+    def __init__(self, bldr: baml_py.ClassBuilder, properties: typing.Set[str]):
+        self.__bldr = bldr
+        self.__properties = properties # type: ignore (we know how to use this private attribute) # noqa: F821
+
+    
+    
+    @property
+    def text(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("text"))
     
     
 

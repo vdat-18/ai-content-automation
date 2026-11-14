@@ -41,7 +41,7 @@ def all_succeeded(checks: typing.Dict[CheckName, Check]) -> bool:
 # #########################################################################
 
 # #########################################################################
-# Generated classes (18)
+# Generated classes (19)
 # #########################################################################
 
 class AdStructure(BaseModel):
@@ -122,6 +122,9 @@ class ReferenceSearchProfileDraft(BaseModel):
     product_type: str
     keywords: typing.List[str]
 
+class ShortenedLine(BaseModel):
+    text: str
+
 class ShotReferenceChoice(BaseModel):
     choice: str
 
@@ -156,7 +159,7 @@ class VoicePick(BaseModel):
 
 
 # #########################################################################
-# Model rebuilds (18)
+# Model rebuilds (19)
 # #########################################################################
 # Resolve string forward references now that every model above is defined so
 # class declaration order never breaks Pydantic construction (issue #793).
@@ -175,6 +178,7 @@ PostingPackage.model_rebuild()
 ReferenceCandidate.model_rebuild()
 ReferenceImageReview.model_rebuild()
 ReferenceSearchProfileDraft.model_rebuild()
+ShortenedLine.model_rebuild()
 ShotReferenceChoice.model_rebuild()
 StoryboardProblem.model_rebuild()
 StoryboardReview.model_rebuild()

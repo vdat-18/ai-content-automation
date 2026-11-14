@@ -55,6 +55,9 @@ type_map = {
     "types.ReferenceSearchProfileDraft": types.ReferenceSearchProfileDraft,
     "stream_types.ReferenceSearchProfileDraft": stream_types.ReferenceSearchProfileDraft,
 
+    "types.ShortenedLine": types.ShortenedLine,
+    "stream_types.ShortenedLine": stream_types.ShortenedLine,
+
     "types.ShotReferenceChoice": types.ShotReferenceChoice,
     "stream_types.ShotReferenceChoice": stream_types.ShotReferenceChoice,
 

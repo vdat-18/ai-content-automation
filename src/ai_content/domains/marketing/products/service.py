@@ -85,6 +85,7 @@ from .reference_ad import AdAnalyzer, ReferenceAdUnavailable
 from .reference_picker import ReferencePickerError, ShotReferencePicker
 from .references import ProfileGenerationError, ReferenceProfile, ReferenceProfileGenerator
 from .repositories import ProductRepository
+from .shortening import VoiceShortener, words_that_fit
 from .speech import (
     MAX_SPEEDUP,
     SAMPLE_TEXT,
@@ -323,9 +324,11 @@ class ProductCatalogService:
         ad_analyzer: AdAnalyzer | None = None,
         hook_writer: HookWriter | None = None,
         voice_picker: VoicePicker | None = None,
+        voice_shortener: VoiceShortener | None = None,
         usage: AIUsageTracker | None = None,
     ) -> None:
         self._usage = usage
+        self._voice_shortener = voice_shortener
         self._voice_picker = voice_picker
         self._ad_analyzer = ad_analyzer
         self._hook_writer = hook_writer
@@ -1856,8 +1859,10 @@ class ProductCatalogService:
         for extension in VOICEOVER_TYPES.values():
             await store.remove(f"{where}/voiceover.{extension}")
         planned = [reading.seconds for reading in segments]
-        try:
-            lengths = await make_voiceover(
+        original = list(segments)
+
+        async def read_all() -> list[float]:
+            read = await make_voiceover(
                 self._speaker,
                 segments,
                 folder / "voiceover.mp3",
@@ -1871,6 +1876,21 @@ class ProductCatalogService:
                 self._speaker,
                 count=sum(1 for reading in segments if reading.text.strip()),
             )
+            return read
+
+        try:
+            lengths = await read_all()
+            shortened = await self._shorten_long_lines(
+                record, segments, lengths, planned, hook.strip() != ""
+            )
+            if shortened:
+                segments[:] = [
+                    replace(r, text=shortened.get(i, r.text)) for i, r in enumerate(original)
+                ]
+                await self._save_voiceover_lines(
+                    product_id, record, {approved[i]: text for i, text in shortened.items()}
+                )
+                lengths = await read_all()
             await store.push(f"{where}/voiceover.mp3")
             heard = {
                 str(index): round(spoken_seconds(n, planned_seconds, reading.guide is not None), 2)
@@ -1922,6 +1942,7 @@ class ProductCatalogService:
             "warning" if too_long or misread else "ok",
             f"Read in voice {voice or 'default'}; shots {[round(n, 1) for n in lengths]} s"
             + (f"; chosen because: {voice_reason}" if voice_reason else "")
+            + (f"; shortened and read again: {[n + 1 for n in shortened]}" if shortened else "")
             + (f"; too long: {too_long}" if too_long else "")
             + (f"; the voice does not say the script in shots {misread}" if misread else ""),
         )
@@ -1933,6 +1954,48 @@ class ProductCatalogService:
             "too_long_shots": too_long,
             "misread_shots": misread,
         }
+
+    async def _shorten_long_lines(
+        self,
+        record: dict[str, Any],
+        segments: list[Reading],
+        lengths: list[float],
+        planned: list[float],
+        hook_opens: bool,
+    ) -> dict[int, str]:
+        """New text for each shot whose reading cannot be sped up enough to end inside its shot.
+
+        A talking shot that follows the speech of its clip and an opening line replaced by a hook
+        keep their text. Keyed by the position of the shot in `segments`.
+        """
+        if self._voice_shortener is None:
+            return {}
+        detail = await self._repository.get_detail(record["product_id"]) or {}
+        rules = await approved_rules(self._knowledge, KnowledgeStage.PREPARATION, "brief")
+        found: dict[int, str] = {}
+        for i, (reading, length, seconds) in enumerate(zip(segments, lengths, planned, strict=True)):
+            if (
+                length <= seconds * MAX_SPEEDUP
+                or reading.guide is not None
+                or not reading.text.strip()
+                or (i == 0 and hook_opens)
+            ):
+                continue
+            shorter = await self._voice_shortener.shorten(
+                detail, reading.text, words_that_fit(reading.text, length, seconds), rules.text
+            )
+            if shorter is not None:
+                found[i] = shorter
+        return found
+
+    async def _save_voiceover_lines(
+        self, product_id: str, record: dict[str, Any], lines: dict[int, str]
+    ) -> None:
+        """Keep the shortened lines in the brief, so the captions and the checks use them too."""
+        brief = record["brief"]
+        for index, text in lines.items():
+            brief["shots"][index]["voiceover"] = text
+        await self._repository.save_brief(product_id, record["user_idea"], brief, record["status"])
 
     async def voice_sample(self, voice: str, media_root: Path) -> Path:
         """A short reading in one voice, made once and kept so listening again costs nothing."""

@@ -83,6 +83,12 @@ class LlmResponseParser:
         __result__ = self.__options.merge_options(baml_options).parse_response(function_name="ReviewStoryboard", llm_response=llm_response, mode="request")
         return typing.cast(types.StoryboardReview, __result__)
 
+    def ShortenVoiceover(
+        self, llm_response: str, baml_options: BamlCallOptions = {},
+    ) -> types.ShortenedLine:
+        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="ShortenVoiceover", llm_response=llm_response, mode="request")
+        return typing.cast(types.ShortenedLine, __result__)
+
     def WriteHooks(
         self, llm_response: str, baml_options: BamlCallOptions = {},
     ) -> types.HookOptions:
@@ -162,6 +168,12 @@ class LlmStreamParser:
     ) -> stream_types.StoryboardReview:
         __result__ = self.__options.merge_options(baml_options).parse_response(function_name="ReviewStoryboard", llm_response=llm_response, mode="stream")
         return typing.cast(stream_types.StoryboardReview, __result__)
+
+    def ShortenVoiceover(
+        self, llm_response: str, baml_options: BamlCallOptions = {},
+    ) -> stream_types.ShortenedLine:
+        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="ShortenVoiceover", llm_response=llm_response, mode="stream")
+        return typing.cast(stream_types.ShortenedLine, __result__)
 
     def WriteHooks(
         self, llm_response: str, baml_options: BamlCallOptions = {},
