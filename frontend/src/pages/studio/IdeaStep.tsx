@@ -35,7 +35,7 @@ export function IdeaStep({ productId, product, productType, record, run }: { pro
 
   const begin = () => {
     const prefix = styles.length ? `Style: ${styles.join(", ").toLowerCase()}. ` : "";
-    start.mutate({ until: "script", idea: `${prefix}${idea}`.trim(), video_seconds: seconds, persona_id: chosen?.id });
+    start.mutate({ until: "images", idea: `${prefix}${idea}`.trim(), video_seconds: seconds, persona_id: chosen?.id });
   };
 
   return (
