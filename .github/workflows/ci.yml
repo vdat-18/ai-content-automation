@@ -14,7 +14,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: cp deploy/.env.example deploy/.env
+      - name: Dummy env (compose needs values; the tests use none of them)
+        run: |
+          cp deploy/.env.example deploy/.env
+          sed -i -E 's/^(AIC_POSTGRES_PASSWORD|AIC_AI_S3_ACCESS_KEY|AIC_AI_S3_SECRET_KEY)=$/=ci-dummy/' deploy/.env
       - name: Lint
         run: docker compose --env-file deploy/.env -f deploy/compose.yaml --profile tools run --rm --build test ruff check src tests
       - name: Test
