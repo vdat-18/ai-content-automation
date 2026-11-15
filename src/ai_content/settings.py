@@ -23,7 +23,7 @@ class ApplicationSettings(BaseSettings):
         "http://127.0.0.1:1234/v1", validation_alias="AIC_SCREENING_BASE_URL"
     )
     screening_api_key: SecretStr | None = Field(None, validation_alias="AIC_SCREENING_API_KEY")
-    screening_model: str = Field("gemini-3.8-flash", validation_alias="AIC_SCREENING_MODEL")
+    screening_model: str = Field("", validation_alias="AIC_SCREENING_MODEL")
 
     # --- Image generation; base URL and key fall back to the screening endpoint when empty ---
     image_base_url: str = Field("", validation_alias="AIC_IMAGE_BASE_URL")
@@ -50,7 +50,7 @@ class ApplicationSettings(BaseSettings):
     text_embedding_model: str = Field("", validation_alias="AIC_TEXT_EMBEDDING_MODEL")
 
     # Local ONNX image embedding used to drop duplicate references; empty disables it.
-    embedding_model: str = Field("dinov3-vits16", validation_alias="AIC_EMBEDDING_MODEL")
+    embedding_model: str = Field("", validation_alias="AIC_EMBEDDING_MODEL")
 
     database_backend: Literal["sqlite", "postgresql"] = Field(
         "sqlite", validation_alias="AIC_AI_DATABASE_BACKEND"

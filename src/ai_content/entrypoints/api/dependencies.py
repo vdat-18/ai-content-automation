@@ -68,7 +68,7 @@ class ApiRuntimeSettings:
     config_dir: Path
     screening_base_url: str = "http://127.0.0.1:1234/v1"
     screening_api_key: str | None = None
-    screening_model: str = "gemini-3.8-flash"
+    screening_model: str = ""
     embedding_model: str = ""
     text_embedding_base_url: str = ""
     text_embedding_api_key: str | None = None
