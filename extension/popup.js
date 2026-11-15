@@ -80,7 +80,7 @@ const refresh = () =>
     status.textContent = s.error ? `Send error: ${s.error}` : `Sent ${s.sent} packages to the collector`;
     paint({ box: walkerBox, bar: document.getElementById("walker-bar"), stop: document.getElementById("stop") }, w, Boolean(w), tiktokText);
     paint({ box: pinBox, bar: document.getElementById("pin-bar"), stop: document.getElementById("pin-stop") }, pin, Boolean(pin), pinterestText);
-    const lanes = { auto: w, "crawl-all": w, start: w, pins: pin };
+    const lanes = { "crawl-all": w, pins: pin };
     for (const [id, lane] of Object.entries(lanes)) {
       const button = document.getElementById(id);
       const busy = Boolean(lane?.running);
@@ -109,16 +109,6 @@ document.getElementById("capture").addEventListener("click", () => {
     if (tabs[0]?.id) sendToTab(tabs[0].id, { type: "capture-now" });
   });
 });
-document.getElementById("auto").addEventListener("click", () => {
-  const auto = {
-    concurrency: Number(document.getElementById("auto-tabs").value) || 3,
-    limit: Number(document.getElementById("auto-limit").value) || 0, // 0 = every product found
-  };
-  chrome.storage.local.set({ autoNote: "Scrolling the list..." });
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    if (tabs[0]?.id) sendToTab(tabs[0].id, { type: "harvest", rounds: auto.limit ? 80 : 400, auto });
-  });
-});
 document.getElementById("crawl-all").addEventListener("click", () => {
   const concurrency = Number(document.getElementById("auto-tabs").value) || 5;
   const urls = [
@@ -128,25 +118,6 @@ document.getElementById("crawl-all").addEventListener("click", () => {
   const meta = Object.fromEntries(urls.map((url) => [url, { category: true }]));
   chrome.storage.local.set({ autoNote: `Collecting ${urls.length} categories, ${concurrency} at a time, then the product pages.` });
   chrome.runtime.sendMessage({ type: "walker-start", kind: "category", urls, meta, concurrency, followUp: { concurrency } });
-});
-document.getElementById("harvest").addEventListener("click", () => {
-  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
-    if (tabs[0]?.id) sendToTab(tabs[0].id, { type: "harvest", rounds: 15 });
-  });
-});
-document.getElementById("start").addEventListener("click", async () => {
-  const count = Number(document.getElementById("count").value) || 20;
-  try {
-    const response = await fetch(`http://127.0.0.1:8000/api/v1/products/queue?limit=${count}`);
-    const urls = await response.json();
-    if (!urls.length) {
-      walkerBox.textContent = "The collector has no links left to collect.";
-      return;
-    }
-    chrome.runtime.sendMessage({ type: "walker-start", urls });
-  } catch (error) {
-    walkerBox.textContent = `Could not reach the collector: ${error}`;
-  }
 });
 document.getElementById("stop").addEventListener("click", () => chrome.runtime.sendMessage({ type: "walker-stop", lane: "tiktok" }));
 document.getElementById("pin-stop").addEventListener("click", () => chrome.runtime.sendMessage({ type: "walker-stop", lane: "pinterest" }));
