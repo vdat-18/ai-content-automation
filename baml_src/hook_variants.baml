@@ -16,8 +16,10 @@ function WriteHooks(product_json: string, story_json: string, rules: string, cou
     exactly matching the response schema.
 
     Write exactly {{ count }} hooks, each with a different angle: one is a question, one states a
-    number or a strong claim, one names a pain or a benefit. Use these angle names: "question",
-    "number", "pain_benefit". With more than 3 hooks, repeat angles with a new idea.
+    number or a strong claim, one gives a real result of the product and then the drawback of
+    ordinary alternatives that the viewer knows. Use these angle names: "question", "number",
+    "pain_benefit". With more than 3 hooks, repeat angles with a new idea. The hook only opens the
+    ad; the shots after it show the answer.
 
     Each hook is 7 words or fewer, spoken Vietnamese that sounds natural, and fits the opening
     scene of the storyboard. Use only facts from the product facts: never invent a number, a

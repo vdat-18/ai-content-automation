@@ -123,6 +123,15 @@ function DraftContentBrief(
     solves, how it works or is used, the result, what is in the box or the price), taken from the
     product facts, and never talks about the person or introduces them.
 
+    The shots are filmed separately and joined into one ad, so the viewer decides in the first
+    seconds of the first shot whether to keep watching, and acts after the last shot. The voiceover
+    of the first shot is the hook: it opens with one real result or fact of the product, taken from
+    the product facts (a number only when the facts give it), then names the drawback of ordinary
+    alternatives that the viewer knows, and leaves the answer to the shots that follow. The
+    voiceover of the last shot ends with exactly one action for the viewer (for example open the
+    cart or the product link), never two. Each middle shot covers one worry or one proof, not
+    several.
+
     script: the whole voice-over of the video as one continuous Vietnamese text, written first and
     then cut into consecutive parts, one per shot, so the voiceovers in order give the script again.
 
