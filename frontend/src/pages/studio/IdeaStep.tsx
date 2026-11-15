@@ -6,7 +6,7 @@ import { ErrorNote, Spinner } from "../../components/ui";
 import { useLightbox } from "../../hooks/useLightbox";
 import { API, usePeople, useStartPipeline } from "../../hooks/useStudio";
 import { runStopped } from "../../lib/studio";
-import { deleteJson, postJson, putFile, putJson } from "../../services/http";
+import { deleteJson, postJson, putFile } from "../../services/http";
 import type { BriefRecord, Persona, PipelineRun, Product } from "../../types/studio";
 
 // Every scene is filmed for 15 seconds but plays about 13 in the video, so the length is not exact
@@ -21,7 +21,6 @@ export function IdeaStep({ productId, product, productType, record, run }: { pro
   const [idea, setIdea] = useState(record?.user_idea ?? "");
   const client = useQueryClient();
   const people = usePeople();
-  const [picked, setPicked] = useState<string | null>(null);
   const start = useStartPipeline(productId);
   const startOver = useMutation({
     mutationFn: () => deleteJson(`${API}/${productId}/brief`),
@@ -30,8 +29,8 @@ export function IdeaStep({ productId, product, productType, record, run }: { pro
       setParams({});
     },
   });
-  // every video follows one person of the library: the one picked, else the default
-  const chosen = people.data?.find((p) => p.id === picked) ?? people.data?.find((p) => p.default) ?? people.data?.[0];
+  // every video follows the default person of the library; the user only sees "your photos"
+  const chosen = people.data?.find((p) => p.default) ?? people.data?.[0];
   const needsPhoto = people.isSuccess && !(chosen && chosen.photos > 0);
 
   const begin = () => {
@@ -55,7 +54,7 @@ export function IdeaStep({ productId, product, productType, record, run }: { pro
             </div>
           </section>
 
-          <PeoplePicker people={people.data ?? []} chosen={chosen} onPick={setPicked} />
+          <PersonPhotos chosen={chosen} />
 
           <section className="card pad stack" aria-labelledby="len">
             <h2 id="len">How long should the video be?</h2>
@@ -118,70 +117,57 @@ export function IdeaStep({ productId, product, productType, record, run }: { pro
   );
 }
 
-function PeoplePicker({ people, chosen, onPick }: { people: Persona[]; chosen: Persona | undefined; onPick: (id: string) => void }) {
+const MAX_PHOTOS = 3; // only this many photos of the person reach the image model
+
+function PersonPhotos({ chosen }: { chosen: Persona | undefined }) {
   const client = useQueryClient();
   const lightbox = useLightbox();
-  const [rights, setRights] = useState(false);
-  const [name, setName] = useState("");
   const refresh = () => client.invalidateQueries({ queryKey: ["persona"] });
   const photos = chosen?.photos ?? 0;
-  const create = useMutation({
-    mutationFn: () => postJson<Persona>(`${API}/persona`, { name: name.trim() }),
-    onSuccess: (person) => { setName(""); onPick(person.id); void refresh(); },
-  });
   const upload = useMutation({
-    // the first photo replaces the person's photos, the others join them
-    mutationFn: async (files: File[]) => {
-      for (const [index, file] of files.entries()) {
-        await putFile(`${API}/persona/${chosen?.id}/image?rights=confirmed${index > 0 || photos > 0 ? "&add=true" : ""}`, file);
+    // the first person is created on the first upload; "replace" starts the photos over
+    mutationFn: async ({ files, replace }: { files: File[]; replace: boolean }) => {
+      const person = chosen ?? (await postJson<Persona>(`${API}/persona`, { name: "Me" }));
+      const room = replace ? MAX_PHOTOS : MAX_PHOTOS - photos;
+      for (const [index, file] of files.slice(0, room).entries()) {
+        const add = replace ? index > 0 : index > 0 || photos > 0;
+        await putFile(`${API}/persona/${person.id}/image?rights=confirmed${add ? "&add=true" : ""}`, file);
       }
     },
     onSuccess: refresh,
   });
-  const makeDefault = useMutation({ mutationFn: () => putJson(`${API}/persona/${chosen?.id}/default`, {}), onSuccess: refresh });
-  const remove = useMutation({ mutationFn: () => deleteJson(`${API}/persona/${chosen?.id}`), onSuccess: refresh });
   const sources = Array.from({ length: photos }, (_, index) => ({ src: `${API}/persona/${chosen?.id}/image?n=${index}&v=${chosen?.attempts}` }));
+  const pick = (replace: boolean) => (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? []);
+    if (files.length) upload.mutate({ files, replace });
+    event.target.value = "";
+  };
   return (
     <section className="card pad stack" aria-labelledby="who">
       <div>
         <h2 id="who">Who appears in the video?</h2>
-        <p className="muted small">Every video follows one person, the same in all of them. The face in the images follows the photos; clothes and places change with each scene. A video keeps the person it was written for.</p>
+        <p className="muted small">{`Upload 1 to ${MAX_PHOTOS} clear photos of the person's face. The same person appears in every scene; clothes and places change.`}</p>
       </div>
-      <div className="row" role="group" aria-label="People">
-        {people.map((person) => (
-          <button key={person.id} type="button" className="chip" aria-pressed={chosen?.id === person.id} onClick={() => onPick(person.id)}>
-            {person.name}{person.default ? " (default)" : ""}
-          </button>
+      <div className="slots">
+        {sources.map((source, index) => (
+          <div className="slot" key={source.src}><img src={source.src} alt={`Photo ${index + 1}`} {...lightbox.zoom(sources, index)} /></div>
         ))}
-      </div>
-      <form className="row" onSubmit={(event) => { event.preventDefault(); if (name.trim()) create.mutate(); }}>
-        <input type="text" value={name} maxLength={60} placeholder="Add a person: name" aria-label="Name of a new person" onChange={(event) => setName(event.target.value)} />
-        <button type="submit" className="btn" disabled={!name.trim() || create.isPending}>{create.isPending ? "Adding…" : "Add person"}</button>
-      </form>
-      {chosen && (
-        <>
-          <div className="slots">
-            {sources.map((source, index) => (
-              <div className="slot" key={source.src}><img src={source.src} alt={`${chosen.name}, photo ${index + 1}`} {...lightbox.zoom(sources, index)} /></div>
-            ))}
-            {photos === 0 && <div className="slot" aria-hidden="true"><User size={32} /></div>}
-            <label className={`slot slot-add${rights ? "" : " disabled"}`} title={rights ? "Add photos" : "Confirm the permission below first"}>
-              {upload.isPending ? <Spinner /> : <Plus size={22} aria-hidden="true" />}
-              {upload.isPending ? "Uploading" : "Add photos"}
-              <input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={!rights || upload.isPending} onChange={(event) => { const files = Array.from(event.target.files ?? []); if (files.length) upload.mutate(files); event.target.value = ""; }} />
-            </label>
-          </div>
-          <label className="check">
-            <input type="checkbox" checked={rights} onChange={(event) => setRights(event.target.checked)} />
-            I have the right to use this person's image in ads.
+        {photos === 0 && <div className="slot" aria-hidden="true"><User size={32} /></div>}
+        {photos < MAX_PHOTOS && (
+          <label className="slot slot-add">
+            {upload.isPending ? <Spinner /> : <Plus size={22} aria-hidden="true" />}
+            {upload.isPending ? "Uploading" : "Add photos"}
+            <input type="file" accept="image/jpeg,image/png,image/webp" multiple disabled={upload.isPending} onChange={pick(false)} />
           </label>
-          <div className="row">
-            {!chosen.default && <button type="button" className="link" disabled={makeDefault.isPending} onClick={() => makeDefault.mutate()}>Make {chosen.name} the default</button>}
-            <button type="button" className="link link-danger" disabled={remove.isPending} onClick={() => { if (window.confirm(`Remove ${chosen.name} and the photos? Videos written for this person lose them.`)) remove.mutate(); }}>Remove {chosen.name}</button>
-          </div>
-        </>
+        )}
+      </div>
+      {photos > 0 && (
+        <label className="link">
+          Replace the photos
+          <input type="file" accept="image/jpeg,image/png,image/webp" multiple hidden disabled={upload.isPending} onChange={pick(true)} />
+        </label>
       )}
-      <ErrorNote error={create.error ?? upload.error ?? makeDefault.error ?? remove.error} />
+      <ErrorNote error={upload.error} />
       {lightbox.node}
     </section>
   );
