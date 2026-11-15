@@ -12,7 +12,7 @@
       return "captcha";
     }
     if (location.pathname.includes("/login") || text.includes("đăng nhập vào tiktok") || text.includes("log in to tiktok")) {
-      return "đăng nhập";
+      return "login";
     }
     return null;
   };
@@ -56,7 +56,7 @@
       },
     });
     state.captured = true;
-    banner(`AIC Collector: đã gửi trang (${reason})`);
+    banner(`AIC Collector: page sent (${reason})`);
   };
 
   // wait while a human clears a security check or login, then go on
@@ -64,7 +64,7 @@
     let reason = challengeReason();
     if (!reason) return;
     send({ type: "challenge", reason });
-    banner(`AIC Collector: chờ bạn xử lý ${reason}`);
+    banner(`AIC Collector: waiting for you to handle ${reason}`);
     while (challengeReason()) {
       send({ type: "heartbeat" });
       await wait(2000);
@@ -84,7 +84,7 @@
     return true;
   };
 
-  // The "Xem thêm" that loads more products sits under the product grid. The ones at the top of each
+  // The "Xem thêm" ("Load more" on the Vietnamese site) that loads more products sits under the product grid. The ones at the top of each
   // section are links to another page, so only a plain button, never one inside a link, is clicked,
   // and the lowest one on the page wins. The label is found from its text, whatever the markup is.
   const loadMoreButtons = () => {
@@ -150,21 +150,21 @@
       return;
     }
     if (!/\/pdp\//.test(location.pathname)) {
-      send({ type: "page-done", ok: false, reason: "không phải trang sản phẩm" });
+      send({ type: "page-done", ok: false, reason: "not a product page" });
       return;
     }
     if (emptyShell()) {
-      send({ type: "page-done", ok: false, reason: "trang rỗng" });
+      send({ type: "page-done", ok: false, reason: "empty page" });
       return;
     }
     await scrollLikeReader();
-    // the description is folded behind "Xem thêm"; open it so the page holds the whole text
+    // the description is folded behind "Xem thêm" ("See more"); open it so the page holds the whole text
     for (let i = 0; i < 3 && clickByText("Xem thêm"); i += 1) await wait(1500);
     await waitForHuman();
     snapshot("walker");
     for (let page = 2; page <= REVIEW_PAGES; page += 1) {
       await wait(1500 + Math.random() * 1200);
-      if (!clickByText("Tiếp theo")) break;
+      if (!clickByText("Tiếp theo") /* "Next" on the Vietnamese site */) break;
       await wait(2500);
       await waitForHuman();
       snapshot(`walker-reviews-${page}`);
@@ -192,8 +192,8 @@
     await wait(3000);
     for (let guard = 0; pinterestLoginWall() && guard < 600; guard += 1) {
       if (guard === 0) {
-        send({ type: "challenge", reason: "đăng nhập Pinterest" });
-        banner("AIC Collector: chờ bạn đăng nhập Pinterest");
+        send({ type: "challenge", reason: "Pinterest login" });
+        banner("AIC Collector: waiting for you to log in to Pinterest");
       }
       send({ type: "heartbeat" });
       await wait(2000);
@@ -207,8 +207,8 @@
       collectPins(pins);
       window.scrollBy({ top: Math.round(window.innerHeight * 0.9), behavior: "smooth" });
       send({ type: "heartbeat" });
-      banner(`AIC Collector: Pinterest ${meta.query}: ${pins.size} ảnh`);
-      send({ type: "progress", detail: `"${meta.query}": ${pins.size} ảnh` });
+      banner(`AIC Collector: Pinterest ${meta.query}: ${pins.size} images`);
+      send({ type: "progress", detail: `"${meta.query}": ${pins.size} images` });
       await wait(1400 + Math.random() * 900);
       collectPins(pins);
       idleRounds = pins.size === before ? idleRounds + 1 : 0;
@@ -219,7 +219,7 @@
       payload: { kind: "pinterest", product_type: meta.product_type, query: meta.query, pins: [...pins.values()] },
     });
     await wait(1500);
-    send({ type: "page-done", ok: pins.size > 0, reason: pins.size ? "" : "không thấy ảnh" });
+    send({ type: "page-done", ok: pins.size > 0, reason: pins.size ? "" : "no images found" });
   };
 
   // Scroll a feed page (home, category, search) so the page itself loads more products.
@@ -260,7 +260,7 @@
     let idle = 0;
     let stuck = 0;
     let clicks = 0;
-    let reason = "đã cuộn đủ số lượt";
+    let reason = "scrolled the full number of rounds";
     const startPath = location.pathname;
     let last = productCount();
     for (let i = 0; i < rounds; i += 1) {
@@ -268,37 +268,37 @@
       window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "smooth" });
       await wait(1500);
       if (auto && feedEnded()) {
-        reason = 'trang báo "No more products": đã hết sản phẩm';
+        reason = 'the page says "No more products"';
         break;
       }
       const payloads = state.sent.size;
       const { clicked, seen } = clickLoadMore();
       if (clicked) clicks += 1;
-      banner(`AIC Collector: lấy danh sách ${i + 1}/${rounds}, ${last} sản phẩm, đã bấm Xem thêm ${clicks} lần${clicked ? "" : ", chưa thấy nút Xem thêm"} (${seen} nút)`);
+      banner(`AIC Collector: collecting the list ${i + 1}/${rounds}, ${last} products, "Load more" clicked ${clicks} times${clicked ? "" : ", button not found yet"} (${seen} buttons)`);
       send({ type: "heartbeat" });
       const grew = await waitForGrowth(last, payloads, clicked ? 8000 : 3000);
       if (location.pathname !== startPath) {
         // a button that opens another page was pressed by mistake: go back and stop
         history.back();
         await wait(2500);
-        reason = "bấm nhầm một nút chuyển sang trang khác, đã quay lại";
+        reason = "clicked a button that led to another page, went back";
         break;
       }
       const now = productCount();
       if (auto && feedEnded()) {
         last = now;
-        reason = 'trang báo "No more products": đã hết sản phẩm';
+        reason = 'the page says "No more products"';
         break;
       }
       if (auto) {
         if (clicked) stuck = grew ? 0 : stuck + 1;
         idle = grew ? 0 : idle + 1;
         if (!clicked && idle >= FEED_IDLE_ROUNDS) {
-          reason = "không còn nút Xem thêm và không có sản phẩm mới";
+          reason = "no Load more button left and no new products";
           break;
         }
         if (stuck >= FEED_STUCK_CLICKS) {
-          reason = `bấm Xem thêm ${FEED_STUCK_CLICKS} lần liên tiếp mà không có sản phẩm mới`;
+          reason = `clicked Load more ${FEED_STUCK_CLICKS} times in a row with no new products`;
           break;
         }
       }
@@ -306,7 +306,7 @@
     }
     state.harvest = false;
     window.scrollTo({ top: 0, behavior: "smooth" });
-    banner(auto ? `AIC Collector: dừng cuộn (${reason}), có ${last} sản phẩm` : "AIC Collector: xong, đã gửi danh sách sản phẩm");
+    banner(auto ? `AIC Collector: stopped scrolling (${reason}), ${last} products` : "AIC Collector: done, product list sent");
     if (auto) send({ type: "harvest-done", auto, count: last, clicks, reason });
   };
 
@@ -337,7 +337,7 @@
       harvestFeed(Number(message.rounds) || 15, message.auto || null);
     }
     if (message?.type === "capture-now") {
-      if (challengeReason()) banner("AIC Collector: đang có kiểm tra bảo mật, hãy xử lý trước");
+      if (challengeReason()) banner("AIC Collector: a security check is showing, handle it first");
       else snapshot("manual");
     }
   });

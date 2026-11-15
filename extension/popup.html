@@ -11,75 +11,75 @@
         <span class="logo">A</span>
         <div>
           <strong>AIC Collector <span id="version" class="version"></span></strong>
-          <small id="status">Đã gửi 0 gói về collector</small>
+          <small id="status">Sent 0 packages to the collector</small>
         </div>
       </div>
-      <label class="switch" title="Gửi dữ liệu về collector khi bạn tự duyệt trang">
+      <label class="switch" title="Send data to the collector while you browse pages yourself">
         <input type="checkbox" id="enabled" />
         <span class="slider"></span>
-        <span class="switch-label">Tự thu khi duyệt</span>
+        <span class="switch-label">Collect while browsing</span>
       </label>
     </header>
 
     <section class="card hero">
-      <h2>1. Lấy sản phẩm TikTok Shop</h2>
-      <p class="hint">Đăng nhập và giải captcha trên trang TikTok Shop trước, rồi bấm nút dưới.</p>
+      <h2>1. Collect TikTok Shop products</h2>
+      <p class="hint">Log in and solve any captcha on TikTok Shop first, then press the button below.</p>
       <div class="row">
         <label class="field">
           <span>Tab song song</span>
           <input type="number" id="auto-tabs" value="3" min="1" max="5" />
         </label>
         <label class="field">
-          <span>Tối đa sản phẩm</span>
-          <input type="number" id="auto-limit" min="1" max="5000" placeholder="tất cả" />
+          <span>Max products</span>
+          <input type="number" id="auto-limit" min="1" max="5000" placeholder="all" />
         </label>
       </div>
-      <button id="auto" class="primary">Cuộn lấy danh sách, rồi cào chi tiết</button>
+      <button id="auto" class="primary">Scroll the list, then collect the details</button>
       <div id="auto-note" class="note"></div>
       <div id="walker-bar" class="bar" hidden><span></span></div>
       <div id="walker" class="progress"></div>
-      <button id="stop" class="ghost danger">Dừng</button>
+      <button id="stop" class="ghost danger">Stop</button>
     </section>
 
     <section class="card">
-      <h2>2. Ảnh tham chiếu Pinterest</h2>
-      <p class="hint">Đăng nhập Pinterest trước. Để trống hai ô để lấy hết.</p>
+      <h2>2. Pinterest reference images</h2>
+      <p class="hint">Log in to Pinterest first. Leave both boxes empty to collect everything.</p>
       <div class="row">
         <label class="field">
-          <span>Số từ khóa</span>
-          <input type="number" id="pin-searches" min="1" max="200" placeholder="tất cả" />
+          <span>Keywords</span>
+          <input type="number" id="pin-searches" min="1" max="200" placeholder="all" />
         </label>
         <label class="field">
-          <span>Ảnh mỗi từ khóa</span>
-          <input type="number" id="pin-images" min="10" max="2000" placeholder="hết" />
+          <span>Images per keyword</span>
+          <input type="number" id="pin-images" min="10" max="2000" placeholder="all" />
         </label>
       </div>
-      <button id="pins" class="primary">Crawl Pinterest theo từ khóa đã duyệt</button>
+      <button id="pins" class="primary">Collect Pinterest images for approved keywords</button>
       <div id="pin-bar" class="bar" hidden><span></span></div>
       <div id="pin-walker" class="progress"></div>
-      <button id="pin-stop" class="ghost danger" hidden>Dừng</button>
+      <button id="pin-stop" class="ghost danger" hidden>Stop</button>
     </section>
 
     <details class="card">
-      <summary>Thủ công</summary>
-      <button id="capture" class="secondary">Capture trang này</button>
-      <button id="harvest" class="secondary">Chỉ cuộn trang danh sách (15 lượt)</button>
+      <summary>Manual</summary>
+      <button id="capture" class="secondary">Capture this page</button>
+      <button id="harvest" class="secondary">Scroll the list page only (15 rounds)</button>
       <div class="row">
         <label class="field">
-          <span>Số sản phẩm</span>
+          <span>Products</span>
           <input type="number" id="count" value="20" min="1" max="200" />
         </label>
       </div>
-      <button id="start" class="secondary">Lấy từ collector và chạy từng tab</button>
+      <button id="start" class="secondary">Fetch from the collector and run one tab at a time</button>
     </details>
 
     <details class="card">
-      <summary>Xuất dữ liệu</summary>
+      <summary>Export data</summary>
       <div class="row">
         <button id="xlsx" class="secondary">Excel</button>
         <button id="json" class="secondary">JSON</button>
       </div>
-      <button id="media" class="secondary">Tải ảnh/video về máy</button>
+      <button id="media" class="secondary">Download images/videos to this computer</button>
       <div id="media-status" class="note"></div>
     </details>
     <script src="popup.js"></script>

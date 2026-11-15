@@ -27,3 +27,9 @@ just test
 1. Branch from `dev`.
 2. Make sure `ruff check` and `pytest` pass, and `pnpm lint/test/build` in `frontend/` if you touched it.
 3. Describe what changed and why.
+
+## About AGENTS.md
+
+`AGENTS.md` holds working rules for AI coding assistants (for example "do not commit, suggest a commit
+message"). You can ignore it as a human contributor; the rules above are the ones that apply to a pull
+request.

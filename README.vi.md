@@ -75,5 +75,5 @@ Migration PostgreSQL nằm trong `migrations/`; SQLite tự tạo bảng khi m�
 ## Tài liệu
 
 - `docs/video-ads-pipeline.md`: thiết kế gốc của luồng ảnh → clip → video.
-- `docs/model-limits.md`, `docs/affiliate-vietnam.md`, `docs/reference-corpus-and-content-plan.md`.
+- `docs/model-limits.md`, `docs/reference-corpus-and-content-plan.md`.
 - `frontend/DEVELOPMENT.md`, `extension/README.md`.

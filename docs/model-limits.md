@@ -1,54 +1,56 @@
-# Giới hạn của các model đang dùng
+# Limits of the models in use
 
-Số liệu đo trực tiếp qua ViLao (`https://api.vilao.ai/v1`), không lấy từ tài liệu bên ngoài. Cách
-đo: script gửi ảnh đánh số hoặc clip thử rồi xem kết quả trả về. Đo lại khi đổi model hoặc nhà cung
-cấp. Ghi ngày đo ở mỗi mục.
+Measured directly through ViLao (`https://api.vilao.ai/v1`), not taken from outside documentation.
+Method: a script sends numbered images or a test clip and checks what comes back. Measure again when
+the model or the provider changes. Each section carries its measurement date.
 
-## Model ảnh: `veo/gemini-3.1-flash-image` (đo 2026-11-05 và 2026-11-06)
+## Image model: `veo/gemini-3.1-flash-image` (measured 2026-11-05 and 2026-11-06)
 
-| Mục | Kết quả đo |
+| Item | Result |
 | --- | --- |
-| Số ảnh đầu vào mỗi yêu cầu | Nhận và dùng đủ **30 ảnh** (đã thử 5, 14, 15, 20, 30; ảnh trả về có đủ số). Từ 31 đến 40 ảnh báo "upstream overloaded", nhưng lỗi này cũng xảy ra lúc thử lại 30 ảnh, nên chưa chứng minh được giới hạn trên 30 |
-| Số ảnh đầu ra mỗi yêu cầu | **1 ảnh**. Gửi `n: 3` hay bảo "làm 4 ảnh" vẫn chỉ ra 1 ảnh (1 `choice`, 1 link) |
-| Thời gian | 60 đến 80 giây mỗi yêu cầu |
-| Size ảnh dọc | `size: "1024x1792"` cho ảnh 768x1376. `size: "9:16"` bị lỗi, không dùng |
-| Giá | 50 đ mỗi yêu cầu |
+| Input images per request | Accepts and uses all **30 images** (tried 5, 14, 15, 20, 30; the output reflects every image). 31 to 40 images return "upstream overloaded", but that error also appeared when retrying 30 images, so it does not prove a limit above 30 |
+| Output images per request | **1 image**. Sending `n: 3` or asking for "4 images" still returns 1 (one `choice`, one link) |
+| Time | 60 to 80 seconds per request |
+| Portrait size | `size: "1024x1792"` gives a 768x1376 image. `size: "9:16"` fails; do not use it |
+| Price | 50 VND per request |
 
-## Model video: `xai/grok-imagine-video` (khai báo `dw/xai/grok-imagine-video`, đo 2026-11-06)
+## Video model: `xai/grok-imagine-video` (declared as `dw/xai/grok-imagine-video`, measured 2026-11-06)
 
-| Mục | Kết quả đo |
+| Item | Result |
 | --- | --- |
-| Ảnh làm khung đầu (image-to-video) | Đúng **1 ảnh**. Clip bắt đầu từ ảnh này, giữ bố cục |
-| Độ dài clip image-to-video | `seconds` từ **1 đến 15** (đã thử 5, 8, 10, 12, 15 đều chạy; 16, 20, 30 bị từ chối: "seconds phải từ 1 đến 15"). `/models` chỉ liệt kê 6 và 15 nhưng các số khác vẫn chạy |
-| Độ phân giải | 704x1280 khi có ảnh khung đầu, 720x1280 khi chỉ có ảnh tham chiếu. Có hay không có `quality: "720p"` đều như nhau |
-| Ảnh tham chiếu (`reference_images`) | Tối đa **7 ảnh**. Gửi 8 ảnh bị từ chối: "nhận tối đa 7 ảnh tham chiếu" |
-| Độ dài clip khi dùng ảnh tham chiếu | Tối đa **10 giây** (10 giây chạy; 12 và 15 giây job báo "Yêu cầu không hợp lệ") |
-| Ảnh khung đầu cùng lúc với ảnh tham chiếu | **Bị từ chối** |
-| Ảnh tham chiếu không có khung đầu | Video dùng đúng hình tham chiếu nhưng dựng lại toàn bộ cảnh, không giữ bố cục |
-| Âm thanh | Clip có sẵn một track âm thanh (AAC) do Grok tự tạo, kể cả khi prompt bảo "không tiếng"; có thể ra lệnh cho Grok nói câu tiếng Việt, miệng cử động theo tiếng đó |
-| Giá | 999 đ mỗi yêu cầu, không phụ thuộc số giây |
+| First-frame image (image-to-video) | Exactly **1 image**. The clip starts from it and keeps the composition |
+| Clip length for image-to-video | `seconds` from **1 to 15** (5, 8, 10, 12 and 15 all ran; 16, 20 and 30 were rejected: "seconds must be from 1 to 15"). `/models` lists only 6 and 15, but the other values still work |
+| Resolution | 704x1280 with a first-frame image, 720x1280 with reference images only. `quality: "720p"` makes no difference |
+| Reference images (`reference_images`) | At most **7 images**. 8 images are rejected: "at most 7 reference images" |
+| Clip length with reference images | At most **10 seconds** (10 s ran; 12 s and 15 s jobs report "Invalid request") |
+| First-frame image together with reference images | **Rejected** |
+| Reference images without a first frame | The video uses the reference look but rebuilds the whole scene; the composition is not kept |
+| Audio | Every clip carries an AAC audio track made by Grok, even when the prompt says "no sound". Grok can be told to speak a Vietnamese sentence, with lip movement that follows it |
+| Price | 999 VND per request, independent of the number of seconds |
 
-**Quy tắc dùng (chốt 2026-11-14):** giá tính theo yêu cầu, không theo số giây hay độ phân giải, nên
-mỗi lần tạo clip luôn xin mức dài nhất và nét nhất model nhận: `seconds = 15` (`CLIP_SECONDS` trong
-`clips.py`), khung 9:16 với keyframe làm khung đầu (704x1280, không có mức cao hơn). Không xin clip
-ngắn hơn hay nhỏ hơn để tiết kiệm; cần ngắn thì cắt sau khi tạo. Đo lại khi đổi model hoặc nhà cung cấp.
+**Usage rule (settled 2026-11-14):** the price is per request, not per second or per resolution, so
+every clip request asks for the longest and sharpest output the model accepts: `seconds = 15`
+(`CLIP_SECONDS` in `clips.py`), 9:16 with the keyframe as the first frame (704x1280, no higher
+setting exists). Never ask for a shorter or smaller clip to save money; trim it after generation.
+Measure again when the model or the provider changes.
 
-Hệ quả: clip chỉ chọn một trong hai cách, keyframe làm khung đầu (đang dùng, tối đa 15 giây) hoặc tối
-đa 7 ảnh tham chiếu (tối đa 10 giây). Sản phẩm phải đúng ngay ở keyframe.
+Consequence: a clip uses one of two modes, the keyframe as the first frame (in use, up to 15 seconds)
+or up to 7 reference images (up to 10 seconds). The product must be correct already in the keyframe.
 
-## TTS: `bh2/tts-1` (đo 2026-11-06)
+## TTS: `bh2/tts-1` (measured 2026-11-06)
 
-| Mục | Kết quả đo |
+| Item | Result |
 | --- | --- |
-| Đầu vào | `input` là văn bản, kèm `voice` (`giongadam.mp3`, `hamy.mp3`, `tiendat.mp3`, `huuduc.mp3`, `kimoanh.mp3`, `maichi.mp3`, `auto`) và `response_format` (`mp3` hoặc `wav` theo `/models`) |
-| Đầu ra | Một file âm thanh. mp3: 24 kHz, mono, khoảng 49 kbps |
-| Độ dài đã chạy được | 400 ký tự (84 từ tiếng Việt) cho ra **28,9 giây** âm thanh, mất 11 giây để tạo; 80 ký tự cho 5,6 giây |
-| Giới hạn độ dài tối đa | **Chưa đo được**: dịch vụ chập chờn, các yêu cầu 800 ký tự trở lên trả `503 upstream request failed` sau 120 giây, nhưng cả yêu cầu 80 ký tự cũng lỗi cùng lúc đó. Đo lại khi dịch vụ ổn định |
-| Định dạng wav | Chưa đo được vì cùng lý do |
-| Giá | 20 đ mỗi yêu cầu |
+| Input | `input` is text, with `voice` (`giongadam.mp3`, `hamy.mp3`, `tiendat.mp3`, `huuduc.mp3`, `kimoanh.mp3`, `maichi.mp3`, `auto`) and `response_format` (`mp3` or `wav` according to `/models`) |
+| Output | One audio file. mp3: 24 kHz, mono, about 49 kbps |
+| Length that ran | 400 characters (84 Vietnamese words) gave **28.9 seconds** of audio in 11 seconds; 80 characters gave 5.6 seconds |
+| Maximum length | **Not measured**: the service was unstable; requests of 800 characters or more returned `503 upstream request failed` after 120 seconds, but an 80-character request failed at the same time. Measure again when the service is stable |
+| wav format | Not measured for the same reason |
+| Price | 20 VND per request |
 
-## Model chấm và viết brief: `gemini/gemini-3.6-flash`, dự phòng `cc/claude-sonnet-5`
+## Screening and brief model: `gemini/gemini-3.6-flash`, fallback `cc/claude-sonnet-5`
 
-Chưa đo giới hạn số ảnh. Qua 9Router (`AIC_SCREENING_BASE_URL`). Brief hiện gửi tối đa 9 ảnh sản phẩm
-mà vẫn chạy. Đã gặp: đầu ra bị cắt cụt khi `max_tokens` nhỏ vì Gemini tốn token để suy nghĩ, nên đặt
-`max_output_tokens` cho brief là 12000 và cho các bước chấm là 4000.
+Image-count limit not measured. Reached through 9Router (`AIC_SCREENING_BASE_URL`). The brief
+currently sends up to 9 product images and still works. Seen: output is cut short when `max_tokens`
+is small, because Gemini spends tokens on thinking; so `max_output_tokens` is set to 12000 for the
+brief and 4000 for the checking steps.

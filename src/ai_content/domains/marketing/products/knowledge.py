@@ -1,4 +1,4 @@
-"""Approved SecondBrain rules for product ads, and the LLM that keeps them tidy."""
+"""Approved creative rules for product ads, and the LLM that keeps them tidy."""
 
 from __future__ import annotations
 

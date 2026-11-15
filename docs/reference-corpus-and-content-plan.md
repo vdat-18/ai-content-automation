@@ -1,88 +1,117 @@
-# Thiết kế: kho ảnh tham chiếu và kế hoạch nhiều content cho một sản phẩm
+# Design: the reference image library and a plan for many contents per product
 
-Trạng thái: giai đoạn 1 (kho ảnh tự động) và giai đoạn 2 (chống trùng bằng embedding) đã làm xong; giai đoạn 3 còn là đề xuất. Giai đoạn 2 dùng DINOv3 ViT-S/16 chạy ONNX trên CPU (đổi được bằng `AIC_EMBEDDING_MODEL`), ngưỡng cosine 0,90 và dHash cách nhau tối đa 4 bit, chỉnh theo dữ liệu thật. Mục tiêu: một sản phẩm tạo được nhiều ads/content **khác nhau rõ rệt**, từ kho ảnh tham chiếu có thể lên tới hàng nghìn ảnh, không cần người duyệt từng ảnh.
+Status: phase 1 (automatic image library) and phase 2 (duplicate detection by embedding) are done;
+phase 3 is still a proposal. Phase 2 uses DINOv3 ViT-S/16 running on ONNX on the CPU (changeable with
+`AIC_EMBEDDING_MODEL`); two images count as duplicates by embedding similarity (`AIC_DUPLICATE_SIMILARITY`,
+default 0.80) or a dHash distance of at most 4 bits, tuned on real data. Goal: one product yields
+several **clearly different** ads from a library that can reach thousands of reference images, without
+a person reviewing each image.
 
-## 1. Vấn đề của bản hiện tại
+## 1. Problems of the first version
 
-| Điểm | Hiện tại | Hệ quả khi kho lớn |
+| Point | Then | Consequence for a large library |
 |---|---|---|
-| Duyệt | Người duyệt tay từng ảnh sau Gemini | Không làm nổi với hàng trăm ảnh |
-| Chọn ảnh cho brief | 8 ảnh đã duyệt mới nhất | Không phải ảnh tốt nhất, không hợp sản phẩm, không đa dạng |
-| Số content | Một brief cho mỗi sản phẩm | Muốn nhiều ads thì phải bấm lại, và các brief dễ giống nhau |
-| Chống trùng | Chỉ theo URL | Cùng một ảnh repin bằng link khác vẫn lọt, tốn lượt Gemini |
-| Chất lượng ảnh | Chỉ có đạt/không đạt | Không xếp hạng được |
+| Review | A person approves each image after the screening model | Not workable with hundreds of images |
+| Picking images for a brief | The 8 most recently approved images | Not the best, not fitting the product, not diverse |
+| Number of contents | One brief per product | Many ads mean clicking again, and the briefs tend to look alike |
+| Duplicate detection | By URL only | The same image repinned under another link still gets in and costs a screening call |
+| Image quality | Pass or fail only | Cannot rank |
 
-## 2. Nguyên tắc thiết kế
+## 2. Design principles
 
-1. **Gemini là cổng duy nhất.** Ảnh qua Gemini thì tự có hiệu lực ("live"); người dùng chỉ **xóa** ảnh trên frontend. Ảnh bị xóa được nhớ lại để lần crawl sau không nạp lại.
-2. **Rẻ trước, đắt sau.** Chống trùng bằng embedding chạy trước khi gọi Gemini để không trả tiền cho ảnh giống nhau.
-3. **Chọn ảnh bằng toán, viết brief bằng LLM.** Việc chọn ảnh tham chiếu (liên quan, đa dạng, chưa dùng) làm bằng thuật toán trên embedding; LLM chỉ nhìn một nhóm nhỏ đã được chọn.
-4. **Lập kế hoạch trước, viết sau.** Với N content của một sản phẩm, một bước lập kế hoạch bảo đảm N content khác nhau về góc bán, đối tượng và bối cảnh trước khi viết từng brief.
+1. **The screening model is the only gate.** An image that passes is live automatically; the user only
+   **deletes** images in the dashboard. Deleted images are remembered so the next crawl does not load
+   them again.
+2. **Cheap first, expensive later.** Duplicate detection by embedding runs before the screening call so
+   no money is spent on look-alike images.
+3. **Choose images with maths, write briefs with the LLM.** Choosing reference images (relevant,
+   diverse, unused) is an algorithm over embeddings; the LLM only sees a small chosen group.
+4. **Plan first, write after.** For N contents of one product, a planning step makes sure the N differ
+   in selling angle, audience and setting before each brief is written.
 
-## 3. Embedding: dùng loại nào
+## 3. Embedding: which kind
 
-Khuyến nghị: **mô hình CLIP chạy cục bộ** (ảnh và chữ cùng một không gian vector, không cần key, không dính hạn mức 429).
+Recommendation: a **locally run CLIP-style model** (image and text in one vector space, no key, no
+rate limits).
 
-| Phương án | Ưu | Nhược |
+| Option | Pros | Cons |
 |---|---|---|
-| A. CLIP cục bộ (thư viện `fastembed`, ONNX, CPU) | Miễn phí, nhanh, ảnh và chữ cùng không gian nên tìm ảnh theo ý tưởng được; không phụ thuộc mạng | Thêm một thư viện và mô hình khoảng vài trăm MB vào image Docker; chữ tiếng Việt kém, cần dịch ý tưởng sang tiếng Anh trước khi nhúng |
-| B. API embedding đa phương thức (qua 9Router nếu có) | Không thêm gánh nặng cho image, hiểu chữ Việt tốt hơn | Tốn tiền, có thể dính hạn mức, cần xác nhận 9Router có endpoint này |
-| C. Nhúng mô tả chữ do Gemini viết | Dùng được với bất kỳ endpoint OpenAI-compatible | Không bắt được ảnh trùng về mặt hình ảnh, mất thông tin thị giác |
+| A. Local CLIP (`fastembed`, ONNX, CPU) | Free, fast, image and text share a space so images can be found by idea; no network | One more library and a model of a few hundred MB in the Docker image; weak with Vietnamese text, so ideas need translating to English first |
+| B. Multimodal embedding API | No image weight, understands Vietnamese better | Costs money, may hit rate limits, the endpoint must exist |
+| C. Embed the text description written by the screening model | Works with any OpenAI-compatible endpoint | Cannot catch visually duplicated images; loses visual information |
 
-Cần kiểm chứng trước khi code: tên mô hình CLIP mà `fastembed` đang hỗ trợ, thời gian nhúng thực tế trên máy của bạn, và ngưỡng trùng phù hợp (dự kiến cosine từ 0,92 đến 0,95, chỉnh bằng dữ liệu thật).
+Embeddings serve three jobs:
+1. **Duplicate detection:** a new image whose cosine similarity to an existing one passes the threshold
+   is dropped before the screening call.
+2. **Relevance:** rank images by closeness to the user's idea and the product description.
+3. **Diversity:** avoid choosing many near-identical images for different contents.
 
-Embedding dùng cho 3 việc:
-1. **Chống trùng:** ảnh mới có cosine với ảnh đã có vượt ngưỡng thì bỏ trước khi gọi Gemini.
-2. **Độ liên quan:** xếp ảnh theo độ gần với ý tưởng của người dùng và mô tả sản phẩm.
-3. **Độ đa dạng:** tránh chọn nhiều ảnh gần nhau cho các content khác nhau.
+Storage: for a few thousand images per type, an array of numbers in a column with cosine computed in
+Python is enough. Move to `pgvector` only when the library is much larger (it needs another Postgres
+image, so not now).
 
-Lưu vector: với vài nghìn ảnh mỗi loại, lưu mảng số trong cột và tính cosine ngay trong Python là đủ. Chỉ chuyển sang `pgvector` khi kho lớn hơn nhiều (cần đổi image Postgres, không làm bây giờ).
-
-## 4. Luồng crawl → kho ảnh
+## 4. The crawl → library flow
 
 ```
 crawl Pinterest
-  → loại link trùng (đã có)
-  → nhúng embedding, loại ảnh gần giống ảnh đã có hoặc đã bị xóa
-  → Gemini chấm: đạt/không đạt + một đoạn mô tả ảnh (bối cảnh, ánh sáng, phong cách, màu, chỗ đặt sản phẩm)
-  → đạt: trạng thái live (hiện trên frontend), không đạt: rejected (ẩn, vẫn nhớ để khỏi chấm lại)
+  → drop duplicate links (done)
+  → embed; drop images close to an existing or a deleted image
+  → screening model: pass/fail + a description (setting, light, style, colours, where the product fits)
+  → pass: live (shown in the dashboard); fail: rejected (hidden, still remembered to avoid rescoring)
 ```
 
-Frontend: bỏ nút Duyệt/Loại, chỉ còn **Xóa** (đánh dấu xóa mềm). Không có điểm chất lượng; khi chọn ảnh cho brief, hệ thống lấy các ảnh khác nhau nhiều nhất theo vector embedding.
+Dashboard: the Approve/Reject buttons are gone; only **Delete** (soft delete) remains. There is no
+quality score; when choosing images for a brief the system takes the most different images by
+embedding vector.
 
-## 5. Từ một sản phẩm đến N content
+## 5. From one product to N contents
 
-Đầu vào: sản phẩm, N (số content muốn), ý tưởng người dùng (không bắt buộc, có thể nhiều ý).
+Input: the product, N (how many contents), and the user's ideas (optional, possibly several).
 
-1. **Rút gọn ứng viên.** Từ kho của loại sản phẩm, lấy khoảng 3N ảnh bằng điểm gộp:
-   `điểm = a·liên quan(ý tưởng, sản phẩm) + b·chất lượng − c·đã dùng cho sản phẩm này`
-   rồi chọn lần lượt kiểu **MMR** (mỗi ảnh được chọn làm giảm điểm các ảnh gần nó) để ứng viên đã đa dạng.
-2. **Lập kế hoạch (một lần gọi LLM, chỉ chữ).** Nhận thông tin sản phẩm, ý tưởng của người dùng và mô tả ngắn từng ứng viên. Trả về N kế hoạch: góc bán, đối tượng, câu móc (hook), ảnh chính và ảnh phụ, cách biến tấu bối cảnh. Ràng buộc: không hai kế hoạch trùng góc bán hoặc trùng ảnh chính.
-3. **Viết brief (N lần gọi song song).** Mỗi kế hoạch được viết thành brief đầy đủ, lần này LLM nhìn ảnh sản phẩm thật (tự chọn tối đa 5 ảnh để sinh ảnh) và đọc mô tả chữ của ảnh tham chiếu để chọn đúng 1 bối cảnh.
-4. **Ghi nhận đã dùng.** Mỗi ảnh tham chiếu đã dùng cho sản phẩm nào được lưu lại, lần sau ưu tiên ảnh chưa dùng. Dùng lại giữa các sản phẩm khác nhau thì được.
+1. **Narrow the candidates.** From the library of the product type, take about 3N images by a combined
+   score:
+   `score = a·relevance(idea, product) + b·quality − c·already used for this product`
+   then pick one by one in **MMR** style (each chosen image lowers the score of its neighbours) so the
+   candidates are already diverse.
+2. **Plan (one LLM call, text only).** It receives the product data, the user's ideas and a short
+   description of each candidate, and returns N plans: selling angle, audience, hook, main and
+   secondary image, how the setting varies. Constraint: no two plans share a selling angle or a main
+   image.
+3. **Write the briefs (N parallel calls).** Each plan becomes a full brief; this time the LLM sees the
+   real product photos (it picks at most 5 for image generation) and reads the text description of the
+   reference images to choose exactly one setting.
+4. **Record usage.** Which reference image was used for which product is stored, so later runs prefer
+   unused images. Reuse across different products is fine.
 
-Ý tưởng người dùng: nếu có nhiều ý thì mỗi ý neo một kế hoạch; nếu ít hơn N thì các kế hoạch còn lại agent tự chọn hướng, nhưng vẫn khác các ý đã có.
+User ideas: with several ideas, each anchors one plan; with fewer than N, the agent picks the
+direction of the rest but keeps them different from the existing ideas.
 
-## 6. Thay đổi dữ liệu
+## 6. Data changes
 
-- `product_briefs`: khóa chính đổi từ `product_id` thành `brief_id`, thêm `product_id`, `batch_id`, `plan` (JSON kế hoạch), `status`.
+- `product_briefs`: the primary key changes from `product_id` to `brief_id`; add `product_id`,
+  `batch_id`, `plan` (JSON) and `status`.
 - `reference_uses(product_id, image_id, brief_id)`.
-- `reference_images`: thêm `embedding`, `quality_score`, `removed_at`; bỏ trạng thái `approved`.
-- Frontend: trang Briefs cho phép nhập N, bấm "Tạo N content", xem danh sách brief của sản phẩm.
+- `reference_images`: add `embedding`, `quality_score`, `removed_at`; drop the `approved` status.
+- Dashboard: the Briefs page lets the user enter N, press "Create N contents" and see the briefs of
+  a product.
 
-## 7. Thứ tự làm đề xuất
+## 7. Suggested order
 
-| Giai đoạn | Nội dung | Phụ thuộc |
+| Phase | Content | Depends on |
 |---|---|---|
-| 1. Kho ảnh tự động | Ảnh qua Gemini là live; chỉ xóa; điểm chất lượng; frontend xếp theo điểm | Không |
-| 2. Embedding | Nhúng ảnh, chống trùng trước Gemini, lưu vector | Quyết định phương án A/B/C |
-| 3. Kế hoạch nhiều content | Rút gọn bằng MMR, lập kế hoạch, N brief, ghi nhận đã dùng, UI | Giai đoạn 1 và 2 |
+| 1. Automatic library | Images that pass screening are live; delete only; quality score; dashboard sorted by score | Nothing |
+| 2. Embedding | Embed images, detect duplicates before screening, store vectors | Choice of option A/B/C |
+| 3. Plan for many contents | MMR narrowing, planning, N briefs, usage record, UI | Phases 1 and 2 |
 
-Mỗi giai đoạn dùng được độc lập. Giai đoạn 1 nhỏ nhất và giải quyết ngay chuyện duyệt tay.
+Each phase is usable on its own. Phase 1 is the smallest and removes manual review at once.
 
-## 8. Rủi ro và cách giảm
+## 8. Risks and mitigations
 
-- **Gemini nhận nhầm ảnh rác vào kho** khi không còn người duyệt: ngưỡng điểm chất lượng tối thiểu, xóa nhanh trên giao diện, kho rejected vẫn xem được để chỉnh prompt.
-- **Ngưỡng trùng sai:** chỉnh bằng dữ liệu thật; lưu cả ảnh bị loại do trùng để kiểm tra lại.
-- **Bản quyền ảnh Pinterest:** vẫn chỉ dùng làm tham chiếu bối cảnh, brief không được sao chép nguyên ảnh, logo hay chữ (đã có trong prompt).
-- **Chi phí LLM nhân với N:** lập kế hoạch một lần, chỉ gửi ảnh của đúng kế hoạch cho bước viết; giới hạn N tối đa trên giao diện.
+- **The screening model lets junk into the library** once no one reviews: a minimum quality threshold,
+  quick deletion in the UI, and the rejected set stays viewable so the prompt can be tuned.
+- **A wrong duplicate threshold:** tune on real data; also keep images dropped as duplicates so they
+  can be checked again.
+- **Pinterest image copyright:** images are used only as setting references; a brief must not copy an
+  image, logo or text as is (this is already in the prompt).
+- **LLM cost multiplies with N:** plan once, send only the images of the plan to the writing step, and
+  cap N in the UI.

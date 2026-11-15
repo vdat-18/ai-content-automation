@@ -100,11 +100,9 @@ on open. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Docs
 
-Most design notes are in Vietnamese.
-
 - [docs/video-ads-pipeline.md](docs/video-ads-pipeline.md): original design of the image → clip → video flow.
-- [docs/model-limits.md](docs/model-limits.md), [docs/affiliate-vietnam.md](docs/affiliate-vietnam.md),
-  [docs/reference-corpus-and-content-plan.md](docs/reference-corpus-and-content-plan.md)
+- [docs/model-limits.md](docs/model-limits.md): measured limits of the image, video and voice models.
+- [docs/reference-corpus-and-content-plan.md](docs/reference-corpus-and-content-plan.md): the reference image library and the plan for several contents per product.
 - [frontend/DEVELOPMENT.md](frontend/DEVELOPMENT.md), [extension/README.md](extension/README.md)
 
 ## License

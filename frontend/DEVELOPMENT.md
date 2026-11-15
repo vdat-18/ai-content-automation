@@ -46,7 +46,7 @@ docker compose --env-file deploy/.env -f deploy/compose.yaml -f deploy/compose.d
 ## Tests
 
 The Node suites check the routing, the HTTP boundary and the research and
-SecondBrain pages:
+Memory (rules) pages:
 
 ```powershell
 pnpm --dir frontend test

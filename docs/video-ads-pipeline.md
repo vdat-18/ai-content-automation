@@ -1,82 +1,99 @@
-# Thiết kế: từ brief đến video ads, ảnh làm mỏ neo
+# Design: from brief to video ad, with images as the anchor
 
-Trạng thái: đã triển khai (xem README). Tài liệu giữ làm thiết kế gốc; vài chi tiết đã đổi: có người mẫu từ ảnh người dùng, giọng đọc, keyframe cắt 9:16, kịch bản được duyệt trước khi tạo ảnh. Mục tiêu: video ads ngắn ghép từ nhiều clip, trong đó **sản phẩm và bối cảnh giống nhau ở mọi clip** và giống sản phẩm thật.
+Status: implemented (see the README). This file is kept as the original design; some details have
+changed since: the video follows a person from the user's photos, there is a voice-over, keyframes are
+cropped to 9:16, and the script is reviewed before any image is made. Goal: a short video ad stitched
+from several clips where **the product and the setting look the same in every clip** and match the
+real product.
 
-## 1. Vì sao ảnh phải đi trước video
+## 1. Why images come before video
 
-Model video chỉ tạo được clip ngắn (vài giây) và mỗi lần tạo là một lần "bịa" lại. Nếu chỉ đưa chữ, sản phẩm đổi màu, đổi hình, đổi chữ trên nhãn, bối cảnh đổi giữa các clip. Cách chữa: **mọi clip bắt đầu từ một ảnh keyframe đã được kiểm duyệt** (ảnh to video), và mọi keyframe lại được tạo từ **ảnh sản phẩm thật** cộng **ảnh bối cảnh tham chiếu**. Ảnh rẻ hơn video rất nhiều nên sai ở ảnh thì sửa ở ảnh, không đốt tiền ở video.
+The video model only makes short clips, and every generation "invents" things again. Given text alone,
+the product changes colour and shape, label text changes, and the setting shifts between clips. The
+cure: **every clip starts from a reviewed keyframe image** (image-to-video), and every keyframe is made
+from the **real product photos** plus a **reference setting image**. Images are much cheaper than
+video, so a mistake is fixed at the image stage instead of burning video money.
 
-## 2. Luồng tổng thể
+## 2. Overall flow
 
 ```
-sản phẩm + ảnh thật + thông tin + ảnh tham chiếu + ý tưởng người dùng + quy tắc SecondBrain
-  → [1] Concept + storyboard (agent, một lần gọi)
-  → [2] Keyframe chủ (master): sản phẩm đặt vào bối cảnh tham chiếu         ← người xem và duyệt
-  → [3] Keyframe các shot còn lại, sinh từ keyframe chủ + ảnh sản phẩm thật
-  → [4] Kiểm tra tự động từng keyframe (đúng sản phẩm, đúng bối cảnh), sinh lại nếu sai
-  → [5] Mỗi keyframe → một clip video ngắn (ảnh to video)
-  → [6] Ghép clip + chữ + giọng đọc thành một video
+product + real photos + product data + reference images + user idea + creative rules
+  → [1] Concept + storyboard (one agent call)
+  → [2] Master keyframe: the product placed in the reference setting        ← you review it
+  → [3] Keyframes of the remaining shots, made from the master and the real product photos
+  → [4] Automatic check of every keyframe (right product, right setting); regenerate if wrong
+  → [5] Each keyframe → one short video clip (image-to-video)
+  → [6] Stitch clips + text + voice-over into one video
 ```
 
-Mỗi bước lưu kết quả để chạy lại riêng từng bước.
+Every step stores its result so a step can be rerun on its own.
 
-## 3. Brief đọc những gì (trả lời câu hỏi của bạn)
+## 3. What the brief reads
 
-Đúng, và thêm hai thứ:
-
-| Đầu vào | Dùng để |
+| Input | Used for |
 |---|---|
-| Thông tin sản phẩm (tên, giá, số bán, đánh giá, thông số, mô tả) | Góc bán, chi tiết đúng sự thật, không bịa tính năng |
-| Ảnh sản phẩm thật | Màu, hình dáng, chi tiết; cũng là ảnh gốc cho model tạo ảnh |
-| Ảnh tham chiếu và mô tả của Gemini | Bối cảnh để mượn |
-| Ý tưởng của người dùng (nếu có) | Hướng sáng tạo, agent làm giàu |
-| **Quy tắc SecondBrain (mới)** | Quy tắc hook mở đầu, từ cấm theo TikTok Shop, quy chuẩn thị giác, bài học đã tích lũy |
-| **Loại sản phẩm (mới)** | Cách quay hợp loại sản phẩm (đồ gia dụng khác mỹ phẩm) |
+| Product data (title, price, sales, rating, specifications, description) | Selling angle and true details; no invented features |
+| Real product photos | Colour, shape, details; also the source images for the image model |
+| Reference images and their descriptions (written by the screening model) | Settings to borrow |
+| The user's idea (optional) | Creative direction, which the agent enriches |
+| **Creative rules** | Opening-hook rules, TikTok Shop banned words, visual rules, accumulated lessons |
+| **Product type** | A way of filming that suits the type (household goods differ from cosmetics) |
 
-## 4. Một sản phẩm chọn mấy ảnh tham chiếu
+## 4. How many reference images per product
 
-Khuyến nghị: **mỗi video một ảnh tham chiếu chính, mỗi sản phẩm nhiều video thì mỗi video một ảnh khác nhau.**
+Recommendation: **one main reference image per video; when a product gets several videos, a different
+image for each video.**
 
-- **Trong một video, dùng một bối cảnh.** Các clip phải cùng một căn phòng, cùng ánh sáng thì ghép lại mới ra một video liền mạch. Nhiều ảnh tham chiếu khác nhau trong một video làm bối cảnh nhảy cóc, và model ảnh nhận được ít ảnh đầu vào mỗi lần nên không thể nhồi nhiều.
-- **Giữa các video của cùng một sản phẩm, đổi ảnh tham chiếu.** Đó là nguồn đa dạng cho N ads (kết hợp với việc đổi góc bán, đối tượng, câu móc).
-- **Ngoại lệ có kiểm soát:** cho phép một ảnh tham chiếu phụ cho một hai shot cần bối cảnh khác (ví dụ shot cận cảnh sử dụng), nhưng mặc định là một.
+- **Inside one video, use one setting.** The clips must show the same room and the same light to
+  stitch into one continuous video. Several different references in one video make the setting jump,
+  and the image model accepts only a limited number of input images per call.
+- **Between videos of the same product, change the reference image.** That is the source of variety
+  for N ads (together with changing the selling angle, the audience and the hook).
+- **Controlled exception:** one extra reference image is allowed for a shot or two that needs another
+  setting (for example a close-up of use), but the default is one.
 
-Cách chọn ảnh chính cho mỗi video: lấy ứng viên khác nhau nhiều nhất (như bây giờ), agent chọn ảnh hợp nhất với sản phẩm và ý tưởng; các video sau của cùng sản phẩm loại ảnh đã dùng.
+To pick the main image for each video: take the most different candidates, let the agent choose the one
+that fits the product and the idea, and drop images already used by earlier videos of the same product.
 
-## 5. Brief trở thành concept và storyboard
+## 5. The brief becomes a concept and a storyboard
 
-Một brief mới gồm:
+A brief now contains:
 
-- **Concept:** góc bán, đối tượng, câu móc, tông giọng, ảnh tham chiếu chính đã chọn, mô tả "thế giới" của video (bối cảnh, ánh sáng, màu).
-- **Storyboard 4 đến 6 shot**, mỗi shot gồm: vai trò (hook, vấn đề, demo, lợi ích, kêu gọi mua), mô tả hình, **prompt keyframe**, **prompt chuyển động** cho clip (máy quay, hành động ngắn), thời lượng, chữ trên màn hình, câu thoại.
+- **Concept:** selling angle, audience, hook, tone, the chosen main reference image, and a description
+  of the video's "world" (setting, light, colours).
+- **A storyboard of 4 to 6 shots**, each with: role (hook, problem, demo, benefit, call to action), a
+  description of the picture, the **keyframe prompt**, the **motion prompt** for the clip (camera, short
+  action), duration, on-screen text and the spoken line.
 
-Giữ nguyên nguyên tắc hiện tại: agent làm hết một lần, người dùng có thể thêm ý tưởng và sửa.
+The principle stays: the agent does everything in one call, and the user may add ideas and edit.
 
-## 6. Giữ nhất quán sản phẩm và bối cảnh
+## 6. Keeping product and setting consistent
 
-1. **Keyframe chủ trước.** Tạo một ảnh đặt sản phẩm thật vào bối cảnh tham chiếu (model ảnh nhận ảnh sản phẩm và ảnh bối cảnh làm đầu vào). Người dùng duyệt ảnh này trước khi tạo tiếp: ảnh này đúng thì cả video đúng.
-2. **Các shot còn lại sinh từ keyframe chủ**, kèm lại ảnh sản phẩm thật ở mọi lần gọi, chỉ đổi góc máy và hành động.
-3. **Kiểm tra tự động bằng Gemini** sau mỗi keyframe: so với ảnh sản phẩm thật (màu, hình dáng, số lượng, chữ trên nhãn) và với keyframe chủ (cùng bối cảnh, cùng ánh sáng). Sai thì sinh lại, tối đa vài lần rồi báo người dùng.
-4. **Tránh khuôn mặt người** ở bản đầu: shot chỉ có sản phẩm, bàn tay, không gian. Giữ nhất quán một nhân vật qua nhiều clip là vấn đề khó, để sau.
-5. **Clip:** mỗi clip tạo từ đúng một keyframe (ảnh to video). Nếu model video hỗ trợ khung đầu và khung cuối thì dùng keyframe shot sau làm khung cuối để chuyển cảnh mượt.
+1. **Master keyframe first.** Make one image that places the real product in the reference setting (the
+   image model receives the product photos and the setting image as input). The user approves it before
+   anything else is made: if this image is right, the whole video is right.
+2. **The remaining shots are generated from the master keyframe**, with the real product photos sent
+   again on every call, changing only the camera angle and the action.
+3. **An automatic check with the screening model** after each keyframe: against the real product
+   photos (colour, shape, quantity, label text) and against the master keyframe (same setting, same
+   light). If wrong, regenerate a few times at most, then tell the user.
+4. **Clips:** each clip is made from exactly one keyframe (image-to-video). If the video model supports
+   first and last frames, the next shot's keyframe can serve as the last frame for a smooth transition.
 
-## 7. Điểm duyệt của người dùng (tiết kiệm tiền)
+(The first version avoided human faces. That has since changed: a person from the user's photo
+library appears in the ads, and every image is checked against that photo.)
 
-1. Duyệt storyboard (chữ, rẻ).
-2. **Duyệt keyframe chủ** (ảnh, rẻ). Đây là cổng quan trọng nhất.
-3. Các keyframe còn lại: tự kiểm tra, người dùng chỉ xem lướt và xóa shot xấu.
-4. Chỉ sau đó mới tạo clip (đắt).
+## 7. Approval points (save money)
 
-## 8. Điều cần biết trước khi code
+1. Approve the storyboard (text, cheap).
+2. **Approve the master keyframe** (image, cheap). This is the most important gate.
+3. The other keyframes are checked automatically; the user only skims and deletes bad shots.
+4. Only then are clips made (expensive).
 
-- **Model ảnh và model video bạn có qua 9Router** (tên, khả năng). Yêu cầu tối thiểu: model ảnh nhận **nhiều ảnh đầu vào** (ảnh sản phẩm và ảnh bối cảnh) để chỉnh sửa; model video hỗ trợ **ảnh to video**.
-- Tỷ lệ khung hình (9:16 cho TikTok), độ dài video, số shot, thời lượng mỗi clip tối đa của model.
-- Giọng đọc và nhạc: làm ở bước ghép, chưa nằm trong giai đoạn ảnh.
+## 8. What had to be known before coding
 
-## 9. Thứ tự làm đề xuất
-
-1. Đổi brief thành concept và storyboard (một lần gọi), lưu nhiều shot.
-2. Tạo keyframe chủ (cần model ảnh) và trang duyệt.
-3. Tạo keyframe các shot và kiểm tra tự động.
-4. Tạo clip và ghép video.
-5. Nhiều video cho một sản phẩm (kế hoạch N content, đã mô tả trong tài liệu kho ảnh).
+- **The image and video models available** (names, capabilities). Minimum requirements: an image model
+  that takes **several input images** (product and setting) for editing, and a video model that
+  supports **image-to-video**. Measured limits are in [model-limits.md](model-limits.md).
+- Aspect ratio (9:16 for TikTok), video length, number of shots, maximum clip length of the model.
+- Voice-over and music: done at the stitching step.

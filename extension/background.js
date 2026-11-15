@@ -59,7 +59,7 @@ async function ingest(payload) {
     }
     const result = await response.json().catch(() => ({}));
     const failed = Number(result.check_failed || 0);
-    await chrome.storage.local.set({ sent: s.sent + 1, error: failed ? `${failed} ảnh không kiểm tra trùng được (xem trang References)` : "" });
+    await chrome.storage.local.set({ sent: s.sent + 1, error: failed ? `${failed} images could not be checked for duplicates (see the References page)` : "" });
   } catch (error) {
     await chrome.storage.local.set({ error: String(error) });
   }
@@ -115,7 +115,7 @@ async function fill() {
       if (w.next >= w.queue.length) {
         if (!Object.keys(w.active).length) {
           w.running = false;
-          w.note = `Xong: ${w.done} thành công, ${w.failed} lỗi`;
+          w.note = `Done: ${w.done} succeeded, ${w.failed} failed`;
           await locked(() => setState(w));
           badge(w);
         }
@@ -130,7 +130,7 @@ async function fill() {
         const fresh = await getState();
         fresh.active[tab.id] = url;
         fresh.next += 1;
-        fresh.note = `Đang chạy ${Object.keys(fresh.active).length} tab, nghỉ khoảng ${Math.round(fresh.delayMs / 1000)} giây giữa các trang`;
+        fresh.note = `Running ${Object.keys(fresh.active).length} tabs, pausing about ${Math.round(fresh.delayMs / 1000)} s between pages`;
         await setState(fresh);
         badge(fresh);
       });
@@ -157,7 +157,7 @@ async function finishTab(tabId, ok, reason) {
     } else {
       w.failed += 1;
     }
-    w.note = ok ? "OK" : `Bỏ qua (${reason})`;
+    w.note = ok ? "OK" : `Skipped (${reason})`;
     await setState(w);
     badge(w);
     return true;
@@ -201,26 +201,26 @@ async function pauseForHuman(tabId, reason) {
       });
     }
     if (count >= BREAKER_CAPTCHAS) {
-      await stopWalker(`Dừng vì gặp captcha ${count} lần trong 10 phút. Hãy nghỉ 15 đến 30 phút rồi chạy lại.`);
-      notify("AIC Collector đã dừng", `Gặp captcha ${count} lần trong 10 phút. Nghỉ 15 đến 30 phút rồi chạy lại để tránh bị đánh dấu thêm.`);
+      await stopWalker(`Stopped after ${count} captchas in 10 minutes. Wait 15 to 30 minutes, then run again.`);
+      notify("AIC Collector stopped", `${count} captchas in 10 minutes. Wait 15 to 30 minutes, then run again to avoid being flagged further.`);
       return;
     }
   }
   await locked(async () => {
     const w = await getState();
     w.paused = true;
-    w.note = `Đang chờ bạn xử lý: ${reason}`;
+    w.note = `Waiting for you: ${reason}`;
     await setState(w);
   });
   for (const id of timers.keys()) clearTimeout(timers.get(id));
   clearTimeout(humanTimer);
   humanTimer = setTimeout(async () => {
-    await stopWalker("Dừng vì quá 15 phút không ai xử lý captcha hoặc đăng nhập.");
-    notify("AIC Collector đã dừng", "Quá 15 phút không xử lý captcha hoặc đăng nhập. Chạy lại khi bạn sẵn sàng.");
+    await stopWalker("Stopped: no one handled the captcha or login within 15 minutes.");
+    notify("AIC Collector stopped", "The captcha or login was not handled within 15 minutes. Run again when you are ready.");
   }, HUMAN_WAIT_MS);
   chrome.action.setBadgeText({ text: "!" });
   if (tabId) chrome.tabs.update(tabId, { active: true }).catch(() => {});
-  notify("AIC Collector cần bạn", `Xử lý ${reason} trong tab TikTok, thu thập sẽ tự chạy tiếp.`);
+  notify("AIC Collector needs you", `Handle the ${reason} in the TikTok tab; collection resumes by itself.`);
 }
 
 // Products TikTok does not sell to this region come back in the queue every run, so remember them.
@@ -234,7 +234,7 @@ async function rememberUnavailable(url) {
 async function startWalker(urls, meta, concurrency, kind = "tiktok") {
   const waitMs = await breakerOpenFor();
   if (waitMs > 0) {
-    const note = `Vừa gặp captcha nhiều lần. Hãy nghỉ thêm khoảng ${Math.ceil(waitMs / 60_000)} phút rồi chạy lại.`;
+    const note = `Too many captchas just now. Wait about ${Math.ceil(waitMs / 60_000)} more minutes, then run again.`;
     await chrome.storage.local.set({ autoNote: note });
     await locked(() => setState({ ...EMPTY, note }));
     return;
@@ -249,7 +249,7 @@ async function startWalker(urls, meta, concurrency, kind = "tiktok") {
       meta: meta || {},
       kind,
       concurrency: Math.min(Math.max(Number(concurrency) || 1, 1), MAX_TABS),
-      note: "Bắt đầu",
+      note: "Started",
     }),
   );
   fill();
@@ -263,16 +263,16 @@ async function afterHarvest(auto, summary) {
     const urls = await (await fetch(`${COLLECTOR}/queue?limit=${Number(auto.limit) || 5000}`)).json();
     if (!urls.length) {
       await chrome.storage.local.set({
-        autoNote: `Dừng cuộn: ${summary.reason}. Trang có ${summary.count} sản phẩm, đã bấm Xem thêm ${summary.clicks} lần. Không có sản phẩm mới để lấy chi tiết.`,
+        autoNote: `Stopped scrolling: ${summary.reason}. The page has ${summary.count} products, "Load more" clicked ${summary.clicks} times. No new products to fetch.`,
       });
       return;
     }
     await chrome.storage.local.set({
-      autoNote: `Dừng cuộn: ${summary.reason}. Trang có ${summary.count} sản phẩm, đã bấm Xem thêm ${summary.clicks} lần. ${urls.length} sản phẩm chưa có chi tiết, đang lấy.`,
+      autoNote: `Stopped scrolling: ${summary.reason}. The page has ${summary.count} products, "Load more" clicked ${summary.clicks} times. Fetching details for ${urls.length} new products.`,
     });
     startWalker(urls, {}, auto.concurrency);
   } catch (error) {
-    await chrome.storage.local.set({ autoNote: `Không gọi được collector: ${error}` });
+    await chrome.storage.local.set({ autoNote: `Could not reach the collector: ${error}` });
   }
 }
 
@@ -302,14 +302,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       });
       break;
     case "challenge":
-      pauseForHuman(tabId, message.reason || "kiểm tra bảo mật");
+      pauseForHuman(tabId, message.reason || "security check");
       break;
     case "resumed":
       clearTimeout(humanTimer);
       locked(async () => {
         const w = await getState();
         w.paused = false;
-        w.note = "Đã xử lý, tiếp tục";
+        w.note = "Handled, continuing";
         await setState(w);
         badge(w);
         for (const id of Object.keys(w.active)) armTimer(Number(id));
@@ -325,7 +325,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       startWalker(message.urls, message.meta, message.concurrency, message.kind === "pinterest" ? "pinterest" : "tiktok");
       break;
     case "walker-stop":
-      stopWalker("Đã dừng");
+      stopWalker("Stopped");
       break;
     default:
       break;
