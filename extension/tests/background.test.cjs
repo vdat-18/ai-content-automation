@@ -15,6 +15,7 @@ function makeWorld(fetchImpl = async () => ({ json: async () => [] })) {
   const opened = [];
   const removed = [];
   const notes = [];
+  const refusals = { create: 0 };
   let handler;
   const chrome = {
     storage: {
@@ -28,6 +29,7 @@ function makeWorld(fetchImpl = async () => ({ json: async () => [] })) {
     },
     tabs: {
       create: async ({ url }) => {
+        if (refusals.create-- > 0) throw new Error("Tabs cannot be edited right now (user may be dragging a tab).");
         const id = nextTab++;
         opened.push({ id, url, at: vnow() });
         return { id };
@@ -63,7 +65,7 @@ function makeWorld(fetchImpl = async () => ({ json: async () => [] })) {
       const returned = handler(message, { tab: tab ? { id: tab } : undefined }, resolve);
       if (!returned) resolve();
     });
-  return { store, opened, removed, notes, send };
+  return { store, opened, removed, notes, refusals, send };
 }
 
 const wait = (virtualMs) => new Promise((resolve) => setTimeout(resolve, virtualMs / SPEED));
@@ -195,4 +197,13 @@ test("a Pinterest run and a TikTok run do not disturb each other", async () => {
   await wait(500);
   assert.equal(w.store.walker.running, false);
   assert.equal(w.store.pinWalker.running, true);
+});
+
+test("a tab that Chrome refuses to open while the user drags a tab is opened again", async () => {
+  const w = makeWorld();
+  w.refusals.create = 2;
+  await w.send({ type: "walker-start", urls: urls(2), concurrency: 2 });
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  assert.deepEqual(w.opened.map((entry) => entry.url), urls(2));
+  assert.equal(w.store.walker.running, true);
 });

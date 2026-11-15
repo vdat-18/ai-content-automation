@@ -152,7 +152,15 @@ async function fill(lane) {
       await waitForMinuteCap(lane);
       const url = w.queue[w.next];
       local[lane].recentOpens.push(Date.now());
-      const tab = await chrome.tabs.create({ url, active: false });
+      let tab;
+      try {
+        tab = await chrome.tabs.create({ url, active: false });
+      } catch (error) {
+        // Chrome refuses for a moment while the user drags a tab; the same link is tried again.
+        if (!/cannot be edited/.test(String(error))) throw error;
+        await sleep(1000);
+        continue;
+      }
       await locked(async () => {
         const fresh = await getState(lane);
         fresh.active[tab.id] = url;
