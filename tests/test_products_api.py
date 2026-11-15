@@ -198,6 +198,7 @@ def test_reference_image_review_flow(client: TestClient) -> None:
     again = client.post("/api/v1/products/ingest", json=body).json()
     assert again["added"] == 0
     assert client.post("/api/v1/products/reference-images/screen").status_code == 503
+    assert client.get("/api/v1/products/reference-images/screen").json()["status"] == "idle"
 
 
 def test_pipeline_endpoints_report_state_and_refuse_a_second_run(

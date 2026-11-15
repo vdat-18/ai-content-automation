@@ -101,6 +101,8 @@ async def _round_trip() -> None:
                 "pins": [{**pins[0], "image_url": "https://i.pinimg.com/236x/aa/bb/cc.jpg"}],
             }
         )
+        assert await screener.reference_images("live", None) == []  # the crawl does not review
+        assert (await screener.screen_images(10))["usable"] == 1
         [passed] = await screener.reference_images("live", None)
         assert passed["screening"] == {"usable": True}
 

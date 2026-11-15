@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Images, X } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Empty, ErrorNote, Spinner } from "../../components/ui";
 import { useLightbox } from "../../hooks/useLightbox";
 import { API } from "../../hooks/useStudio";
@@ -8,6 +8,7 @@ import { deleteJson, getJson, postJson, putJson } from "../../services/http";
 
 type Profile = { product_type: string; keywords: string[]; status: string };
 type Screening = { usable: boolean; description?: string; scene_description?: string };
+type ReviewRun = { status: "idle" | "running" | "done" | "stopped" | "failed"; total: number; reviewed: number; usable: number; rejected: number; failed: number; message: string };
 type SceneImage = { image_id: string; product_type: string; query: string; image_url: string; pin_url: string; title: string; status: string; screening: Screening | null };
 
 export function ScenesTab() {
@@ -24,17 +25,30 @@ export function ScenesTab() {
     queryFn: ({ signal }) => getJson<SceneImage[]>(`${API}/reference-images?${params}`, signal),
     refetchInterval: 15000,
   });
+  const run = useQuery({
+    queryKey: ["reference-review"],
+    queryFn: ({ signal }) => getJson<ReviewRun>(`${API}/reference-images/screen`, signal),
+    refetchInterval: (query) => (query.state.data?.status === "running" ? 2000 : false),
+  });
+  const running = run.data?.status === "running";
   const pending = useQuery({
     queryKey: ["reference-images", "pending"],
     queryFn: ({ signal }) => getJson<SceneImage[]>(`${API}/reference-images?status=pending`, signal),
-    refetchInterval: 15000,
+    refetchInterval: running ? 3000 : 15000,
   });
   const refresh = () => client.invalidateQueries({ queryKey: ["reference-images"] });
   const remove = useMutation({ mutationFn: (id: string) => deleteJson(`${API}/reference-images/${id}`), onSuccess: refresh });
   const review = useMutation({
-    mutationFn: () => postJson<{ reviewed: number; usable: number; rejected: number }>(`${API}/reference-images/screen?limit=30`),
-    onSuccess: refresh,
+    mutationFn: () => postJson<ReviewRun>(`${API}/reference-images/screen`),
+    onSuccess: (started) => {
+      client.setQueryData(["reference-review"], started);
+      void client.invalidateQueries({ queryKey: ["reference-review"] });
+    },
   });
+  const runStatus = run.data?.status;
+  useEffect(() => {
+    if (runStatus && runStatus !== "running" && runStatus !== "idle") void client.invalidateQueries({ queryKey: ["reference-images"] });
+  }, [runStatus, client]);
   const saveKeywords = useMutation({
     mutationFn: (profile: Profile) => putJson<Profile>(`${API}/reference-profiles/${encodeURIComponent(profile.product_type)}`, profile),
     onSuccess: () => client.invalidateQueries({ queryKey: ["reference-profiles"] }),
@@ -49,10 +63,9 @@ export function ScenesTab() {
       <p className="muted">Reference scenes are real photos the AI borrows the room, light and style from. Remove the ones you do not like.</p>
 
       <div className="row">
-        <button className="btn btn-primary" disabled={review.isPending || !pending.data?.length} onClick={() => review.mutate()}>
-          {review.isPending ? <><Spinner size={14} />Checking…</> : `Check new scenes (${pending.data?.length ?? 0})`}
+        <button className="btn btn-primary" disabled={review.isPending || running || !pending.data?.length} onClick={() => review.mutate()}>
+          {running ? <><Spinner size={14} />Checking…</> : `Check new scenes (${pending.data?.length ?? 0})`}
         </button>
-        {review.data && <span className="muted small">{`${review.data.usable} usable, ${review.data.rejected} rejected`}</span>}
         <select className="input" style={{ width: "auto" }} value={productType} onChange={(event) => setProductType(event.target.value)} aria-label="Product type">
           <option value="">All product types</option>
           {profiles.data.map((profile) => <option key={profile.product_type} value={profile.product_type}>{profile.product_type}</option>)}
@@ -66,6 +79,15 @@ export function ScenesTab() {
         </select>
         <span className="muted small">{`${images.data?.length ?? 0} scenes`}</span>
       </div>
+      {run.data && run.data.status !== "idle" && (
+        <div className="stack" role="status">
+          <div className="progress ok" role="progressbar" aria-valuenow={run.data.reviewed + run.data.failed} aria-valuemin={0} aria-valuemax={run.data.total} aria-label="Scenes checked"><div style={{ width: `${run.data.total ? ((run.data.reviewed + run.data.failed) / run.data.total) * 100 : 0}%` }} /></div>
+          <span className="muted small">{`${run.data.reviewed + run.data.failed} of ${run.data.total} checked · ${run.data.usable} in use · ${run.data.rejected} rejected${run.data.failed ? ` · ${run.data.failed} got no answer` : ""}`}</span>
+          {run.data.status === "stopped" && <div className="notice notice-warn">{run.data.message}</div>}
+          {run.data.status === "failed" && <div className="notice notice-warn">{`The check failed: ${run.data.message}`}</div>}
+          {run.data.status === "done" && <span className="muted small">Done.</span>}
+        </div>
+      )}
       <ErrorNote error={review.error ?? remove.error ?? images.error} />
 
       {images.data?.length ? (

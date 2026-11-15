@@ -9,6 +9,7 @@ import re
 import tempfile
 import unicodedata
 import uuid
+from collections.abc import Callable
 from dataclasses import replace
 from datetime import UTC, datetime
 from functools import partial
@@ -179,6 +180,7 @@ BRIEF_FIELDS = (
 )
 
 
+SCREEN_BATCH = 20  # pictures reviewed before progress is reported
 REFERENCE_CANDIDATES = 5  # pictures a model compares for one shot
 REFERENCE_LOOK_WEIGHT = 0.5  # how much looking like the product photos counts, next to the text
 
@@ -695,11 +697,39 @@ class ProductCatalogService:
         """Every live reference, whatever it was crawled for: all products draw from one pool."""
         return await self.reference_images("live", None)
 
+    @property
+    def can_review_images(self) -> bool:
+        return self._reviewer is not None
+
     async def screen_images(self, limit: int) -> dict[str, int]:
         """Review pending images with the vision model: usable ones go live, the rest are rejected."""
         if self._reviewer is None:
             raise ProfileGenerationError("LLM is not configured (AIC_SCREENING_API_KEY)")
         pending = (await self._repository.list_reference_images("pending", None))[:limit]
+        return await self._review_batch(pending)
+
+    async def screen_pending(self, report: Callable[[dict[str, int]], None]) -> bool:
+        """Review every pending image, one batch after another, and report the running totals.
+
+        Stops early, returning False, when a whole batch got no answer (quota used up or the model
+        is down): the images not reviewed stay pending, so the next run carries on from there.
+        """
+        if self._reviewer is None:
+            raise ProfileGenerationError("LLM is not configured (AIC_SCREENING_API_KEY)")
+        pending = await self._repository.list_reference_images("pending", None)
+        totals = {"total": len(pending), "reviewed": 0, "usable": 0, "rejected": 0, "failed": 0}
+        report(dict(totals))
+        for start in range(0, len(pending), SCREEN_BATCH):
+            counts = await self._review_batch(pending[start : start + SCREEN_BATCH])
+            for key, value in counts.items():
+                totals[key] += value
+            report(dict(totals))
+            if counts["reviewed"] == 0:
+                return False
+        return True
+
+    async def _review_batch(self, pending: list[dict[str, Any]]) -> dict[str, int]:
+        assert self._reviewer is not None
         reviews = await self._reviewer.review_all(pending)
         counts = {"reviewed": 0, "usable": 0, "rejected": 0, "failed": 0}
         for image_id, review in reviews.items():

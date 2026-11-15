@@ -104,3 +104,39 @@ async def test_images_wait_for_the_review_and_only_the_review_makes_them_live(tm
     assert counts == {"reviewed": 2, "usable": 1, "rejected": 1, "failed": 0}
     statuses = {i["product_type"]: i["status"] for i in await service.reference_images(None, None)}
     assert statuses == {"áo thun": "live", "cốc": "rejected"}
+
+
+async def test_review_of_all_waiting_images_stops_when_the_model_stops_answering(
+    monkeypatch,
+) -> None:
+    from ai_content.domains.marketing.products import service as service_module
+    from ai_content.domains.marketing.products.image_review import ReferenceImageReviewer
+
+    monkeypatch.setattr(service_module, "SCREEN_BATCH", 2)
+    batches = {"answered": 0, "limit": 1}
+
+    class _Reviewer(ReferenceImageReviewer):
+        def __init__(self) -> None:
+            pass
+
+        async def review_all(self, images, http=None):
+            answered = batches["answered"] < batches["limit"]
+            batches["answered"] += 1
+            return {i["image_id"]: ({"usable": True} if answered else None) for i in images}
+
+    service = ProductCatalogService(product_repository(), reviewer=_Reviewer())
+    pins = [
+        {"image_url": f"https://i.pinimg.com/236x/aa/bb/{n:02d}.jpg", "pin_url": f"/pin/{n}/", "title": "t"}
+        for n in range(5)
+    ]
+    await service.ingest({"kind": "pinterest", "product_type": "áo thun", "query": "q", "pins": pins})
+
+    seen: list[dict[str, int]] = []
+    assert await service.screen_pending(seen.append) is False  # batch 2 got no answer
+    assert seen[-1] == {"total": 5, "reviewed": 2, "usable": 2, "rejected": 0, "failed": 2}
+    assert len(await service.reference_images("pending", None)) == 3
+
+    batches.update(answered=0, limit=99)  # the quota is back: the next run carries on
+    assert await service.screen_pending(seen.append) is True
+    assert seen[-1]["reviewed"] == 3
+    assert await service.reference_images("pending", None) == []

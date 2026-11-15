@@ -274,15 +274,60 @@ async def list_reference_images(
     return await service.reference_images(status, product_type)
 
 
+# The review of every waiting picture runs here in batches, so closing the page does not stop it.
+# It stops by itself when the model stops answering (quota); the next press carries on.
+_screen_tasks: set[asyncio.Task[None]] = set()
+_screen_run: dict[str, Any] = {
+    "status": "idle",
+    "total": 0,
+    "reviewed": 0,
+    "usable": 0,
+    "rejected": 0,
+    "failed": 0,
+    "message": "",
+}
+
+
+async def _run_screening(open_scope: Any) -> None:
+    try:
+        async with open_scope() as service:
+            finished = await service.screen_pending(_screen_run.update)
+    except Exception as error:  # noqa: BLE001
+        logger.exception("Reference image review crashed")
+        _screen_run.update(status="failed", message=str(error)[:300])
+        return
+    if finished:
+        _screen_run.update(status="done", message="")
+    else:
+        _screen_run.update(
+            status="stopped",
+            message="The AI stopped answering (its quota may be used up). "
+            "Press the button again later: the pictures left are still waiting.",
+        )
+
+
 @router.post("/reference-images/screen")
 async def screen_reference_images(
-    limit: int = Query(30, ge=1, le=200),
+    request: Request,
     service: ProductCatalogService = Depends(get_product_catalog_service),
-) -> dict[str, int]:
-    try:
-        return await service.screen_images(limit)
-    except ProfileGenerationError as error:
-        raise HTTPException(status_code=503, detail=str(error)) from error
+) -> dict[str, Any]:
+    """Start reviewing every waiting picture in the background."""
+    if not service.can_review_images:
+        raise HTTPException(status_code=503, detail="LLM is not configured (AIC_SCREENING_API_KEY)")
+    if _screen_run["status"] == "running":
+        raise HTTPException(status_code=409, detail="The review is already running")
+    _screen_run.update(
+        status="running", total=0, reviewed=0, usable=0, rejected=0, failed=0, message=""
+    )
+    task = asyncio.create_task(_run_screening(product_catalog_scope_for(request)))
+    _screen_tasks.add(task)
+    task.add_done_callback(_screen_tasks.discard)
+    return dict(_screen_run)
+
+
+@router.get("/reference-images/screen")
+async def screen_reference_images_status() -> dict[str, Any]:
+    return dict(_screen_run)
 
 
 @router.post("/reference-images/backfill-fingerprints")
