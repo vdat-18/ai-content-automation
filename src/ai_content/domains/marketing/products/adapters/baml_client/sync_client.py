@@ -206,20 +206,6 @@ class BamlSyncClient:
                 "image": image,
             })
             return typing.cast(types.ReferenceImageReview, __result__.cast_to(types, types, stream_types, False, __runtime__))
-    def ReviewStoryboard(self, product_json: str,brief_json: str,rules: str,
-        baml_options: BamlCallOptions = {},
-    ) -> types.StoryboardReview:
-        # Check if on_tick is provided
-        if 'on_tick' in baml_options:
-            __stream__ = self.stream.ReviewStoryboard(product_json=product_json,brief_json=brief_json,rules=rules,
-                baml_options=baml_options)
-            return __stream__.get_final_response()
-        else:
-            # Original non-streaming code
-            __result__ = self.__options.merge_options(baml_options).call_function_sync(function_name="ReviewStoryboard", args={
-                "product_json": product_json,"brief_json": brief_json,"rules": rules,
-            })
-            return typing.cast(types.StoryboardReview, __result__.cast_to(types, types, stream_types, False, __runtime__))
     def ShortenVoiceover(self, line: str,max_words: int,rules: str,
         baml_options: BamlCallOptions = {},
     ) -> types.ShortenedLine:
@@ -367,18 +353,6 @@ class BamlStreamClient:
           lambda x: typing.cast(types.ReferenceImageReview, x.cast_to(types, types, stream_types, False, __runtime__)),
           __ctx__,
         )
-    def ReviewStoryboard(self, product_json: str,brief_json: str,rules: str,
-        baml_options: BamlCallOptions = {},
-    ) -> baml_py.BamlSyncStream[stream_types.StoryboardReview, types.StoryboardReview]:
-        __ctx__, __result__ = self.__options.merge_options(baml_options).create_sync_stream(function_name="ReviewStoryboard", args={
-            "product_json": product_json,"brief_json": brief_json,"rules": rules,
-        })
-        return baml_py.BamlSyncStream[stream_types.StoryboardReview, types.StoryboardReview](
-          __result__,
-          lambda x: typing.cast(stream_types.StoryboardReview, x.cast_to(types, types, stream_types, True, __runtime__)),
-          lambda x: typing.cast(types.StoryboardReview, x.cast_to(types, types, stream_types, False, __runtime__)),
-          __ctx__,
-        )
     def ShortenVoiceover(self, line: str,max_words: int,rules: str,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.BamlSyncStream[stream_types.ShortenedLine, types.ShortenedLine]:
@@ -479,13 +453,6 @@ class BamlHttpRequestClient:
             "image": image,
         }, mode="request")
         return __result__
-    def ReviewStoryboard(self, product_json: str,brief_json: str,rules: str,
-        baml_options: BamlCallOptions = {},
-    ) -> baml_py.baml_py.HTTPRequest:
-        __result__ = self.__options.merge_options(baml_options).create_http_request_sync(function_name="ReviewStoryboard", args={
-            "product_json": product_json,"brief_json": brief_json,"rules": rules,
-        }, mode="request")
-        return __result__
     def ShortenVoiceover(self, line: str,max_words: int,rules: str,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.baml_py.HTTPRequest:
@@ -569,13 +536,6 @@ class BamlHttpStreamRequestClient:
     ) -> baml_py.baml_py.HTTPRequest:
         __result__ = self.__options.merge_options(baml_options).create_http_request_sync(function_name="ReviewReferenceImage", args={
             "image": image,
-        }, mode="stream")
-        return __result__
-    def ReviewStoryboard(self, product_json: str,brief_json: str,rules: str,
-        baml_options: BamlCallOptions = {},
-    ) -> baml_py.baml_py.HTTPRequest:
-        __result__ = self.__options.merge_options(baml_options).create_http_request_sync(function_name="ReviewStoryboard", args={
-            "product_json": product_json,"brief_json": brief_json,"rules": rules,
         }, mode="stream")
         return __result__
     def ShortenVoiceover(self, line: str,max_words: int,rules: str,

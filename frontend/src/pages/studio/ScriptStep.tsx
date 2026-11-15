@@ -16,7 +16,6 @@ export function ScriptStep({ productId, record, frames }: { productId: string; r
   const lightbox = useLightbox();
   const brief = record.brief;
   const shots = brief.shots ?? [];
-  const problems = brief.quality_problems ?? [];
   const warnings = brief.warnings ?? [];
   const [references, setReferences] = useState<(string | null)[]>(() => shots.map((_, index) => brief.shot_references?.[index] ?? null));
   const scenes = useQuery({ queryKey: ["reference-images", "live"], queryFn: ({ signal }) => getJson<SceneImage[]>(`${API}/reference-images?status=live`, signal) });
@@ -35,14 +34,6 @@ export function ScriptStep({ productId, record, frames }: { productId: string; r
   return (
     <>
       <header className="page-head"><div><h1>Your script</h1><p>Read it like a script. Change any line, the voice-over follows what you write here.</p></div></header>
-      {problems.length > 0 && (
-        <div className="notice notice-warn" role="status">
-          <div>
-            {problems.length === 1 ? "The AI reviewer found 1 thing worth a second look:" : `The AI reviewer found ${problems.length} things worth a second look:`}
-            <ul>{problems.map((problem) => <li key={problem}>{problem}</li>)}</ul>
-          </div>
-        </div>
-      )}
       {warnings.length > 0 && (
         <div className="notice notice-warn" role="status"><div>TikTok may flag these words. Rewrite them before posting:<ul>{warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul></div></div>
       )}

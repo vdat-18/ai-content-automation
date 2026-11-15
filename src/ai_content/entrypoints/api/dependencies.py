@@ -36,7 +36,6 @@ from ai_content.domains.marketing.products.reference_picker import ShotReference
 from ai_content.domains.marketing.products.service import ProductCatalogService
 from ai_content.domains.marketing.products.shortening import VoiceShortener
 from ai_content.domains.marketing.products.speech import SpeechClient
-from ai_content.domains.marketing.products.storyboard_review import StoryboardReviewer
 from ai_content.domains.marketing.products.text_embedding import TextEmbedder
 from ai_content.domains.marketing.products.voice_picker import VoicePicker
 from ai_content.entrypoints.postgres_runtime import PostgresRuntimeContainer
@@ -399,16 +398,6 @@ def _reference_picker(settings: ApiRuntimeSettings) -> ShotReferencePicker | Non
     )
 
 
-def _storyboard_reviewer(settings: ApiRuntimeSettings) -> StoryboardReviewer | None:
-    if not settings.screening_api_key:
-        return None
-    return StoryboardReviewer.from_settings(
-        base_url=settings.screening_base_url,
-        api_key=settings.screening_api_key,
-        model=settings.review_model,
-    )
-
-
 def _hook_writer(settings: ApiRuntimeSettings) -> HookWriter | None:
     if not settings.screening_api_key:
         return None
@@ -465,7 +454,6 @@ async def product_catalog_scope(postgres: Any) -> AsyncIterator[ProductCatalogSe
         _posting_writer(settings),
         _speech_client(settings),
         _remote_media(settings),
-        _storyboard_reviewer(settings),
         _text_embedder(settings),
         _reference_picker(settings),
         clip_checker=_clip_checker(settings),

@@ -20,7 +20,7 @@ from .globals import DO_NOT_USE_DIRECTLY_UNLESS_YOU_KNOW_WHAT_YOURE_DOING_RUNTIM
 class TypeBuilder(type_builder.TypeBuilder):
     def __init__(self):
         super().__init__(classes=set(
-          ["AdStructure","ClaimCheck","ClipCheck","ContentBrief","CuratedRule","HookOption","HookOptions","KeyframeCheck","LabeledReference","PostingPackage","ReferenceCandidate","ReferenceImageReview","ShortenedLine","ShotReferenceChoice","StoryboardProblem","StoryboardReview","StoryboardShot","VoicePick",]
+          ["AdStructure","ClipCheck","ContentBrief","CuratedRule","HookOption","HookOptions","KeyframeCheck","LabeledReference","PostingPackage","ReferenceCandidate","ReferenceImageReview","ShortenedLine","ShotReferenceChoice","StoryboardShot","VoicePick",]
         ), enums=set(
           []
         ), runtime=DO_NOT_USE_DIRECTLY_UNLESS_YOU_KNOW_WHAT_YOURE_DOING_RUNTIME)
@@ -31,16 +31,12 @@ class TypeBuilder(type_builder.TypeBuilder):
 
 
     # #########################################################################
-    # Generated classes 18
+    # Generated classes 15
     # #########################################################################
 
     @property
     def AdStructure(self) -> "AdStructureViewer":
         return AdStructureViewer(self)
-
-    @property
-    def ClaimCheck(self) -> "ClaimCheckViewer":
-        return ClaimCheckViewer(self)
 
     @property
     def ClipCheck(self) -> "ClipCheckViewer":
@@ -91,14 +87,6 @@ class TypeBuilder(type_builder.TypeBuilder):
         return ShotReferenceChoiceViewer(self)
 
     @property
-    def StoryboardProblem(self) -> "StoryboardProblemViewer":
-        return StoryboardProblemViewer(self)
-
-    @property
-    def StoryboardReview(self) -> "StoryboardReviewViewer":
-        return StoryboardReviewViewer(self)
-
-    @property
     def StoryboardShot(self) -> "StoryboardShotViewer":
         return StoryboardShotViewer(self)
 
@@ -114,7 +102,7 @@ class TypeBuilder(type_builder.TypeBuilder):
 
 
 # #########################################################################
-# Generated classes 18
+# Generated classes 15
 # #########################################################################
 
 class AdStructureAst:
@@ -152,53 +140,6 @@ class AdStructureProperties:
     @property
     def rules(self) -> type_builder.ClassPropertyViewer:
         return type_builder.ClassPropertyViewer(self.__bldr.property("rules"))
-    
-    
-
-
-class ClaimCheckAst:
-    def __init__(self, tb: type_builder.TypeBuilder):
-        _tb = tb._tb # type: ignore (we know how to use this private attribute)
-        self._bldr = _tb.class_("ClaimCheck")
-        self._properties: typing.Set[str] = set([  "where",  "claim",  "evidence",  ])
-        self._props = ClaimCheckProperties(self._bldr, self._properties)
-
-    def type(self) -> baml_py.FieldType:
-        return self._bldr.field()
-
-    @property
-    def props(self) -> "ClaimCheckProperties":
-        return self._props
-
-
-class ClaimCheckViewer(ClaimCheckAst):
-    def __init__(self, tb: type_builder.TypeBuilder):
-        super().__init__(tb)
-
-    
-    def list_properties(self) -> typing.List[typing.Tuple[str, type_builder.ClassPropertyViewer]]:
-        return [(name, type_builder.ClassPropertyViewer(self._bldr.property(name))) for name in self._properties]
-    
-
-
-class ClaimCheckProperties:
-    def __init__(self, bldr: baml_py.ClassBuilder, properties: typing.Set[str]):
-        self.__bldr = bldr
-        self.__properties = properties # type: ignore (we know how to use this private attribute) # noqa: F821
-
-    
-    
-    @property
-    def where(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("where"))
-    
-    @property
-    def claim(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("claim"))
-    
-    @property
-    def evidence(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("evidence"))
     
     
 
@@ -811,100 +752,6 @@ class ShotReferenceChoiceProperties:
     @property
     def choice(self) -> type_builder.ClassPropertyViewer:
         return type_builder.ClassPropertyViewer(self.__bldr.property("choice"))
-    
-    
-
-
-class StoryboardProblemAst:
-    def __init__(self, tb: type_builder.TypeBuilder):
-        _tb = tb._tb # type: ignore (we know how to use this private attribute)
-        self._bldr = _tb.class_("StoryboardProblem")
-        self._properties: typing.Set[str] = set([  "where",  "problem",  "fix",  ])
-        self._props = StoryboardProblemProperties(self._bldr, self._properties)
-
-    def type(self) -> baml_py.FieldType:
-        return self._bldr.field()
-
-    @property
-    def props(self) -> "StoryboardProblemProperties":
-        return self._props
-
-
-class StoryboardProblemViewer(StoryboardProblemAst):
-    def __init__(self, tb: type_builder.TypeBuilder):
-        super().__init__(tb)
-
-    
-    def list_properties(self) -> typing.List[typing.Tuple[str, type_builder.ClassPropertyViewer]]:
-        return [(name, type_builder.ClassPropertyViewer(self._bldr.property(name))) for name in self._properties]
-    
-
-
-class StoryboardProblemProperties:
-    def __init__(self, bldr: baml_py.ClassBuilder, properties: typing.Set[str]):
-        self.__bldr = bldr
-        self.__properties = properties # type: ignore (we know how to use this private attribute) # noqa: F821
-
-    
-    
-    @property
-    def where(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("where"))
-    
-    @property
-    def problem(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("problem"))
-    
-    @property
-    def fix(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("fix"))
-    
-    
-
-
-class StoryboardReviewAst:
-    def __init__(self, tb: type_builder.TypeBuilder):
-        _tb = tb._tb # type: ignore (we know how to use this private attribute)
-        self._bldr = _tb.class_("StoryboardReview")
-        self._properties: typing.Set[str] = set([  "passed",  "problems",  "claims",  ])
-        self._props = StoryboardReviewProperties(self._bldr, self._properties)
-
-    def type(self) -> baml_py.FieldType:
-        return self._bldr.field()
-
-    @property
-    def props(self) -> "StoryboardReviewProperties":
-        return self._props
-
-
-class StoryboardReviewViewer(StoryboardReviewAst):
-    def __init__(self, tb: type_builder.TypeBuilder):
-        super().__init__(tb)
-
-    
-    def list_properties(self) -> typing.List[typing.Tuple[str, type_builder.ClassPropertyViewer]]:
-        return [(name, type_builder.ClassPropertyViewer(self._bldr.property(name))) for name in self._properties]
-    
-
-
-class StoryboardReviewProperties:
-    def __init__(self, bldr: baml_py.ClassBuilder, properties: typing.Set[str]):
-        self.__bldr = bldr
-        self.__properties = properties # type: ignore (we know how to use this private attribute) # noqa: F821
-
-    
-    
-    @property
-    def passed(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("passed"))
-    
-    @property
-    def problems(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("problems"))
-    
-    @property
-    def claims(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("claims"))
     
     
 

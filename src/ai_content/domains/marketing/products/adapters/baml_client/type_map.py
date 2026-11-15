@@ -19,9 +19,6 @@ type_map = {
     "types.AdStructure": types.AdStructure,
     "stream_types.AdStructure": stream_types.AdStructure,
 
-    "types.ClaimCheck": types.ClaimCheck,
-    "stream_types.ClaimCheck": stream_types.ClaimCheck,
-
     "types.ClipCheck": types.ClipCheck,
     "stream_types.ClipCheck": stream_types.ClipCheck,
 
@@ -57,12 +54,6 @@ type_map = {
 
     "types.ShotReferenceChoice": types.ShotReferenceChoice,
     "stream_types.ShotReferenceChoice": stream_types.ShotReferenceChoice,
-
-    "types.StoryboardProblem": types.StoryboardProblem,
-    "stream_types.StoryboardProblem": stream_types.StoryboardProblem,
-
-    "types.StoryboardReview": types.StoryboardReview,
-    "stream_types.StoryboardReview": stream_types.StoryboardReview,
 
     "types.StoryboardShot": types.StoryboardShot,
     "stream_types.StoryboardShot": stream_types.StoryboardShot,

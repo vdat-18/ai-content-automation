@@ -190,26 +190,6 @@ async def test_brief_writer_gets_the_approved_preparation_rules(tmp_path) -> Non
     assert record["brief"]["rule_ids"] == ["b"]  # the brief keeps which rules shaped it
 
 
-async def test_the_storyboard_reviewer_gets_the_review_rules_for_briefs(tmp_path) -> None:
-    from test_product_briefs import PRODUCT_ID as BRIEF_PRODUCT
-    from test_product_briefs import _service
-
-    seen: list[str] = []
-
-    class _Reviewer:
-        async def review(self, product, brief, rules=""):
-            seen.append(rules)
-            return []
-
-    service = await _service(tmp_path)
-    service._knowledge = _knowledge(tmp_path)
-    await _approved(service._knowledge, "r", "Word count", (KnowledgeStage.REVIEW,), asset="brief")
-    await _approved(service._knowledge, "k", "Clear skin", (KnowledgeStage.REVIEW,))
-    service._storyboard_reviewer = _Reviewer()  # type: ignore[assignment]
-    await service._review_storyboard({"product_id": BRIEF_PRODUCT}, {"shots": [{}]})
-    assert seen == ["- Word count: DO: Word count"]
-
-
 async def test_an_approved_rule_can_be_turned_off_and_is_then_not_used(tmp_path) -> None:
     import pytest
 

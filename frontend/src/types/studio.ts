@@ -12,7 +12,6 @@ export type PostPackage = { captions: string[]; hashtags: string[]; product_url:
 export type Brief = {
   title: string;
   script?: string;
-  quality_problems?: string[];
   warnings?: string[];
   shots?: Shot[];
   post_package?: PostPackage;

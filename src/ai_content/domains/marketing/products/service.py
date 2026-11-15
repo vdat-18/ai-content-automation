@@ -102,7 +102,6 @@ from .speech import (
     spoken_seconds,
 )
 from .stickers import render_stickers, sticker_lines, sticker_start, stickers_by_shot
-from .storyboard_review import StoryboardReviewer
 from .text_embedding import TextEmbedder, TextEmbeddingError
 from .video_check import LESSONS, VideoCheckUnavailable, judge, measure
 from .voice_picker import VoicePicker
@@ -332,7 +331,6 @@ class ProductCatalogService:
         poster: PostingPackageWriter | None = None,
         speaker: SpeechClient | None = None,
         remote_media: RemoteMedia | None = None,
-        storyboard_reviewer: StoryboardReviewer | None = None,
         text_embedder: TextEmbedder | None = None,
         reference_picker: ShotReferencePicker | None = None,
         clip_checker: ClipChecker | None = None,
@@ -358,7 +356,6 @@ class ProductCatalogService:
         self._poster = poster
         self._speaker = speaker
         self._remote_media = remote_media
-        self._storyboard_reviewer = storyboard_reviewer
         self._text_embedder = text_embedder
         self._reference_picker = reference_picker
         self._clip_checker = clip_checker
@@ -829,19 +826,17 @@ class ProductCatalogService:
                 rules=rules.text,
             )
             count_ok = "shots" not in brief or len(brief["shots"]) == shot_count
-            problems = await self._review_storyboard(detail, brief) if count_ok else []
             warnings = brief_warnings(brief, facts) if count_ok else []
-            if count_ok and not problems and not warnings:
+            if count_ok and not warnings:
                 break
             wanted = [] if count_ok else [f"Write exactly {shot_count} shots."]
             fixes = "\n\nRewrite the storyboard and fix these problems:\n- " + "\n- ".join(
-                wanted + problems + warnings
+                wanted + warnings
             )
         if not count_ok:
             raise BriefGenerationError(
                 f"The model wrote {len(brief['shots'])} shots instead of {shot_count}; try again"
             )
-        brief["quality_problems"] = problems
         brief["warnings"] = warnings
         brief["shot_references"] = await self._pick_shot_references(
             product_id, detail, brief, live
@@ -856,10 +851,10 @@ class ProductCatalogService:
         await self._log(
             product_id,
             "brief",
-            "flagged" if problems else "ok",
+            "flagged" if warnings else "ok",
             f"Wrote a {video_seconds}s brief with {len(brief.get('shots') or [])} shot(s) in "
             f"{attempts} attempt(s): {brief.get('title', '')}"
-            + (f". Still open: {'; '.join(problems)}" if problems else ""),
+            + (f". Still open: {'; '.join(warnings)}" if warnings else ""),
         )
         return await self._repository.get_brief(product_id)
 
@@ -1027,13 +1022,6 @@ class ProductCatalogService:
         await self._repository.save_brief(product_id, record["user_idea"], brief, record["status"])
         return await self._repository.get_brief(product_id)
 
-    async def _review_storyboard(self, product: dict[str, Any], brief: dict[str, Any]) -> list[str]:
-        """Problems the reviewer found; none when there is no reviewer or the review failed."""
-        if self._storyboard_reviewer is None or not brief.get("shots"):
-            return []
-        rules = await approved_rules(self._knowledge, KnowledgeStage.REVIEW, "brief")
-        return await self._storyboard_reviewer.review(product, brief, rules.text) or []
-
     def media(self, media_root: Path) -> MediaStore:
         """The store of generated files: the local folder plus the remote copy, when set up."""
         return MediaStore(Path(media_root), self._remote_media)
@@ -1115,14 +1103,10 @@ class ProductCatalogService:
         detail = await self._repository.get_detail(product_id)
         facts = product_facts(detail, current["user_idea"]) if detail else ""
         brief["warnings"] = brief_warnings(brief, facts)
-        brief.setdefault("quality_problems", [])
         if brief.get("shots") != current["brief"].get("shots"):
             # only a changed storyboard is worth a new review, which takes a minute
             await self._flag_changed_scenes(
                 product_id, current["brief"].get("shots") or [], brief.get("shots") or []
-            )
-            brief["quality_problems"] = (
-                await self._review_storyboard(detail, brief) if detail else []
             )
         await self._repository.save_brief(product_id, current["user_idea"], brief, status)
         return await self._repository.get_brief(product_id)

@@ -71,12 +71,6 @@ class LlmResponseParser:
         __result__ = self.__options.merge_options(baml_options).parse_response(function_name="ReviewReferenceImage", llm_response=llm_response, mode="request")
         return typing.cast(types.ReferenceImageReview, __result__)
 
-    def ReviewStoryboard(
-        self, llm_response: str, baml_options: BamlCallOptions = {},
-    ) -> types.StoryboardReview:
-        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="ReviewStoryboard", llm_response=llm_response, mode="request")
-        return typing.cast(types.StoryboardReview, __result__)
-
     def ShortenVoiceover(
         self, llm_response: str, baml_options: BamlCallOptions = {},
     ) -> types.ShortenedLine:
@@ -150,12 +144,6 @@ class LlmStreamParser:
     ) -> stream_types.ReferenceImageReview:
         __result__ = self.__options.merge_options(baml_options).parse_response(function_name="ReviewReferenceImage", llm_response=llm_response, mode="stream")
         return typing.cast(stream_types.ReferenceImageReview, __result__)
-
-    def ReviewStoryboard(
-        self, llm_response: str, baml_options: BamlCallOptions = {},
-    ) -> stream_types.StoryboardReview:
-        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="ReviewStoryboard", llm_response=llm_response, mode="stream")
-        return typing.cast(stream_types.StoryboardReview, __result__)
 
     def ShortenVoiceover(
         self, llm_response: str, baml_options: BamlCallOptions = {},

@@ -233,7 +233,6 @@ def test_brief_endpoints(client: TestClient, repository: PostgresProductReposito
         "scene": "b",
         "title": "t",
         "warnings": [],
-        "quality_problems": [],
     }
     assert client.get(f"/api/v1/products/{PRODUCT_ID}/brief").json()["brief"]["scene"] == "b"
 

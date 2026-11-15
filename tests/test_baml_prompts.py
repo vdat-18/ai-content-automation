@@ -7,7 +7,6 @@ _PROMPTS_WITH_SELLER_TEXT = (
     "hook_variants",
     "posting_package",
     "shot_reference",
-    "storyboard_review",
 )
 
 

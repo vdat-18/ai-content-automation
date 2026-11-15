@@ -23,16 +23,11 @@ class StreamState(BaseModel, typing.Generic[StreamStateValueT]):
     value: StreamStateValueT
     state: typing_extensions.Literal["Pending", "Incomplete", "Complete"]
 # #########################################################################
-# Generated classes (18)
+# Generated classes (15)
 # #########################################################################
 
 class AdStructure(BaseModel):
     rules: typing.List[str]
-
-class ClaimCheck(BaseModel):
-    where: typing.Optional[str] = None
-    claim: typing.Optional[str] = None
-    evidence: typing.Optional[str] = None
 
 class ClipCheck(BaseModel):
     passed: typing.Optional[bool] = None
@@ -106,16 +101,6 @@ class ShortenedLine(BaseModel):
 class ShotReferenceChoice(BaseModel):
     choice: typing.Optional[str] = None
 
-class StoryboardProblem(BaseModel):
-    where: typing.Optional[str] = None
-    problem: typing.Optional[str] = None
-    fix: typing.Optional[str] = None
-
-class StoryboardReview(BaseModel):
-    passed: typing.Optional[bool] = None
-    problems: typing.List["StoryboardProblem"]
-    claims: typing.List["ClaimCheck"]
-
 class StoryboardShot(BaseModel):
     role: typing.Optional[typing.Union[typing_extensions.Literal['hook'], typing_extensions.Literal['problem'], typing_extensions.Literal['demo'], typing_extensions.Literal['benefit'], typing_extensions.Literal['call_to_action']]] = None
     description: typing.Optional[str] = None
@@ -137,14 +122,13 @@ class VoicePick(BaseModel):
 
 
 # #########################################################################
-# Model rebuilds (18)
+# Model rebuilds (15)
 # #########################################################################
 # Resolve string forward references now that every model above is defined so
 # class declaration order never breaks Pydantic construction (issue #793).
 # Recursive models are intentionally omitted (Pydantic resolves those lazily;
 # eagerly rebuilding them can recurse).
 AdStructure.model_rebuild()
-ClaimCheck.model_rebuild()
 ClipCheck.model_rebuild()
 ContentBrief.model_rebuild()
 CuratedRule.model_rebuild()
@@ -157,7 +141,5 @@ ReferenceCandidate.model_rebuild()
 ReferenceImageReview.model_rebuild()
 ShortenedLine.model_rebuild()
 ShotReferenceChoice.model_rebuild()
-StoryboardProblem.model_rebuild()
-StoryboardReview.model_rebuild()
 StoryboardShot.model_rebuild()
 VoicePick.model_rebuild()

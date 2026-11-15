@@ -148,6 +148,14 @@ function DraftContentBrief(
     duration_seconds, on_screen_text (a short Vietnamese caption, or an empty string) and
     voiceover (Vietnamese, as long as the rules for a narrated or a talking shot say).
 
+    Nobody reviews the brief after you, so check it yourself before you answer, shot by shot,
+    and fix what fails. Every approved rule is met, counting the words of each voiceover when a
+    rule gives a word count. Every statement about what the product does, how well, what it is
+    made of, what it costs or any number is written in the product facts. The shots tell one
+    story from the hook to the call to action, and no two shots look alike in framing, camera
+    movement or action. Every keyframe_prompt and motion_prompt keeps the real product visible
+    and names the version of product_variant. The voiceovers in order give the script again.
+
     If the user gave an idea, treat it as the creative direction: keep its intent, make it
     concrete, fix weak points and enrich it with the product facts. If the
     idea is empty, choose the direction yourself.
