@@ -10,15 +10,15 @@ permissions:
 
 jobs:
   backend:
+    # Same image as `just test`, so ffmpeg, fonts and library versions match local runs.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install ffmpeg and fonts
-        run: sudo apt-get update && sudo apt-get install --yes --no-install-recommends ffmpeg fonts-dejavu-core
-      - uses: astral-sh/setup-uv@v5
-      - run: uv sync --extra dev --frozen
-      - run: uv run ruff check src tests
-      - run: uv run pytest -q
+      - run: cp deploy/.env.example deploy/.env
+      - name: Lint
+        run: docker compose --env-file deploy/.env -f deploy/compose.yaml --profile tools run --rm --build test ruff check src tests
+      - name: Test
+        run: docker compose --env-file deploy/.env -f deploy/compose.yaml --profile tools run --rm test python -m pytest -q
 
   frontend:
     runs-on: ubuntu-latest
