@@ -126,6 +126,7 @@ document.getElementById("pins").addEventListener("click", async () => {
   chrome.storage.local.set({ autoNote: "" });
   const searches = Number(document.getElementById("pin-searches").value) || 200;
   const maxImages = Number(document.getElementById("pin-images").value) || 0;
+  const concurrency = Number(document.getElementById("pin-tabs").value) || 3;
   try {
     const items = await (await fetch(`${API}/reference-queue?limit=${searches}`)).json();
     if (!items.length) {
@@ -133,7 +134,7 @@ document.getElementById("pins").addEventListener("click", async () => {
       return;
     }
     const meta = Object.fromEntries(items.map((item) => [item.url, { product_type: item.product_type, query: item.query, max_images: maxImages }]));
-    chrome.runtime.sendMessage({ type: "walker-start", kind: "pinterest", urls: items.map((item) => item.url), meta });
+    chrome.runtime.sendMessage({ type: "walker-start", kind: "pinterest", urls: items.map((item) => item.url), meta, concurrency });
   } catch (error) {
     pinBox.textContent = `Could not reach the API: ${error}`;
   }
