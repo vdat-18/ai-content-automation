@@ -64,7 +64,7 @@ export function IdeaStep({ productId, product, productType, record, run }: { pro
                 return <button key={n} type="button" className="chip" aria-pressed={seconds === n} onClick={() => setSeconds(n)}>{`${scenes} ${scenes === 1 ? "scene" : "scenes"}, about ${about} seconds`}</button>;
               })}
             </div>
-            <p className="muted small">{`The script takes about a minute and you read it first. After you approve it, the images and the video take about ${MINUTES[seconds]} more minutes. You can leave the page.`}</p>
+            <p className="muted small">{`The script and the images take a few minutes and you review the images before the video is made. After you approve them, the video takes about ${MINUTES[seconds]} more minutes. You can leave the page.`}</p>
           </section>
 
           <section className="card pad stack" aria-labelledby="idea">
@@ -85,9 +85,8 @@ export function IdeaStep({ productId, product, productType, record, run }: { pro
           <h2>What the AI does next</h2>
           <ol className="muted" style={{ margin: 0, paddingLeft: 20, display: "flex", flexDirection: "column", gap: 8 }}>
             <li>Writes the script in the voice of a young seller.</li>
-            <li>Stops so you can read and fix the script.</li>
             <li>Creates each scene and checks it matches the real product.</li>
-            <li>Stops so you can review the images.</li>
+            <li>Stops so you can review the images. The script stays open to edit.</li>
             <li>Then makes the video, voice-over and caption.</li>
           </ol>
           {record ? (
