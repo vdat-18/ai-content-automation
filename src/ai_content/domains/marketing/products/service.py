@@ -123,8 +123,8 @@ CLIP_CHECK_PHOTOS = 4
 STILL_TAIL_NOTE_SECONDS = 1.0  # a clip that ends this long without motion is noted in the run log
 # Few inputs keep the face accurate: with many pictures the model loses the person among them
 PERSONA_PHOTOS_PER_SHOT = 3
-PRODUCT_PHOTOS_PER_SHOT = 2
-# The check sees more of the product than the image model, so it can catch what the two
+PRODUCT_PHOTOS_PER_SHOT = 3
+# The check sees more of the product than the image model, so it can catch what the
 # photos sent to the model do not show
 KEYFRAME_CHECK_PHOTOS = 4
 # Rules that ask for clearer skin than the person has; a product for the skin must not follow them

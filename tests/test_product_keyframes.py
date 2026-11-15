@@ -100,13 +100,13 @@ async def test_keyframes_use_the_photos_the_brief_picked(tmp_path) -> None:
     await service._repository.upsert_detail(
         {"product_id": PRODUCT_ID, "title": "Giỏ", "images": urls}
     )
-    # no pick yet: the first photos of the product, but only two of them reach the model
+    # no pick yet: the first photos of the product, but only three of them reach the model
     await service.generate_keyframes(PRODUCT_ID, tmp_path)
-    assert keyframer.calls[-1][1] == 2
+    assert keyframer.calls[-1][1] == 3
     brief = {"title": "b", "shots": SHOTS, "product_photo_urls": [urls[6], urls[1], urls[3]]}
     await service._repository.save_brief(PRODUCT_ID, "", brief, "approved")
     await service.generate_keyframes(PRODUCT_ID, tmp_path, shot_index=0)
-    assert keyframer.calls[-1][1] == 2
+    assert keyframer.calls[-1][1] == 3
 
 
 async def test_failed_generation_is_recorded_and_attempts_count_up(tmp_path) -> None:
@@ -410,16 +410,17 @@ async def test_prompts_name_the_person_only_when_there_is_one() -> None:
     await generator.follow_up(shot, b"master", [b"p1"], persona=[b"face"])
     await generator.follow_up(shot, b"master", [b"p1"], persona=[b"face"], reference=b"pose")
     with_person, without, follow, with_reference = client.calls
-    assert with_person[1] == 4 and "Image 1 shows the person in the ad" in with_person[0]
-    assert "Images 2 to 3 are the real product photos" in with_person[0]
+    assert with_person[1] == 4 and "Images 1 to 2 are the real product photos" in with_person[0]
+    assert "Image 3 shows the person in the ad" in with_person[0]
     assert (
         "Image 4 is a scene reference" in with_person[0]
         and "Do not show any human face" not in with_person[0]
     )
     assert "Rules to follow in the picture:" + chr(10) + "- Clear skin: no acne" in with_person[0]
     assert without[1] == 1 and "Do not show any human face" in without[0]
-    assert follow[1] == 3 and "Image 1 shows the person in the ad" in follow[0]
-    assert "Image 2 is the approved master keyframe" in follow[0]
+    assert follow[1] == 3 and "Image 1 is the real product photo" in follow[0]
+    assert "Image 2 shows the person in the ad" in follow[0]
+    assert "Image 3 is the approved master keyframe" in follow[0]
     assert with_reference[1] == 4 and "Image 4 is a loose reference" in with_reference[0]
     assert "loose reference" not in follow[0]
 
@@ -559,8 +560,32 @@ async def test_the_prompt_names_every_photo_of_the_person() -> None:
     shot = {"keyframe_prompt": "he folds the basket"}
     await generator.master(shot, [b"p1"], None, persona=[b"a", b"b", b"c"])
     [(prompt, count)] = client.calls
-    assert count == 4 and "Images 1 to 3 show the person in the ad" in prompt
+    assert count == 4 and "Images 2 to 4 show the person in the ad" in prompt
     assert not re.search(r"\b(she|her)\b", prompt)
+
+
+async def test_the_product_comes_first_then_the_person_then_the_references() -> None:
+    from ai_content.domains.marketing.products.keyframes import KeyframeGenerator
+
+    client = _RecordingClient()
+    generator = KeyframeGenerator(client)  # type: ignore[arg-type]
+    shot = {"keyframe_prompt": "he folds the basket"}
+    await generator.follow_up(
+        shot, b"m", [b"p1", b"p2", b"p3"], persona=[b"a", b"b"], reference=b"r"
+    )
+    [(prompt, count)] = client.calls
+    assert count == 7
+    order = [
+        prompt.index(text)
+        for text in (
+            "Images 1 to 3 are the real product photos",
+            "Images 4 to 5 show the person in the ad",
+            "Image 6 is the approved master keyframe",
+            "Image 7 is a loose reference",
+        )
+    ]
+    assert order == sorted(order)
+    assert "first the real product exactly as in its photos, then the face" in prompt
 
 
 def test_the_story_note_gives_one_shot_the_whole_video() -> None:
@@ -661,7 +686,7 @@ async def test_the_check_sees_more_product_photos_than_the_image_model(tmp_path)
     checker = _PhotoChecker()
     service._checker = checker
     await service.generate_keyframes(PRODUCT_ID, tmp_path)
-    assert keyframer.calls[-1][1] == 2 and checker.photos == [4]
+    assert keyframer.calls[-1][1] == 3 and checker.photos == [4]
     await service.recheck_keyframe(PRODUCT_ID, 0, tmp_path)
     assert checker.photos == [4, 4]
 

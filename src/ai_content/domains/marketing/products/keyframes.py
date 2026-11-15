@@ -30,6 +30,11 @@ _PRODUCT_RULE = (
     "face in the middle, away from the left and right edges."
 )
 _NO_PEOPLE = "Do not show any human face; hands, the product and the space are enough."
+_PRIORITY = (
+    "What matters most, in this order: first the real product exactly as in its photos, then the "
+    "face of the person when there is one, then the rest. A reference image only gives an idea "
+    "of the setting, light or pose; it never overrides the product or the face."
+)
 _PERSONA_RULE = (
     "the person in the ad. The face in the new picture must be exactly this face, as if the same "
     "real person were photographed again: copy the face shape, jawline, forehead, eyebrows, eyes, "
@@ -272,14 +277,16 @@ class KeyframeGenerator:
         fix: str = "",
         persona: list[bytes] | None = None,
     ) -> bytes:
-        # Order matters to the model: the face first, then the product, then the scene
-        images: list[bytes] = []
-        parts: list[str] = []
+        # Order matters to the model: the product first, then the face, the scene last
+        images: list[bytes] = list(product_photos)
+        parts: list[str] = [_PRIORITY, _product_note(1, len(images))]
         if persona:
             images += persona
-            parts.append(_persona_note(1, len(images), shot.get("retouch", True)))
-        images += product_photos
-        parts.append(_product_note(len(images) - len(product_photos) + 1, len(images)))
+            parts.append(
+                _persona_note(
+                    len(images) - len(persona) + 1, len(images), shot.get("retouch", True)
+                )
+            )
         if scene is not None:
             images.append(scene)
             parts.append(
@@ -302,18 +309,20 @@ class KeyframeGenerator:
         persona: list[bytes] | None = None,
         reference: bytes | None = None,
     ) -> bytes:
-        images: list[bytes] = []
-        parts: list[str] = []
+        images: list[bytes] = list(product_photos)
+        parts: list[str] = [_PRIORITY, _product_note(1, len(images))]
         if persona:
             images += persona
-            parts.append(_persona_note(1, len(images), shot.get("retouch", True)))
+            parts.append(
+                _persona_note(
+                    len(images) - len(persona) + 1, len(images), shot.get("retouch", True)
+                )
+            )
         images.append(master)
         parts.append(
             f"Image {len(images)} is the approved master keyframe: keep the same product, light, "
             "colors and the same style of place."
         )
-        images += product_photos
-        parts.append(_product_note(len(images) - len(product_photos) + 1, len(images)))
         if reference is not None:
             images.append(reference)
             parts.append(
