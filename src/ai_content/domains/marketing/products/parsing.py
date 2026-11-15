@@ -18,6 +18,12 @@ def is_product_url(url: str) -> bool:
     return "/pdp/" in url
 
 
+def category_from_page_url(url: str) -> str | None:
+    """The category in the link of a category page, for example "food-beverages"."""
+    match = re.search(r"/c/([^/?#]+)/\d+", url)
+    return match.group(1) if match else None
+
+
 def product_id_from_url(url: str) -> str | None:
     match = re.search(r"/pdp/[^/?]+/(\d+)", url)
     return match.group(1) if match else None
@@ -220,6 +226,7 @@ def parse_feed_payload(body: str) -> list[dict[str, Any]]:
 
 __all__ = [
     "SOURCE",
+    "category_from_page_url",
     "is_feed_url",
     "is_non_physical",
     "is_product_url",

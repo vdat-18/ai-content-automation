@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 import tempfile
 import uuid
 from dataclasses import replace
@@ -74,6 +75,7 @@ from .knowledge import approved_rules, propose_feedback
 from .media import MediaDownloadReport, download_product_media
 from .media_store import MediaStore, RemoteMedia
 from .parsing import (
+    category_from_page_url,
     is_feed_url,
     is_product_url,
     junk_reason,
@@ -299,6 +301,15 @@ def _clip_prompt(shot: dict[str, Any], with_person: bool, fix: str = "") -> str:
     )
 
 
+
+def _with_category(product: dict[str, Any]) -> dict[str, Any]:
+    """The category of the page the product was collected from, else the first one of its page."""
+    if product.get("category"):
+        return product
+    names = product.get("categories") or []
+    slug = re.sub(r"[^a-z0-9]+", "-", str(names[0]).lower()).strip("-") if names else ""
+    return {**product, "category": slug} if slug else product
+
 class ProductCatalogService:
     # Every request makes its own service, so the clips being collected are kept for the process
     _collecting: set[tuple[str, int]] = set()
@@ -520,6 +531,9 @@ class ProductCatalogService:
             items = parse_feed_payload(str(payload.get("body") or ""))
             if not items:
                 logger.warning("A product feed answered with no product we can read: {}", url[:120])
+            category = category_from_page_url(str(payload.get("page_url") or ""))
+            for item in items if category else []:
+                item["category"] = category
             count = await self._repository.upsert_listing(items) if items else 0
             return {"stored": "listing", "count": count}
         if kind == "pinterest":
@@ -2357,7 +2371,7 @@ class ProductCatalogService:
         return await self._repository.queue(limit)
 
     async def details(self, include_junk: bool = False) -> list[dict[str, Any]]:
-        products = await self._repository.list_details()
+        products = [_with_category(p) for p in await self._repository.list_details()]
         return products if include_junk else [p for p in products if junk_reason(p) is None]
 
     async def download_media(self, media_root: Path) -> MediaDownloadReport:

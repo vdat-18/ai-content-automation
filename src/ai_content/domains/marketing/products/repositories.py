@@ -249,8 +249,9 @@ class PostgresProductRepository:
         return _queue_candidates(list(rows), limit)
 
     async def list_details(self) -> list[dict[str, Any]]:
+        """Every collected product page; the category of the list it came from rides along."""
         statement = (
-            select(marketplace_products.c.detail)
+            select(marketplace_products.c.detail, marketplace_products.c.listing)
             .where(
                 marketplace_products.c.detail.is_not(None),
                 marketplace_products.c.deleted.is_(False),
@@ -258,7 +259,13 @@ class PostgresProductRepository:
             .order_by(marketplace_products.c.product_id)
         )
         async with self._engine.connect() as connection:
-            return list((await connection.execute(statement)).scalars().all())
+            rows = (await connection.execute(statement)).all()
+        return [
+            {**detail, "category": listing["category"]}
+            if listing and listing.get("category")
+            else detail
+            for detail, listing in rows
+        ]
 
     async def list_listing(self) -> list[dict[str, Any]]:
         statement = (

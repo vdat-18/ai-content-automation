@@ -31,6 +31,7 @@ export type Product = {
   rating: number | string | null;
   seller: { name: string | null };
   images: string[];
+  category?: string;
 };
 export type OutputItem = {
   product_id: string;

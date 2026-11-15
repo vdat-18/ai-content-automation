@@ -6,6 +6,7 @@ from openpyxl import load_workbook
 from tests.pgstore import product_repository
 
 from ai_content.domains.marketing.products.parsing import (
+    category_from_page_url,
     is_feed_url,
     parse_feed_payload,
     parse_product_page,
@@ -228,3 +229,57 @@ def test_a_category_feed_is_recognised_and_read_wherever_it_nests_the_products()
     items = parse_feed_payload(body)
     assert [item["product_id"] for item in items] == ["9"]
     assert items[0]["sold_count"] == 6000
+
+
+def test_the_category_comes_from_the_link_of_the_category_page() -> None:
+    page = "https://shop.tiktok.com/vn/c/food-beverages/700437?source=ecommerce_mall"
+    assert category_from_page_url(page) == "food-beverages"
+    assert category_from_page_url("https://shop.tiktok.com/vn") is None
+    assert category_from_page_url("https://shop.tiktok.com/vn/pdp/ao/1730000000000000001") is None
+
+
+async def test_a_product_keeps_the_category_of_the_list_it_was_collected_from() -> None:
+    service = ProductCatalogService(product_repository())
+    feed = json.dumps(
+        {
+            "data": {
+                "productList": [
+                    {
+                        "product_id": "1730000000000000001",
+                        "title": "Áo thun",
+                        "product_price_info": {"currency_name": "VND"},
+                    }
+                ]
+            }
+        }
+    )
+    await service.ingest(
+        {
+            "kind": "json",
+            "url": "x/homepage_desktop/products_by_category",
+            "page_url": "https://shop.tiktok.com/vn/c/fashion/601450?source=x",
+            "body": feed,
+        }
+    )
+    await service.ingest({"kind": "page", "url": URL, "html": HTML})
+    [product] = await service.details()
+    assert product["category"] == "fashion"
+
+
+async def test_a_product_sent_alone_takes_its_category_from_its_own_page() -> None:
+    service = ProductCatalogService(product_repository())
+    info = {**INFO, "product_id": "1730000000000000005"}
+    html = (
+        '<script>"product_info":'
+        + json.dumps(info, ensure_ascii=False, separators=(",", ":"))
+        + ',"category_name":"Food & Beverages","category_name":"Snacks"</script>'
+    )
+    await service.ingest(
+        {
+            "kind": "page",
+            "url": URL.replace("1730000000000000001", "1730000000000000005"),
+            "html": html,
+        }
+    )
+    [product] = await service.details()
+    assert product["category"] == "food-beverages"

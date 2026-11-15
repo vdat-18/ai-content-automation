@@ -19,6 +19,7 @@ export function ProductsPage() {
   const client = useQueryClient();
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortKey>("sold");
+  const [category, setCategory] = useState("");
   const products = useProducts();
   const selections = useSelections();
   const briefs = useBriefs();
@@ -51,9 +52,15 @@ export function ProductsPage() {
   const rows = useMemo(() => {
     const needle = search.trim().toLowerCase();
     return (products.data ?? [])
+      .filter((product) => !category || product.category === category)
       .filter((product) => !needle || `${product.title} ${product.seller?.name}`.toLowerCase().includes(needle))
       .sort((a, b) => SORTS[sort](b) - SORTS[sort](a));
-  }, [products.data, search, sort]);
+  }, [products.data, search, sort, category]);
+  const categories = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const product of products.data ?? []) if (product.category) counts.set(product.category, (counts.get(product.category) ?? 0) + 1);
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]);
+  }, [products.data]);
 
   if (products.isLoading) return <div className="page"><Skeleton /></div>;
   if (products.error || !products.data) {
@@ -77,6 +84,15 @@ export function ProductsPage() {
             <Search size={16} aria-hidden="true" style={{ position: "absolute", left: 12, top: 14, color: "var(--muted)" }} />
             <input id="product-search" className="input" style={{ paddingLeft: 36 }} type="search" placeholder="Search by name or shop" value={search} onChange={(event) => setSearch(event.target.value)} />
           </div>
+          {categories.length > 0 && (
+            <label className="row">
+              <span className="muted small">Category</span>
+              <select className="input" style={{ width: "auto" }} value={category} onChange={(event) => setCategory(event.target.value)}>
+                <option value="">{`All (${products.data.length})`}</option>
+                {categories.map(([name, count]) => <option key={name} value={name}>{`${name} (${count})`}</option>)}
+              </select>
+            </label>
+          )}
           <label className="row">
             <span className="muted small">Sort by</span>
             <select className="input" style={{ width: "auto" }} value={sort} onChange={(event) => setSort(event.target.value as SortKey)}>
