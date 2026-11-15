@@ -22,8 +22,26 @@ const tiktokText = (w) =>
 const pinterestText = (w) =>
   `${state(w)}: keywords ${w.done + w.failed}/${w.queue.length} | OK ${w.done} | failed ${w.failed}${w.detail ? `\nCollecting ${w.detail}` : `\n${w.note}`}`;
 
+const STUDIO = "http://localhost:8080/dashboard/studio";
+const showCapture = (capture) => {
+  const note = document.getElementById("send-note");
+  const link = document.getElementById("open-studio");
+  link.hidden = true;
+  if (!capture) return;
+  if (capture.stored === "detail") {
+    note.textContent = "Sent. The product is saved.";
+    link.href = `${STUDIO}/${capture.productId}`;
+    link.hidden = false;
+  } else if (capture.stored === "ignored") {
+    note.textContent = "This page has no product data. Open a product page, wait for it to load, then press the button again.";
+  } else {
+    note.textContent = `The collector did not accept it: ${capture.reason || "unknown error"}`;
+  }
+};
+
 const refresh = () =>
-  chrome.storage.local.get({ enabled: false, sent: 0, error: "", walker: null, autoNote: "" }, (s) => {
+  chrome.storage.local.get({ enabled: false, sent: 0, error: "", walker: null, autoNote: "", lastCapture: null }, (s) => {
+    showCapture(s.lastCapture);
     const w = s.walker;
     document.getElementById("auto-note").textContent = w?.kind === "pinterest" && w.running ? "" : s.autoNote;
     enabled.checked = Boolean(s.enabled);
@@ -42,6 +60,18 @@ const refresh = () =>
 const version = document.getElementById("version");
 if (version) version.textContent = `v${chrome.runtime.getManifest().version}`;
 enabled.addEventListener("change", () => chrome.storage.local.set({ enabled: enabled.checked }));
+document.getElementById("send-one").addEventListener("click", () => {
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    const tab = tabs[0];
+    if (!tab?.id || !(tab.url || "").includes("/pdp/")) {
+      document.getElementById("send-note").textContent = "Open a product page on TikTok Shop first.";
+      return;
+    }
+    document.getElementById("send-note").textContent = "Sending...";
+    document.getElementById("open-studio").hidden = true;
+    chrome.storage.local.set({ lastCapture: null }, () => sendToTab(tab.id, { type: "capture-now" }));
+  });
+});
 document.getElementById("capture").addEventListener("click", () => {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     if (tabs[0]?.id) sendToTab(tabs[0].id, { type: "capture-now" });

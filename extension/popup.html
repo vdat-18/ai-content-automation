@@ -22,7 +22,14 @@
     </header>
 
     <section class="card hero">
-      <h2>1. Collect TikTok Shop products</h2>
+      <h2>1. Send this product</h2>
+      <p class="hint">Open a product on TikTok Shop, wait for it to load, then press the button.</p>
+      <button id="send-one" class="primary">Send this product</button>
+      <div id="send-note" class="note"></div>
+      <a id="open-studio" class="primary" target="_blank" rel="noopener" hidden>Make a video from it</a>
+    </section>
+    <details class="card">
+      <summary>Collect many products (slower, you solve the captchas)</summary>
       <p class="hint">Log in and solve any captcha on TikTok Shop first, then press the button below.</p>
       <div class="row">
         <label class="field">
@@ -39,7 +46,7 @@
       <div id="walker-bar" class="bar" hidden><span></span></div>
       <div id="walker" class="progress"></div>
       <button id="stop" class="ghost danger">Stop</button>
-    </section>
+    </details>
 
     <section class="card">
       <h2>2. Pinterest reference images</h2>

@@ -55,9 +55,14 @@ async function ingest(payload) {
       // the collector refused the data (for example the duplicate check is off): say so, never swallow it
       const detail = await response.json().then((body) => body.detail).catch(() => "");
       await chrome.storage.local.set({ sent: s.sent + 1, error: `HTTP ${response.status}${detail ? `: ${detail}` : ""}` });
+      if (payload.kind === "page") await chrome.storage.local.set({ lastCapture: { stored: "refused", reason: String(detail || response.status) } });
       return;
     }
     const result = await response.json().catch(() => ({}));
+    // the popup shows what happened to the page the user just sent
+    if (payload.kind === "page") {
+      await chrome.storage.local.set({ lastCapture: { stored: result.stored || "", productId: result.product_id || "", reason: result.reason || "" } });
+    }
     const failed = Number(result.check_failed || 0);
     await chrome.storage.local.set({ sent: s.sent + 1, error: failed ? `${failed} images could not be checked for duplicates (see the References page)` : "" });
   } catch (error) {

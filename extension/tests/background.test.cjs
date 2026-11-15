@@ -9,7 +9,7 @@ const SPEED = 200; // 1 real ms = 200 virtual ms
 const t0 = Date.now();
 const vnow = () => t0 + (Date.now() - t0) * SPEED;
 
-function makeWorld() {
+function makeWorld(fetchImpl = async () => ({ json: async () => [] })) {
   const store = {};
   let nextTab = 100;
   const opened = [];
@@ -49,7 +49,7 @@ function makeWorld() {
   };
   const context = {
     chrome,
-    fetch: async () => ({ json: async () => [] }),
+    fetch: fetchImpl,
     console,
     Date: FakeDate,
     setTimeout: (callback, ms) => setTimeout(callback, Math.max(0, ms / SPEED)),
@@ -125,4 +125,23 @@ test("never more than six pages in any minute, and every page is read", async ()
   for (const start of times) maxIn60 = Math.max(maxIn60, times.filter((at) => at >= start && at < start + 60_000).length);
   assert.ok(maxIn60 <= 6, `max in any 60s = ${maxIn60}`);
   assert.equal(w.store.walker.done, 14);
+});
+
+test("the popup learns what happened to the product page that was just sent", async () => {
+  const answer = (body) => async () => ({ ok: true, json: async () => body });
+  const saved = makeWorld(answer({ stored: "detail", product_id: "42" }));
+  await saved.send({ type: "ingest", payload: { kind: "page", url: "https://shop.tiktok.com/vn/pdp/s/42" } });
+  await wait(100);
+  assert.deepEqual(saved.store.lastCapture, { stored: "detail", productId: "42", reason: "" });
+
+  const empty = makeWorld(answer({ stored: "ignored", reason: "no product data in page" }));
+  await empty.send({ type: "ingest", payload: { kind: "page", url: "https://shop.tiktok.com/vn/pdp/s/43" } });
+  await wait(100);
+  assert.equal(empty.store.lastCapture.stored, "ignored");
+  assert.equal(empty.store.lastCapture.reason, "no product data in page");
+
+  const listing = makeWorld(answer({ stored: "listing", count: 3 }));
+  await listing.send({ type: "ingest", payload: { kind: "json", url: "https://shop.tiktok.com/api/feed" } });
+  await wait(100);
+  assert.equal(listing.store.lastCapture, undefined);
 });
