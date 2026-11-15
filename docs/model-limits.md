@@ -4,11 +4,21 @@ Measured directly through ViLao (`https://api.vilao.ai/v1`), not taken from outs
 Method: a script sends numbered images or a test clip and checks what comes back. Measure again when
 the model or the provider changes. Each section carries its measurement date.
 
-## Image model: `gpt-image-2` (`AIC_IMAGE_MODEL`, `AIC_IMAGE_API=edits`): not measured
+## Image model: `gpt-image-2` (`AIC_IMAGE_MODEL`, `AIC_IMAGE_API=edits`, measured 2026-11-15)
 
-The limits of this model are not measured yet (input images, output images, time, size, price).
+Measured on the `/images/edits` endpoint with numbered test cards.
+
+| Item | Result |
+| --- | --- |
+| Input images per request | Every size of list returns HTTP 200 (tried 1, 5, 11, 16, 17, 30, 40), but only the **first 10 images** are used. Asking for "the last input card" returned card 5 with 5 inputs and card 10 with 11, 16, 30 and 40 inputs. Images after the 10th are dropped without an error, so put the most important images first |
+| Output images per request | **1 image**. `n: 3` is rejected: "'n' must be an integer from 1 to 1" |
+| Time | 26 to 85 seconds per request (more input images tend to take longer) |
+| Portrait size | `size: "1024x1792"` or `size: "9:16"` gives **941x1672**, which is exactly 9:16. The size `1024x1536` (what `EDITS_SIZE` in `keyframes.py` sends) gives 1024x1536, which is 2:3 and has to be cropped. With no `size`, or with `aspect_ratio: "9:16"` only, the result is also 1024x1536: `aspect_ratio` has no effect |
+| Price | Not measured: the response has no cost field. Read it from the ViLao balance |
+
 The table below was measured on the old model `veo/gemini-3.1-flash-image` (2026-11-05 and
-2026-11-06) and does not apply to `gpt-image-2`. Measure again and replace the table.
+2026-11-06) and does not apply to `gpt-image-2`; it is kept only for a comparison if the model is
+switched back.
 
 | Item | Result |
 | --- | --- |
