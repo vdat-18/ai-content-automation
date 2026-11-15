@@ -733,6 +733,7 @@ class ProductCatalogService:
         assert self._reviewer is not None
         reviews = await self._reviewer.review_all(pending)
         counts = {"reviewed": 0, "usable": 0, "rejected": 0, "failed": 0}
+        described: list[tuple[str, str]] = []
         for image_id, review in reviews.items():
             if review is None:
                 counts["failed"] += 1
@@ -743,7 +744,25 @@ class ProductCatalogService:
             )
             counts["reviewed"] += 1
             counts["usable" if usable else "rejected"] += 1
+            if usable and (text := reference_search_text({"screening": review})):
+                described.append((image_id, text))
+        await self._embed_descriptions(described)
         return counts
+
+    async def _embed_descriptions(self, described: list[tuple[str, str]]) -> None:
+        """Keep the vector of each new description in the database right after its review.
+
+        A failure only delays it: the vector is made when a shot first needs the picture.
+        """
+        if self._text_embedder is None or not described:
+            return
+        try:
+            vectors = await self._text_embedder.embed([text for _, text in described])
+        except TextEmbeddingError as error:
+            logger.warning("Descriptions could not be embedded yet: {}", str(error)[:200])
+            return
+        for (image_id, _), vector in zip(described, vectors, strict=True):
+            await self._repository.set_text_embedding(image_id, self._text_embedder.model, vector)
 
     async def redescribe_images(self, limit: int) -> dict[str, int]:
         """Describe in full the images reviewed before reviews carried detail; their status stays."""

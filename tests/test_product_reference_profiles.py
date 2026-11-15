@@ -139,3 +139,34 @@ async def test_review_of_all_waiting_images_stops_when_the_model_stops_answering
     assert await service.screen_pending(seen.append) is True
     assert seen[-1]["reviewed"] == 3
     assert await service.reference_images("pending", None) == []
+
+
+async def test_the_vector_of_a_description_is_stored_as_soon_as_the_review_is_done() -> None:
+    class _Reviewer:
+        async def review_all(self, images, http=None):
+            return {
+                i["image_id"]: {"usable": i["title"] != "bad", "description": f"scene {i['title']}"}
+                for i in images
+            }
+
+    class _Embedder:
+        model = "m1"
+
+        async def embed(self, texts):
+            return [[float(len(text)), 0.0] for text in texts]
+
+    repository = product_repository()
+    service = ProductCatalogService(
+        repository, reviewer=_Reviewer(), text_embedder=_Embedder()  # type: ignore[arg-type]
+    )
+    pins = [
+        {"image_url": f"https://i.pinimg.com/236x/aa/bb/{n}.jpg", "pin_url": f"/p/{n}/", "title": n}
+        for n in ("good", "bad")
+    ]
+    await service.ingest({"kind": "pinterest", "product_type": "áo thun", "query": "q", "pins": pins})
+    await service.screen_images(10)
+
+    stored = await repository.text_embeddings()
+    [live] = await service.reference_images("live", None)
+    assert list(stored) == [live["image_id"]]  # the rejected picture has none
+    assert stored[live["image_id"]] == {"model": "m1", "vector": [float(len("scene good")), 0.0]}
