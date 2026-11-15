@@ -111,7 +111,7 @@ test("a login wall is not counted as a captcha", async () => {
   assert.ok(!(w.store.captchaLog || []).length);
 });
 
-test("never more than six pages in any minute, and every page is read", async () => {
+test("never more than twelve pages in any minute, and every page is read", async () => {
   const w = makeWorld();
   await w.send({ type: "walker-start", urls: urls(14), concurrency: 5 });
   await new Promise((resolve) => setTimeout(resolve, 50));
@@ -123,7 +123,7 @@ test("never more than six pages in any minute, and every page is read", async ()
   const times = w.opened.map((entry) => entry.at);
   let maxIn60 = 0;
   for (const start of times) maxIn60 = Math.max(maxIn60, times.filter((at) => at >= start && at < start + 60_000).length);
-  assert.ok(maxIn60 <= 6, `max in any 60s = ${maxIn60}`);
+  assert.ok(maxIn60 <= 12, `max in any 60s = ${maxIn60}`);
   assert.equal(w.store.walker.done, 14);
 });
 
@@ -144,4 +144,28 @@ test("the popup learns what happened to the product page that was just sent", as
   await listing.send({ type: "ingest", payload: { kind: "json", url: "https://shop.tiktok.com/api/feed" } });
   await wait(100);
   assert.equal(listing.store.lastCapture, undefined);
+});
+
+test("after the last category the product pages that are still missing are read", async () => {
+  const calls = [];
+  const products = ["https://shop.tiktok.com/vn/pdp/s/1", "https://shop.tiktok.com/vn/pdp/s/2"];
+  const w = makeWorld(async (url) => {
+    calls.push(String(url));
+    return { ok: true, json: async () => (String(url).includes("/queue") ? products : []) };
+  });
+  const categories = ["https://shop.tiktok.com/vn/c/food-beverages/700437", "https://shop.tiktok.com/vn/c/health/700645"];
+  const meta = Object.fromEntries(categories.map((url) => [url, { category: true }]));
+  await w.send({ type: "walker-start", kind: "category", urls: categories, meta, concurrency: 5, followUp: { concurrency: 5 } });
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  const stopAt = Date.now() + 8000;
+  while (Date.now() < stopAt && !calls.some((url) => url.includes("/queue"))) {
+    for (const tab of Object.keys(w.store.walker.active)) await w.send({ type: "page-done", ok: true }, Number(tab));
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+  await wait(60_000);
+  assert.ok(calls.some((url) => url.includes("/queue?limit=100000")), calls.join(" "));
+  assert.equal(w.store.walker.kind, "tiktok");
+  assert.equal(w.store.walker.concurrency, 5);
+  assert.deepEqual(w.opened.slice(0, 2).map((entry) => entry.url), categories);
+  assert.deepEqual(w.opened.slice(2, 4).map((entry) => entry.url), products);
 });

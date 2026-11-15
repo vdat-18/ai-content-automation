@@ -4,10 +4,11 @@ const MAX_TABS = 5;
 
 // Politeness: the pause between two product tabs starts at BASE_DELAY_MS, doubles (with jitter) every time
 // TikTok shows a captcha, and shrinks back slowly while pages load fine. PAGES_PER_MINUTE is a hard cap.
-const BASE_DELAY_MS = 8_000;
+const BASE_DELAY_MS = 4_000;
 const MAX_DELAY_MS = 120_000;
 const SHRINK_FACTOR = 0.9;
-const PAGES_PER_MINUTE = 6;
+const PAGES_PER_MINUTE = 12;
+const QUEUE_LIMIT = 100_000; // every product still without its page
 // Circuit breaker: this many captcha waves in this window stops the run, so TikTok is not pushed further.
 const BREAKER_CAPTCHAS = 3;
 const BREAKER_WINDOW_MS = 10 * 60_000;
@@ -27,7 +28,8 @@ const EMPTY = {
   delayMs: BASE_DELAY_MS,
   note: "",
   detail: "",
-  kind: "tiktok", // which collector owns the run: "tiktok" or "pinterest"
+  kind: "tiktok", // which collector owns the run: "tiktok", "category" or "pinterest"
+  followUp: null, // after the last category: read the product pages with this many tabs
 };
 const timers = new Map(); // tabId -> timeout that gives up on a page that never finishes
 const recentOpens = []; // when the last product tabs were opened, for the per-minute cap
@@ -123,6 +125,7 @@ async function fill() {
           w.note = `Done: ${w.done} succeeded, ${w.failed} failed`;
           await locked(() => setState(w));
           badge(w);
+          if (w.kind === "category" && w.followUp) fetchDetails(w.followUp);
         }
         return;
       }
@@ -236,7 +239,7 @@ async function rememberUnavailable(url) {
   if (!s.unavailable.includes(key)) await chrome.storage.local.set({ unavailable: [...s.unavailable, key] });
 }
 
-async function startWalker(urls, meta, concurrency, kind = "tiktok") {
+async function startWalker(urls, meta, concurrency, kind = "tiktok", followUp = null) {
   const waitMs = await breakerOpenFor();
   if (waitMs > 0) {
     const note = `Too many captchas just now. Wait about ${Math.ceil(waitMs / 60_000)} more minutes, then run again.`;
@@ -253,6 +256,7 @@ async function startWalker(urls, meta, concurrency, kind = "tiktok") {
       queue: wanted,
       meta: meta || {},
       kind,
+      followUp,
       concurrency: Math.min(Math.max(Number(concurrency) || 1, 1), MAX_TABS),
       note: "Started",
     }),
@@ -276,6 +280,21 @@ async function afterHarvest(auto, summary) {
       autoNote: `Stopped scrolling: ${summary.reason}. The page has ${summary.count} products, "Load more" clicked ${summary.clicks} times. Fetching details for ${urls.length} new products.`,
     });
     startWalker(urls, {}, auto.concurrency);
+  } catch (error) {
+    await chrome.storage.local.set({ autoNote: `Could not reach the collector: ${error}` });
+  }
+}
+
+// ---- after the last category: read every product page that is still missing ---------
+async function fetchDetails(followUp) {
+  await sleep(5000); // the last JSON responses reach the collector
+  try {
+    const urls = await (await fetch(`${COLLECTOR}/queue?limit=${QUEUE_LIMIT}`)).json();
+    const note = urls.length
+      ? `All category lists collected. Fetching the page of ${urls.length} products.`
+      : "All category lists collected. No product page is missing.";
+    await chrome.storage.local.set({ autoNote: note });
+    if (urls.length) startWalker(urls, {}, followUp.concurrency);
   } catch (error) {
     await chrome.storage.local.set({ autoNote: `Could not reach the collector: ${error}` });
   }
@@ -327,7 +346,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (message.auto) afterHarvest(message.auto, { reason: message.reason || "", count: message.count || 0, clicks: message.clicks || 0 });
       break;
     case "walker-start":
-      startWalker(message.urls, message.meta, message.concurrency, message.kind === "pinterest" ? "pinterest" : "tiktok");
+      startWalker(
+        message.urls,
+        message.meta,
+        message.concurrency,
+        ["pinterest", "category"].includes(message.kind) ? message.kind : "tiktok",
+        message.followUp || null,
+      );
       break;
     case "walker-stop":
       stopWalker("Stopped");

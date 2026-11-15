@@ -1,3 +1,34 @@
+// The top-level categories of TikTok Shop VN (name and id as in the links of its home page)
+const CATEGORIES = [
+  ["womenswear-underwear", 601152],
+  ["phones-electronics", 601739],
+  ["fashion-accessories", 605248],
+  ["menswear-underwear", 824328],
+  ["home-supplies", 600001],
+  ["beauty-personal-care", 601450],
+  ["shoes", 601352],
+  ["sports-outdoor", 603014],
+  ["luggage-bags", 824584],
+  ["toys-hobbies", 604206],
+  ["automotive-motorcycle", 605196],
+  ["kids-fashion", 802184],
+  ["kitchenware", 600024],
+  ["computers-office-equipment", 601755],
+  ["baby-maternity", 602284],
+  ["tools-hardware", 604579],
+  ["textiles-soft-furnishings", 600154],
+  ["pet-supplies", 602118],
+  ["home-improvement", 604968],
+  ["food-beverages", 700437],
+  ["muslim-fashion", 601303],
+  ["books-magazines-audio", 801928],
+  ["household-appliances", 600942],
+  ["health", 700645],
+  ["furniture", 604453],
+  ["jewelry-accessories-derivatives", 953224],
+  ["collectibles", 951432],
+  ["pre-owned", 856720],
+];
 const enabled = document.getElementById("enabled");
 const status = document.getElementById("status");
 const walkerBox = document.getElementById("walker");
@@ -18,7 +49,7 @@ const paint = ({ box, bar, stop }, w, mine, describe) => {
 };
 const state = (w) => (w.running ? (w.paused ? "PAUSED, needs you" : "Running") : "Stopped");
 const tiktokText = (w) =>
-  `${state(w)}: ${w.done + w.failed}/${w.queue.length} products | ${Object.keys(w.active || {}).length} tabs | OK ${w.done} | failed ${w.failed}\n${w.note}`;
+  `${state(w)}: ${w.done + w.failed}/${w.queue.length} ${w.kind === "category" ? "categories" : "products"} | ${Object.keys(w.active || {}).length} tabs | OK ${w.done} | failed ${w.failed}\n${w.note}`;
 const pinterestText = (w) =>
   `${state(w)}: keywords ${w.done + w.failed}/${w.queue.length} | OK ${w.done} | failed ${w.failed}${w.detail ? `\nCollecting ${w.detail}` : `\n${w.note}`}`;
 
@@ -50,7 +81,7 @@ const refresh = () =>
     paint({ box: walkerBox, bar: document.getElementById("walker-bar"), stop: document.getElementById("stop") }, w, Boolean(w) && !pinterest, tiktokText);
     paint({ box: pinBox, bar: document.getElementById("pin-bar"), stop: document.getElementById("pin-stop") }, w, Boolean(w) && pinterest, pinterestText);
     const busy = Boolean(w?.running);
-    for (const id of ["auto", "start", "pins"]) {
+    for (const id of ["auto", "crawl-all", "start", "pins"]) {
       const button = document.getElementById(id);
       button.disabled = busy;
       button.title = busy ? "A collection is already running; wait or press Stop" : "";
@@ -86,6 +117,13 @@ document.getElementById("auto").addEventListener("click", () => {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
     if (tabs[0]?.id) sendToTab(tabs[0].id, { type: "harvest", rounds: auto.limit ? 80 : 400, auto });
   });
+});
+document.getElementById("crawl-all").addEventListener("click", () => {
+  const concurrency = Number(document.getElementById("auto-tabs").value) || 5;
+  const urls = CATEGORIES.map(([slug, id]) => `https://shop.tiktok.com/vn/c/${slug}/${id}`);
+  const meta = Object.fromEntries(urls.map((url) => [url, { category: true }]));
+  chrome.storage.local.set({ autoNote: `Collecting ${urls.length} categories, ${concurrency} at a time, then the product pages.` });
+  chrome.runtime.sendMessage({ type: "walker-start", kind: "category", urls, meta, concurrency, followUp: { concurrency } });
 });
 document.getElementById("harvest").addEventListener("click", () => {
   chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {

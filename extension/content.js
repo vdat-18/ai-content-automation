@@ -309,7 +309,23 @@
     state.harvest = false;
     window.scrollTo({ top: 0, behavior: "smooth" });
     banner(auto ? `AIC Collector: stopped scrolling (${reason}), ${last} products` : "AIC Collector: done, product list sent");
-    if (auto) send({ type: "harvest-done", auto, count: last, clicks, reason });
+    // a category tab of the "collect everything" run reports through page-done instead
+    if (auto && !auto.walker) send({ type: "harvest-done", auto, count: last, clicks, reason });
+    return { count: last, clicks, reason };
+  };
+
+  // One category page of the "collect everything" run: press "Xem thêm" until the list ends.
+  const runCategoryFlow = async () => {
+    await wait(3000);
+    await waitForHuman();
+    if (unavailable() || emptyShell()) {
+      send({ type: "page-done", ok: false, reason: unavailable() ? "unavailable" : "empty page" });
+      return;
+    }
+    const summary = await harvestFeed(2000, { walker: true });
+    send({ type: "progress", detail: `${summary.count} products, "Load more" clicked ${summary.clicks} times` });
+    await wait(5000); // the last JSON responses reach the collector
+    send({ type: "page-done", ok: summary.count > 0, reason: summary.count ? "" : "no products" });
   };
 
   window.addEventListener("message", (event) => {
@@ -327,6 +343,7 @@
     chrome.runtime.sendMessage({ type: "am-i-walker" }, (response) => {
       state.walker = Boolean(response?.walker);
       if (state.walker && location.hostname.endsWith("pinterest.com")) runPinterestFlow(response.meta || {});
+      else if (state.walker && response.meta?.category) runCategoryFlow();
       else if (state.walker) runWalkerFlow();
       else if (state.enabled && !location.hostname.endsWith("pinterest.com") && !challengeReason()) setTimeout(() => snapshot("auto"), 4000);
     });
