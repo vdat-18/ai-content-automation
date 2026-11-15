@@ -222,6 +222,10 @@ img { max-width: 100%; }
 .caption-box p { flex: 1; }
 .shot-edit { display: grid; grid-template-columns: 120px 1fr; gap: 16px; padding: 16px; }
 .shot-edit img { width: 120px; aspect-ratio: 9 / 16; object-fit: cover; border-radius: 10px; background: var(--soft); cursor: zoom-in; }
+.shot-edit img.ref-thumb { width: 72px; aspect-ratio: 1; cursor: pointer; }
+.ref-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; max-height: 260px; overflow-y: auto; }
+.ref-grid button { padding: 0; border: 2px solid transparent; border-radius: 12px; background: none; }
+.ref-grid button[aria-pressed="true"] { border-color: var(--accent, currentColor); }
 
 /* AI memory */
 .tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--line); }

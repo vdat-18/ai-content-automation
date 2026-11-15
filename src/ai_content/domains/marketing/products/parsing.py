@@ -217,7 +217,8 @@ def parse_feed_payload(body: str) -> list[dict[str, Any]]:
                 "sold_count": (product.get("sold_info") or {}).get("sold_count"),
                 "seller_id": (product.get("seller_info") or {}).get("seller_id"),
                 "shop_name": (product.get("seller_info") or {}).get("shop_name"),
-                "url": (product.get("seo_url") or {}).get("canonical_url"),
+                "url": (product.get("seo_url") or {}).get("canonical_url")
+                or f"https://shop.tiktok.com/vn/pdp/{product['product_id']}",
                 "has_video": bool(video),
             }
         )

@@ -17,6 +17,7 @@ export type Brief = {
   shots?: Shot[];
   post_package?: PostPackage;
   with_person?: boolean;
+  shot_references?: (string | null)[];
 };
 export type BriefRecord = { product_id: string; user_idea: string; brief: Brief; status: "draft" | "approved" };
 export type Keyframe = { shot_index: number; status: "ready" | "approved" | "rejected" | "failed"; attempts: number; error: string | null; qa_problem: string };

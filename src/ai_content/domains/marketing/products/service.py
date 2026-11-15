@@ -175,6 +175,7 @@ BRIEF_FIELDS = (
     "style",
     "colors",
     "shots",
+    "shot_references",
 )
 
 
@@ -1059,6 +1060,10 @@ class ProductCatalogService:
         if current is None:
             return None
         brief = {**current["brief"], **{k: v for k, v in changes.items() if k in BRIEF_FIELDS}}
+        if "shot_references" in changes:
+            brief["selected_reference_ids"] = list(
+                dict.fromkeys(item for item in brief["shot_references"] if item)
+            )
         detail = await self._repository.get_detail(product_id)
         facts = product_facts(detail, current["user_idea"]) if detail else ""
         brief["warnings"] = brief_warnings(brief, facts)

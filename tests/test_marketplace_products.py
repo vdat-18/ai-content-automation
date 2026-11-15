@@ -297,3 +297,11 @@ async def test_a_vietnamese_category_name_becomes_a_plain_slug() -> None:
     await service.ingest({"kind": "page", "url": url, "html": html})
     [product] = await service.details()
     assert product["category"] == "dien-thoai-dien-tu"
+
+
+def test_a_feed_product_without_a_link_gets_one_from_its_id() -> None:
+    body = json.dumps(
+        {"data": {"items": [{"product_id": "77", "product_price_info": {"currency_name": "VND"}}]}}
+    )
+    [item] = parse_feed_payload(body)
+    assert item["url"] == "https://shop.tiktok.com/vn/pdp/77"

@@ -1,12 +1,14 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ErrorNote } from "../../components/ui";
 import { useLightbox } from "../../hooks/useLightbox";
 import { API } from "../../hooks/useStudio";
-import { putJson } from "../../services/http";
+import { getJson, putJson } from "../../services/http";
 import type { Brief, BriefRecord, Keyframe, Shot } from "../../types/studio";
 
 const wordCount = (text: string) => text.split(/\s+/).filter(Boolean).length;
+type SceneImage = { image_id: string; image_url: string; title: string };
 
 export function ScriptStep({ productId, record, frames }: { productId: string; record: BriefRecord; frames: Keyframe[] }) {
   const [, setParams] = useSearchParams();
@@ -16,6 +18,10 @@ export function ScriptStep({ productId, record, frames }: { productId: string; r
   const shots = brief.shots ?? [];
   const problems = brief.quality_problems ?? [];
   const warnings = brief.warnings ?? [];
+  const [references, setReferences] = useState<(string | null)[]>(() => shots.map((_, index) => brief.shot_references?.[index] ?? null));
+  const scenes = useQuery({ queryKey: ["reference-images", "live"], queryFn: ({ signal }) => getJson<SceneImage[]>(`${API}/reference-images?status=live`, signal) });
+  const sceneById = new Map((scenes.data ?? []).map((scene) => [scene.image_id, scene]));
+  const chooseReference = (index: number, imageId: string | null) => setReferences((current) => current.map((item, at) => (at === index ? imageId : item)));
   const save = useMutation({
     mutationFn: (next: Partial<Brief>) => putJson<BriefRecord>(`${API}/${productId}/brief`, { brief: next, status: "approved" }),
     onSuccess: (saved) => {
@@ -53,7 +59,7 @@ export function ScriptStep({ productId, record, frames }: { productId: string; r
             keyframe_prompt: String(data.get(`keyframe_${index}`)),
             motion_prompt: String(data.get(`motion_${index}`)),
           }));
-          save.mutate({ title: String(data.get("title")), shots: edited, script: edited.map((shot) => shot.voiceover.trim()).filter(Boolean).join(" ") });
+          save.mutate({ title: String(data.get("title")), shots: edited, shot_references: references, script: edited.map((shot) => shot.voiceover.trim()).filter(Boolean).join(" ") });
         }}
       >
         <label className="field" style={{ maxWidth: 560 }}>Video title<input type="text" name="title" defaultValue={brief.title} /></label>
@@ -70,6 +76,28 @@ export function ScriptStep({ productId, record, frames }: { productId: string; r
                 </div>
                 <label className="field">What is said<textarea name={`voiceover_${index}`} rows={3} defaultValue={shot.voiceover} /><span className="muted small" style={{ fontWeight: 400 }}>{`${wordCount(shot.voiceover)} words`}</span></label>
                 <label className="field">Text on the screen<input type="text" name={`text_${index}`} defaultValue={shot.on_screen_text} /></label>
+                <div className="field">
+                  Reference photo
+                  <div className="row">
+                    {sceneById.get(references[index] ?? "") ? (
+                      <img className="ref-thumb" src={sceneById.get(references[index] ?? "")?.image_url} alt="Reference for this scene" referrerPolicy="no-referrer" />
+                    ) : (
+                      <span className="muted small" style={{ fontWeight: 400 }}>{references[index] ? "This reference was removed" : "No reference: the AI draws the room freely"}</span>
+                    )}
+                    {references[index] && <button className="btn btn-sm" type="button" onClick={() => chooseReference(index, null)}>No reference</button>}
+                  </div>
+                  <details>
+                    <summary className="muted small" style={{ cursor: "pointer" }}>Choose another reference</summary>
+                    <div className="ref-grid">
+                      {(scenes.data ?? []).slice(0, 60).map((scene) => (
+                        <button key={scene.image_id} type="button" aria-pressed={references[index] === scene.image_id} aria-label={scene.title || "Reference photo"} onClick={() => chooseReference(index, scene.image_id)}>
+                          <img className="ref-thumb" src={scene.image_url} alt="" loading="lazy" referrerPolicy="no-referrer" />
+                        </button>
+                      ))}
+                      {scenes.data?.length === 0 && <span className="muted small">No reference photos yet. Collect them from Pinterest first.</span>}
+                    </div>
+                  </details>
+                </div>
                 <details>
                   <summary className="muted small" style={{ cursor: "pointer" }}>Advanced: what the AI is told to draw and film</summary>
                   <div className="stack" style={{ marginTop: 10 }}>

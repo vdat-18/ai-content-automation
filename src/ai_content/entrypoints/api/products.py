@@ -82,7 +82,7 @@ async def voice_sample(
 
 @router.get("/queue")
 async def capture_queue(
-    limit: int = Query(20, ge=1, le=5000),
+    limit: int = Query(20, ge=1, le=100_000),
     service: ProductCatalogService = Depends(get_product_catalog_service),
 ) -> list[str]:
     return await service.queue(limit)

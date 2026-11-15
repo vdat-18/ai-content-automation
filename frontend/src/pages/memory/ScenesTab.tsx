@@ -41,7 +41,7 @@ export function ScenesTab() {
   });
 
   if (!profiles.data?.length) {
-    return <Empty icon={<Images size={32} aria-hidden="true" />} title="No reference scenes yet" text="Select a product to make a video, then collect scenes from Pinterest with the Chrome extension." />;
+    return <Empty icon={<Images size={32} aria-hidden="true" />} title="No reference scenes yet" text="Collect scenes from Pinterest once with the Chrome extension. Every product draws on the same collection." />;
   }
   const lines = (text: string) => text.split("\n").map((line) => line.trim()).filter(Boolean);
   return (

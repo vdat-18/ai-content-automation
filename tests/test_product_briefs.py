@@ -118,6 +118,18 @@ async def test_brief_edits_keep_known_fields_and_can_be_approved(tmp_path) -> No
     assert await service.update_brief("missing", {}, "draft") is None
 
 
+async def test_changing_a_shot_reference_updates_the_chosen_list(tmp_path) -> None:
+    service = await _service(tmp_path, _FakeWriter())
+    await service._repository.select_product(PRODUCT_ID, "áo thun")
+    await _make_reference_live(service)
+    await service.create_brief(PRODUCT_ID, person_photos=[b"face"])
+
+    updated = await service.update_brief(PRODUCT_ID, {"shot_references": ["a", None, "a", "b"]}, "draft")
+    assert updated is not None
+    assert updated["brief"]["shot_references"] == ["a", None, "a", "b"]
+    assert updated["brief"]["selected_reference_ids"] == ["a", "b"]
+
+
 class _FakeBamlClient:
     def __init__(self, fail: bool = False, numbers: list[int] | None = None) -> None:
         self.fail = fail
