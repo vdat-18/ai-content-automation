@@ -172,7 +172,7 @@ def test_reference_profile_update_and_queue(
     queue = client.get("/api/v1/products/reference-queue?limit=1").json()
     assert queue == [
         {
-            "url": "https://www.pinterest.com/search/pins/?q=ao+thun+flat+lay",
+            "url": "https://www.pinterest.com/search/pins/?filter_genai=true&q=ao+thun+flat+lay",
             "product_type": "áo thun",
             "query": "ao thun flat lay",
         }

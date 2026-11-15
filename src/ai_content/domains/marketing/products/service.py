@@ -106,7 +106,8 @@ from .video_check import LESSONS, VideoCheckUnavailable, judge, measure
 from .voice_picker import VoicePicker
 from .word_timing import MISREAD_BELOW, word_starts
 
-_PINTEREST_SEARCH = "https://www.pinterest.com/search/pins/?q="
+# filter_genai asks Pinterest to show fewer AI pictures, whatever the account setting is
+_PINTEREST_SEARCH = "https://www.pinterest.com/search/pins/?filter_genai=true&q="
 _SCREEN_BATCH = 200
 
 

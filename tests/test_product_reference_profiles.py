@@ -32,7 +32,7 @@ async def test_pinterest_queue_ingest_and_filters(tmp_path) -> None:
     )
     queue = await service.reference_queue(10)
     assert [item["query"] for item in queue] == ["ao thun flat lay", "t-shirt photo"]
-    assert queue[0]["url"] == "https://www.pinterest.com/search/pins/?q=ao+thun+flat+lay"
+    assert queue[0]["url"] == "https://www.pinterest.com/search/pins/?filter_genai=true&q=ao+thun+flat+lay"
 
     pins = [
         {
