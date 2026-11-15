@@ -23,7 +23,9 @@ class ApplicationSettings(BaseSettings):
         "http://127.0.0.1:1234/v1", validation_alias="AIC_SCREENING_BASE_URL"
     )
     screening_api_key: SecretStr | None = Field(None, validation_alias="AIC_SCREENING_API_KEY")
-    screening_model: str = Field("", validation_alias="AIC_SCREENING_MODEL")
+    # One model per job, no fallback: writer drafts text, review checks images and clips.
+    writer_model: str = Field("", validation_alias="AIC_WRITER_MODEL")
+    review_model: str = Field("", validation_alias="AIC_REVIEW_MODEL")
 
     # --- Image generation; base URL and key fall back to the screening endpoint when empty ---
     image_base_url: str = Field("", validation_alias="AIC_IMAGE_BASE_URL")

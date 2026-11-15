@@ -68,7 +68,8 @@ class ApiRuntimeSettings:
     config_dir: Path
     screening_base_url: str = "http://127.0.0.1:1234/v1"
     screening_api_key: str | None = None
-    screening_model: str = ""
+    writer_model: str = ""
+    review_model: str = ""
     embedding_model: str = ""
     text_embedding_base_url: str = ""
     text_embedding_api_key: str | None = None
@@ -127,7 +128,8 @@ def get_runtime_settings() -> ApiRuntimeSettings:
         config_dir=application.config_dir,
         screening_base_url=application.screening_base_url,
         screening_api_key=application.screening_api_key_value,
-        screening_model=application.screening_model,
+        writer_model=application.writer_model,
+        review_model=application.review_model,
         embedding_model=application.embedding_model,
         text_embedding_base_url=application.text_embedding_base_url
         or application.image_base_url
@@ -324,7 +326,7 @@ def _image_reviewer(settings: ApiRuntimeSettings) -> ReferenceImageReviewer | No
     return ReferenceImageReviewer.from_settings(
         base_url=settings.screening_base_url,
         api_key=settings.screening_api_key,
-        model=settings.screening_model,
+        model=settings.review_model,
     )
 
 
@@ -397,7 +399,7 @@ def _posting_writer(settings: ApiRuntimeSettings) -> PostingPackageWriter | None
     return PostingPackageWriter.from_settings(
         base_url=settings.screening_base_url,
         api_key=settings.screening_api_key,
-        model=settings.screening_model,
+        model=settings.writer_model,
     )
 
 
@@ -407,7 +409,7 @@ def knowledge_curator(settings: ApiRuntimeSettings) -> BamlKnowledgeCurator | No
     return BamlKnowledgeCurator.from_settings(
         base_url=settings.screening_base_url,
         api_key=settings.screening_api_key,
-        model=settings.screening_model,
+        model=settings.writer_model,
     )
 
 
@@ -417,7 +419,7 @@ def _clip_checker(settings: ApiRuntimeSettings) -> ClipChecker | None:
     return ClipChecker.from_settings(
         base_url=settings.screening_base_url,
         api_key=settings.screening_api_key,
-        model=settings.screening_model,
+        model=settings.review_model,
     )
 
 
@@ -427,7 +429,7 @@ def _keyframe_checker(settings: ApiRuntimeSettings) -> KeyframeChecker | None:
     return KeyframeChecker.from_settings(
         base_url=settings.screening_base_url,
         api_key=settings.screening_api_key,
-        model=settings.screening_model,
+        model=settings.review_model,
     )
 
 
@@ -437,7 +439,7 @@ def _brief_writer(settings: ApiRuntimeSettings) -> ContentBriefWriter | None:
     return ContentBriefWriter.from_settings(
         base_url=settings.screening_base_url,
         api_key=settings.screening_api_key,
-        model=settings.screening_model,
+        model=settings.writer_model,
     )
 
 
@@ -457,7 +459,7 @@ def _reference_picker(settings: ApiRuntimeSettings) -> ShotReferencePicker | Non
     return ShotReferencePicker.from_settings(
         base_url=settings.screening_base_url,
         api_key=settings.screening_api_key,
-        model=settings.screening_model,
+        model=settings.review_model,
     )
 
 
@@ -467,7 +469,7 @@ def _storyboard_reviewer(settings: ApiRuntimeSettings) -> StoryboardReviewer | N
     return StoryboardReviewer.from_settings(
         base_url=settings.screening_base_url,
         api_key=settings.screening_api_key,
-        model=settings.screening_model,
+        model=settings.review_model,
     )
 
 
@@ -477,7 +479,7 @@ def _hook_writer(settings: ApiRuntimeSettings) -> HookWriter | None:
     return HookWriter.from_settings(
         base_url=settings.screening_base_url,
         api_key=settings.screening_api_key,
-        model=settings.screening_model,
+        model=settings.writer_model,
     )
 
 
@@ -487,7 +489,7 @@ def _voice_shortener(settings: ApiRuntimeSettings) -> VoiceShortener | None:
     return VoiceShortener.from_settings(
         base_url=settings.screening_base_url,
         api_key=settings.screening_api_key,
-        model=settings.screening_model,
+        model=settings.writer_model,
     )
 
 
@@ -497,7 +499,7 @@ def _voice_picker(settings: ApiRuntimeSettings) -> VoicePicker | None:
     return VoicePicker.from_settings(
         base_url=settings.screening_base_url,
         api_key=settings.screening_api_key,
-        model=settings.screening_model,
+        model=settings.review_model,
     )
 
 
@@ -507,7 +509,7 @@ def _ad_analyzer(settings: ApiRuntimeSettings) -> AdAnalyzer | None:
     return AdAnalyzer.from_settings(
         base_url=settings.screening_base_url,
         api_key=settings.screening_api_key,
-        model=settings.screening_model,
+        model=settings.review_model,
         model_dir=settings.db_path.parent / "whisper",
     )
 
@@ -518,7 +520,7 @@ def _profile_generator(settings: ApiRuntimeSettings) -> ReferenceProfileGenerato
     return ReferenceProfileGenerator.from_settings(
         base_url=settings.screening_base_url,
         api_key=settings.screening_api_key,
-        model=settings.screening_model,
+        model=settings.writer_model,
     )
 
 

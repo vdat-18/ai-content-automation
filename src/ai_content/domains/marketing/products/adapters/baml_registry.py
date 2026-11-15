@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 from baml_py import ClientRegistry
 
 
@@ -15,35 +17,27 @@ def build_client_registry(
     temperature: float | None,
     max_output_tokens: int | None = None,
 ) -> ClientRegistry:
-    """Build the BAML client; model may list several names, comma separated, as fallbacks.
+    """Build the BAML client for one model; a failing call raises, with no fallback model.
 
     Without max_output_tokens the model is not limited in how much it may answer.
     """
-    models = [m.strip() for m in model.split(",") if m.strip()]
+    options: dict[str, object] = {
+        "base_url": base_url,
+        "model": model.strip(),
+        "api_key": api_key,
+        "stream": False,
+    }
+    if max_output_tokens is not None:
+        options["max_tokens"] = max_output_tokens
+    if reasoning_effort is not None:
+        options["reasoning_effort"] = reasoning_effort
+    if temperature is not None:
+        options["temperature"] = temperature
+    # The model is part of the client name, so every error names the model that failed.
+    client_name = f"{name}_{re.sub(r'[^A-Za-z0-9.-]', '_', str(options['model']))}"
     registry = ClientRegistry()
-    names: list[str] = []
-    for position, one_model in enumerate(models):
-        options: dict[str, object] = {
-            "base_url": base_url,
-            "model": one_model,
-            "api_key": api_key,
-            "stream": False,
-        }
-        if max_output_tokens is not None:
-            options["max_tokens"] = max_output_tokens
-        if reasoning_effort is not None:
-            options["reasoning_effort"] = reasoning_effort
-        if temperature is not None:
-            options["temperature"] = temperature
-        client_name = name if position == 0 else f"{name}Fallback{position}"
-        registry.add_llm_client(client_name, "openai-generic", options)
-        names.append(client_name)
-    if len(names) > 1:
-        # Several models: try them in order, moving on when one errors (e.g. quota exhausted).
-        registry.add_llm_client(f"{name}Chain", "fallback", {"strategy": names})
-        registry.set_primary(f"{name}Chain")
-    else:
-        registry.set_primary(name)
+    registry.add_llm_client(client_name, "openai-generic", options)
+    registry.set_primary(client_name)
     return registry
 
 
