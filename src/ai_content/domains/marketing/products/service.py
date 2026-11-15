@@ -518,6 +518,8 @@ class ProductCatalogService:
             return {"stored": "detail", "product_id": detail["product_id"]}
         if kind == "json" and is_feed_url(url):
             items = parse_feed_payload(str(payload.get("body") or ""))
+            if not items:
+                logger.warning("A product feed answered with no product we can read: {}", url[:120])
             count = await self._repository.upsert_listing(items) if items else 0
             return {"stored": "listing", "count": count}
         if kind == "pinterest":

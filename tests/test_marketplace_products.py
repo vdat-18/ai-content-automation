@@ -5,7 +5,11 @@ from types import SimpleNamespace
 from openpyxl import load_workbook
 from tests.pgstore import product_repository
 
-from ai_content.domains.marketing.products.parsing import parse_feed_payload, parse_product_page
+from ai_content.domains.marketing.products.parsing import (
+    is_feed_url,
+    parse_feed_payload,
+    parse_product_page,
+)
 from ai_content.domains.marketing.products.service import ProductCatalogService
 
 URL = "https://shop.tiktok.com/vn/pdp/ao-thun/1730000000000000001"
@@ -192,3 +196,35 @@ async def test_reference_image_reviewer_handles_failures() -> None:
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
         reviews = await ReferenceImageReviewer(_Client()).review_all(images, http)
     assert reviews == {"ok": _COMPLETE_REVIEW, "gone": None, "rate": None}
+
+
+def test_a_category_feed_is_recognised_and_read_wherever_it_nests_the_products() -> None:
+    assert is_feed_url(
+        "https://shop.tiktok.com/api/shop/vn/homepage_desktop/products_by_category?x=1"
+    )
+    assert is_feed_url("https://shop.tiktok.com/api/homepage_desktop/products_by_component")
+    assert not is_feed_url("https://shop.tiktok.com/api/shop/vn/other")
+    body = json.dumps(
+        {
+            "code": 0,
+            "data": {
+                "section": {
+                    "items": [
+                        {
+                            "product_id": "9",
+                            "title": "Mít sấy",
+                            "product_price_info": {
+                                "currency_name": "VND",
+                                "sale_price_decimal": "21.573",
+                            },
+                            "sold_info": {"sold_count": 6000},
+                        },
+                        {"product_id": "10", "product_price_info": {"currency_name": "USD"}},
+                    ]
+                }
+            },
+        }
+    )
+    items = parse_feed_payload(body)
+    assert [item["product_id"] for item in items] == ["9"]
+    assert items[0]["sold_count"] == 6000

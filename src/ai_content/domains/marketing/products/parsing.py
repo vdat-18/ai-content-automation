@@ -7,7 +7,11 @@ import re
 from typing import Any
 
 SOURCE = "tiktok_shop_vn"
-_FEED_MARKER = "homepage_desktop/products_by_component"
+# the home page and a category page (its "Xem thêm" button too) load products from these
+_FEED_MARKERS = (
+    "homepage_desktop/products_by_component",
+    "homepage_desktop/products_by_category",
+)
 
 
 def is_product_url(url: str) -> bool:
@@ -20,7 +24,7 @@ def product_id_from_url(url: str) -> str | None:
 
 
 def is_feed_url(url: str) -> bool:
-    return _FEED_MARKER in url
+    return any(marker in url for marker in _FEED_MARKERS)
 
 
 def money(value: object, currency: str | None) -> int | None:
@@ -170,15 +174,23 @@ def parse_product_page(html: str, url: str) -> dict[str, Any] | None:
     }
 
 
+def _products_in(node: Any) -> list[dict[str, Any]]:
+    """Every product object in a feed response, wherever the page nests it."""
+    if isinstance(node, dict):
+        if "product_id" in node and "product_price_info" in node:
+            return [node]
+        return [product for value in node.values() for product in _products_in(value)]
+    if isinstance(node, list):
+        return [product for value in node for product in _products_in(value)]
+    return []
+
+
 def parse_feed_payload(body: str) -> list[dict[str, Any]]:
     """Return Vietnamese market products listed in a feed response."""
     try:
-        data = (json.loads(body) or {}).get("data") or {}
+        found = _products_in(json.loads(body))
     except ValueError:
         return []
-    found = list(data.get("productList") or [])
-    for component in data.get("components_map") or []:
-        found += (component.get("component_data") or {}).get("products", [])
     items: list[dict[str, Any]] = []
     for product in found:
         price = product.get("product_price_info") or {}

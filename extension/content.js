@@ -85,8 +85,7 @@
   };
 
   // The "Xem thêm" ("Load more" on the Vietnamese site) that loads more products sits under the product grid. The ones at the top of each
-  // section are links to another page, so only a plain button, never one inside a link, is clicked,
-  // and the lowest one on the page wins. The label is found from its text, whatever the markup is.
+  // section are links to another page, so only a plain button, never one inside a link, is clicked. The label is found from its text, whatever the markup is.
   const loadMoreButtons = () => {
     const found = [];
     const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
@@ -119,7 +118,10 @@
     }, 0);
     const usable = buttons.filter(({ top }) => top >= gridBottom - 5);
     if (!usable.length) return { clicked: false, seen: buttons.length };
-    press(usable[0].target);
+    // the one that loads products sits right under the grid; a lower "Xem thêm" belongs to a section
+    // below it (the reviews on a category page), so the nearest one wins
+    const nearest = usable.reduce((best, item) => (item.top < best.top ? item : best));
+    press(nearest.target);
     return { clicked: true, seen: buttons.length };
   };
 
