@@ -4,7 +4,11 @@ Measured directly through ViLao (`https://api.vilao.ai/v1`), not taken from outs
 Method: a script sends numbered images or a test clip and checks what comes back. Measure again when
 the model or the provider changes. Each section carries its measurement date.
 
-## Image model: `veo/gemini-3.1-flash-image` (measured 2026-11-05 and 2026-11-06)
+## Image model: `gpt-image-2` (`AIC_IMAGE_MODEL`, `AIC_IMAGE_API=edits`): not measured
+
+The limits of this model are not measured yet (input images, output images, time, size, price).
+The table below was measured on the old model `veo/gemini-3.1-flash-image` (2026-11-05 and
+2026-11-06) and does not apply to `gpt-image-2`. Measure again and replace the table.
 
 | Item | Result |
 | --- | --- |
@@ -48,9 +52,10 @@ or up to 7 reference images (up to 10 seconds). The product must be correct alre
 | wav format | Not measured for the same reason |
 | Price | 20 VND per request |
 
-## Screening and brief model: `gemini/gemini-3.6-flash`, fallback `cc/claude-sonnet-5`
+## Writer and review models (`AIC_WRITER_MODEL`, `AIC_REVIEW_MODEL`)
 
-Image-count limit not measured. Reached through 9Router (`AIC_SCREENING_BASE_URL`). The brief
+One model per variable, no fallback; an error names the model that failed. Image-count limit not
+measured. Reached through 9Router (`AIC_SCREENING_BASE_URL`). The brief
 currently sends up to 9 product images and still works. Seen: output is cut short when `max_tokens`
 is small, because Gemini spends tokens on thinking; so `max_output_tokens` is set to 12000 for the
 brief and 4000 for the checking steps.
