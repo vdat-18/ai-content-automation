@@ -3,6 +3,7 @@ from types import SimpleNamespace
 import httpx
 import pytest
 from baml_py.baml_py import BamlClientError
+from tests.pgstore import product_repository
 
 from ai_content.domains.marketing.products import service as service_module
 from ai_content.domains.marketing.products.briefing import (
@@ -13,7 +14,6 @@ from ai_content.domains.marketing.products.briefing import (
 )
 from ai_content.domains.marketing.products.reference_picker import ReferencePickerError
 from ai_content.domains.marketing.products.references import ProfileGenerationError
-from ai_content.domains.marketing.products.repositories import SqliteProductRepository
 from ai_content.domains.marketing.products.service import ProductCatalogService
 
 PRODUCT_ID = "1730000000000000001"
@@ -37,7 +37,7 @@ class _FakeWriter:
 
 
 async def _service(tmp_path, writer=None) -> ProductCatalogService:
-    repository = SqliteProductRepository(tmp_path / "b.db")
+    repository = product_repository()
     service = ProductCatalogService(repository, briefer=writer)
     await service.ingest({"kind": "page", "url": URL, "html": HTML})
     return service
@@ -316,7 +316,8 @@ async def test_references_fall_back_to_text_when_the_product_cannot_be_embedded(
 ) -> None:
     service, picker, hand, room = await _look_service(tmp_path, monkeypatch, fail=True)
     record = await service.create_brief(PRODUCT_ID, video_seconds=30, person_photos=[b"face"])
-    assert record is not None and picker.seen[0] == [hand, room]
+    # nothing tells the two apart without the look of the product, so only the pair is certain
+    assert record is not None and set(picker.seen[0]) == {hand, room}
 
 
 async def test_a_reference_is_not_used_for_two_shots(tmp_path, monkeypatch) -> None:
@@ -433,7 +434,7 @@ async def test_brief_is_rewritten_until_it_has_the_requested_number_of_shots(
 
 
 async def test_editing_the_script_flags_what_was_already_made_from_it(tmp_path) -> None:
-    repository = SqliteProductRepository(tmp_path / "s.db")
+    repository = product_repository()
     service = ProductCatalogService(repository)
     shots = [
         {"keyframe_prompt": "a", "motion_prompt": "m", "voiceover": "hello", "delivery": "talking"},

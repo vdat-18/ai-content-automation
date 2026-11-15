@@ -1,15 +1,14 @@
 from dataclasses import replace
 from datetime import UTC, datetime
 
+from tests.pgstore import knowledge_repository, product_repository
+
 from ai_content.domains.marketing.creative_knowledge.models import (
     CreativeKnowledge,
     KnowledgeAuthority,
     KnowledgeStage,
     KnowledgeStatus,
     KnowledgeType,
-)
-from ai_content.domains.marketing.creative_knowledge.repositories import (
-    SqliteCreativeKnowledgeRepository,
 )
 from ai_content.domains.marketing.creative_knowledge.service import (
     CreativeKnowledgeService,
@@ -21,7 +20,6 @@ from ai_content.domains.marketing.products.knowledge import (
     approved_rules,
     propose_feedback,
 )
-from ai_content.domains.marketing.products.repositories import SqliteProductRepository
 from ai_content.domains.marketing.products.service import ProductCatalogService
 
 PRODUCT_ID = "1730000000000000001"
@@ -29,7 +27,7 @@ PNG = b"\x89PNG\r\n\x1a\nfake"
 
 
 def _knowledge(tmp_path) -> CreativeKnowledgeService:
-    return CreativeKnowledgeService(SqliteCreativeKnowledgeRepository(tmp_path / "k.db"))
+    return CreativeKnowledgeService(knowledge_repository())
 
 
 async def _approved(
@@ -147,7 +145,7 @@ async def test_rules_reach_the_image_model_and_checker_and_qa_problems_become_pr
             descriptions.append(description)
             return "arm too long" if len(descriptions) == 1 else ""
 
-    repository = SqliteProductRepository(tmp_path / "p.db")
+    repository = product_repository()
     service = ProductCatalogService(
         repository,
         keyframer=_Keyframer(),  # type: ignore[arg-type]
@@ -241,7 +239,7 @@ async def test_an_automatic_proposal_never_reopens_a_decided_rule(tmp_path) -> N
 
 async def test_a_check_problem_seen_in_two_videos_becomes_a_proposed_script_rule(tmp_path) -> None:
     knowledge = _knowledge(tmp_path)
-    repository = SqliteProductRepository(tmp_path / "c.db")
+    repository = product_repository()
     service = ProductCatalogService(repository, knowledge=knowledge)
     for product in ("p1", "p2"):
         await repository.save_brief(product, "", {"title": product, "shots": []}, "approved")

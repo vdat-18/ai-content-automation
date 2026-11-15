@@ -2,9 +2,10 @@ import shutil
 import subprocess
 
 import pytest
+from tests.pgstore import product_repository
 
 from ai_content.domains.marketing.products import service as service_module
-from ai_content.domains.marketing.products.repositories import SqliteProductRepository
+from ai_content.domains.marketing.products.repositories import PostgresProductRepository
 from ai_content.domains.marketing.products.service import ProductCatalogService
 from ai_content.domains.marketing.products.shortening import VoiceShortener, words_that_fit
 from ai_content.domains.marketing.products.word_timing import Timing
@@ -87,12 +88,12 @@ class _Shortener:
         return self.text
 
 
-async def _ready(tmp_path, monkeypatch) -> tuple[SqliteProductRepository, _Speaker]:
+async def _ready(tmp_path, monkeypatch) -> tuple[PostgresProductRepository, _Speaker]:
     async def heard(audio, text, model_dir):
         return Timing([0.0], 1.0)
 
     monkeypatch.setattr(service_module, "word_starts", heard)
-    repository = SqliteProductRepository(tmp_path / "s.db")
+    repository = product_repository()
     await repository.upsert_detail({"product_id": PRODUCT_ID, "title": "Áo", "images": ["u"]})
     shots = [{"voiceover": LONG, "duration_seconds": 15}]
     await repository.save_brief(PRODUCT_ID, "", {"shots": shots}, "approved")

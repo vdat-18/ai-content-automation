@@ -3,7 +3,6 @@
 Set AIC_TEST_DATABASE_URL (postgresql+psycopg://...) to a disposable database to enable.
 """
 
-import asyncio
 import os
 
 import pytest
@@ -222,6 +221,5 @@ async def _round_trip() -> None:
         await engine.dispose()
 
 
-def test_postgres_repository_round_trip() -> None:
-    # psycopg's async mode cannot run on the Windows default Proactor event loop.
-    asyncio.run(_round_trip(), loop_factory=asyncio.SelectorEventLoop)
+async def test_postgres_repository_round_trip() -> None:
+    await _round_trip()

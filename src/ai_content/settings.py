@@ -54,10 +54,7 @@ class ApplicationSettings(BaseSettings):
     # Local ONNX image embedding used to drop duplicate references; empty disables it.
     embedding_model: str = Field("", validation_alias="AIC_EMBEDDING_MODEL")
 
-    database_backend: Literal["sqlite", "postgresql"] = Field(
-        "sqlite", validation_alias="AIC_AI_DATABASE_BACKEND"
-    )
-    database_url: SecretStr | None = Field(None, validation_alias="AIC_AI_DATABASE_URL")
+    database_url: SecretStr = Field(validation_alias="AIC_AI_DATABASE_URL")
     environment: str = Field("development", validation_alias="AIC_AI_ENVIRONMENT")
     cors_allow_origin: str | None = Field(None, validation_alias="AIC_CORS_ALLOW_ORIGINS")
 
@@ -110,8 +107,6 @@ class ApplicationSettings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_runtime_dependencies(self) -> "ApplicationSettings":
-        if self.database_backend == "postgresql" and self.database_url is None:
-            raise ValueError("AIC_AI_DATABASE_URL is required for the PostgreSQL backend")
         if self.object_storage_backend == "s3" and not all(
             (self.s3_endpoint_url, self.s3_bucket, self.s3_access_key, self.s3_secret_key)
         ):

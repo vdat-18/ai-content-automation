@@ -1,9 +1,9 @@
 from types import SimpleNamespace
 
 from baml_py.baml_py import BamlError
+from tests.pgstore import product_repository
 from tests.test_product_briefs import HTML, PIN, PRODUCT_ID, URL
 
-from ai_content.domains.marketing.products.repositories import SqliteProductRepository
 from ai_content.domains.marketing.products.service import ProductCatalogService
 from ai_content.domains.marketing.products.storyboard_review import StoryboardReviewer
 
@@ -71,7 +71,7 @@ class _Judge:
 
 async def _service(tmp_path, writer, judge):
     service = ProductCatalogService(
-        SqliteProductRepository(tmp_path / "q.db"),
+        product_repository(),
         briefer=writer,
         storyboard_reviewer=judge,  # type: ignore[arg-type]
     )

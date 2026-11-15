@@ -202,7 +202,7 @@ async def download_media(
     service: ProductCatalogService = Depends(get_product_catalog_service),
 ) -> dict[str, int]:
     """Save images and videos of captured products under <data root>/media."""
-    root = get_runtime_settings().db_path.parent / "media"
+    root = get_runtime_settings().data_root / "media"
     return (await service.download_media(root)).as_dict()
 
 
@@ -628,7 +628,7 @@ class KeyframeReview(BaseModel):
 
 
 def _media_root() -> Path:
-    return get_runtime_settings().db_path.parent / "media"
+    return get_runtime_settings().data_root / "media"
 
 
 @router.get("/{product_id}/keyframes")

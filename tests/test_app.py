@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
+from tests.pgstore import runtime_container
 
 from ai_content.entrypoints.api.app import app
 
@@ -10,6 +11,7 @@ from ai_content.entrypoints.api.app import app
 def client(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> TestClient:
     monkeypatch.setenv("AIC_AI_DATA_ROOT", str(tmp_path))
     monkeypatch.setenv("AIC_AI_CONFIG_DIR", str(Path(__file__).parent.parent / "config"))
+    monkeypatch.setattr(app.state, "postgres_runtime", runtime_container(), raising=False)
     return TestClient(app)
 
 

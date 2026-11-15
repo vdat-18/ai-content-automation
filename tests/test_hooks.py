@@ -1,9 +1,9 @@
 from pathlib import Path
 
 import pytest
+from tests.pgstore import product_repository
 
 from ai_content.domains.marketing.products.hooks import passing_hooks
-from ai_content.domains.marketing.products.repositories import SqliteProductRepository
 from ai_content.domains.marketing.products.service import (
     KeyframeUnavailable,
     ProductCatalogService,
@@ -48,7 +48,7 @@ class _Writer:
 
 async def _service(tmp_path, writer) -> ProductCatalogService:
     tmp_path.mkdir(parents=True, exist_ok=True)
-    repository = SqliteProductRepository(tmp_path / "s.db")
+    repository = product_repository()
     await repository.upsert_detail(
         {"product_id": "42", "title": "Áo", "price": {"sale": "99000"}, "images": ["u"]}
     )

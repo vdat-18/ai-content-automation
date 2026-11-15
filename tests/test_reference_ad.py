@@ -3,11 +3,9 @@ import subprocess
 from pathlib import Path
 
 import pytest
+from tests.pgstore import knowledge_repository, product_repository
 
 from ai_content.domains.marketing.creative_knowledge.models import KnowledgeStatus
-from ai_content.domains.marketing.creative_knowledge.repositories import (
-    SqliteCreativeKnowledgeRepository,
-)
 from ai_content.domains.marketing.creative_knowledge.service import CreativeKnowledgeService
 from ai_content.domains.marketing.products import reference_ad
 from ai_content.domains.marketing.products.reference_ad import (
@@ -16,7 +14,6 @@ from ai_content.domains.marketing.products.reference_ad import (
     ReferenceAdUnavailable,
     sample,
 )
-from ai_content.domains.marketing.products.repositories import SqliteProductRepository
 from ai_content.domains.marketing.products.service import (
     KeyframeUnavailable,
     ProductCatalogService,
@@ -39,9 +36,9 @@ class _Analyzer:
 
 
 def _service(tmp_path, analyzer) -> tuple[ProductCatalogService, CreativeKnowledgeService]:
-    knowledge = CreativeKnowledgeService(SqliteCreativeKnowledgeRepository(tmp_path / "k.db"))
+    knowledge = CreativeKnowledgeService(knowledge_repository())
     service = ProductCatalogService(
-        SqliteProductRepository(tmp_path / "s.db"), knowledge=knowledge, ad_analyzer=analyzer
+        product_repository(), knowledge=knowledge, ad_analyzer=analyzer
     )  # type: ignore[arg-type]
     return service, knowledge
 

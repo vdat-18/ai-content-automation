@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-import sqlite3
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from functools import cache
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 from fastapi import FastAPI, Request
 from loguru import logger
@@ -16,9 +15,6 @@ from loguru import logger
 from ai_content.domains.marketing.creative_knowledge.bootstrap import (
     import_knowledge_proposals,
     load_knowledge_bootstrap,
-)
-from ai_content.domains.marketing.creative_knowledge.repositories import (
-    SqliteCreativeKnowledgeRepository,
 )
 from ai_content.domains.marketing.creative_knowledge.service import CreativeKnowledgeService
 from ai_content.domains.marketing.products.briefing import ContentBriefWriter
@@ -38,7 +34,6 @@ from ai_content.domains.marketing.products.posting import PostingPackageWriter
 from ai_content.domains.marketing.products.reference_ad import AdAnalyzer
 from ai_content.domains.marketing.products.reference_picker import ShotReferencePicker
 from ai_content.domains.marketing.products.references import ReferenceProfileGenerator
-from ai_content.domains.marketing.products.repositories import SqliteProductRepository
 from ai_content.domains.marketing.products.service import ProductCatalogService
 from ai_content.domains.marketing.products.shortening import VoiceShortener
 from ai_content.domains.marketing.products.speech import SpeechClient
@@ -49,12 +44,10 @@ from ai_content.entrypoints.postgres_runtime import PostgresRuntimeContainer
 from ai_content.platform.ai_usage import (
     AIUsageRepository,
     AIUsageTracker,
-    SqliteAIUsageRepository,
 )
 from ai_content.platform.database import Database
 from ai_content.platform.notifications import (
     NotificationRepository,
-    SqliteNotificationRepository,
 )
 from ai_content.platform.observability import ObservabilitySettings, instrument_sqlalchemy
 from ai_content.settings import ApplicationSettings
@@ -64,7 +57,8 @@ from ai_content.settings import ApplicationSettings
 class ApiRuntimeSettings:
     """Runtime settings used by the dashboard API."""
 
-    db_path: Path
+    data_root: Path
+    database_url: str
     config_dir: Path
     screening_base_url: str = "http://127.0.0.1:1234/v1"
     screening_api_key: str | None = None
@@ -86,8 +80,6 @@ class ApiRuntimeSettings:
     tts_api_key: str | None = None
     tts_model: str = ""
     tts_voice: str = ""
-    database_backend: Literal["sqlite", "postgresql"] = "sqlite"
-    database_url: str | None = None
     media_s3_endpoint_url: str | None = None
     media_s3_bucket: str = ""
     media_s3_access_key: str | None = None
@@ -124,7 +116,8 @@ def get_runtime_settings() -> ApiRuntimeSettings:
     """Build default runtime settings for the dashboard API."""
     application = ApplicationSettings()
     return ApiRuntimeSettings(
-        db_path=application.data_root / "state.db",
+        data_root=application.data_root,
+        database_url=application.database_url.get_secret_value(),
         config_dir=application.config_dir,
         screening_base_url=application.screening_base_url,
         screening_api_key=application.screening_api_key_value,
@@ -153,48 +146,28 @@ def get_runtime_settings() -> ApiRuntimeSettings:
         tts_api_key=application.tts_api_key_value,
         tts_model=application.tts_model,
         tts_voice=application.tts_voice,
-        database_backend=application.database_backend,
-        database_url=(
-            application.database_url.get_secret_value() if application.database_url else None
-        ),
         **_media_s3_settings(application),
     )
 
 
-async def _interrupt_unfinished_runs(container: PostgresRuntimeContainer | None) -> None:
+async def _interrupt_unfinished_runs(container: PostgresRuntimeContainer) -> None:
     """A run cut off by a restart is no longer running: say so instead of showing nothing."""
     try:
-        if container is not None:
-            await container.product_repository.interrupt_runs()
-            return
-        repository = SqliteProductRepository(get_runtime_settings().db_path)
-        try:
-            await repository.interrupt_runs()
-        finally:
-            repository.close()
+        await container.product_repository.interrupt_runs()
     except Exception as error:  # noqa: BLE001
         logger.warning("Could not mark the unfinished runs as interrupted: {}", error)
 
 
-async def _load_product_ad_rules(container: PostgresRuntimeContainer | None) -> None:
+async def _load_product_ad_rules(container: PostgresRuntimeContainer) -> None:
     """Make sure the standard rules for product ads exist, so a new install does not run without."""
     settings = get_runtime_settings()
     try:
         manifest = load_knowledge_bootstrap(
             settings.config_dir / "creative_knowledge" / "product_ad.json"
         )
-        if container is not None:
-            await import_knowledge_proposals(
-                container.creative_knowledge_service, manifest, contributor="system"
-            )
-            return
-        repository = SqliteCreativeKnowledgeRepository(settings.db_path)
-        try:
-            await import_knowledge_proposals(
-                CreativeKnowledgeService(repository), manifest, contributor="system"
-            )
-        finally:
-            repository.close()
+        await import_knowledge_proposals(
+            container.creative_knowledge_service, manifest, contributor="system"
+        )
     except Exception as error:  # noqa: BLE001
         logger.warning("The standard rules for product ads could not be loaded: {}", error)
 
@@ -208,29 +181,22 @@ async def lifespan(application: FastAPI):
         "observability_settings",
         ObservabilitySettings(service_name="aicontent-api"),
     )
-    container = None
-    if settings.database_backend == "postgresql":
-        assert settings.database_url is not None
-        database = Database(settings.database_url)
-        container = PostgresRuntimeContainer(database)
-        application.state.postgres_runtime = container
-        instrument_sqlalchemy(database.engine, observability)
+    database = Database(settings.database_url)
+    container = PostgresRuntimeContainer(database)
+    application.state.postgres_runtime = container
+    instrument_sqlalchemy(database.engine, observability)
     await _interrupt_unfinished_runs(container)
     await _load_product_ad_rules(container)
     try:
         yield
     finally:
-        if container is not None:
-            await container.database.close()
+        await container.database.close()
         observability_runtime = getattr(application.state, "observability_runtime", None)
         if observability_runtime is not None:
             observability_runtime.shutdown()
 
 
-def _postgres_runtime(request: Request) -> PostgresRuntimeContainer | None:
-    settings = get_runtime_settings()
-    if settings.database_backend == "sqlite":
-        return None
+def _postgres_runtime(request: Request) -> PostgresRuntimeContainer:
     container = getattr(request.app.state, "postgres_runtime", None)
     if container is None:
         raise RuntimeError("PostgreSQL runtime was not initialized")
@@ -240,23 +206,19 @@ def _postgres_runtime(request: Request) -> PostgresRuntimeContainer | None:
 async def check_runtime_readiness(
     settings: ApiRuntimeSettings, database: Database | None
 ) -> RuntimeReadiness:
-    """Check the data directory and the selected database backend."""
+    """Check the data directory and the database."""
     checks: dict[str, str] = {}
     try:
-        settings.db_path.parent.mkdir(parents=True, exist_ok=True)
+        settings.data_root.mkdir(parents=True, exist_ok=True)
         checks["storage"] = "ok"
     except OSError:
         checks["storage"] = "unavailable"
     try:
-        if settings.database_backend == "sqlite":
-            with sqlite3.connect(settings.db_path, timeout=1) as connection:
-                connection.execute("SELECT 1").fetchone()
-        else:
-            if database is None:
-                raise RuntimeError("PostgreSQL runtime is unavailable")
-            await database.check()
+        if database is None:
+            raise RuntimeError("PostgreSQL runtime is unavailable")
+        await database.check()
         checks["database"] = "ok"
-    except (OSError, sqlite3.Error, RuntimeError):
+    except (OSError, RuntimeError):
         checks["database"] = "unavailable"
     return RuntimeReadiness(
         ready=all(value == "ok" for value in checks.values()),
@@ -267,14 +229,7 @@ async def check_runtime_readiness(
 @asynccontextmanager
 async def notification_scope(postgres: Any) -> AsyncIterator[NotificationRepository]:
     """Open the notifications, in a request or in a background task."""
-    if postgres is not None:
-        yield postgres.notification_repository
-        return
-    repository = SqliteNotificationRepository(get_runtime_settings().db_path)
-    try:
-        yield repository
-    finally:
-        repository.close()
+    yield postgres.notification_repository
 
 
 def notification_scope_for(request: Request):
@@ -292,32 +247,14 @@ async def get_notification_repository(
 
 async def get_ai_usage_repository(request: Request) -> AsyncIterator[AIUsageRepository]:
     """Yield the durable usage ledger."""
-    settings = get_runtime_settings()
-    postgres = _postgres_runtime(request)
-    if postgres is not None:
-        yield postgres.ai_usage_repository
-        return
-    repository = SqliteAIUsageRepository(settings.db_path)
-    try:
-        yield repository
-    finally:
-        repository.close()
+    yield _postgres_runtime(request).ai_usage_repository
 
 
 async def get_creative_knowledge_service(
     request: Request,
 ) -> AsyncIterator[CreativeKnowledgeService]:
     """Yield the scoped knowledge registry."""
-    settings = get_runtime_settings()
-    postgres = _postgres_runtime(request)
-    if postgres is not None:
-        yield postgres.creative_knowledge_service
-        return
-    repository = SqliteCreativeKnowledgeRepository(settings.db_path)
-    try:
-        yield CreativeKnowledgeService(repository)
-    finally:
-        repository.close()
+    yield _postgres_runtime(request).creative_knowledge_service
 
 
 def _image_reviewer(settings: ApiRuntimeSettings) -> ReferenceImageReviewer | None:
@@ -338,7 +275,7 @@ def _embedder_for(model: str, models_dir: Path) -> ImageEmbedder:
 def _image_embedder(settings: ApiRuntimeSettings) -> ImageEmbedder | None:
     if not settings.embedding_model:
         return None
-    return _embedder_for(settings.embedding_model, settings.db_path.parent / "models")
+    return _embedder_for(settings.embedding_model, settings.data_root / "models")
 
 
 def _keyframer(settings: ApiRuntimeSettings) -> KeyframeGenerator | None:
@@ -510,7 +447,7 @@ def _ad_analyzer(settings: ApiRuntimeSettings) -> AdAnalyzer | None:
         base_url=settings.screening_base_url,
         api_key=settings.screening_api_key,
         model=settings.review_model,
-        model_dir=settings.db_path.parent / "whisper",
+        model_dir=settings.data_root / "whisper",
     )
 
 
@@ -528,53 +465,29 @@ def _profile_generator(settings: ApiRuntimeSettings) -> ReferenceProfileGenerato
 async def product_catalog_scope(postgres: Any) -> AsyncIterator[ProductCatalogService]:
     """Open the product catalog service, in a request or in a background task."""
     settings = get_runtime_settings()
-    repository = (
-        postgres.product_repository
-        if postgres is not None
-        else SqliteProductRepository(settings.db_path)
+    yield ProductCatalogService(
+        postgres.product_repository,
+        _profile_generator(settings),
+        _image_reviewer(settings),
+        _brief_writer(settings),
+        _image_embedder(settings),
+        _keyframer(settings),
+        _keyframe_checker(settings),
+        _video_client(settings),
+        _posting_writer(settings),
+        _speech_client(settings),
+        _remote_media(settings),
+        _storyboard_reviewer(settings),
+        _text_embedder(settings),
+        _reference_picker(settings),
+        clip_checker=_clip_checker(settings),
+        knowledge=postgres.creative_knowledge_service,
+        ad_analyzer=_ad_analyzer(settings),
+        hook_writer=_hook_writer(settings),
+        voice_picker=_voice_picker(settings),
+        voice_shortener=_voice_shortener(settings),
+        usage=AIUsageTracker(postgres.ai_usage_repository),
     )
-    knowledge_repository = (
-        None if postgres is not None else SqliteCreativeKnowledgeRepository(settings.db_path)
-    )
-    knowledge = (
-        postgres.creative_knowledge_service
-        if postgres is not None
-        else CreativeKnowledgeService(knowledge_repository)
-    )
-    usage_repository = (
-        postgres.ai_usage_repository
-        if postgres is not None
-        else SqliteAIUsageRepository(settings.db_path)
-    )
-    try:
-        yield ProductCatalogService(
-            repository,
-            _profile_generator(settings),
-            _image_reviewer(settings),
-            _brief_writer(settings),
-            _image_embedder(settings),
-            _keyframer(settings),
-            _keyframe_checker(settings),
-            _video_client(settings),
-            _posting_writer(settings),
-            _speech_client(settings),
-            _remote_media(settings),
-            _storyboard_reviewer(settings),
-            _text_embedder(settings),
-            _reference_picker(settings),
-            clip_checker=_clip_checker(settings),
-            knowledge=knowledge,
-            ad_analyzer=_ad_analyzer(settings),
-            hook_writer=_hook_writer(settings),
-            voice_picker=_voice_picker(settings),
-            voice_shortener=_voice_shortener(settings),
-            usage=AIUsageTracker(usage_repository),
-        )
-    finally:
-        if postgres is None:
-            repository.close()
-            knowledge_repository.close()
-            usage_repository.close()
 
 
 def product_catalog_scope_for(request: Request):

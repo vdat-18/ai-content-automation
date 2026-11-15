@@ -87,8 +87,6 @@ async def _run(args: argparse.Namespace) -> None:
             )
         logger.info("Off-site backup {} verified", manifest.backup_id)
         return
-    if settings.database_backend != "postgresql" or settings.database_url is None:
-        raise BackupValidationError("Backup maintenance requires PostgreSQL settings")
     database_url = settings.database_url.get_secret_value()
     database = Database(database_url)
     service = BackupService(

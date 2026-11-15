@@ -1,11 +1,6 @@
-"""SQLite and PostgreSQL adapters for Creative knowledge."""
+"""PostgreSQL adapter for Creative knowledge."""
 
 from __future__ import annotations
-
-import json
-import sqlite3
-from datetime import datetime
-from pathlib import Path
 
 from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert
@@ -18,90 +13,6 @@ from ai_content.platform.database.schema import (
 
 from .models import AppliedKnowledgeBootstrap, CreativeKnowledge
 from .serialization import knowledge_from_dict, knowledge_to_dict
-
-
-class SqliteCreativeKnowledgeRepository:
-    def __init__(self, path: Path) -> None:
-        self._connection = sqlite3.connect(path, check_same_thread=False)
-        self._connection.execute(
-            """
-            CREATE TABLE IF NOT EXISTS creative_knowledge (
-                knowledge_id TEXT PRIMARY KEY,
-                payload TEXT NOT NULL
-            )
-            """
-        )
-        self._connection.execute(
-            """
-            CREATE TABLE IF NOT EXISTS creative_knowledge_bootstraps (
-                bootstrap_id TEXT PRIMARY KEY,
-                schema_version TEXT NOT NULL,
-                checksum TEXT NOT NULL,
-                item_count INTEGER NOT NULL,
-                applied_by TEXT NOT NULL,
-                applied_at TEXT NOT NULL
-            )
-            """
-        )
-        self._connection.commit()
-
-    def close(self) -> None:
-        self._connection.close()
-
-    async def save(self, item: CreativeKnowledge) -> None:
-        self._connection.execute(
-            """INSERT INTO creative_knowledge (knowledge_id, payload)
-               VALUES (?, ?)
-               ON CONFLICT(knowledge_id) DO UPDATE SET payload=excluded.payload""",
-            (item.knowledge_id, json.dumps(knowledge_to_dict(item))),
-        )
-        self._connection.commit()
-
-    async def get(self, knowledge_id: str) -> CreativeKnowledge | None:
-        row = self._connection.execute(
-            "SELECT payload FROM creative_knowledge WHERE knowledge_id=?",
-            (knowledge_id,),
-        ).fetchone()
-        return knowledge_from_dict(json.loads(row[0])) if row else None
-
-    async def list(self) -> list[CreativeKnowledge]:
-        rows = self._connection.execute(
-            "SELECT payload FROM creative_knowledge ORDER BY knowledge_id"
-        ).fetchall()
-        return [knowledge_from_dict(json.loads(row[0])) for row in rows]
-
-    async def get_bootstrap(self, bootstrap_id: str) -> AppliedKnowledgeBootstrap | None:
-        row = self._connection.execute(
-            "SELECT schema_version, checksum, item_count, applied_by, applied_at "
-            "FROM creative_knowledge_bootstraps WHERE bootstrap_id=?",
-            (bootstrap_id,),
-        ).fetchone()
-        if row is None:
-            return None
-        return AppliedKnowledgeBootstrap(
-            bootstrap_id=bootstrap_id,
-            schema_version=str(row[0]),
-            checksum=str(row[1]),
-            item_count=int(row[2]),
-            applied_by=str(row[3]),
-            applied_at=datetime.fromisoformat(str(row[4])),
-        )
-
-    async def save_bootstrap(self, bootstrap: AppliedKnowledgeBootstrap) -> None:
-        self._connection.execute(
-            "INSERT INTO creative_knowledge_bootstraps "
-            "(bootstrap_id, schema_version, checksum, item_count, applied_by, applied_at) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
-            (
-                bootstrap.bootstrap_id,
-                bootstrap.schema_version,
-                bootstrap.checksum,
-                bootstrap.item_count,
-                bootstrap.applied_by,
-                bootstrap.applied_at.isoformat(),
-            ),
-        )
-        self._connection.commit()
 
 
 class PostgresCreativeKnowledgeRepository:

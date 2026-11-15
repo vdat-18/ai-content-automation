@@ -27,7 +27,6 @@ x-python-environment: &python-environment
   AIC_CLIP_SPEED: ${AIC_CLIP_SPEED:-1.1}
   AIC_DUPLICATE_SIMILARITY: ${AIC_DUPLICATE_SIMILARITY:-0.80}
   AIC_AI_DATA_ROOT: /var/lib/aicontent/pilot
-  AIC_AI_DATABASE_BACKEND: postgresql
   AIC_AI_DATABASE_URL: >-
     postgresql+psycopg://${AIC_POSTGRES_USER:?set AIC_POSTGRES_USER}:${AIC_POSTGRES_PASSWORD:?set AIC_POSTGRES_PASSWORD}@postgres:5432/${AIC_POSTGRES_DB:?set AIC_POSTGRES_DB}
   AIC_AI_OBJECT_STORAGE_BACKEND: s3
@@ -213,6 +212,32 @@ services:
       - test_whisper_models:/models  # the speech model is downloaded once, not on every run
     environment:
       AIC_TEST_WHISPER_DIR: /models
+      AIC_AI_DATABASE_URL: postgresql+psycopg://test:test@test-postgres:5432/test
+      AIC_TEST_DATABASE_URL: postgresql+psycopg://test:test@test-postgres:5432/test
+    depends_on:
+      test-postgres:
+        condition: service_healthy
+    networks:
+      - internal
+    profiles:
+      - tools
+
+  # A disposable database for the tests: in memory, nothing is kept.
+  test-postgres:
+    image: postgres:17-bookworm
+    environment:
+      POSTGRES_DB: test
+      POSTGRES_USER: test
+      POSTGRES_PASSWORD: test
+    tmpfs:
+      - /var/lib/postgresql/data
+    networks:
+      - internal
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U test -d test]
+      interval: 2s
+      timeout: 5s
+      retries: 15
     profiles:
       - tools
 

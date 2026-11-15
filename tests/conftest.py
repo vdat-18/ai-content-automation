@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pytest
 from PIL import Image
+from tests.pgstore import forget_rows
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -15,6 +16,12 @@ def _shared_whisper_models(tmp_path_factory: pytest.TempPathFactory) -> None:
     shared = os.environ.get("AIC_TEST_WHISPER_DIR")
     if shared:
         (tmp_path_factory.getbasetemp() / "whisper").symlink_to(shared, target_is_directory=True)
+
+
+@pytest.fixture(autouse=True)
+def _fresh_database() -> None:
+    """Every test starts with an empty database (emptied when a test first asks for one)."""
+    forget_rows()
 
 
 @pytest.fixture

@@ -1,10 +1,10 @@
 from types import SimpleNamespace
 
 import httpx
+from tests.pgstore import product_repository
 
 from ai_content.domains.marketing.products.briefing import reference_note
 from ai_content.domains.marketing.products.image_review import ReferenceImageReviewer
-from ai_content.domains.marketing.products.repositories import SqliteProductRepository
 from ai_content.domains.marketing.products.service import ProductCatalogService
 
 FULL = {
@@ -81,7 +81,7 @@ def test_the_brief_writer_gets_every_detail_of_the_picture() -> None:
 
 
 async def test_old_reviews_get_their_detail_and_keep_their_status(tmp_path) -> None:
-    repository = SqliteProductRepository(tmp_path / "r.db")
+    repository = product_repository()
     await repository.add_reference_images(
         "lotion",
         "q",

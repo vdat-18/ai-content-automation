@@ -7,6 +7,7 @@ import re
 import httpx
 import pytest
 from PIL import Image
+from tests.pgstore import product_repository, usage_repository
 
 from ai_content.domains.marketing.products import keyframes as keyframes_module
 from ai_content.domains.marketing.products import service as service_module
@@ -17,7 +18,6 @@ from ai_content.domains.marketing.products.keyframes import (
     KeyframeImageClient,
     _to_vertical,
 )
-from ai_content.domains.marketing.products.repositories import SqliteProductRepository
 from ai_content.domains.marketing.products.service import (
     NOT_CHECKED,
     KeyframeUnavailable,
@@ -59,7 +59,7 @@ def fake_downloads(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 async def _service(tmp_path, keyframer, shots=SHOTS) -> ProductCatalogService:
-    repository = SqliteProductRepository(tmp_path / "k.db")
+    repository = product_repository()
     service = ProductCatalogService(repository, keyframer=keyframer)
     await repository.upsert_detail(
         {
@@ -441,7 +441,7 @@ async def test_the_real_product_size_reaches_the_image_prompt_and_the_checker(tm
             seen.append(description)
             return ""
 
-    repository = SqliteProductRepository(tmp_path / "s.db")
+    repository = product_repository()
     service = ProductCatalogService(
         repository, keyframer=KeyframeGenerator(_Client()), checker=_SizeChecker()
     )
@@ -719,11 +719,10 @@ async def test_every_image_call_is_counted_in_the_usage_ledger(tmp_path) -> None
     from ai_content.platform.ai_usage import (
         AIUsageFilters,
         AIUsageTracker,
-        SqliteAIUsageRepository,
     )
 
     service = await _service(tmp_path, _FakeKeyframer())
-    ledger = SqliteAIUsageRepository(tmp_path / "usage.db")
+    ledger = usage_repository()
     service._usage = AIUsageTracker(ledger)
     service._checker = _Checker(["wrong color", ""])
     await service.generate_keyframes(PRODUCT_ID, tmp_path)

@@ -3,9 +3,9 @@ from io import BytesIO
 from types import SimpleNamespace
 
 from openpyxl import load_workbook
+from tests.pgstore import product_repository
 
 from ai_content.domains.marketing.products.parsing import parse_feed_payload, parse_product_page
-from ai_content.domains.marketing.products.repositories import SqliteProductRepository
 from ai_content.domains.marketing.products.service import ProductCatalogService
 
 URL = "https://shop.tiktok.com/vn/pdp/ao-thun/1730000000000000001"
@@ -64,7 +64,7 @@ def test_parse_feed_keeps_only_vnd() -> None:
 
 
 async def test_ingest_queue_and_export(tmp_path) -> None:
-    repository = SqliteProductRepository(tmp_path / "p.db")
+    repository = product_repository()
     service = ProductCatalogService(repository)
     assert (
         await service.ingest(
@@ -78,7 +78,6 @@ async def test_ingest_queue_and_export(tmp_path) -> None:
     book = load_workbook(BytesIO(await service.export_workbook()))
     assert book.sheetnames == ["products", "variants", "images", "videos", "specifications"]
     assert book["products"].max_row == 2
-    repository.close()
 
 
 def test_junk_reason() -> None:

@@ -24,7 +24,9 @@ khi xong. Chạy lại luôn tiếp tục từ phần đã làm, không làm l�
 
 ## Chạy
 
-Yêu cầu: Python 3.11+, [uv](https://docs.astral.sh/uv/), Node + pnpm, ffmpeg (ghép video, giọng, kiểm tra).
+Yêu cầu: Python 3.11+, [uv](https://docs.astral.sh/uv/), Node + pnpm, ffmpeg (ghép video, giọng, kiểm tra)
+và một database PostgreSQL (`AIC_AI_DATABASE_URL`; chạy `uv run alembic upgrade head` một lần). Chạy bằng
+Docker bên dưới là dễ nhất vì đã có sẵn PostgreSQL.
 
 ```bash
 uv sync --extra dev
@@ -47,7 +49,7 @@ rồi dùng `just up`. Dashboard và API **không có đăng nhập**, nên mặ
 | `AIC_VIDEO_*` | Model ảnh → video; `AIC_VIDEO_FRAME_FIELDS` chọn trường nhận khung hình đầu (mặc định `image`, đã thử thật) |
 | `AIC_TTS_*` | Giọng đọc |
 | `AIC_TEXT_EMBEDDING_MODEL` | Ghép ảnh tham chiếu cho từng cảnh (để trống thì tắt) |
-| `AIC_AI_DATABASE_BACKEND` | `sqlite` (dev) hoặc `postgresql` |
+| `AIC_AI_DATABASE_URL` | URL PostgreSQL (`postgresql+psycopg://...`); chỉ hỗ trợ PostgreSQL |
 
 Quy tắc mặc định cho quảng cáo nằm trong `config/creative_knowledge/product_ad.json`. Server nạp chúng khi
 khởi động. Sửa nội dung file thì phải đổi `bootstrap_id`, test sẽ nhắc.
@@ -70,7 +72,8 @@ pnpm --dir frontend lint && pnpm --dir frontend test && pnpm --dir frontend buil
 ```
 
 Sau khi sửa `baml_src/`, sinh lại client: `uv run baml-cli generate` (không sửa tay `adapters/baml_client`).
-Migration PostgreSQL nằm trong `migrations/`; SQLite tự tạo bảng khi mở.
+Migration PostgreSQL nằm trong `migrations/`. Test cần PostgreSQL nên chạy bằng `just test` (Docker tự bật
+một database dùng một lần).
 
 ## Tài liệu
 

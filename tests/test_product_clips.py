@@ -7,6 +7,7 @@ from pathlib import Path
 
 import httpx
 import pytest
+from tests.pgstore import knowledge_repository, product_repository
 
 from ai_content.domains.marketing.products import service as service_module
 from ai_content.domains.marketing.products.clips import (
@@ -34,7 +35,6 @@ from ai_content.domains.marketing.products.clips import (
     still_tail_seconds,
     stitch,
 )
-from ai_content.domains.marketing.products.repositories import SqliteProductRepository
 from ai_content.domains.marketing.products.service import (
     NOT_CHECKED,
     HookClipPending,
@@ -69,7 +69,7 @@ class _FakeVideo:
 
 
 async def _service(tmp_path, video) -> ProductCatalogService:
-    repository = SqliteProductRepository(tmp_path / "c.db")
+    repository = product_repository()
     service = ProductCatalogService(repository, videographer=video)
     await repository.save_brief(PRODUCT_ID, "", {"title": "b", "shots": SHOTS}, "approved")
     for index in range(2):
@@ -472,14 +472,11 @@ async def test_finished_clip_is_checked_and_a_flag_is_kept_until_it_is_made_agai
 
 async def test_a_flagged_clip_proposes_a_script_rule_once(tmp_path, monkeypatch) -> None:
     from ai_content.domains.marketing.creative_knowledge.models import KnowledgeStatus
-    from ai_content.domains.marketing.creative_knowledge.repositories import (
-        SqliteCreativeKnowledgeRepository,
-    )
     from ai_content.domains.marketing.creative_knowledge.service import CreativeKnowledgeService
 
     video = _FakeVideo()
     service = await _service(tmp_path, video)
-    knowledge = CreativeKnowledgeService(SqliteCreativeKnowledgeRepository(tmp_path / "k.db"))
+    knowledge = CreativeKnowledgeService(knowledge_repository())
     service._knowledge = knowledge
     service._clip_checker = _FakeClipChecker(["long sleeves appear in frame 2", "", None])  # type: ignore[assignment]
 

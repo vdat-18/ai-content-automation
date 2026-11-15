@@ -2,11 +2,11 @@ import io
 
 import pytest
 from PIL import Image
+from tests.pgstore import product_repository
 
 from ai_content.domains.marketing.products import service as service_module
 from ai_content.domains.marketing.products.embedding import dhash, hamming
 from ai_content.domains.marketing.products.references import ProfileGenerationError
-from ai_content.domains.marketing.products.repositories import SqliteProductRepository
 from ai_content.domains.marketing.products.service import ProductCatalogService
 
 
@@ -94,7 +94,7 @@ def _crawl(*names: str) -> dict:
 
 async def _service(tmp_path) -> tuple[ProductCatalogService, _FakeEmbedder]:
     embedder = _FakeEmbedder()
-    repository = SqliteProductRepository(tmp_path / "d.db")
+    repository = product_repository()
     return ProductCatalogService(repository, embedder=embedder), embedder  # type: ignore[arg-type]
 
 
@@ -155,7 +155,7 @@ async def test_backfill_fingerprints_old_images(tmp_path) -> None:
 
 
 async def test_backfill_needs_an_embedder(tmp_path) -> None:
-    service = ProductCatalogService(SqliteProductRepository(tmp_path / "n.db"))
+    service = ProductCatalogService(product_repository())
     with pytest.raises(ProfileGenerationError, match="disabled"):
         await service.backfill_fingerprints()
 
@@ -198,14 +198,14 @@ async def test_a_broken_embedder_stops_the_ingest_instead_of_letting_images_thro
         async def embed_many(self, contents):
             raise RuntimeError("model file is missing")
 
-    service = ProductCatalogService(SqliteProductRepository(tmp_path / "b.db"), embedder=Broken())  # type: ignore[arg-type]
+    service = ProductCatalogService(product_repository(), embedder=Broken())  # type: ignore[arg-type]
     with pytest.raises(ProfileGenerationError, match="duplicate check failed"):
         await service.ingest(_crawl("a"))
     assert await service.reference_images(None, "áo thun") == []
 
 
 async def test_ingest_without_an_embedder_is_refused(tmp_path) -> None:
-    service = ProductCatalogService(SqliteProductRepository(tmp_path / "n2.db"))
+    service = ProductCatalogService(product_repository())
     with pytest.raises(ProfileGenerationError, match="duplicate check is off"):
         await service.ingest(_crawl("a"))
 

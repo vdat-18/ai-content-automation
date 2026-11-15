@@ -3,9 +3,9 @@ import subprocess
 
 import httpx
 import pytest
+from tests.pgstore import product_repository
 
 from ai_content.domains.marketing.products import service as service_module
-from ai_content.domains.marketing.products.repositories import SqliteProductRepository
 from ai_content.domains.marketing.products.service import (
     KeyframeUnavailable,
     ProductCatalogService,
@@ -209,7 +209,7 @@ async def test_a_talking_shot_whose_clip_speech_cannot_be_followed_is_read_at_it
 
 
 async def test_a_talking_shot_needs_its_clip_before_the_voice(tmp_path) -> None:
-    repository = SqliteProductRepository(tmp_path / "s.db")
+    repository = product_repository()
     shots = [{"voiceover": "Xin chào", "duration_seconds": 15, "delivery": "talking"}]
     await repository.save_brief(PRODUCT_ID, "", {"shots": shots}, "approved")
     await repository.save_keyframe(
@@ -235,7 +235,7 @@ async def test_a_clip_without_speech_is_read_at_its_own_pace(tmp_path, monkeypat
         return Timing([0.0], 0.1)
 
     monkeypatch.setattr(service_module, "word_starts", heard_nothing_like_it)
-    repository = SqliteProductRepository(tmp_path / "s.db")
+    repository = product_repository()
     shots = [{"voiceover": "Xin chào", "duration_seconds": 15, "delivery": "talking"}]
     await repository.save_brief(PRODUCT_ID, "", {"shots": shots}, "approved")
     keyframe = {
@@ -278,7 +278,7 @@ async def test_a_clip_without_speech_is_read_at_its_own_pace(tmp_path, monkeypat
 
 
 async def test_service_needs_the_speaker_and_an_approved_keyframe(tmp_path) -> None:
-    repository = SqliteProductRepository(tmp_path / "s.db")
+    repository = product_repository()
     shots = [{"voiceover": "Xin chào", "duration_seconds": 15}]
     await repository.save_brief(PRODUCT_ID, "", {"shots": shots}, "approved")
     assert await ProductCatalogService(repository).create_voiceover("missing", tmp_path) is None
@@ -308,7 +308,7 @@ async def test_voice_sample_is_made_once_and_unknown_voices_are_refused(tmp_path
         return httpx.Response(200, content=b"ID3audio")
 
     service = ProductCatalogService(
-        SqliteProductRepository(tmp_path / "s.db"), speaker=_client(handler)
+        product_repository(), speaker=_client(handler)
     )
     first = await service.voice_sample("hamy.mp3", tmp_path)
     second = await service.voice_sample("hamy.mp3", tmp_path)
@@ -332,7 +332,7 @@ def test_low_room_noise_after_the_words_is_not_counted_as_speech() -> None:
 
 
 async def test_the_voice_that_read_the_video_is_remembered(tmp_path) -> None:
-    service = ProductCatalogService(SqliteProductRepository(tmp_path / "v.db"))
+    service = ProductCatalogService(product_repository())
     assert await service.last_voice(PRODUCT_ID, tmp_path) == ""
     await service.note_voice(PRODUCT_ID, tmp_path, "Tiến Đạt", voice_id="tiendat.mp3")
     assert await service.last_voice(PRODUCT_ID, tmp_path) == "tiendat.mp3"

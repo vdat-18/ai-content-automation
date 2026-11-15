@@ -2,12 +2,12 @@ from types import SimpleNamespace
 
 import pytest
 from baml_py.baml_py import BamlClientError
+from tests.pgstore import product_repository
 
 from ai_content.domains.marketing.products.posting import (
     PostingPackageError,
     PostingPackageWriter,
 )
-from ai_content.domains.marketing.products.repositories import SqliteProductRepository
 from ai_content.domains.marketing.products.service import (
     KeyframeUnavailable,
     ProductCatalogService,
@@ -55,7 +55,7 @@ async def test_writer_reports_model_errors() -> None:
 
 
 async def test_service_keeps_the_package_on_the_brief_across_edits(tmp_path) -> None:
-    repository = SqliteProductRepository(tmp_path / "p.db")
+    repository = product_repository()
     service = ProductCatalogService(repository, poster=PostingPackageWriter(_FakeBaml()))
     assert await service.create_post_package(PRODUCT_ID) is None
     await repository.upsert_detail({"product_id": PRODUCT_ID, "title": "Giỏ", "images": []})
@@ -69,7 +69,7 @@ async def test_service_keeps_the_package_on_the_brief_across_edits(tmp_path) -> 
 
 
 async def test_service_needs_the_llm(tmp_path) -> None:
-    repository = SqliteProductRepository(tmp_path / "p.db")
+    repository = product_repository()
     service = ProductCatalogService(repository)
     await repository.upsert_detail({"product_id": PRODUCT_ID, "title": "Giỏ", "images": []})
     await repository.save_brief(PRODUCT_ID, "", {"title": "T"}, "approved")
@@ -78,7 +78,7 @@ async def test_service_needs_the_llm(tmp_path) -> None:
 
 
 async def test_package_and_brief_carry_warnings_and_the_ai_label_reminder(tmp_path) -> None:
-    repository = SqliteProductRepository(tmp_path / "w.db")
+    repository = product_repository()
 
     class _Risky(_FakeBaml):
         async def WritePostingPackage(self, product_json, brief_json):

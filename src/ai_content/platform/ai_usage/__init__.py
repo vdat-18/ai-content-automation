@@ -16,7 +16,6 @@ from .models import (
     AIUsageSummary,
 )
 from .postgres_repository import PostgresAIUsageRepository
-from .sqlite_repository import SqliteAIUsageRepository
 from .tracker import AIUsageTracker
 
 __all__ = [
@@ -35,5 +34,4 @@ __all__ = [
     "AIUsageSummary",
     "AIUsageTracker",
     "PostgresAIUsageRepository",
-    "SqliteAIUsageRepository",
 ]

@@ -9,10 +9,11 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from openpyxl import load_workbook
+from tests.pgstore import product_repository, runtime_container
 
 from ai_content.domains.marketing.products.pipeline import PipelineStopped
 from ai_content.domains.marketing.products.references import ReferenceProfile
-from ai_content.domains.marketing.products.repositories import SqliteProductRepository
+from ai_content.domains.marketing.products.repositories import PostgresProductRepository
 from ai_content.domains.marketing.products.service import ProductCatalogService
 from ai_content.entrypoints.api import products as products_api
 from ai_content.entrypoints.api.dependencies import get_product_catalog_service
@@ -60,17 +61,18 @@ FEED = json.dumps(
 
 
 @pytest.fixture
-def repository(tmp_path: Path) -> SqliteProductRepository:
-    return SqliteProductRepository(tmp_path / "state.db")
+def repository(tmp_path: Path) -> PostgresProductRepository:
+    return product_repository()
 
 
 @pytest.fixture
 def client(
-    tmp_path: Path, repository: SqliteProductRepository, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, repository: PostgresProductRepository, monkeypatch: pytest.MonkeyPatch
 ) -> TestClient:
     monkeypatch.setenv("AIC_AI_DATA_ROOT", str(tmp_path))
     app = FastAPI()
     app.include_router(router)
+    app.state.postgres_runtime = runtime_container()
 
     async def service() -> AsyncIterator[ProductCatalogService]:
         yield ProductCatalogService(repository)
@@ -149,7 +151,7 @@ def test_select_queues_the_product_at_once(client: TestClient) -> None:
 
 
 async def test_background_select_records_why_it_failed(
-    repository: SqliteProductRepository, client: TestClient
+    repository: PostgresProductRepository, client: TestClient
 ) -> None:
     from contextlib import asynccontextmanager
 
@@ -168,7 +170,7 @@ async def test_background_select_records_why_it_failed(
 
 
 def test_reference_profile_update_and_queue(
-    client: TestClient, repository: SqliteProductRepository
+    client: TestClient, repository: PostgresProductRepository
 ) -> None:
     assert (
         client.put("/api/v1/products/reference-profiles/x", json={"keywords": ["a"]}).status_code
@@ -230,7 +232,7 @@ def test_pipeline_endpoints_report_state_and_refuse_a_second_run(
     assert client.post(f"{base}/{PRODUCT_ID}/pipeline", json={}).status_code == 409
 
 
-def test_brief_endpoints(client: TestClient, repository: SqliteProductRepository) -> None:
+def test_brief_endpoints(client: TestClient, repository: PostgresProductRepository) -> None:
     assert client.post("/api/v1/products/missing/brief", json={}).status_code == 404
     _capture_product(client)
     assert client.post(f"/api/v1/products/{PRODUCT_ID}/brief", json={}).status_code == 503
@@ -260,7 +262,7 @@ class _FakeWriter:
 
 
 def test_brief_creation_reports_unmet_preconditions_then_succeeds(
-    tmp_path: Path, repository: SqliteProductRepository, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, repository: PostgresProductRepository, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("AIC_AI_DATA_ROOT", str(tmp_path))
     app = FastAPI()
@@ -299,7 +301,7 @@ def test_backfill_needs_the_embedding_model(client: TestClient) -> None:
 
 
 async def _service_without_embedder() -> AsyncIterator[ProductCatalogService]:
-    service = ProductCatalogService(SqliteProductRepository(Path(":memory:")))
+    service = ProductCatalogService(product_repository())
     service._embedder = None  # noqa: SLF001
     yield service
 
@@ -330,7 +332,7 @@ def test_media_download_with_no_products(client: TestClient) -> None:
 
 
 def test_keyframe_endpoints(
-    tmp_path: Path, client: TestClient, repository: SqliteProductRepository
+    tmp_path: Path, client: TestClient, repository: PostgresProductRepository
 ) -> None:
     base = f"/api/v1/products/{PRODUCT_ID}/keyframes"
     assert client.post(base, json={}).status_code == 404
@@ -364,7 +366,7 @@ def test_keyframe_endpoints(
 
 
 def test_clip_endpoints(
-    tmp_path: Path, client: TestClient, repository: SqliteProductRepository
+    tmp_path: Path, client: TestClient, repository: PostgresProductRepository
 ) -> None:
     base = f"/api/v1/products/{PRODUCT_ID}"
     assert client.post(f"{base}/clips", json={}).status_code == 404
@@ -509,7 +511,7 @@ def test_deleting_a_product_removes_it_and_what_was_made_from_it(
 
 
 def test_outputs_list_the_videos_and_say_what_each_is_made_from(
-    tmp_path: Path, client: TestClient, repository: SqliteProductRepository
+    tmp_path: Path, client: TestClient, repository: PostgresProductRepository
 ) -> None:
     base = f"/api/v1/products/{PRODUCT_ID}"
     assert client.get("/api/v1/products/outputs").json() == []
@@ -581,7 +583,7 @@ def test_outputs_list_the_videos_and_say_what_each_is_made_from(
 def test_starting_over_removes_what_was_made_and_keeps_the_product(
     tmp_path: Path,
     client: TestClient,
-    repository: SqliteProductRepository,
+    repository: PostgresProductRepository,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     base = f"/api/v1/products/{PRODUCT_ID}"
@@ -669,7 +671,7 @@ async def test_the_end_of_a_run_is_announced_with_a_notification(
 
 
 def test_how_a_run_ended_survives_a_restart(
-    client: TestClient, repository: SqliteProductRepository
+    client: TestClient, repository: PostgresProductRepository
 ) -> None:
     url = f"/api/v1/products/{PRODUCT_ID}/pipeline"
     assert client.get(url).json()["status"] == "idle"

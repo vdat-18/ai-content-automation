@@ -1,6 +1,8 @@
 import hashlib
 from pathlib import Path
 
+from tests.pgstore import knowledge_repository
+
 from ai_content.domains.marketing.creative_knowledge.bootstrap import load_knowledge_bootstrap
 
 _PRODUCT_AD = Path(__file__).parents[1] / "config/creative_knowledge/product_ad.json"
@@ -28,12 +30,9 @@ async def test_curated_rules_are_approved_when_they_are_loaded(tmp_path) -> None
         import_knowledge_proposals,
     )
     from ai_content.domains.marketing.creative_knowledge.models import KnowledgeStatus
-    from ai_content.domains.marketing.creative_knowledge.repositories import (
-        SqliteCreativeKnowledgeRepository,
-    )
     from ai_content.domains.marketing.creative_knowledge.service import CreativeKnowledgeService
 
-    service = CreativeKnowledgeService(SqliteCreativeKnowledgeRepository(tmp_path / "k.db"))
+    service = CreativeKnowledgeService(knowledge_repository())
     result = await import_knowledge_proposals(
         service, load_knowledge_bootstrap(_PRODUCT_AD), contributor="system"
     )
@@ -50,12 +49,9 @@ async def test_a_reworded_curated_rule_stays_approved(tmp_path) -> None:
         import_knowledge_proposals,
     )
     from ai_content.domains.marketing.creative_knowledge.models import KnowledgeStatus
-    from ai_content.domains.marketing.creative_knowledge.repositories import (
-        SqliteCreativeKnowledgeRepository,
-    )
     from ai_content.domains.marketing.creative_knowledge.service import CreativeKnowledgeService
 
-    service = CreativeKnowledgeService(SqliteCreativeKnowledgeRepository(tmp_path / "k.db"))
+    service = CreativeKnowledgeService(knowledge_repository())
     first = tmp_path / "v1.json"
     manifest = json.loads(_PRODUCT_AD.read_text(encoding="utf-8"))
     manifest["items"] = manifest["items"][:1]

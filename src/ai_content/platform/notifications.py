@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import json
-import sqlite3
 from dataclasses import dataclass, replace
 from datetime import datetime
-from pathlib import Path
 from typing import Protocol
 
 from pydantic import TypeAdapter
@@ -41,66 +39,6 @@ class NotificationRepository(Protocol):
 
 
 _ADAPTER = TypeAdapter(Notification)
-
-
-class SqliteNotificationRepository:
-    def __init__(self, path: Path) -> None:
-        self._connection = sqlite3.connect(path, check_same_thread=False)
-        self._connection.row_factory = sqlite3.Row
-        self._connection.execute(
-            "CREATE TABLE IF NOT EXISTS notifications (notification_id TEXT PRIMARY KEY, scope_type TEXT NOT NULL, scope_id TEXT NOT NULL, read_at TEXT, created_at TEXT NOT NULL, payload TEXT NOT NULL)"
-        )
-        self._connection.commit()
-
-    async def save(self, notification: Notification) -> None:
-        with self._connection:
-            self._connection.execute(
-                "INSERT OR IGNORE INTO notifications(notification_id, scope_type, scope_id, read_at, created_at, payload) VALUES (?, ?, ?, ?, ?, ?)",
-                (
-                    notification.notification_id,
-                    notification.scope_type,
-                    notification.scope_id,
-                    notification.read_at.isoformat() if notification.read_at else None,
-                    notification.created_at.isoformat(),
-                    _ADAPTER.dump_json(notification).decode(),
-                ),
-            )
-
-    async def list(self, *, scope_type=None, scope_id=None):
-        clauses = []
-        params = []
-        if scope_type is not None:
-            clauses.append("scope_type = ?")
-            params.append(scope_type)
-        if scope_id is not None:
-            clauses.append("scope_id = ?")
-            params.append(scope_id)
-        where = f" WHERE {' AND '.join(clauses)}" if clauses else ""
-        rows = self._connection.execute(
-            f"SELECT payload FROM notifications{where} ORDER BY created_at DESC", params
-        ).fetchall()
-        return [_ADAPTER.validate_json(row["payload"]) for row in rows]
-
-    async def mark_read(self, notification_id: str, read_at: datetime) -> Notification:
-        row = self._connection.execute(
-            "SELECT payload FROM notifications WHERE notification_id = ?", (notification_id,)
-        ).fetchone()
-        if row is None:
-            raise ValueError("Notification not found")
-        notification = replace(
-            _ADAPTER.validate_json(row["payload"]),
-            read_at=read_at,
-            updated_at=read_at,
-        )
-        with self._connection:
-            self._connection.execute(
-                "UPDATE notifications SET read_at = ?, payload = ? WHERE notification_id = ?",
-                (read_at.isoformat(), _ADAPTER.dump_json(notification).decode(), notification_id),
-            )
-        return notification
-
-    def close(self) -> None:
-        self._connection.close()
 
 
 class PostgresNotificationRepository:
@@ -166,5 +104,4 @@ __all__ = [
     "Notification",
     "NotificationRepository",
     "PostgresNotificationRepository",
-    "SqliteNotificationRepository",
 ]

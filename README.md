@@ -34,7 +34,9 @@ and always resumes from what is already done.
 
 ## Quick start
 
-Requirements: Python 3.11+, [uv](https://docs.astral.sh/uv/), Node + pnpm, ffmpeg.
+Requirements: Python 3.11+, [uv](https://docs.astral.sh/uv/), Node + pnpm, ffmpeg, and a PostgreSQL
+database (`AIC_AI_DATABASE_URL`; run `uv run alembic upgrade head` once). The Docker stack below brings
+one, and is the easiest way to run everything.
 
 ```bash
 uv sync --extra dev
@@ -61,7 +63,7 @@ You supply the model endpoints and keys; nothing is bundled.
 | `AIC_VIDEO_*` | Image → video model; `AIC_VIDEO_FRAME_FIELDS` picks the first-frame field |
 | `AIC_TTS_*` | Voice-over |
 | `AIC_TEXT_EMBEDDING_MODEL` | Matches reference images to scenes (empty = off) |
-| `AIC_AI_DATABASE_BACKEND` | `sqlite` (dev) or `postgresql` |
+| `AIC_AI_DATABASE_URL` | PostgreSQL URL (`postgresql+psycopg://...`); the only supported database |
 
 Video models are usually billed per request, so each clip costs real money. See
 [docs/model-limits.md](docs/model-limits.md) for the limits measured so far.
@@ -95,8 +97,8 @@ pnpm --dir frontend lint && pnpm --dir frontend test && pnpm --dir frontend buil
 ```
 
 After editing `baml_src/`, regenerate the client with `uv run baml-cli generate` (never edit
-`adapters/baml_client` by hand). PostgreSQL migrations are in `migrations/`; SQLite creates its tables
-on open. See [CONTRIBUTING.md](CONTRIBUTING.md).
+`adapters/baml_client` by hand). PostgreSQL migrations are in `migrations/`. Tests need PostgreSQL, so run them with
+`just test` (Docker starts a disposable database). See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Docs
 
