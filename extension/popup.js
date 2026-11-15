@@ -39,7 +39,7 @@ const sendToTab = (tabId, message) =>
     if (chrome.runtime.lastError) status.textContent = "Open a TikTok or Pinterest page, then reload the tab (F5).";
   });
 
-// One walker runs at a time, and its progress shows only in the section of the site it belongs to.
+// TikTok and Pinterest run independently; each shows its progress in its own section.
 const paint = ({ box, bar, stop }, w, mine, describe) => {
   const total = mine ? w.queue.length : 0;
   box.textContent = mine ? describe(w) : "";
@@ -71,20 +71,21 @@ const showCapture = (capture) => {
 };
 
 const refresh = () =>
-  chrome.storage.local.get({ enabled: false, sent: 0, error: "", walker: null, autoNote: "", lastCapture: null }, (s) => {
+  chrome.storage.local.get({ enabled: false, sent: 0, error: "", walker: null, pinWalker: null, autoNote: "", lastCapture: null }, (s) => {
     showCapture(s.lastCapture);
     const w = s.walker;
-    document.getElementById("auto-note").textContent = w?.kind === "pinterest" && w.running ? "" : s.autoNote;
+    const pin = s.pinWalker;
+    document.getElementById("auto-note").textContent = s.autoNote;
     enabled.checked = Boolean(s.enabled);
     status.textContent = s.error ? `Send error: ${s.error}` : `Sent ${s.sent} packages to the collector`;
-    const pinterest = w?.kind === "pinterest";
-    paint({ box: walkerBox, bar: document.getElementById("walker-bar"), stop: document.getElementById("stop") }, w, Boolean(w) && !pinterest, tiktokText);
-    paint({ box: pinBox, bar: document.getElementById("pin-bar"), stop: document.getElementById("pin-stop") }, w, Boolean(w) && pinterest, pinterestText);
-    const busy = Boolean(w?.running);
-    for (const id of ["auto", "crawl-all", "start", "pins"]) {
+    paint({ box: walkerBox, bar: document.getElementById("walker-bar"), stop: document.getElementById("stop") }, w, Boolean(w), tiktokText);
+    paint({ box: pinBox, bar: document.getElementById("pin-bar"), stop: document.getElementById("pin-stop") }, pin, Boolean(pin), pinterestText);
+    const lanes = { auto: w, "crawl-all": w, start: w, pins: pin };
+    for (const [id, lane] of Object.entries(lanes)) {
       const button = document.getElementById(id);
+      const busy = Boolean(lane?.running);
       button.disabled = busy;
-      button.title = busy ? "A collection is already running; wait or press Stop" : "";
+      button.title = busy ? "This collection is already running; wait or press Stop" : "";
     }
   });
 
@@ -147,8 +148,8 @@ document.getElementById("start").addEventListener("click", async () => {
     walkerBox.textContent = `Could not reach the collector: ${error}`;
   }
 });
-document.getElementById("stop").addEventListener("click", () => chrome.runtime.sendMessage({ type: "walker-stop" }));
-document.getElementById("pin-stop").addEventListener("click", () => chrome.runtime.sendMessage({ type: "walker-stop" }));
+document.getElementById("stop").addEventListener("click", () => chrome.runtime.sendMessage({ type: "walker-stop", lane: "tiktok" }));
+document.getElementById("pin-stop").addEventListener("click", () => chrome.runtime.sendMessage({ type: "walker-stop", lane: "pinterest" }));
 const API = "http://127.0.0.1:8000/api/v1/products";
 document.getElementById("pins").addEventListener("click", async () => {
   chrome.storage.local.set({ autoNote: "" });

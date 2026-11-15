@@ -169,3 +169,30 @@ test("after the last category the product pages that are still missing are read"
   assert.deepEqual(w.opened.slice(0, 2).map((entry) => entry.url), categories);
   assert.deepEqual(w.opened.slice(2, 4).map((entry) => entry.url), products);
 });
+
+test("a Pinterest run and a TikTok run do not disturb each other", async () => {
+  const w = makeWorld();
+  const pins = [1, 2, 3].map((i) => `https://www.pinterest.com/search/pins/?q=k${i}`);
+  await w.send({ type: "walker-start", urls: urls(6), concurrency: 2 });
+  await w.send({ type: "walker-start", kind: "pinterest", urls: pins, meta: {}, concurrency: 1 });
+  await wait(20_000);
+  assert.ok(w.store.walker.running && w.store.pinWalker.running);
+  assert.ok(Object.keys(w.store.pinWalker.active).length >= 1);
+
+  // a captcha on a TikTok tab pauses TikTok only
+  await w.send({ type: "challenge", reason: "captcha" }, Number(Object.keys(w.store.walker.active)[0]));
+  await wait(500);
+  assert.equal(w.store.walker.paused, true);
+  assert.equal(w.store.pinWalker.paused, false);
+  assert.equal(w.store.captchaLog.length, 1);
+
+  // a Pinterest page that finishes counts for Pinterest, and Stop on TikTok leaves Pinterest running
+  await w.send({ type: "page-done", ok: true }, Number(Object.keys(w.store.pinWalker.active)[0]));
+  await wait(500);
+  assert.equal(w.store.pinWalker.done, 1);
+  assert.equal(w.store.walker.done, 0);
+  await w.send({ type: "walker-stop", lane: "tiktok" });
+  await wait(500);
+  assert.equal(w.store.walker.running, false);
+  assert.equal(w.store.pinWalker.running, true);
+});

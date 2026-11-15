@@ -15,6 +15,12 @@ const BREAKER_WINDOW_MS = 10 * 60_000;
 const CAPTCHA_WAVE_MS = 30_000; // captchas on several tabs at once count as one
 const HUMAN_WAIT_MS = 15 * 60_000; // give up when nobody clears a captcha or login in time
 
+// TikTok and Pinterest are separate lanes: each has its own queue, tabs, pauses and Stop button,
+// so one can run (or wait for a captcha) while the other keeps going.
+const STORAGE_KEY = { tiktok: "walker", pinterest: "pinWalker" };
+const LANES = Object.keys(STORAGE_KEY);
+const laneOfKind = (kind) => (kind === "pinterest" ? "pinterest" : "tiktok");
+
 const EMPTY = {
   running: false,
   queue: [],
@@ -30,22 +36,29 @@ const EMPTY = {
   detail: "",
   kind: "tiktok", // which collector owns the run: "tiktok", "category" or "pinterest"
   followUp: null, // after the last category: read the product pages with this many tabs
+  lane: "tiktok",
 };
 const timers = new Map(); // tabId -> timeout that gives up on a page that never finishes
-const recentOpens = []; // when the last product tabs were opened, for the per-minute cap
-let humanTimer = null;
-let opening = false;
+const local = Object.fromEntries(LANES.map((lane) => [lane, { recentOpens: [], humanTimer: null, opening: false }]));
 let lock = Promise.resolve();
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const jitter = (low = 0.75, high = 1.25) => low + Math.random() * (high - low);
-const getState = () => chrome.storage.local.get({ walker: EMPTY }).then((s) => ({ ...EMPTY, ...s.walker }));
-const setState = (walker) => chrome.storage.local.set({ walker });
+const getState = (lane = "tiktok") =>
+  chrome.storage.local.get({ [STORAGE_KEY[lane]]: EMPTY }).then((s) => ({ ...EMPTY, ...s[STORAGE_KEY[lane]], lane }));
+const setState = (walker) => chrome.storage.local.set({ [STORAGE_KEY[walker.lane || "tiktok"]]: walker });
 // Several tabs report at the same time, so every change to the walker state runs one after another.
 const locked = (task) => {
   const run = lock.then(task, task);
   lock = run.catch(() => {});
   return run;
+};
+// Which lane a tab belongs to, or null when no run opened it.
+const laneOfTab = async (tabId) => {
+  for (const lane of LANES) {
+    if ((await getState(lane)).active[tabId]) return lane;
+  }
+  return null;
 };
 
 // ---- ingest from content scripts -------------------------------------------------
@@ -72,7 +85,7 @@ async function ingest(payload) {
   }
 }
 
-// ---- captcha log and circuit breaker ----------------------------------------------
+// ---- captcha log and circuit breaker (TikTok only) ---------------------------------
 async function recentCaptchas() {
   const s = await chrome.storage.local.get({ captchaLog: [] });
   return s.captchaLog.filter((at) => Date.now() - at < BREAKER_WINDOW_MS);
@@ -96,14 +109,20 @@ async function breakerOpenFor() {
   return Math.max(0, log[log.length - BREAKER_CAPTCHAS] + BREAKER_WINDOW_MS - Date.now());
 }
 
-// ---- walker: opens up to `concurrency` product tabs at once -----------------------
-const badge = (w) => chrome.action.setBadgeText({ text: w.running ? String(w.queue.length - w.done - w.failed) : "" });
+// ---- walker: opens up to `concurrency` tabs at once, per lane -----------------------
+// The badge counts what is left in both lanes.
+async function badge() {
+  const states = await Promise.all(LANES.map((lane) => getState(lane)));
+  const left = states.filter((w) => w.running).reduce((sum, w) => sum + w.queue.length - w.done - w.failed, 0);
+  chrome.action.setBadgeText({ text: states.some((w) => w.running) ? String(left) : "" });
+}
 const armTimer = (tabId) => {
   clearTimeout(timers.get(tabId));
   timers.set(tabId, setTimeout(() => finishTab(tabId, false, "timeout"), PAGE_TIMEOUT_MS));
 };
 
-async function waitForMinuteCap() {
+async function waitForMinuteCap(lane) {
+  const { recentOpens } = local[lane];
   for (;;) {
     const now = Date.now();
     while (recentOpens.length && now - recentOpens[0] > 60_000) recentOpens.shift();
@@ -112,73 +131,76 @@ async function waitForMinuteCap() {
   }
 }
 
-async function fill() {
-  if (opening) return;
-  opening = true;
+async function fill(lane) {
+  if (local[lane].opening) return;
+  local[lane].opening = true;
   try {
     for (;;) {
-      const w = await locked(getState);
+      const w = await locked(() => getState(lane));
       if (!w.running || w.paused) return;
       if (w.next >= w.queue.length) {
         if (!Object.keys(w.active).length) {
           w.running = false;
           w.note = `Done: ${w.done} succeeded, ${w.failed} failed`;
           await locked(() => setState(w));
-          badge(w);
+          badge();
           if (w.kind === "category" && w.followUp) fetchDetails(w.followUp);
         }
         return;
       }
       if (Object.keys(w.active).length >= w.concurrency) return;
-      await waitForMinuteCap();
+      await waitForMinuteCap(lane);
       const url = w.queue[w.next];
-      recentOpens.push(Date.now());
+      local[lane].recentOpens.push(Date.now());
       const tab = await chrome.tabs.create({ url, active: false });
       await locked(async () => {
-        const fresh = await getState();
+        const fresh = await getState(lane);
         fresh.active[tab.id] = url;
         fresh.next += 1;
         fresh.note = `Running ${Object.keys(fresh.active).length} tabs, pausing about ${Math.round(fresh.delayMs / 1000)} s between pages`;
         await setState(fresh);
-        badge(fresh);
       });
+      badge();
       armTimer(tab.id);
-      await sleep((await locked(getState)).delayMs * jitter());
+      await sleep((await locked(() => getState(lane))).delayMs * jitter());
     }
   } finally {
-    opening = false;
+    local[lane].opening = false;
   }
 }
 
 async function finishTab(tabId, ok, reason) {
   clearTimeout(timers.get(tabId));
   timers.delete(tabId);
-  const known = await locked(async () => {
-    const w = await getState();
-    if (!w.active[tabId]) return false;
-    if (reason === "unavailable") await rememberUnavailable(w.active[tabId]);
-    delete w.active[tabId];
-    w.detail = "";
-    if (ok) {
-      w.done += 1;
-      w.delayMs = Math.max(BASE_DELAY_MS, Math.round(w.delayMs * SHRINK_FACTOR));
-    } else {
-      w.failed += 1;
+  const lane = await locked(async () => {
+    for (const name of LANES) {
+      const w = await getState(name);
+      if (!w.active[tabId]) continue;
+      if (reason === "unavailable") await rememberUnavailable(w.active[tabId]);
+      delete w.active[tabId];
+      w.detail = "";
+      if (ok) {
+        w.done += 1;
+        w.delayMs = Math.max(BASE_DELAY_MS, Math.round(w.delayMs * SHRINK_FACTOR));
+      } else {
+        w.failed += 1;
+      }
+      w.note = ok ? "OK" : `Skipped (${reason})`;
+      await setState(w);
+      return name;
     }
-    w.note = ok ? "OK" : `Skipped (${reason})`;
-    await setState(w);
-    badge(w);
-    return true;
+    return null;
   });
-  if (!known) return;
+  if (!lane) return;
+  badge();
   chrome.tabs.remove(tabId).catch(() => {});
-  fill();
+  fill(lane);
 }
 
-async function stopWalker(note) {
-  clearTimeout(humanTimer);
+async function stopWalker(lane, note) {
+  clearTimeout(local[lane].humanTimer);
   await locked(async () => {
-    const w = await getState();
+    const w = await getState(lane);
     for (const id of Object.keys(w.active)) {
       clearTimeout(timers.get(Number(id)));
       chrome.tabs.remove(Number(id)).catch(() => {});
@@ -188,8 +210,8 @@ async function stopWalker(note) {
     w.active = {};
     w.note = note;
     await setState(w);
-    badge(w);
   });
+  badge();
 }
 
 function notify(title, message) {
@@ -197,38 +219,41 @@ function notify(title, message) {
 }
 
 async function pauseForHuman(tabId, reason) {
+  const lane = (await laneOfTab(tabId)) || "tiktok";
   const isCaptcha = reason === "captcha";
-  if (isCaptcha) {
+  // only TikTok has the breaker: Pinterest is paused and resumed like TikTok, but never counted
+  if (isCaptcha && lane === "tiktok") {
     const { isNewWave, count } = await logCaptcha();
     if (isNewWave) {
       // TikTok is getting suspicious: slow down for the rest of the run
       await locked(async () => {
-        const w = await getState();
+        const w = await getState(lane);
         w.delayMs = Math.min(MAX_DELAY_MS, Math.round(w.delayMs * 2 * jitter()));
         await setState(w);
       });
     }
     if (count >= BREAKER_CAPTCHAS) {
-      await stopWalker(`Stopped after ${count} captchas in 10 minutes. Wait 15 to 30 minutes, then run again.`);
+      await stopWalker(lane, `Stopped after ${count} captchas in 10 minutes. Wait 15 to 30 minutes, then run again.`);
       notify("AIC Collector stopped", `${count} captchas in 10 minutes. Wait 15 to 30 minutes, then run again to avoid being flagged further.`);
       return;
     }
   }
-  await locked(async () => {
-    const w = await getState();
+  const active = await locked(async () => {
+    const w = await getState(lane);
     w.paused = true;
     w.note = `Waiting for you: ${reason}`;
     await setState(w);
+    return Object.keys(w.active).map(Number);
   });
-  for (const id of timers.keys()) clearTimeout(timers.get(id));
-  clearTimeout(humanTimer);
-  humanTimer = setTimeout(async () => {
-    await stopWalker("Stopped: no one handled the captcha or login within 15 minutes.");
+  for (const id of active) clearTimeout(timers.get(id));
+  clearTimeout(local[lane].humanTimer);
+  local[lane].humanTimer = setTimeout(async () => {
+    await stopWalker(lane, "Stopped: no one handled the captcha or login within 15 minutes.");
     notify("AIC Collector stopped", "The captcha or login was not handled within 15 minutes. Run again when you are ready.");
   }, HUMAN_WAIT_MS);
   chrome.action.setBadgeText({ text: "!" });
   if (tabId) chrome.tabs.update(tabId, { active: true }).catch(() => {});
-  notify("AIC Collector needs you", `Handle the ${reason} in the TikTok tab; collection resumes by itself.`);
+  notify("AIC Collector needs you", `Handle the ${reason} in the ${lane === "pinterest" ? "Pinterest" : "TikTok"} tab; collection resumes by itself.`);
 }
 
 // Products TikTok does not sell to this region come back in the queue every run, so remember them.
@@ -240,18 +265,22 @@ async function rememberUnavailable(url) {
 }
 
 async function startWalker(urls, meta, concurrency, kind = "tiktok", followUp = null) {
-  const waitMs = await breakerOpenFor();
-  if (waitMs > 0) {
-    const note = `Too many captchas just now. Wait about ${Math.ceil(waitMs / 60_000)} more minutes, then run again.`;
-    await chrome.storage.local.set({ autoNote: note });
-    await locked(() => setState({ ...EMPTY, note }));
-    return;
+  const lane = laneOfKind(kind);
+  if (lane === "tiktok") {
+    const waitMs = await breakerOpenFor();
+    if (waitMs > 0) {
+      const note = `Too many captchas just now. Wait about ${Math.ceil(waitMs / 60_000)} more minutes, then run again.`;
+      await chrome.storage.local.set({ autoNote: note });
+      await locked(() => setState({ ...EMPTY, lane, note }));
+      return;
+    }
   }
   const skipped = new Set((await chrome.storage.local.get({ unavailable: [] })).unavailable);
-  const wanted = skipped.size ? urls.filter((url) => !skipped.has(productKey(url))) : urls;
+  const wanted = skipped.size && lane === "tiktok" ? urls.filter((url) => !skipped.has(productKey(url))) : urls;
   await locked(() =>
     setState({
       ...EMPTY,
+      lane,
       running: true,
       queue: wanted,
       meta: meta || {},
@@ -261,7 +290,8 @@ async function startWalker(urls, meta, concurrency, kind = "tiktok", followUp = 
       note: "Started",
     }),
   );
-  fill();
+  badge();
+  fill(lane);
 }
 
 // ---- one click: scroll the feed, then read every product page ---------------------
@@ -307,37 +337,55 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       ingest(message.payload);
       break;
     case "am-i-walker":
-      locked(getState).then((w) => {
-        const url = w.active[tabId];
-        sendResponse({ walker: w.running && Boolean(url), meta: (url && w.meta?.[url]) || null });
-      });
+      locked(async () => {
+        for (const lane of LANES) {
+          const w = await getState(lane);
+          const url = w.active[tabId];
+          if (url) return { walker: w.running, meta: w.meta?.[url] || null };
+        }
+        return { walker: false, meta: null };
+      }).then(sendResponse);
       return true;
     case "progress":
       locked(async () => {
-        const w = await getState();
-        if (!w.running || !w.active[tabId]) return;
-        w.detail = String(message.detail || "").slice(0, 160);
-        await setState(w);
+        for (const lane of LANES) {
+          const w = await getState(lane);
+          if (!w.running || !w.active[tabId]) continue;
+          w.detail = String(message.detail || "").slice(0, 160);
+          await setState(w);
+        }
       });
       break;
     case "heartbeat":
-      locked(getState).then((w) => {
-        if (w.running && !w.paused && w.active[tabId]) armTimer(tabId);
+      locked(async () => {
+        for (const lane of LANES) {
+          const w = await getState(lane);
+          if (w.running && !w.paused && w.active[tabId]) armTimer(tabId);
+        }
       });
       break;
     case "challenge":
       pauseForHuman(tabId, message.reason || "security check");
       break;
     case "resumed":
-      clearTimeout(humanTimer);
-      locked(async () => {
-        const w = await getState();
-        w.paused = false;
-        w.note = "Handled, continuing";
-        await setState(w);
-        badge(w);
-        for (const id of Object.keys(w.active)) armTimer(Number(id));
-      }).then(fill);
+      // the tab that was handled tells which lane goes on; without a tab, every paused lane does
+      (async () => {
+        const own = tabId ? await laneOfTab(tabId) : null;
+        for (const lane of own ? [own] : LANES) {
+          clearTimeout(local[lane].humanTimer);
+          const resumed = await locked(async () => {
+            const w = await getState(lane);
+            if (!w.paused) return false;
+            w.paused = false;
+            w.note = "Handled, continuing";
+            await setState(w);
+            for (const id of Object.keys(w.active)) armTimer(Number(id));
+            return true;
+          });
+          if (resumed) fill(lane);
+        }
+        badge();
+      })();
       break;
     case "page-done":
       finishTab(tabId, Boolean(message.ok), message.reason || "");
@@ -355,7 +403,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       );
       break;
     case "walker-stop":
-      stopWalker("Stopped");
+      for (const lane of message.lane ? [message.lane] : LANES) stopWalker(lane, "Stopped");
       break;
     default:
       break;
