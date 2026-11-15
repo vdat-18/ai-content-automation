@@ -1,3 +1,4 @@
+import asyncio
 from types import SimpleNamespace
 
 import httpx
@@ -199,6 +200,36 @@ async def test_writer_errors() -> None:
             await ContentBriefWriter(_FakeBamlClient(fail=True)).write(
                 {"images": ["https://x/ok.jpg"]}, "", http
             )
+
+
+async def test_the_writer_asks_again_when_a_call_stalls_and_gives_up_after_three() -> None:
+    from ai_content.domains.marketing.products import briefing
+
+    class _Stalls:
+        def __init__(self, stalls: int) -> None:
+            self.stalls = stalls
+            self.calls = 0
+
+        async def DraftContentBrief(self, *arguments):
+            self.calls += 1
+            if self.calls <= self.stalls:
+                await asyncio.sleep(10)
+            return SimpleNamespace(model_dump=lambda: {"title": "T", "product_photo_numbers": [1]})
+
+    product = {"images": ["https://x/ok.jpg"]}
+    original = briefing._CALL_SECONDS
+    briefing._CALL_SECONDS = 0.05
+    try:
+        async with httpx.AsyncClient(transport=httpx.MockTransport(_photo_server)) as http:
+            slow = _Stalls(stalls=2)
+            brief = await ContentBriefWriter(slow, retry_delay=0).write(product, "", http)
+            assert slow.calls == 3 and brief["title"] == "T"
+            hung = _Stalls(stalls=99)
+            with pytest.raises(BriefGenerationError):
+                await ContentBriefWriter(hung, retry_delay=0).write(product, "", http)
+            assert hung.calls == 3
+    finally:
+        briefing._CALL_SECONDS = original
 
 
 def test_product_facts_are_compact() -> None:

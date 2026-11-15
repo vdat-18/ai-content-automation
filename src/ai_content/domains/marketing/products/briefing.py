@@ -9,6 +9,7 @@ from typing import Any, Protocol
 import httpx
 from baml_py import Image as BamlImage
 from baml_py.baml_py import BamlError
+from baml_py.errors import BamlClientHttpError, BamlTimeoutError
 from loguru import logger
 
 from ai_content.domains.marketing.products.adapters.baml_client import types as baml_types
@@ -18,6 +19,11 @@ from ai_content.domains.marketing.products.keyframe_check import _image
 
 _CONCURRENCY = 2
 _DOWNLOAD_TIMEOUT = 30
+# A brief takes 1 to 2 minutes; the gateway sometimes stalls or drops the call, so give up on a
+# silent call early and ask again instead of waiting out the long default timeout.
+_CALL_SECONDS = 180
+_CALL_TRIES = 3
+_RETRY_DELAY = 5.0
 
 
 class BriefGenerationError(RuntimeError):
@@ -96,8 +102,9 @@ def reference_note(image: dict[str, Any]) -> str:
 class ContentBriefWriter:
     """Download reference images and ask the BAML model for a single brief."""
 
-    def __init__(self, client: _BamlBriefClient) -> None:
+    def __init__(self, client: _BamlBriefClient, retry_delay: float = _RETRY_DELAY) -> None:
         self._client = client
+        self._retry_delay = retry_delay
 
     @classmethod
     def from_settings(cls, *, base_url: str, api_key: str, model: str) -> ContentBriefWriter:
@@ -151,20 +158,35 @@ class ContentBriefWriter:
         ]
         if not photos:
             raise BriefGenerationError("None of the product photos could be downloaded")
+        arguments = (
+            json.dumps(product_facts(product), ensure_ascii=False),
+            user_idea.strip(),
+            shot_count,
+            [photo for _, photo in photos],
+            bool(person_photos),
+            [_image(photo) for photo in person_photos or []],
+            rules,
+        )
         try:
-            draft = await self._client.DraftContentBrief(
-                json.dumps(product_facts(product), ensure_ascii=False),
-                user_idea.strip(),
-                shot_count,
-                [photo for _, photo in photos],
-                bool(person_photos),
-                [_image(photo) for photo in person_photos or []],
-                rules,
-            )
-        except BamlError as error:
-            raise BriefGenerationError(str(error)) from error
+            draft = await self._draft(arguments)
+        except (BamlError, TimeoutError) as error:
+            raise BriefGenerationError(str(error) or "The model did not answer in time") from error
         brief = draft.model_dump()
         numbers = dict.fromkeys(brief.pop("product_photo_numbers"))
         chosen = [photos[number - 1][0] for number in numbers if 1 <= number <= len(photos)]
         brief["product_photo_urls"] = chosen or [url for url, _ in photos]
         return brief
+
+    async def _draft(self, arguments: tuple[Any, ...]) -> baml_types.ContentBrief:
+        """Ask for the brief, asking again when the call stalls, times out or the gateway says 503."""
+        for attempt in range(1, _CALL_TRIES + 1):
+            try:
+                return await asyncio.wait_for(
+                    self._client.DraftContentBrief(*arguments), _CALL_SECONDS
+                )
+            except (TimeoutError, BamlTimeoutError, BamlClientHttpError) as error:
+                if attempt == _CALL_TRIES:
+                    raise
+                logger.warning("Brief call failed ({}), asking again", str(error)[:120])
+                await asyncio.sleep(self._retry_delay)
+        raise AssertionError("unreachable")
