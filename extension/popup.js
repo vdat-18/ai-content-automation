@@ -120,7 +120,10 @@ document.getElementById("auto").addEventListener("click", () => {
 });
 document.getElementById("crawl-all").addEventListener("click", () => {
   const concurrency = Number(document.getElementById("auto-tabs").value) || 5;
-  const urls = CATEGORIES.map(([slug, id]) => `https://shop.tiktok.com/vn/c/${slug}/${id}`);
+  const urls = [
+    "https://shop.tiktok.com/vn", // the "Bán chạy nhất" list of the home page
+    ...CATEGORIES.map(([slug, id]) => `https://shop.tiktok.com/vn/c/${slug}/${id}`),
+  ];
   const meta = Object.fromEntries(urls.map((url) => [url, { category: true }]));
   chrome.storage.local.set({ autoNote: `Collecting ${urls.length} categories, ${concurrency} at a time, then the product pages.` });
   chrome.runtime.sendMessage({ type: "walker-start", kind: "category", urls, meta, concurrency, followUp: { concurrency } });

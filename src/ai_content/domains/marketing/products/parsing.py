@@ -42,11 +42,14 @@ def money(value: object, currency: str | None) -> int | None:
 
 
 _NON_PHYSICAL = re.compile(r"voucher|mã giảm|thẻ quà|e-?gift|nạp (thẻ|tiền)|thẻ cào", re.IGNORECASE)
+# a gift item announces itself at the start of the title; "tặng kèm" later in a title is a normal promo
+_GIFT_TITLE = re.compile(r"^[\s\[\(]*(quà tặng|hàng tặng|tặng kèm)", re.IGNORECASE)
 MIN_REAL_PRICE_VND = 1000
 
 
 def is_non_physical(title: str | None) -> bool:
-    return bool(_NON_PHYSICAL.search(title or ""))
+    text = title or ""
+    return bool(_NON_PHYSICAL.search(text) or _GIFT_TITLE.search(text))
 
 
 def junk_reason(product: dict[str, Any]) -> str | None:

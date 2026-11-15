@@ -1,11 +1,11 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Chrome, Download, Package, Search, ShoppingBag, Sparkles, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Empty, ErrorNote, PageHead, Skeleton } from "../components/ui";
 import { API, useBriefs, useProducts } from "../hooks/useStudio";
 import { toNumber, vnd } from "../lib/studio";
-import { deleteJson, postJson } from "../services/http";
+import { deleteJson, getJson, postJson } from "../services/http";
 import type { Product } from "../types/studio";
 
 const SORTS = {
@@ -38,6 +38,11 @@ export function ProductsPage() {
       void client.invalidateQueries({ queryKey: ["products"] });
       refresh();
     },
+  });
+  const waiting = useQuery({
+    queryKey: ["products-waiting"],
+    queryFn: ({ signal }) => getJson<string[]>(`${API}/queue?limit=100000`, signal),
+    refetchInterval: 15000,
   });
   const media = useMutation({ mutationFn: () => postJson<{ downloaded: number }>(`${API}/media/download`) });
 
@@ -93,6 +98,7 @@ export function ProductsPage() {
             </select>
           </label>
           <span className="muted small">{`${rows.length} of ${products.data.length}`}</span>
+          {!!waiting.data?.length && <span className="muted small">{`${waiting.data.length} more waiting for their page to be read`}</span>}
         </div>
       )}
 

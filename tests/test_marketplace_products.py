@@ -93,6 +93,9 @@ def test_junk_reason() -> None:
     assert junk_reason({**base, "price": {"sale": "1", "currency": "VND"}})
     assert junk_reason({**base, "title": "E-voucher giảm 50k"})
     assert junk_reason({**base, "images": []})
+    assert junk_reason({**base, "title": "QUÀ TẶNG Thẻ Bảo Hành"})
+    assert junk_reason({**base, "title": "[Tặng kèm] Gối ôm"})
+    assert junk_reason({**base, "title": "Áo thun nam, tặng kèm móc khóa"}) is None
 
 
 async def test_media_download_skips_duplicates(tmp_path) -> None:
