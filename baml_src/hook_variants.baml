@@ -15,10 +15,11 @@ function WriteHooks(product_json: string, story_json: string, rules: string, cou
     is the first sentence the viewer hears and reads in the first 2 seconds. Return JSON only,
     exactly matching the response schema.
 
-    Write exactly {{ count }} hooks, each with a different angle: one is a question, one states a
-    number or a strong claim, one gives a real result of the product and then the drawback of
-    ordinary alternatives that the viewer knows. Use these angle names: "question", "number",
-    "pain_benefit". With more than 3 hooks, repeat angles with a new idea. The hook only opens the
+    Write exactly {{ count }} hooks, each with a different angle: one is a question the shopper
+    knows from daily life, one names a problem they just had, one gives a real result of the
+    product and then the drawback of ordinary alternatives that the viewer knows. Use these angle
+    names: "question", "situation", "pain_benefit". With more than 3 hooks, repeat angles with a
+    new idea. A number appears only when the product facts give it. The hook only opens the
     ad; the shots after it show the answer.
 
     Each hook is 7 words or fewer, spoken Vietnamese that sounds natural, and fits the opening

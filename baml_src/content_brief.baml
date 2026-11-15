@@ -126,10 +126,8 @@ function DraftContentBrief(
 
     The shots are filmed separately and joined into one ad, so the viewer decides in the first
     seconds of the first shot whether to keep watching, and acts after the last shot. The voiceover
-    of the first shot is the hook: it opens with one real result or fact of the product, taken from
-    the product facts (a number only when the facts give it), then names the drawback of ordinary
-    alternatives that the viewer knows, and leaves the answer to the shots that follow. The
-    voiceover of the last shot ends with exactly one action for the viewer (for example open the
+    of the first shot is the hook: it opens the way the rules say and leaves the answer to the
+    shots that follow. The voiceover of the last shot ends with exactly one action for the viewer (for example open the
     cart or the product link), never two. Each middle shot covers one worry or one proof, not
     several.
 
@@ -148,7 +146,7 @@ function DraftContentBrief(
     already shows how everything looks; follow the rules for how it is written),
     delivery (narrated or talking),
     duration_seconds, on_screen_text (a short Vietnamese caption, or an empty string) and
-    voiceover (one Vietnamese sentence).
+    voiceover (Vietnamese, as long as the rules for a narrated or a talking shot say).
 
     If the user gave an idea, treat it as the creative direction: keep its intent, make it
     concrete, fix weak points and enrich it with the product facts. If the
