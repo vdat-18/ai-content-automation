@@ -1,11 +1,11 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Chrome, Download, Package, Search, ShoppingBag, Sparkles, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Empty, ErrorNote, PageHead, Skeleton, Spinner } from "../components/ui";
-import { API, useBriefs, useProducts, useSelections } from "../hooks/useStudio";
+import { Empty, ErrorNote, PageHead, Skeleton } from "../components/ui";
+import { API, useBriefs, useProducts } from "../hooks/useStudio";
 import { toNumber, vnd } from "../lib/studio";
-import { deleteJson, getJson, postJson } from "../services/http";
+import { deleteJson, postJson } from "../services/http";
 import type { Product } from "../types/studio";
 
 const SORTS = {
@@ -21,25 +21,17 @@ export function ProductsPage() {
   const [sort, setSort] = useState<SortKey>("sold");
   const [category, setCategory] = useState("");
   const products = useProducts();
-  const selections = useSelections();
   const briefs = useBriefs();
-  const errors = useQuery({
-    queryKey: ["select-errors"],
-    queryFn: ({ signal }) => getJson<Record<string, string>>(`${API}/select-errors`, signal),
-    refetchInterval: (query) => (Object.keys(query.state.data ?? {}).length ? 3000 : false),
-  });
   const refresh = () => {
     void client.invalidateQueries({ queryKey: ["product-selections"] });
-    void client.invalidateQueries({ queryKey: ["select-errors"] });
   };
   const start = useMutation({
-    mutationFn: (productId: string) => postJson(`${API}/${productId}/select?regenerate=false`),
+    mutationFn: (productId: string) => postJson(`${API}/${productId}/select`),
     onSuccess: (_data, productId) => {
       refresh();
       navigate(`/studio/${productId}`);
     },
   });
-  const retry = useMutation({ mutationFn: (productId: string) => postJson(`${API}/${productId}/select?regenerate=true`), onSuccess: refresh });
   const remove = useMutation({
     mutationFn: (productId: string) => deleteJson(`${API}/${productId}`),
     onSuccess: () => {
@@ -107,9 +99,6 @@ export function ProductsPage() {
       {rows.length ? (
         <div className="product-grid">
           {rows.map((product) => {
-            const picked = product.product_id in (selections.data ?? {});
-            const preparing = picked && !selections.data?.[product.product_id];
-            const failure = errors.data?.[product.product_id];
             const hasVideoWork = briefIds.has(product.product_id);
             return (
               <article className="card product-card" key={product.product_id}>
@@ -122,13 +111,9 @@ export function ProductsPage() {
                   <span className="muted small">{product.seller?.name || "Unknown shop"}</span>
                   <span className="small">{`${toNumber(product.sold_count).toLocaleString("en-US")} sold`}{product.rating ? ` · ★ ${product.rating}` : ""}</span>
                   <div className="foot">
-                    {failure ? (
-                      <button className="btn btn-sm btn-block" disabled={retry.isPending} onClick={() => retry.mutate(product.product_id)}>Could not get ready, try again</button>
-                    ) : (
-                      <button className="btn btn-primary btn-block" disabled={start.isPending || preparing} onClick={() => start.mutate(product.product_id)}>
-                        {preparing ? <><Spinner size={14} />Getting ready…</> : hasVideoWork ? "Open" : <><Sparkles size={16} aria-hidden="true" />Make a video</>}
-                      </button>
-                    )}
+                    <button className="btn btn-primary btn-block" disabled={start.isPending} onClick={() => start.mutate(product.product_id)}>
+                      {hasVideoWork ? "Open" : <><Sparkles size={16} aria-hidden="true" />Make a video</>}
+                    </button>
                     <button
                       className="icon-button"
                       aria-label="Delete product"

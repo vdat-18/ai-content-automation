@@ -2,10 +2,7 @@ from types import SimpleNamespace
 
 from tests.pgstore import product_repository
 
-from ai_content.domains.marketing.products.references import (
-    ReferenceProfile,
-    ReferenceProfileGenerator,
-)
+from ai_content.domains.marketing.products.references import GENERAL_TYPE
 from ai_content.domains.marketing.products.service import ProductCatalogService
 
 URL = "https://shop.tiktok.com/vn/pdp/ao-thun/1730000000000000001"
@@ -16,24 +13,13 @@ HTML = (
 )
 
 
-class _FakeBamlClient:
-    async def DraftReferenceSearchProfile(self, product_json: str) -> SimpleNamespace:
-        return SimpleNamespace(
-            product_type="Áo thun",
-            keywords=["ao thun flat lay", "t-shirt photography"],
-        )
-
-
-async def test_select_drafts_profile_once_per_type(tmp_path) -> None:
+async def test_select_marks_the_product_with_the_shared_type(tmp_path) -> None:
     repository = product_repository()
-    service = ProductCatalogService(repository, ReferenceProfileGenerator(_FakeBamlClient()))
+    service = ProductCatalogService(repository)
     await service.ingest({"kind": "page", "url": URL, "html": HTML})
-    result = await service.select("1730000000000000001")
-    assert result is not None and result["profile"]["product_type"] == "áo thun"
-    await service.select("1730000000000000001")
-    assert len(await service.profiles()) == 1
-    assert await service.selections() == {"1730000000000000001": "áo thun"}
-    assert await service.select("missing") is None
+    assert await service.select("1730000000000000001") is True
+    assert await service.selections() == {"1730000000000000001": GENERAL_TYPE}
+    assert await service.select("missing") is False
 
 
 async def test_pinterest_queue_ingest_and_filters(tmp_path) -> None:
@@ -77,19 +63,6 @@ async def test_pinterest_queue_ingest_and_filters(tmp_path) -> None:
     assert len(await service.reference_images("removed", None)) == 1
 
 
-async def test_regenerate_replaces_keywords(tmp_path) -> None:
-    repository = product_repository()
-    service = ProductCatalogService(repository, ReferenceProfileGenerator(_FakeBamlClient()))
-    await service.ingest({"kind": "page", "url": URL, "html": HTML})
-    await service.select("1730000000000000001")
-    await service.update_profile(ReferenceProfile("áo thun", ["old"], "approved"))
-    await service.select("1730000000000000001")
-    assert (await service.profiles())[0].keywords == ["old"]
-    await service.select("1730000000000000001", regenerate=True)
-    profile = (await service.profiles())[0]
-    assert profile.keywords[0] == "ao thun flat lay"
-
-
 async def test_ingest_screens_images_before_they_go_live(tmp_path) -> None:
     from ai_content.domains.marketing.products.image_review import ReferenceImageReviewer
 
@@ -129,19 +102,3 @@ async def test_ingest_screens_images_before_they_go_live(tmp_path) -> None:
     assert stored["screened"] == {"reviewed": 2, "usable": 1, "rejected": 1, "failed": 0}
     statuses = {i["product_type"]: i["status"] for i in await service.reference_images(None, None)}
     assert statuses == {"áo thun": "live", "cốc": "rejected"}
-
-
-async def test_select_keeps_selection_when_llm_fails(tmp_path) -> None:
-    from baml_py.baml_py import BamlClientError
-
-    class _FailingClient:
-        async def DraftReferenceSearchProfile(self, product_json: str) -> SimpleNamespace:
-            raise BamlClientError("boom", "boom", "boom")
-
-    repository = product_repository()
-    service = ProductCatalogService(repository, ReferenceProfileGenerator(_FailingClient()))
-    await service.ingest({"kind": "page", "url": URL, "html": HTML})
-    result = await service.select("1730000000000000001")
-    assert result is not None and result["profile"] is None and "boom" in result["error"]
-    assert await service.selections() == {"1730000000000000001": None}
-    assert await service.profiles() == []

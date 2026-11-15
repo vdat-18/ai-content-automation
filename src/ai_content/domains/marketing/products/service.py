@@ -86,7 +86,7 @@ from .parsing import (
 from .posting import PostingPackageWriter
 from .reference_ad import AdAnalyzer, ReferenceAdUnavailable
 from .reference_picker import ReferencePickerError, ShotReferencePicker
-from .references import ProfileGenerationError, ReferenceProfile, ReferenceProfileGenerator
+from .references import GENERAL_TYPE, ProfileGenerationError, ReferenceProfile
 from .repositories import ProductRepository
 from .shortening import VoiceShortener, words_that_fit
 from .speech import (
@@ -319,7 +319,6 @@ class ProductCatalogService:
     def __init__(
         self,
         repository: ProductRepository,
-        generator: ReferenceProfileGenerator | None = None,
         reviewer: ReferenceImageReviewer | None = None,
         briefer: ContentBriefWriter | None = None,
         embedder: ImageEmbedder | None = None,
@@ -346,7 +345,6 @@ class ProductCatalogService:
         self._ad_analyzer = ad_analyzer
         self._hook_writer = hook_writer
         self._repository = repository
-        self._generator = generator
         self._reviewer = reviewer
         self._briefer = briefer
         self._embedder = embedder
@@ -2385,38 +2383,11 @@ class ProductCatalogService:
     async def detail(self, product_id: str) -> dict[str, Any] | None:
         return await self._repository.get_detail(product_id)
 
-    async def select(self, product_id: str, regenerate: bool = False) -> dict[str, Any] | None:
-        """Mark a product for content; draft its reference search profile when an LLM is set.
-
-        With regenerate, the keywords of an existing product type are replaced by a new draft.
-        """
-        detail = await self._repository.get_detail(product_id)
-        if detail is None:
-            return None
-        await self._repository.select_product(product_id, None)
-        result: dict[str, Any] = {"product_id": product_id, "profile": None, "error": None}
-        if self._generator is None:
-            result["error"] = "LLM is not configured (AIC_SCREENING_API_KEY)"
-            return result
-        try:
-            profile = await self._generator.generate(detail)
-        except ProfileGenerationError as error:
-            result["error"] = str(error)
-            return result
-        await self._repository.add_profile_if_missing(profile)
-        if regenerate:
-            await self._repository.update_profile(profile)
-        await self._repository.select_product(product_id, profile.product_type)
-        result["profile"] = profile.as_dict()
-        return result
-
-    async def mark_selected(self, product_id: str) -> bool:
-        """Put a product in the selected list straight away, before its keyword exists."""
+    async def select(self, product_id: str) -> bool:
+        """Mark a product for content. Every product draws on the one shared reference pool."""
         if await self._repository.get_detail(product_id) is None:
             return False
-        selections = await self._repository.selections()
-        if product_id not in selections:
-            await self._repository.select_product(product_id, None)
+        await self._repository.select_product(product_id, GENERAL_TYPE)
         return True
 
     async def selections(self) -> dict[str, str | None]:

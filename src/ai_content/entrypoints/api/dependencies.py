@@ -33,7 +33,6 @@ from ai_content.domains.marketing.products.media_store import S3RemoteMedia
 from ai_content.domains.marketing.products.posting import PostingPackageWriter
 from ai_content.domains.marketing.products.reference_ad import AdAnalyzer
 from ai_content.domains.marketing.products.reference_picker import ShotReferencePicker
-from ai_content.domains.marketing.products.references import ReferenceProfileGenerator
 from ai_content.domains.marketing.products.service import ProductCatalogService
 from ai_content.domains.marketing.products.shortening import VoiceShortener
 from ai_content.domains.marketing.products.speech import SpeechClient
@@ -451,23 +450,12 @@ def _ad_analyzer(settings: ApiRuntimeSettings) -> AdAnalyzer | None:
     )
 
 
-def _profile_generator(settings: ApiRuntimeSettings) -> ReferenceProfileGenerator | None:
-    if not settings.screening_api_key:
-        return None
-    return ReferenceProfileGenerator.from_settings(
-        base_url=settings.screening_base_url,
-        api_key=settings.screening_api_key,
-        model=settings.writer_model,
-    )
-
-
 @asynccontextmanager
 async def product_catalog_scope(postgres: Any) -> AsyncIterator[ProductCatalogService]:
     """Open the product catalog service, in a request or in a background task."""
     settings = get_runtime_settings()
     yield ProductCatalogService(
         postgres.product_repository,
-        _profile_generator(settings),
         _image_reviewer(settings),
         _brief_writer(settings),
         _image_embedder(settings),

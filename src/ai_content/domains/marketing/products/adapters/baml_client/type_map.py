@@ -52,9 +52,6 @@ type_map = {
     "types.ReferenceImageReview": types.ReferenceImageReview,
     "stream_types.ReferenceImageReview": stream_types.ReferenceImageReview,
 
-    "types.ReferenceSearchProfileDraft": types.ReferenceSearchProfileDraft,
-    "stream_types.ReferenceSearchProfileDraft": stream_types.ReferenceSearchProfileDraft,
-
     "types.ShortenedLine": types.ShortenedLine,
     "stream_types.ShortenedLine": stream_types.ShortenedLine,
 

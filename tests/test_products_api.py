@@ -12,7 +12,7 @@ from openpyxl import load_workbook
 from tests.pgstore import product_repository, runtime_container
 
 from ai_content.domains.marketing.products.pipeline import PipelineStopped
-from ai_content.domains.marketing.products.references import ReferenceProfile
+from ai_content.domains.marketing.products.references import GENERAL_TYPE, ReferenceProfile
 from ai_content.domains.marketing.products.repositories import PostgresProductRepository
 from ai_content.domains.marketing.products.service import ProductCatalogService
 from ai_content.entrypoints.api import products as products_api
@@ -142,31 +142,12 @@ def test_export_json_and_xlsx(client: TestClient) -> None:
     assert client.get("/api/v1/products/export?format=csv").status_code == 422
 
 
-def test_select_queues_the_product_at_once(client: TestClient) -> None:
+def test_select_marks_the_product_for_the_shared_pool(client: TestClient) -> None:
     _capture_product(client)
     result = client.post(f"/api/v1/products/{PRODUCT_ID}/select").json()
-    assert result == {"product_id": PRODUCT_ID, "queued": True}
-    assert client.get("/api/v1/products/selections").json() == {PRODUCT_ID: None}
+    assert result == {"product_id": PRODUCT_ID}
+    assert client.get("/api/v1/products/selections").json() == {PRODUCT_ID: GENERAL_TYPE}
     assert client.post("/api/v1/products/missing/select").status_code == 404
-
-
-async def test_background_select_records_why_it_failed(
-    repository: PostgresProductRepository, client: TestClient
-) -> None:
-    from contextlib import asynccontextmanager
-
-    from ai_content.entrypoints.api import products as products_module
-
-    _capture_product(client)
-
-    @asynccontextmanager
-    async def scope() -> AsyncIterator[ProductCatalogService]:
-        yield ProductCatalogService(repository)
-
-    await products_module._run_select(scope, PRODUCT_ID, False)
-    assert "not configured" in products_module._select_errors[PRODUCT_ID]
-    assert client.get("/api/v1/products/select-errors").json()[PRODUCT_ID]
-    products_module._select_errors.clear()
 
 
 def test_reference_profile_update_and_queue(

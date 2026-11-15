@@ -6,7 +6,6 @@ _PROMPTS_WITH_SELLER_TEXT = (
     "content_brief",
     "hook_variants",
     "posting_package",
-    "reference_search",
     "shot_reference",
     "storyboard_review",
 )

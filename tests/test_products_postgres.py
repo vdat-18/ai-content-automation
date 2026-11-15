@@ -8,7 +8,7 @@ import os
 import pytest
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from ai_content.domains.marketing.products.references import ReferenceProfile
+from ai_content.domains.marketing.products.references import GENERAL_TYPE, ReferenceProfile
 from ai_content.domains.marketing.products.repositories import PostgresProductRepository
 from ai_content.domains.marketing.products.service import ProductCatalogService
 
@@ -61,19 +61,15 @@ async def _round_trip() -> None:
         assert await service.detail("missing") is None
         assert (await service.export_workbook())[:2] == b"PK"
 
-        class _Generator:
-            async def generate(self, product):
-                return ReferenceProfile("áo thun", ["ao thun flat lay"])
-
-        service = ProductCatalogService(PostgresProductRepository(engine), _Generator())  # type: ignore[arg-type]
-        assert (await service.select("1730000000000000001"))["profile"]["product_type"] == "áo thun"
+        service = ProductCatalogService(PostgresProductRepository(engine))
+        assert await service.select("1730000000000000001") is True
+        assert await service.select("missing") is False
+        assert await service.selections() == {"1730000000000000001": GENERAL_TYPE}
+        repository = PostgresProductRepository(engine)
+        await repository.add_profile_if_missing(ReferenceProfile("áo thun", ["old keyword"]))
         await service.update_profile(ReferenceProfile("áo thun", ["new keyword"], "approved"))
-        await service.select("1730000000000000001")
         assert (await service.profiles())[0].keywords == ["new keyword"]
-        await service.select("1730000000000000001", regenerate=True)
-        assert (await service.profiles())[0].keywords == ["ao thun flat lay"]
         assert await service.update_profile(ReferenceProfile("none", [])) is False
-        assert await service.selections() == {"1730000000000000001": "áo thun"}
 
         await service.update_profile(ReferenceProfile("áo thun", ["q1", "q2"], "approved"))
         assert [i["query"] for i in await service.reference_queue(10)] == ["q1", "q2"]
