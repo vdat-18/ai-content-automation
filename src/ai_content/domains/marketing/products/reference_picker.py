@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import base64
 import json
 from typing import Any, Protocol
 
@@ -16,6 +15,7 @@ from ai_content.domains.marketing.products.adapters.baml_client import types as 
 from ai_content.domains.marketing.products.adapters.baml_client.async_client import b
 from ai_content.domains.marketing.products.adapters.baml_registry import build_client_registry
 from ai_content.domains.marketing.products.briefing import product_facts
+from ai_content.domains.marketing.products.keyframe_check import _image
 
 _SHOT_KEYS = ("role", "description", "keyframe_prompt", "delivery")
 
@@ -67,8 +67,7 @@ class ShotReferencePicker:
             except httpx.HTTPError as error:
                 logger.warning("Reference download failed: {}", str(error)[:200])
                 return None
-            kind = response.headers.get("content-type", "image/jpeg").split(";")[0]
-            return BamlImage.from_base64(kind, base64.b64encode(response.content).decode())
+            return _image(response.content)
 
         try:
             images = await asyncio.gather(*(fetch(item["url"]) for item in candidates))

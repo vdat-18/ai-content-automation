@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import base64
 from typing import Any, Protocol
 
 import httpx
@@ -14,6 +13,7 @@ from loguru import logger
 from ai_content.domains.marketing.products.adapters.baml_client import types as baml_types
 from ai_content.domains.marketing.products.adapters.baml_client.async_client import b
 from ai_content.domains.marketing.products.adapters.baml_registry import build_client_registry
+from ai_content.domains.marketing.products.keyframe_check import _image
 
 _CONCURRENCY = 2
 # a complete review of a usable image has at least these
@@ -58,12 +58,8 @@ class ReferenceImageReviewer:
                 try:
                     response = await http.get(image["image_url"])
                     response.raise_for_status()
-                    media_type = response.headers.get("content-type", "image/jpeg").split(";")[0]
                     result = await self._client.ReviewReferenceImage(
-                        image["product_type"],
-                        BamlImage.from_base64(
-                            media_type, base64.b64encode(response.content).decode("ascii")
-                        ),
+                        image["product_type"], _image(response.content)
                     )
                 except (httpx.HTTPError, BamlError) as error:
                     logger.warning("Reference image review failed: {}", str(error)[:300])

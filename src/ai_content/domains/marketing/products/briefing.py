@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import base64
 import json
 from typing import Any, Protocol
 
@@ -133,8 +132,7 @@ class ContentBriefWriter:
                 except httpx.HTTPError as error:
                     logger.warning("Brief image download failed: {}", str(error)[:200])
                     return None
-            media_type = response.headers.get("content-type", "image/jpeg").split(";")[0]
-            return BamlImage.from_base64(media_type, base64.b64encode(response.content).decode())
+            return _image(response.content)
 
         urls = [url for url in (product.get("images") or []) if url]
         try:

@@ -51,3 +51,15 @@ async def test_a_failed_check_reports_the_problem(check) -> None:
     found = await check(_Flaky(failures=0, passed=False, problem="wrong color"))
     assert found == "wrong color" and found.category == "face"
     assert await check(_Flaky(failures=0, passed=False, problem=" ")) != ""
+
+
+def test_a_picture_is_typed_by_its_bytes_not_by_what_the_cdn_says() -> None:
+    from ai_content.domains.marketing.products.keyframe_check import _image
+
+    samples = {
+        b"\x89PNG\r\n\x1a\n": "image/png",
+        b"RIFF\x00\x00\x00\x00WEBPVP8 ": "image/webp",
+        b"\xff\xd8\xff\xe0": "image/jpeg",
+    }
+    for content, expected in samples.items():
+        assert _image(content).as_base64()[1] == expected

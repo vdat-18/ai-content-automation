@@ -42,7 +42,13 @@ class QAProblem(str):
 
 
 def _image(content: bytes) -> BamlImage:
-    media_type = "image/png" if content[:4] == b"\x89PNG" else "image/jpeg"
+    """The type comes from the bytes: a CDN often labels a webp picture as jpeg."""
+    if content[:4] == b"\x89PNG":
+        media_type = "image/png"
+    elif content[:4] == b"RIFF" and content[8:12] == b"WEBP":
+        media_type = "image/webp"
+    else:
+        media_type = "image/jpeg"
     return BamlImage.from_base64(media_type, base64.b64encode(content).decode("ascii"))
 
 
