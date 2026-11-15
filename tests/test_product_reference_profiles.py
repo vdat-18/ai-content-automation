@@ -67,15 +67,14 @@ async def test_images_wait_for_the_review_and_only_the_review_makes_them_live(tm
     from ai_content.domains.marketing.products.image_review import ReferenceImageReviewer
 
     class _FakeReviewClient:
-        async def ReviewReferenceImage(self, product_type, image):
-            usable = product_type != "cốc"
-            return SimpleNamespace(model_dump=lambda: {"usable": usable})
+        async def ReviewReferenceImage(self, image):
+            return SimpleNamespace(model_dump=lambda: {"usable": image != "cốc"})
 
     class _Reviewer(ReferenceImageReviewer):
         async def review_all(self, images, http=None):
             return {
                 image["image_id"]: (
-                    await self._client.ReviewReferenceImage(image["product_type"], None)
+                    await self._client.ReviewReferenceImage(image["product_type"])
                 ).model_dump()
                 for image in images
             }

@@ -167,7 +167,7 @@ def test_parsing_helpers_and_rich_description() -> None:
 
 
 _COMPLETE_REVIEW = {
-    "usable": True,
+    "score": 4,
     "setting": "room",
     "lighting": "soft",
     "camera": "eye level",
@@ -175,22 +175,26 @@ _COMPLETE_REVIEW = {
 }
 
 
-async def test_reference_image_reviewer_handles_failures() -> None:
+async def test_reference_image_reviewer_handles_failures(monkeypatch) -> None:
     import httpx
     from baml_py.baml_py import BamlClientError
 
+    from ai_content.domains.marketing.products import image_review
     from ai_content.domains.marketing.products.image_review import ReferenceImageReviewer
 
+    monkeypatch.setattr(image_review, "_image", lambda content: content)  # the client sees the bytes
+
     class _Client:
-        async def ReviewReferenceImage(self, product_type, image):
-            if product_type == "lỗi":
+        async def ReviewReferenceImage(self, image):
+            if image == b"rate":
                 raise BamlClientError("429", "429", "429")
             return SimpleNamespace(model_dump=lambda: dict(_COMPLETE_REVIEW))
 
     def handler(request: httpx.Request) -> httpx.Response:
         if "missing" in request.url.path:
             return httpx.Response(404)
-        return httpx.Response(200, content=b"img", headers={"content-type": "image/jpeg"})
+        content = b"rate" if "rate" in request.url.path else b"img"
+        return httpx.Response(200, content=content, headers={"content-type": "image/jpeg"})
 
     images = [
         {"image_id": "ok", "product_type": "áo", "image_url": "https://x/ok.jpg"},
@@ -199,7 +203,7 @@ async def test_reference_image_reviewer_handles_failures() -> None:
     ]
     async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as http:
         reviews = await ReferenceImageReviewer(_Client()).review_all(images, http)
-    assert reviews == {"ok": _COMPLETE_REVIEW, "gone": None, "rate": None}
+    assert reviews == {"ok": {**_COMPLETE_REVIEW, "usable": True}, "gone": None, "rate": None}
 
 
 def test_a_category_feed_is_recognised_and_read_wherever_it_nests_the_products() -> None:

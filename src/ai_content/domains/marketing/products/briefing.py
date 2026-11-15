@@ -66,9 +66,15 @@ _DETAIL_LABELS = (
     ("camera", "Camera"),
     ("people", "People"),
     ("placement", "Product spot"),
-    ("suits", "Fits shots"),
+    ("fits_products", "Fits products"),
     ("motion_ideas", "Motion ideas"),
 )
+
+
+def reference_search_text(image: dict[str, Any]) -> str:
+    """The short text a picture is found by: only what a shot's action can be compared with."""
+    screening = image.get("screening") or {}
+    return str(screening.get("description") or "") or reference_note(image)
 
 
 def reference_note(image: dict[str, Any]) -> str:

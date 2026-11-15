@@ -654,7 +654,7 @@ class ReferenceImageReviewAst:
     def __init__(self, tb: type_builder.TypeBuilder):
         _tb = tb._tb # type: ignore (we know how to use this private attribute)
         self._bldr = _tb.class_("ReferenceImageReview")
-        self._properties: typing.Set[str] = set([  "usable",  "description",  "reject_reason",  "setting",  "surface_and_props",  "lighting",  "color_palette",  "style",  "camera",  "people",  "placement",  "suits",  "motion_ideas",  ])
+        self._properties: typing.Set[str] = set([  "score",  "reject_reason",  "description",  "setting",  "surface_and_props",  "lighting",  "color_palette",  "style",  "camera",  "people",  "placement",  "fits_products",  "motion_ideas",  ])
         self._props = ReferenceImageReviewProperties(self._bldr, self._properties)
 
     def type(self) -> baml_py.FieldType:
@@ -683,16 +683,16 @@ class ReferenceImageReviewProperties:
     
     
     @property
-    def usable(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("usable"))
-    
-    @property
-    def description(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("description"))
+    def score(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("score"))
     
     @property
     def reject_reason(self) -> type_builder.ClassPropertyViewer:
         return type_builder.ClassPropertyViewer(self.__bldr.property("reject_reason"))
+    
+    @property
+    def description(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("description"))
     
     @property
     def setting(self) -> type_builder.ClassPropertyViewer:
@@ -727,8 +727,8 @@ class ReferenceImageReviewProperties:
         return type_builder.ClassPropertyViewer(self.__bldr.property("placement"))
     
     @property
-    def suits(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("suits"))
+    def fits_products(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("fits_products"))
     
     @property
     def motion_ideas(self) -> type_builder.ClassPropertyViewer:

@@ -86,9 +86,9 @@ class ReferenceCandidate(BaseModel):
     photo: typing.Optional[baml_py.Image] = None
 
 class ReferenceImageReview(BaseModel):
-    usable: typing.Optional[bool] = None
-    description: typing.Optional[str] = None
+    score: typing.Optional[int] = None
     reject_reason: typing.Optional[str] = None
+    description: typing.Optional[str] = None
     setting: typing.Optional[str] = None
     surface_and_props: typing.Optional[typing.List[str]] = None
     lighting: typing.Optional[str] = None
@@ -97,7 +97,7 @@ class ReferenceImageReview(BaseModel):
     camera: typing.Optional[str] = None
     people: typing.Optional[str] = None
     placement: typing.Optional[str] = None
-    suits: typing.Optional[typing.List[str]] = None
+    fits_products: typing.Optional[typing.List[str]] = None
     motion_ideas: typing.Optional[typing.List[str]] = None
 
 class ShortenedLine(BaseModel):

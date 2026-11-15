@@ -16,6 +16,7 @@ from ai_content.domains.marketing.products.adapters.baml_registry import build_c
 from ai_content.domains.marketing.products.keyframe_check import _image
 
 _CONCURRENCY = 2
+MIN_SCORE = 3  # a picture scored at least this is worth borrowing
 # a complete review of a usable image has at least these
 _REQUIRED_DETAIL = ("setting", "lighting", "camera", "placement")
 _DOWNLOAD_TIMEOUT = 30
@@ -23,7 +24,7 @@ _DOWNLOAD_TIMEOUT = 30
 
 class _BamlReviewClient(Protocol):
     async def ReviewReferenceImage(
-        self, product_type: str, image: BamlImage
+        self, image: BamlImage
     ) -> baml_types.ReferenceImageReview: ...
 
 
@@ -58,13 +59,12 @@ class ReferenceImageReviewer:
                 try:
                     response = await http.get(image["image_url"])
                     response.raise_for_status()
-                    result = await self._client.ReviewReferenceImage(
-                        image["product_type"], _image(response.content)
-                    )
+                    result = await self._client.ReviewReferenceImage(_image(response.content))
                 except (httpx.HTTPError, BamlError) as error:
                     logger.warning("Reference image review failed: {}", str(error)[:300])
                     return image["image_id"], None
                 review = result.model_dump()
+                review["usable"] = review["score"] >= MIN_SCORE
                 if review["usable"] and not any(review.get(key) for key in _REQUIRED_DETAIL):
                     # a reply cut off half way still parses; never let it through as a full review
                     logger.warning("Reference image review was cut short: {}", image["image_id"])

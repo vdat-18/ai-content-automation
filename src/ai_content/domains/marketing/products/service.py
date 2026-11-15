@@ -40,6 +40,7 @@ from .briefing import (
     BriefUnavailable,
     ContentBriefWriter,
     reference_note,
+    reference_search_text,
 )
 from .captions import spoken_cues
 from .clip_check import ClipChecker
@@ -854,7 +855,7 @@ class ProductCatalogService:
         missing = [
             (image["image_id"], note)
             for image in live
-            if image["image_id"] not in vectors and (note := reference_note(image))
+            if image["image_id"] not in vectors and (note := reference_search_text(image))
         ]
         if missing:
             fresh = await self._text_embedder.embed([note for _, note in missing])

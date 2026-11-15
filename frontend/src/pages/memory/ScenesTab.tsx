@@ -7,7 +7,7 @@ import { API } from "../../hooks/useStudio";
 import { deleteJson, getJson, postJson, putJson } from "../../services/http";
 
 type Profile = { product_type: string; keywords: string[]; status: string };
-type Screening = { usable: boolean; description?: string; scene_description?: string };
+type Screening = { usable: boolean; score?: number; reject_reason?: string | null; description?: string; scene_description?: string };
 type ReviewRun = { status: "idle" | "running" | "done" | "stopped" | "failed"; total: number; reviewed: number; usable: number; rejected: number; failed: number; message: string };
 type SceneImage = { image_id: string; product_type: string; query: string; image_url: string; pin_url: string; title: string; status: string; screening: Screening | null };
 
@@ -104,7 +104,7 @@ export function ScenesTab() {
               {image.status !== "removed" && (
                 <button type="button" className="icon-button remove" style={{ background: "var(--paper)" }} aria-label="Remove this scene" disabled={remove.isPending} onClick={() => remove.mutate(image.image_id)}><X size={14} /></button>
               )}
-              <figcaption>{image.screening?.description ?? image.screening?.scene_description ?? image.query}</figcaption>
+              <figcaption>{image.status === "rejected" && image.screening?.reject_reason ? `Rejected (${image.screening.reject_reason}): ` : ""}{image.screening?.description ?? image.screening?.scene_description ?? image.query}</figcaption>
             </figure>
           ))}
         </div>

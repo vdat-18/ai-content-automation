@@ -192,18 +192,18 @@ class BamlSyncClient:
                 "brief_json": brief_json,"voices_json": voices_json,"person_photos": person_photos,
             })
             return typing.cast(types.VoicePick, __result__.cast_to(types, types, stream_types, False, __runtime__))
-    def ReviewReferenceImage(self, product_type: str,image: baml_py.Image,
+    def ReviewReferenceImage(self, image: baml_py.Image,
         baml_options: BamlCallOptions = {},
     ) -> types.ReferenceImageReview:
         # Check if on_tick is provided
         if 'on_tick' in baml_options:
-            __stream__ = self.stream.ReviewReferenceImage(product_type=product_type,image=image,
+            __stream__ = self.stream.ReviewReferenceImage(image=image,
                 baml_options=baml_options)
             return __stream__.get_final_response()
         else:
             # Original non-streaming code
             __result__ = self.__options.merge_options(baml_options).call_function_sync(function_name="ReviewReferenceImage", args={
-                "product_type": product_type,"image": image,
+                "image": image,
             })
             return typing.cast(types.ReferenceImageReview, __result__.cast_to(types, types, stream_types, False, __runtime__))
     def ReviewStoryboard(self, product_json: str,brief_json: str,rules: str,
@@ -355,11 +355,11 @@ class BamlStreamClient:
           lambda x: typing.cast(types.VoicePick, x.cast_to(types, types, stream_types, False, __runtime__)),
           __ctx__,
         )
-    def ReviewReferenceImage(self, product_type: str,image: baml_py.Image,
+    def ReviewReferenceImage(self, image: baml_py.Image,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.BamlSyncStream[stream_types.ReferenceImageReview, types.ReferenceImageReview]:
         __ctx__, __result__ = self.__options.merge_options(baml_options).create_sync_stream(function_name="ReviewReferenceImage", args={
-            "product_type": product_type,"image": image,
+            "image": image,
         })
         return baml_py.BamlSyncStream[stream_types.ReferenceImageReview, types.ReferenceImageReview](
           __result__,
@@ -472,11 +472,11 @@ class BamlHttpRequestClient:
             "brief_json": brief_json,"voices_json": voices_json,"person_photos": person_photos,
         }, mode="request")
         return __result__
-    def ReviewReferenceImage(self, product_type: str,image: baml_py.Image,
+    def ReviewReferenceImage(self, image: baml_py.Image,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.baml_py.HTTPRequest:
         __result__ = self.__options.merge_options(baml_options).create_http_request_sync(function_name="ReviewReferenceImage", args={
-            "product_type": product_type,"image": image,
+            "image": image,
         }, mode="request")
         return __result__
     def ReviewStoryboard(self, product_json: str,brief_json: str,rules: str,
@@ -564,11 +564,11 @@ class BamlHttpStreamRequestClient:
             "brief_json": brief_json,"voices_json": voices_json,"person_photos": person_photos,
         }, mode="stream")
         return __result__
-    def ReviewReferenceImage(self, product_type: str,image: baml_py.Image,
+    def ReviewReferenceImage(self, image: baml_py.Image,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.baml_py.HTTPRequest:
         __result__ = self.__options.merge_options(baml_options).create_http_request_sync(function_name="ReviewReferenceImage", args={
-            "product_type": product_type,"image": image,
+            "image": image,
         }, mode="stream")
         return __result__
     def ReviewStoryboard(self, product_json: str,brief_json: str,rules: str,
