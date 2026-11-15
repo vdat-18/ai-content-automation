@@ -191,7 +191,7 @@ async def test_client_edits_mode_posts_images_to_the_edits_endpoint() -> None:
     assert await client.generate("prompt", [b"one", b"two"]) == PNG
     assert seen["path"] == "/v1/images/edits"
     assert (seen["prompt"], seen["aspect_ratio"], len(seen["image"])) == ("prompt", "9:16", 2)
-    assert seen["size"] == "1024x1536"
+    assert seen["size"] == "1024x1792"
 
 
 async def test_client_edits_mode_reads_a_base64_image_field() -> None:

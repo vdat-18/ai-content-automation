@@ -14,7 +14,7 @@ from PIL import Image
 
 ASPECT_SIZE = "1024x1792"
 ASPECT_RATIO = "9:16"
-EDITS_SIZE = "1024x1536"  # the tallest size the edits models accept
+EDITS_SIZE = "1024x1792"  # gpt-image-2 gives exactly 9:16 (941x1672) for this size
 _REQUEST_TIMEOUT = 240
 _TRIES = 3
 _RETRY_STATUSES = {429, 500, 502, 503, 504}
