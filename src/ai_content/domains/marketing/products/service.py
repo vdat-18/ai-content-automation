@@ -108,7 +108,6 @@ from .word_timing import MISREAD_BELOW, word_starts
 
 # filter_genai asks Pinterest to show fewer AI pictures, whatever the account setting is
 _PINTEREST_SEARCH = "https://www.pinterest.com/search/pins/?filter_genai=true&q="
-_SCREEN_BATCH = 200
 
 
 def _duplicate_similarity() -> float:
@@ -549,14 +548,12 @@ class ProductCatalogService:
         added = await self._repository.add_reference_images(
             product_type, str(payload["query"]), pins
         )
-        screened = await self.screen_images(_SCREEN_BATCH) if self._reviewer else None
         return {
             "stored": "reference_images",
             "received": len(payload.get("pins") or []),
             "added": added - duplicates,
             "duplicates": duplicates,
             "check_failed": check_failed,
-            "screened": screened,
         }
 
     async def _drop_duplicates(

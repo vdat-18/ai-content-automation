@@ -63,7 +63,7 @@ async def test_pinterest_queue_ingest_and_filters(tmp_path) -> None:
     assert len(await service.reference_images("removed", None)) == 1
 
 
-async def test_ingest_screens_images_before_they_go_live(tmp_path) -> None:
+async def test_images_wait_for_the_review_and_only_the_review_makes_them_live(tmp_path) -> None:
     from ai_content.domains.marketing.products.image_review import ReferenceImageReviewer
 
     class _FakeReviewClient:
@@ -96,9 +96,11 @@ async def test_ingest_screens_images_before_they_go_live(tmp_path) -> None:
     assert [i["status"] for i in await plain.reference_images(None, None)] == ["pending"]
 
     service = ProductCatalogService(repository, reviewer=_Reviewer(_FakeReviewClient()))
-    stored = await service.ingest(
+    await service.ingest(
         {"kind": "pinterest", "product_type": "áo thun", "query": "q", "pins": [pin]}
     )
-    assert stored["screened"] == {"reviewed": 2, "usable": 1, "rejected": 1, "failed": 0}
+    assert {i["status"] for i in await service.reference_images(None, None)} == {"pending"}
+    counts = await service.screen_images(10)
+    assert counts == {"reviewed": 2, "usable": 1, "rejected": 1, "failed": 0}
     statuses = {i["product_type"]: i["status"] for i in await service.reference_images(None, None)}
     assert statuses == {"áo thun": "live", "cốc": "rejected"}

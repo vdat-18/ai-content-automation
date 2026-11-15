@@ -185,7 +185,7 @@ def test_reference_image_review_flow(client: TestClient) -> None:
     ]
     body = {"kind": "pinterest", "product_type": "áo thun", "query": "q", "pins": pins}
     stored = client.post("/api/v1/products/ingest", json=body).json()
-    assert stored["added"] == 1 and stored["screened"] is None
+    assert stored["added"] == 1 and "screened" not in stored
     image = client.get("/api/v1/products/reference-images?status=pending").json()[0]
     assert image["image_url"].startswith("https://i.pinimg.com/736x/")
 
