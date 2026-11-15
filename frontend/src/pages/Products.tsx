@@ -66,7 +66,7 @@ export function ProductsPage() {
   const briefIds = new Set((briefs.data ?? []).map((record) => record.product_id));
 
   return (
-    <div className="page">
+    <div className="page page-wide">
       <PageHead
         title="Products"
         text="Products you collected from TikTok Shop. Pick one and make a video."
