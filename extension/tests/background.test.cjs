@@ -111,9 +111,9 @@ test("a login wall is not counted as a captcha", async () => {
   assert.ok(!(w.store.captchaLog || []).length);
 });
 
-test("never more than twelve pages in any minute, and every page is read", async () => {
+test("never more than twenty pages in any minute, and every page is read", async () => {
   const w = makeWorld();
-  await w.send({ type: "walker-start", urls: urls(14), concurrency: 5 });
+  await w.send({ type: "walker-start", urls: urls(24), concurrency: 5 });
   await new Promise((resolve) => setTimeout(resolve, 50));
   const stopAt = Date.now() + 8000;
   while (Date.now() < stopAt && w.store.walker.running) {
@@ -123,8 +123,8 @@ test("never more than twelve pages in any minute, and every page is read", async
   const times = w.opened.map((entry) => entry.at);
   let maxIn60 = 0;
   for (const start of times) maxIn60 = Math.max(maxIn60, times.filter((at) => at >= start && at < start + 60_000).length);
-  assert.ok(maxIn60 <= 12, `max in any 60s = ${maxIn60}`);
-  assert.equal(w.store.walker.done, 14);
+  assert.ok(maxIn60 <= 20, `max in any 60s = ${maxIn60}`);
+  assert.equal(w.store.walker.done, 24);
 });
 
 test("the popup learns what happened to the product page that was just sent", async () => {

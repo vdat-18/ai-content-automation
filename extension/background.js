@@ -1,13 +1,13 @@
 const COLLECTOR = "http://127.0.0.1:8000/api/v1/products";
 const PAGE_TIMEOUT_MS = 120_000;
-const MAX_TABS = 5;
+const MAX_TABS = 20;
 
 // Politeness: the pause between two product tabs starts at BASE_DELAY_MS, doubles (with jitter) every time
 // TikTok shows a captcha, and shrinks back slowly while pages load fine. PAGES_PER_MINUTE is a hard cap.
-const BASE_DELAY_MS = 4_000;
+const BASE_DELAY_MS = 3_000;
 const MAX_DELAY_MS = 120_000;
 const SHRINK_FACTOR = 0.9;
-const PAGES_PER_MINUTE = 12;
+const PAGES_PER_MINUTE = 20;
 const QUEUE_LIMIT = 100_000; // every product still without its page
 // Circuit breaker: this many captcha waves in this window stops the run, so TikTok is not pushed further.
 const BREAKER_CAPTCHAS = 3;
