@@ -7,6 +7,7 @@ import json
 import os
 import re
 import tempfile
+import unicodedata
 import uuid
 from dataclasses import replace
 from datetime import UTC, datetime
@@ -307,7 +308,8 @@ def _with_category(product: dict[str, Any]) -> dict[str, Any]:
     if product.get("category"):
         return product
     names = product.get("categories") or []
-    slug = re.sub(r"[^a-z0-9]+", "-", str(names[0]).lower()).strip("-") if names else ""
+    plain = unicodedata.normalize("NFKD", str(names[0]).lower().replace("đ", "d")) if names else ""
+    slug = re.sub(r"[^a-z0-9]+", "-", plain.encode("ascii", "ignore").decode()).strip("-")
     return {**product, "category": slug} if slug else product
 
 class ProductCatalogService:

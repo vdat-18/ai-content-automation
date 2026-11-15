@@ -283,3 +283,17 @@ async def test_a_product_sent_alone_takes_its_category_from_its_own_page() -> No
     )
     [product] = await service.details()
     assert product["category"] == "food-beverages"
+
+
+async def test_a_vietnamese_category_name_becomes_a_plain_slug() -> None:
+    service = ProductCatalogService(product_repository())
+    info = {**INFO, "product_id": "1730000000000000006"}
+    html = (
+        '<script>"product_info":'
+        + json.dumps(info, ensure_ascii=False, separators=(",", ":"))
+        + ',"category_name":"Điện thoại & Điện tử"</script>'
+    )
+    url = URL.replace("1730000000000000001", "1730000000000000006")
+    await service.ingest({"kind": "page", "url": url, "html": html})
+    [product] = await service.details()
+    assert product["category"] == "dien-thoai-dien-tu"
