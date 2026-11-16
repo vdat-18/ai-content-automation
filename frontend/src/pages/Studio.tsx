@@ -8,7 +8,6 @@ import { doneSteps, STEPS, suggestedStep, type StepId } from "../lib/studio";
 import { FinishStep } from "./studio/FinishStep";
 import { IdeaStep } from "./studio/IdeaStep";
 import { ImagesStep } from "./studio/ImagesStep";
-import { ScriptStep } from "./studio/ScriptStep";
 import { Working } from "./studio/Working";
 
 export function StudioPage() {
@@ -70,8 +69,6 @@ export function StudioPage() {
         <Working productId={productId} run={pipeline.data!} record={record} frames={frames} />
       ) : step === "idea" ? (
         <IdeaStep productId={productId} product={product} productType={productType} record={record} run={pipeline.data} />
-      ) : step === "script" && record ? (
-        <ScriptStep productId={productId} record={record} frames={frames} />
       ) : step === "images" && record ? (
         <ImagesStep productId={productId} record={record} frames={frames} run={pipeline.data} />
       ) : record ? (

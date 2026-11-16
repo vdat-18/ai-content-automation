@@ -54,6 +54,7 @@ export function ImagesStep({ productId, record, frames, run }: { productId: stri
     return (
       <div className="card pad stack" style={{ maxWidth: 640 }}>
         <h1 style={{ fontSize: 24 }}>No images yet</h1>
+        <ol className="stack" style={{ margin: 0, paddingLeft: 18, gap: 6 }}>{shots.map((shot, index) => <li key={index} className="small">{shot.voiceover}</li>)}</ol>
         <p className="muted">The AI creates one picture for every scene of your script. It takes about 8 minutes and you can leave the page.</p>
         {run && runStopped(run) && <div className="notice notice-warn" role="alert"><div>The last run stopped. {run.message}</div></div>}
         <button className="btn btn-primary btn-lg" style={{ alignSelf: "flex-start" }} disabled={start.isPending} onClick={() => start.mutate({ until: "images" })}>{start.isPending ? "Starting…" : "Create the images"}</button>

@@ -1,9 +1,8 @@
 import type { BriefRecord, Keyframe, PipelineRun } from "../types/studio";
 
-export type StepId = "idea" | "script" | "images" | "finish";
+export type StepId = "idea" | "images" | "finish";
 export const STEPS: { id: StepId; label: string }[] = [
   { id: "idea", label: "Idea" },
-  { id: "script", label: "Script" },
   { id: "images", label: "Images" },
   { id: "finish", label: "Finish" },
 ];
@@ -36,14 +35,13 @@ export function imagesApproved(brief: BriefRecord | null | undefined, keyframes:
 }
 
 export function doneSteps(brief: BriefRecord | null | undefined, keyframes: Keyframe[], hasVideo: boolean): Record<StepId, boolean> {
-  return { idea: !!brief, script: brief?.status === "approved", images: imagesApproved(brief, keyframes), finish: hasVideo };
+  return { idea: !!brief, images: imagesApproved(brief, keyframes), finish: hasVideo };
 }
 
 /** The step a person most likely wants next. */
 export function suggestedStep(brief: BriefRecord | null | undefined, keyframes: Keyframe[], hasVideo: boolean): StepId {
   if (!brief) return "idea";
   if (hasVideo || imagesApproved(brief, keyframes)) return "finish";
-  if (brief.status !== "approved" && keyframes.length === 0) return "script";
   return "images";
 }
 
