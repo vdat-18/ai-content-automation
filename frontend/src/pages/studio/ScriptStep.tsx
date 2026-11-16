@@ -16,7 +16,6 @@ export function ScriptStep({ productId, record, frames }: { productId: string; r
   const lightbox = useLightbox();
   const brief = record.brief;
   const shots = brief.shots ?? [];
-  const warnings = brief.warnings ?? [];
   const [references, setReferences] = useState<(string | null)[]>(() => shots.map((_, index) => brief.shot_references?.[index] ?? null));
   const scenes = useQuery({ queryKey: ["reference-images", "live"], queryFn: ({ signal }) => getJson<SceneImage[]>(`${API}/reference-images?status=live`, signal) });
   const sceneById = new Map((scenes.data ?? []).map((scene) => [scene.image_id, scene]));
@@ -34,9 +33,6 @@ export function ScriptStep({ productId, record, frames }: { productId: string; r
   return (
     <>
       <header className="page-head"><div><h1>Your script</h1><p>Read it like a script. Change any line, the voice-over follows what you write here.</p></div></header>
-      {warnings.length > 0 && (
-        <div className="notice notice-warn" role="status"><div>TikTok may flag these words. Rewrite them before posting:<ul>{warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul></div></div>
-      )}
       <form
         className="stack-lg"
         onSubmit={(event) => {
@@ -104,7 +100,7 @@ export function ScriptStep({ productId, record, frames }: { productId: string; r
         <ErrorNote error={save.error} />
         <div className="row">
           <button className="btn btn-primary btn-lg" type="submit" disabled={save.isPending}>{save.isPending ? "Saving…" : "Save and continue to the images"}</button>
-          <button className="btn btn-lg" type="button" onClick={() => setParams({ step: "images" })}>Skip, keep the script as it is</button>
+          <button className="btn btn-lg" type="button" disabled={save.isPending} onClick={() => save.mutate({})}>The script is fine, continue to the images</button>
         </div>
       </form>
       {lightbox.node}

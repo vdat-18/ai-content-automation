@@ -41,9 +41,8 @@ class _FakeService:
         self.has_brief = True
         return self._record()
 
-    async def update_brief(self, product_id, changes, status):
-        self.calls.append(f"update_brief:{status}")
-        self.brief_status = status
+    async def match_references(self, product_id):
+        self.calls.append("match_references")
         return self._record()
 
     async def list_keyframes(self, product_id):
@@ -91,18 +90,19 @@ async def _run(service: _FakeService, steps: list[str] | None = None) -> None:
     )
 
 
-async def test_a_fresh_run_goes_through_every_stage_in_order() -> None:
-    service = _FakeService()
+def _ready_to_film(service: _FakeService) -> _FakeService:
+    """A product whose script exists and whose every image a person has approved."""
+    service.has_brief = True
+    service.keyframes = [_keyframe(i, "approved") for i in range(service.shots)]
+    return service
+
+
+async def test_a_run_goes_through_every_stage_in_order_once_the_images_are_approved() -> None:
+    service = _ready_to_film(_FakeService())
     service.clip_states = [[], [_clip(0, "ready"), _clip(1, "ready")]]
     steps: list[str] = []
     await _run(service, steps)
     assert service.calls == [
-        "create_brief:30:1",
-        "update_brief:approved",
-        "generate_keyframes:0",
-        "keyframe:0:approved",
-        "generate_keyframes:None",
-        "keyframe:1:approved",
         "clips",
         "generate_clips",
         "clips",
@@ -112,12 +112,12 @@ async def test_a_fresh_run_goes_through_every_stage_in_order() -> None:
         "build_video",
         "post_package",
     ]
-    assert steps[0] == "Writing storyboard brief" and steps[-1].startswith("Writing TikTok")
+    assert steps[0].startswith("Creating video clips") and steps[-1].startswith("Writing TikTok")
     assert service.restarted == [0]  # the first clip is made alone, then the rest
 
 
 async def test_a_bad_first_clip_stops_the_run_before_the_rest_are_made() -> None:
-    service = _FakeService()
+    service = _ready_to_film(_FakeService())
     service.clip_states = [[], [_clip(0, "ready", qa_problem="the product is missing")]]
     with pytest.raises(PipelineStopped, match="shot 1 looks wrong"):
         await _run(service)
@@ -125,58 +125,39 @@ async def test_a_bad_first_clip_stops_the_run_before_the_rest_are_made() -> None
 
 
 async def test_a_repeated_run_keeps_what_is_already_made() -> None:
-    service = _FakeService()
-    service.has_brief = True
-    service.brief_status = "approved"
-    service.keyframes = [_keyframe(0, "approved")]
-    service.made_keyframes = [_keyframe(0, "approved"), _keyframe(1, "approved")]
+    service = _ready_to_film(_FakeService())
     service.clip_states = [[_clip(0, "ready"), _clip(1, "processing")]]
     service.clip_states.append([_clip(0, "ready"), _clip(1, "ready")])
     await _run(service)
-    assert not any(call.startswith("create_brief") for call in service.calls)
+    assert not any(call.startswith(("create_brief", "match_references")) for call in service.calls)
     assert "generate_clips" not in service.calls
-    assert not any(call.startswith("keyframe:") for call in service.calls)
-    assert service.calls.count("generate_keyframes:0") == 0
+    assert not any(call.startswith(("keyframe:", "generate_keyframes")) for call in service.calls)
     assert service.calls[-3:] == ["voiceover:hamy.mp3", "build_video", "post_package"]
 
 
-@pytest.mark.parametrize(
-    ("made", "message"),
-    [
-        ([_keyframe(0, "failed", error="HTTP 503")], "Master keyframe failed: HTTP 503"),
-        ([_keyframe(0, "ready", "wrong color")], "Master keyframe needs a look (wrong color)"),
-    ],
-)
-async def test_a_bad_master_keyframe_stops_the_run_before_it_is_approved(made, message) -> None:
-    service = _FakeService()
-    service.made_keyframes = made
-    with pytest.raises(PipelineStopped, match=message.replace("(", r"\(").replace(")", r"\)")):
-        await _run(service)
-    assert "keyframe:0:approved" not in service.calls
-
-
-async def test_flagged_and_failed_follow_up_keyframes_are_not_approved() -> None:
+async def test_a_run_to_the_video_stops_while_an_image_is_not_approved_and_approves_nothing() -> None:
     service = _FakeService(shots=3)
-    service.keyframes = [_keyframe(0, "approved")]
-    service.made_keyframes = [
-        _keyframe(0, "approved"),
-        _keyframe(1, "ready"),
-        _keyframe(2, "ready", "extra hand"),
-    ]
-    with pytest.raises(PipelineStopped, match="shot 3"):
+    service.has_brief = True
+    service.keyframes = [_keyframe(0, "approved"), _keyframe(1, "ready"), _keyframe(2, "approved")]
+    with pytest.raises(PipelineStopped, match="Approve the images of shot 2"):
         await _run(service)
-    assert "keyframe:1:approved" in service.calls
-    assert "keyframe:2:approved" not in service.calls
-    assert "generate_clips" not in service.calls
+    assert service.calls == []
+
+    first = _FakeService()
+    first.has_brief = True
+    first.keyframes = [_keyframe(0, "ready")]
+    with pytest.raises(PipelineStopped, match="Approve the first image"):
+        await _run(first)
+    assert first.calls == []  # nothing is made or approved behind the person's back
 
 
 async def test_failed_or_flagged_clips_stop_the_run_before_the_voice() -> None:
-    failed = _FakeService()
+    failed = _ready_to_film(_FakeService())
     failed.clip_states = [[_clip(0, "ready"), _clip(1, "failed", error="job failed")]]
     with pytest.raises(PipelineStopped, match="clip of shot 2 failed: job failed"):
         await _run(failed)
 
-    flagged = _FakeService()
+    flagged = _ready_to_film(_FakeService())
     flagged.clip_states = [[_clip(0, "ready", "melted product"), _clip(1, "ready")]]
     with pytest.raises(PipelineStopped, match="shot 1 looks wrong"):
         await _run(flagged)
@@ -187,7 +168,7 @@ _BUSY = "Hệ thống đang xử lý lượng lớn yêu cầu cùng lúc. Vui l
 
 
 async def test_clips_refused_as_busy_are_sent_again_one_at_a_time_until_they_work() -> None:
-    service = _FakeService(shots=3)
+    service = _ready_to_film(_FakeService(shots=3))
     service.clip_states = [
         [],  # the first look, before any clip is started
         [_clip(0, "ready")],  # the first clip, made alone
@@ -203,7 +184,7 @@ async def test_clips_refused_as_busy_are_sent_again_one_at_a_time_until_they_wor
 
 
 async def test_clips_that_stay_busy_stop_the_run_instead_of_retrying_forever() -> None:
-    service = _FakeService()
+    service = _ready_to_film(_FakeService())
     service.clip_states = [[_clip(0, "ready"), _clip(1, "failed", error=_BUSY)]]
     with pytest.raises(PipelineStopped, match="stayed overloaded"):
         await _run(service)
@@ -225,29 +206,45 @@ async def _run_until(service: _FakeService, until: str) -> None:
     )
 
 
-async def test_a_run_until_the_script_writes_it_and_leaves_it_unapproved() -> None:
+async def test_a_run_until_the_script_writes_it_and_chooses_the_references_only() -> None:
     service = _FakeService()
     await _run_until(service, "script")
-    assert service.calls == ["create_brief:30:1"]
+    assert service.calls == ["create_brief:30:1", "match_references"]
+    assert service.brief_status == "draft"  # a person approves the script
+
+
+async def test_a_fresh_run_until_images_makes_the_first_image_and_stops_for_a_person() -> None:
+    service = _FakeService()
+    await _run_until(service, "images")
+    assert service.calls == ["create_brief:30:1", "match_references", "generate_keyframes:0"]
     assert service.brief_status == "draft"
 
 
-async def test_a_flagged_master_stops_a_run_until_images_before_the_other_scenes() -> None:
+async def test_a_flagged_first_image_is_left_for_the_person_not_approved() -> None:
     service = _FakeService()
     service.made_keyframes = [_keyframe(0, "ready", "faint skin marks"), _keyframe(1, "ready")]
-    with pytest.raises(PipelineStopped, match="Master keyframe needs a look"):
-        await _run_until(service, "images")
-    assert "keyframe:0:approved" not in service.calls
+    await _run_until(service, "images")
+    assert not any(call.startswith("keyframe:") for call in service.calls)
     assert "generate_keyframes:None" not in service.calls
 
 
-async def test_a_run_until_images_stops_with_the_follow_up_shots_left_for_review() -> None:
+async def test_a_failed_first_image_stops_the_run() -> None:
     service = _FakeService()
-    await _run_until(service, "images")
-    assert service.calls == [
-        "create_brief:30:1",
-        "update_brief:approved",
-        "generate_keyframes:0",
-        "keyframe:0:approved",
-        "generate_keyframes:None",
-    ]
+    service.made_keyframes = [_keyframe(0, "failed", error="HTTP 503")]
+    with pytest.raises(PipelineStopped, match="Master keyframe failed: HTTP 503"):
+        await _run_until(service, "images")
+
+
+async def test_the_other_images_wait_until_the_first_one_is_approved() -> None:
+    service = _FakeService()
+    service.has_brief = True
+    service.keyframes = [_keyframe(0, "ready")]
+    with pytest.raises(PipelineStopped, match="Approve the first image"):
+        await _run_until(service, "images")
+    assert service.calls == []
+
+    approved = _FakeService()
+    approved.has_brief = True
+    approved.keyframes = [_keyframe(0, "approved")]
+    await _run_until(approved, "images")
+    assert approved.calls == ["generate_keyframes:None"]  # and none of them is approved for you

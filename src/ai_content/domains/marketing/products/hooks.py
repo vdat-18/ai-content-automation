@@ -13,10 +13,7 @@ from ai_content.domains.marketing.products.adapters.baml_client.async_client imp
 from ai_content.domains.marketing.products.adapters.baml_registry import build_client_registry
 from ai_content.domains.marketing.products.briefing import product_facts as brief_facts
 
-from .compliance import find_flagged_terms, product_facts, unsupported_numbers
-
 HOOK_COUNT = 3
-MAX_HOOK_WORDS = 7
 
 
 class _BamlHookClient(Protocol):
@@ -50,7 +47,7 @@ class HookWriter:
         rules: str = "",
         count: int = HOOK_COUNT,
     ) -> list[dict[str, str]] | None:
-        """Return the hooks that pass the checks, or None when the model did not answer."""
+        """Return the hooks the model wrote, or None when it did not answer."""
         story = {"title": brief.get("title"), "opening_scene": (brief.get("shots") or [None])[0]}
         try:
             result = await self._client.WriteHooks(
@@ -62,23 +59,4 @@ class HookWriter:
         except BamlError as error:
             logger.warning("Hook writing failed: {}", str(error)[:300])
             return None
-        return passing_hooks(
-            [{"angle": h.angle.strip(), "text": h.text.strip()} for h in result.hooks],
-            product_facts(product),
-        )
-
-
-def passing_hooks(hooks: list[dict[str, str]], facts: str) -> list[dict[str, str]]:
-    """Keep hooks that are short, new, free of flagged words and free of invented numbers."""
-    kept: list[dict[str, str]] = []
-    for hook in hooks:
-        text = hook["text"]
-        words = len(text.split())
-        if not 1 <= words <= MAX_HOOK_WORDS:
-            continue
-        if find_flagged_terms(text) or unsupported_numbers(text, facts):
-            continue
-        if text.casefold() in {k["text"].casefold() for k in kept}:
-            continue
-        kept.append(hook)
-    return kept
+        return [{"angle": h.angle.strip(), "text": h.text.strip()} for h in result.hooks]

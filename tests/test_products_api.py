@@ -231,11 +231,7 @@ def test_brief_endpoints(client: TestClient, repository: PostgresProductReposito
     edit = {"brief": {"scene": "b"}, "status": "approved"}
     saved = client.put(f"/api/v1/products/{PRODUCT_ID}/brief", json=edit).json()
     assert saved["status"] == "approved"
-    assert saved["brief"] == {
-        "scene": "b",
-        "title": "t",
-        "warnings": [],
-    }
+    assert saved["brief"] == {"scene": "b", "title": "t"}
     assert client.get(f"/api/v1/products/{PRODUCT_ID}/brief").json()["brief"]["scene"] == "b"
 
 

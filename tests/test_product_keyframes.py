@@ -247,23 +247,18 @@ class _Checker:
         return self.verdicts.pop(0)
 
 
-async def test_failed_check_regenerates_with_the_problem_then_passes(tmp_path) -> None:
+async def test_a_failed_check_only_advises_and_never_makes_another_image(tmp_path) -> None:
     keyframer = _FakeKeyframer()
     service = await _service(tmp_path, keyframer)
-    service._checker = _Checker(["wrong color", ""])
-    [record] = await service.generate_keyframes(PRODUCT_ID, tmp_path)
-    assert keyframer.calls == [("master", 2, ""), ("master", 2, "wrong color")]
-    assert (record["status"], record["attempts"], record["qa_problem"]) == ("ready", 2, "")
-
-
-async def test_check_that_keeps_failing_stops_after_two_fixes_and_flags_the_image(tmp_path) -> None:
-    keyframer = _FakeKeyframer()
-    service = await _service(tmp_path, keyframer)
-    checker = _Checker(["bad", "still bad", "no luck"])
+    checker = _Checker(["wrong color"])
     service._checker = checker
     [record] = await service.generate_keyframes(PRODUCT_ID, tmp_path)
-    assert checker.calls == 3 and len(keyframer.calls) == 3
-    assert (record["status"], record["attempts"], record["qa_problem"]) == ("ready", 3, "no luck")
+    assert checker.calls == 1 and keyframer.calls == [("master", 2, "")]
+    assert (record["status"], record["attempts"], record["qa_problem"]) == (
+        "ready",
+        1,
+        "wrong color",
+    )
 
 
 async def test_unchecked_keyframe_is_not_regenerated(tmp_path) -> None:
@@ -466,16 +461,15 @@ async def test_the_real_product_size_reaches_the_image_prompt_and_the_checker(tm
 
 async def test_each_step_is_written_to_the_run_log(tmp_path) -> None:
     service = await _service(tmp_path, _FakeKeyframer())
-    service._checker = _Checker(["wrong color", ""])
+    service._checker = _Checker(["wrong color"])
     await service.generate_keyframes(PRODUCT_ID, tmp_path)
     await service.set_keyframe_status(PRODUCT_ID, 0, "approved")
     events = await service.events(PRODUCT_ID)
     assert [(e["step"], e["status"], e["shot_index"]) for e in events] == [
-        ("keyframe", "retry", 0),
-        ("keyframe", "ok", 0),
+        ("keyframe", "flagged", 0),
         ("keyframe", "approved", 0),
     ]
-    assert "wrong color" in events[0]["message"] and "2 attempt" in events[1]["message"]
+    assert "wrong color" in events[0]["message"]
 
 
 async def test_generated_keyframes_are_uploaded_and_restored_from_the_remote(tmp_path) -> None:
@@ -703,16 +697,6 @@ class _FaceChecker:
         return QAProblem(f"problem {self.calls}", self.category)
 
 
-async def test_the_same_kind_of_problem_twice_stops_the_retries(tmp_path) -> None:
-    keyframer = _FakeKeyframer()
-    service = await _service(tmp_path, keyframer)
-    checker = _FaceChecker("face")
-    service._checker = checker
-    [record] = await service.generate_keyframes(PRODUCT_ID, tmp_path)
-    assert checker.calls == 2 and len(keyframer.calls) == 2
-    assert record["qa_problem"] == "problem 2" and record["status"] == "ready"
-
-
 async def test_a_face_problem_is_not_proposed_as_a_rule_but_others_are(tmp_path) -> None:
     from tests.test_product_knowledge import _knowledge
 
@@ -749,11 +733,11 @@ async def test_every_image_call_is_counted_in_the_usage_ledger(tmp_path) -> None
     service = await _service(tmp_path, _FakeKeyframer())
     ledger = usage_repository()
     service._usage = AIUsageTracker(ledger)
-    service._checker = _Checker(["wrong color", ""])
+    service._checker = _Checker(["wrong color"])
     await service.generate_keyframes(PRODUCT_ID, tmp_path)
     now = datetime.now(UTC)
     window = AIUsageFilters(
         now - timedelta(hours=1), now + timedelta(hours=1), correlation_id=PRODUCT_ID
     )
     [counted] = (await ledger.summary(window)).by_operation
-    assert (counted.key, counted.request_count, counted.succeeded) == ("keyframe", 2, 2)
+    assert (counted.key, counted.request_count, counted.succeeded) == ("keyframe", 1, 1)

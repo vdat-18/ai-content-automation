@@ -15,7 +15,7 @@ from typing import Any, NamedTuple
 
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
-from .compliance import numbers_in
+from .figures import numbers_in
 
 RED = (254, 44, 85, 255)
 AMBER = (255, 214, 10, 255)

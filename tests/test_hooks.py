@@ -3,34 +3,15 @@ from pathlib import Path
 import pytest
 from tests.pgstore import product_repository
 
-from ai_content.domains.marketing.products.hooks import passing_hooks
 from ai_content.domains.marketing.products.service import (
     KeyframeUnavailable,
     ProductCatalogService,
     video_folder,
 )
 
-FACTS = "sold_count: 3200, price 199000"
-
 
 def _hook(text: str, angle: str = "question") -> dict[str, str]:
     return {"angle": angle, "text": text}
-
-
-def test_only_short_clean_and_grounded_hooks_are_kept() -> None:
-    hooks = [
-        _hook("Áo mát thế này có tin không?"),
-        _hook("Một hai ba bốn năm sáu bảy tám"),  # eight words
-        _hook("Sản phẩm tốt nhất thị trường"),  # absolute claim
-        _hook("Đã có 10.000 người mua rồi", "number"),  # number not in the product data
-        _hook("Hơn 3.000 người đã mua", "number"),  # rounded down from 3,200
-        _hook("áo mát thế này có tin không?"),  # same hook again
-        _hook(""),
-    ]
-    assert [h["text"] for h in passing_hooks(hooks, FACTS)] == [
-        "Áo mát thế này có tin không?",
-        "Hơn 3.000 người đã mua",
-    ]
 
 
 def test_a_hook_variant_keeps_its_files_in_its_own_folder() -> None:

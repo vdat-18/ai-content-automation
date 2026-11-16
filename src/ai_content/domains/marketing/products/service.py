@@ -36,7 +36,6 @@ from ai_content.platform.ai_usage import (
 )
 
 from .briefing import (
-    BriefGenerationError,
     BriefUnavailable,
     ContentBriefWriter,
     reference_note,
@@ -60,7 +59,6 @@ from .clips import (
     stitch,
     video_seconds,
 )
-from .compliance import AI_LABEL_REMINDER, brief_warnings, package_warnings, product_facts
 from .embedding import ImageEmbedder, cosine, dhash, download_images, hamming
 from .hooks import HookWriter
 from .identity import PIN_SIZE_DIR, media_source_fingerprint
@@ -121,7 +119,6 @@ def _duplicate_similarity() -> float:
 
 DUPLICATE_COSINE = _duplicate_similarity()
 DUPLICATE_HAMMING = 4
-MAX_KEYFRAME_FIXES = 2
 KEYFRAME_CONCURRENCY = 3
 CLIP_CHECK_PHOTOS = 4
 STILL_TAIL_NOTE_SECONDS = 1.0  # a clip that ends this long without motion is noted in the run log
@@ -161,7 +158,7 @@ _TALKING_OPENING = (
     "The opening scene shows the person speaking, so its words come from the filmed clip: "
     "a hook needs a clip of its own"
 )
-BRIEF_ATTEMPTS = 3
+AI_LABEL_REMINDER = "Video này do AI tạo. Hãy bật nhãn nội dung do AI tạo khi đăng lên TikTok."
 KEYFRAME_REVIEW_STATUSES = frozenset({"approved", "ready", "rejected"})
 BRIEF_FIELDS = (
     "title",
@@ -182,7 +179,6 @@ BRIEF_FIELDS = (
 
 SCREEN_BATCH = 20  # pictures reviewed before progress is reported
 REFERENCE_CANDIDATES = 5  # pictures a model compares for one shot
-REFERENCE_LOOK_WEIGHT = 0.5  # how much looking like the product photos counts, next to the text
 
 
 def _scaled(scores: dict[str, float]) -> dict[str, float]:
@@ -806,44 +802,19 @@ class ProductCatalogService:
         product_type = (await self._repository.selections()).get(product_id)
         if not product_type:
             raise BriefUnavailable("Select this product for content before writing a brief")
-        live = await self._scene_pool()
-        if not live:
-            raise BriefUnavailable("No usable reference image yet; crawl Pinterest first")
         if not person_photos:
             raise BriefUnavailable("Upload the photo of the person first: every video shows them")
         shot_count = max(1, round(video_seconds / shot_seconds(CLIP_SECONDS)))
         rules = await approved_rules(self._knowledge, KnowledgeStage.PREPARATION, "brief")
-        facts = product_facts(detail, user_idea)
-        fixes = ""
-        attempts = 0
-        for _ in range(BRIEF_ATTEMPTS):
-            attempts += 1
-            brief = await self._briefer.write(
-                detail,
-                f"{user_idea}{fixes}",
-                shot_count=shot_count,
-                person_photos=person_photos,
-                rules=rules.text,
-            )
-            count_ok = "shots" not in brief or len(brief["shots"]) == shot_count
-            warnings = brief_warnings(brief, facts) if count_ok else []
-            if count_ok and not warnings:
-                break
-            wanted = [] if count_ok else [f"Write exactly {shot_count} shots."]
-            fixes = "\n\nRewrite the storyboard and fix these problems:\n- " + "\n- ".join(
-                wanted + warnings
-            )
-        if not count_ok:
-            raise BriefGenerationError(
-                f"The model wrote {len(brief['shots'])} shots instead of {shot_count}; try again"
-            )
-        brief["warnings"] = warnings
-        brief["shot_references"] = await self._pick_shot_references(
-            product_id, detail, brief, live
+        brief = await self._briefer.write(
+            detail,
+            user_idea,
+            shot_count=shot_count,
+            person_photos=person_photos,
+            rules=rules.text,
         )
-        brief["selected_reference_ids"] = list(
-            dict.fromkeys(item for item in brief["shot_references"] if item)
-        )
+        brief["shot_references"] = [None] * len(brief.get("shots") or [])
+        brief["selected_reference_ids"] = []
         brief["with_person"] = True
         brief["persona_id"] = persona_id  # later steps keep using this person, whatever the default
         brief["rule_ids"] = rules.ids
@@ -851,10 +822,9 @@ class ProductCatalogService:
         await self._log(
             product_id,
             "brief",
-            "flagged" if warnings else "ok",
-            f"Wrote a {video_seconds}s brief with {len(brief.get('shots') or [])} shot(s) in "
-            f"{attempts} attempt(s): {brief.get('title', '')}"
-            + (f". Still open: {'; '.join(warnings)}" if warnings else ""),
+            "ok",
+            f"Wrote a {video_seconds}s brief with {len(brief.get('shots') or [])} shot(s): "
+            f"{brief.get('title', '')}",
         )
         return await self._repository.get_brief(product_id)
 
@@ -958,10 +928,7 @@ class ProductCatalogService:
             text = _scaled({i["image_id"]: cosine(query, vectors[i["image_id"]]) for i in pool})
             closest = sorted(
                 pool,
-                key=lambda image: (
-                    text[image["image_id"]]
-                    + REFERENCE_LOOK_WEIGHT * looks.get(image["image_id"], 0.0)
-                ),
+                key=lambda image: text[image["image_id"]] + looks.get(image["image_id"], 0.0),
                 reverse=True,
             )[:REFERENCE_CANDIDATES]
             try:
@@ -1013,8 +980,11 @@ class ProductCatalogService:
         if record is None or detail is None or not product_type:
             return None
         brief = dict(record["brief"])
+        live = await self._scene_pool()
+        if not live:
+            raise BriefUnavailable("No usable reference image yet; crawl Pinterest first")
         brief["shot_references"] = await self._pick_shot_references(
-            product_id, detail, brief, await self._scene_pool()
+            product_id, detail, brief, live
         )
         brief["selected_reference_ids"] = list(
             dict.fromkeys(item for item in brief["shot_references"] if item)
@@ -1100,9 +1070,6 @@ class ProductCatalogService:
             brief["selected_reference_ids"] = list(
                 dict.fromkeys(item for item in brief["shot_references"] if item)
             )
-        detail = await self._repository.get_detail(product_id)
-        facts = product_facts(detail, current["user_idea"]) if detail else ""
-        brief["warnings"] = brief_warnings(brief, facts)
         if brief.get("shots") != current["brief"].get("shots"):
             # only a changed storyboard is worth a new review, which takes a minute
             await self._flag_changed_scenes(
@@ -1262,7 +1229,9 @@ class ProductCatalogService:
             wanted = [shot_index]
         elif master_ready:
             wanted = [
-                i for i in range(1, len(shots)) if existing.get(i, {}).get("status") != "approved"
+                i
+                for i in range(1, len(shots))
+                if existing.get(i, {}).get("status") not in ("approved", "ready")
             ]
         else:
             wanted = [0]
@@ -1368,83 +1337,60 @@ class ProductCatalogService:
         check_photos: list[bytes] | None = None,
     ) -> None:
         assert self._keyframer is not None
-        attempts = (previous or {}).get("attempts", 0)
-        before: bytes | None = None
-        before_loaded = False
+        attempts = (previous or {}).get("attempts", 0) + 1
         record = {
             "product_id": product_id,
             "shot_index": index,
             "prompt": str(shot["keyframe_prompt"]),
             "image_path": (previous or {}).get("image_path"),
         }
-        image: bytes | None = None
-        problem = note  # the user's note is the first thing to fix
-        lesson_sent = False  # one proposal per keyframe keeps the review queue short
-        last_category = ""
-        for _ in range(1 + MAX_KEYFRAME_FIXES):
-            try:
-                if index == 0:
-                    candidate = await self._keyframer.master(
-                        shot, photos, reference, problem, persona
-                    )
-                else:
-                    candidate = await self._keyframer.follow_up(
-                        shot, master or b"", photos, problem, persona, reference
-                    )
-            except KeyframeGenerationError as error:
-                attempts += 1
-                await self._log(product_id, "keyframe", "error", str(error), index)
-                await self._count_call(
-                    product_id, "keyframe", "image", self._keyframer, failure=str(error)
+        try:
+            if index == 0:
+                image = await self._keyframer.master(shot, photos, reference, note, persona)
+            else:
+                image = await self._keyframer.follow_up(
+                    shot, master or b"", photos, note, persona, reference
                 )
-                if image is None:
-                    await self._repository.save_keyframe(
-                        {
-                            **record,
-                            "attempts": attempts,
-                            "status": "failed",
-                            "error": str(error),
-                            "qa_problem": "",
-                        }
-                    )
-                    return
-                break
-            attempts += 1
-            image = candidate
+        except KeyframeGenerationError as error:
+            await self._log(product_id, "keyframe", "error", str(error), index)
             await self._count_call(
-                product_id, "keyframe", "image", self._keyframer, output_bytes=len(candidate)
+                product_id, "keyframe", "image", self._keyframer, failure=str(error)
             )
-            if not before_loaded:
-                if previous_done is not None:
-                    await previous_done.wait()  # the cut check needs the shot before this one
-                before = await self._keyframe_before(product_id, index, media_root)
-                before_loaded = True
-            problem = (
-                await self._check_keyframe(
-                    shot, check_photos or photos, image, master, persona, before
-                )
-                or ""
+            await self._repository.save_keyframe(
+                {
+                    **record,
+                    "attempts": attempts,
+                    "status": "failed",
+                    "error": str(error),
+                    "qa_problem": "",
+                }
             )
-            if not problem or problem == NOT_CHECKED:
-                break
-            await self._log(
-                product_id, "keyframe", "retry", f"Attempt {attempts}: Gemini says {problem}", index
+            return
+        await self._count_call(
+            product_id, "keyframe", "image", self._keyframer, output_bytes=len(image)
+        )
+        if previous_done is not None:
+            await previous_done.wait()  # the cut check needs the shot before this one
+        before = await self._keyframe_before(product_id, index, media_root)
+        problem = (
+            await self._check_keyframe(shot, check_photos or photos, image, master, persona, before)
+            or ""
+        )
+        # The check only advises: the person decides, and the lesson goes to the AI memory.
+        # What is wrong with one person's face says nothing about other videos.
+        if (
+            problem
+            and problem != NOT_CHECKED
+            and self._knowledge is not None
+            and getattr(problem, "category", "other") != "face"
+        ):
+            await propose_feedback(
+                self._knowledge,
+                product_id=product_id,
+                text=problem,
+                contributor="gemini-qa",
+                authority=KnowledgeAuthority.EXTERNAL,
             )
-            category = getattr(problem, "category", "other")
-            # What is wrong with one person's face says nothing about other videos
-            if self._knowledge is not None and not lesson_sent and category != "face":
-                lesson_sent = True
-                await propose_feedback(
-                    self._knowledge,
-                    product_id=product_id,
-                    text=problem,
-                    contributor="gemini-qa",
-                    authority=KnowledgeAuthority.EXTERNAL,
-                )
-            if category == last_category != "other":
-                break  # the same kind of problem twice: a third image would not fix it
-            last_category = category
-        assert image is not None
         relative = f"keyframes/{product_id}/shot_{index}.jpg"
         await self.media(media_root).write(relative, image)
         await self._repository.save_keyframe(
@@ -1461,8 +1407,8 @@ class ProductCatalogService:
             product_id,
             "keyframe",
             "flagged" if problem else "ok",
-            f"Image ready after {attempts} attempt(s)"
-            + (f", still flagged: {problem}" if problem else "")
+            "Image ready"
+            + (f", the check says: {problem}" if problem else "")
             + (f". Rules used: {', '.join(shot['rule_ids'])}" if shot.get("rule_ids") else ""),
             index,
         )
@@ -1838,7 +1784,6 @@ class ProductCatalogService:
         if self._poster is None:
             raise KeyframeUnavailable("LLM is not configured (AIC_SCREENING_API_KEY)")
         package = await self._poster.write(detail, record["brief"])
-        package["warnings"] = package_warnings(package)
         package["ai_label_reminder"] = AI_LABEL_REMINDER
         brief = {**record["brief"], "post_package": package}
         await self._repository.save_brief(product_id, record["user_idea"], brief, record["status"])
@@ -1934,7 +1879,7 @@ class ProductCatalogService:
         try:
             lengths = await read_all()
             shortened = await self._shorten_long_lines(
-                record, segments, lengths, planned, hook.strip() != ""
+                segments, lengths, planned, hook.strip() != ""
             )
             if shortened:
                 segments[:] = [
@@ -2010,7 +1955,6 @@ class ProductCatalogService:
 
     async def _shorten_long_lines(
         self,
-        record: dict[str, Any],
         segments: list[Reading],
         lengths: list[float],
         planned: list[float],
@@ -2023,7 +1967,6 @@ class ProductCatalogService:
         """
         if self._voice_shortener is None:
             return {}
-        detail = await self._repository.get_detail(record["product_id"]) or {}
         rules = await approved_rules(self._knowledge, KnowledgeStage.PREPARATION, "brief")
         found: dict[int, str] = {}
         for i, (reading, length, seconds) in enumerate(zip(segments, lengths, planned, strict=True)):
@@ -2035,7 +1978,7 @@ class ProductCatalogService:
             ):
                 continue
             shorter = await self._voice_shortener.shorten(
-                detail, reading.text, words_that_fit(reading.text, length, seconds), rules.text
+                reading.text, words_that_fit(reading.text, length, seconds), rules.text
             )
             if shorter is not None:
                 found[i] = shorter

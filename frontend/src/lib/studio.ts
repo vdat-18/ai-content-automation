@@ -11,7 +11,7 @@ export const STEPS: { id: StepId; label: string }[] = [
 /** What the server is doing, in words a marketer uses. */
 export function friendlyStep(step: string): string {
   const text = step.toLowerCase();
-  if (text.includes("storyboard") || text.includes("approving brief")) return "Writing your script";
+  if (text.includes("storyboard") || text.includes("reference")) return "Writing your script";
   if (text.includes("master")) return "Creating the first image";
   if (text.includes("keyframe")) return "Creating the other scenes";
   if (text.includes("clips")) return "Filming the scenes";

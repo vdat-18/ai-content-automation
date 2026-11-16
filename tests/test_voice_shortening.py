@@ -44,27 +44,24 @@ def test_the_words_that_fit_follow_the_fastest_speed_a_shot_can_take() -> None:
     assert words_that_fit("một", 100.0, 1.0) == 1  # never fewer than one word
 
 
-async def test_a_shorter_line_with_the_same_figures_is_accepted() -> None:
+async def test_a_shorter_line_is_accepted() -> None:
     model = _Model("Áo cotton mềm mát, giá chỉ 199k")
     shortener = VoiceShortener(model)  # type: ignore[arg-type]
-    assert await shortener.shorten(PRODUCT, LONG, 8) == "Áo cotton mềm mát, giá chỉ 199k"
+    assert await shortener.shorten(LONG, 8) == "Áo cotton mềm mát, giá chỉ 199k"
     assert model.asked == [(LONG, 8)]
 
 
 @pytest.mark.parametrize(
     "answer",
     [
-        "Áo cotton mềm mát, giá chỉ 99k",  # a different price
-        "Áo cotton mềm mát lắm",  # the price is gone
-        "Áo cotton mềm mát, tốt nhất, giá chỉ 199k",  # an absolute claim
         "Áo cotton mềm mát, giá chỉ 199k, mua ngay đi bạn ơi",  # over the word limit
         " ".join([LONG, "nữa"]),  # longer than the original
         "",
     ],
 )
-async def test_a_line_that_breaks_a_rule_is_refused(answer: str) -> None:
+async def test_a_line_that_does_not_fit_is_refused(answer: str) -> None:
     shortener = VoiceShortener(_Model(answer))  # type: ignore[arg-type]
-    assert await shortener.shorten(PRODUCT, LONG, 10) is None
+    assert await shortener.shorten(LONG, 10) is None
 
 
 class _Speaker:

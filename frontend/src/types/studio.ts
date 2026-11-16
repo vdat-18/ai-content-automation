@@ -8,11 +8,10 @@ export type Shot = {
   on_screen_text: string;
   voiceover: string;
 };
-export type PostPackage = { captions: string[]; hashtags: string[]; product_url: string; warnings?: string[]; ai_label_reminder?: string };
+export type PostPackage = { captions: string[]; hashtags: string[]; product_url: string; ai_label_reminder?: string };
 export type Brief = {
   title: string;
   script?: string;
-  warnings?: string[];
   shots?: Shot[];
   post_package?: PostPackage;
   with_person?: boolean;

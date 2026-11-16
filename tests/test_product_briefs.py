@@ -53,28 +53,32 @@ async def _make_reference_live(service: ProductCatalogService) -> str:
     return image["image_id"]
 
 
-async def test_brief_needs_selection_and_live_references(tmp_path) -> None:
+async def test_brief_needs_a_selection_and_the_references_are_chosen_apart(tmp_path) -> None:
     service = await _service(tmp_path, _FakeWriter())
     assert await service.create_brief("missing") is None
     with pytest.raises(BriefUnavailable, match="Select this product"):
         await service.create_brief(PRODUCT_ID, person_photos=[b"face"])
 
     await service._repository.select_product(PRODUCT_ID, "áo thun")
-    with pytest.raises(BriefUnavailable, match="No usable reference image"):
-        await service.create_brief(PRODUCT_ID, person_photos=[b"face"])
-
-    await _make_reference_live(service)
     record = await service.create_brief(PRODUCT_ID, "  ý tưởng của tôi ", person_photos=[b"face"])
     assert record is not None
     assert (record["status"], record["user_idea"]) == ("draft", "ý tưởng của tôi")
-    assert record["brief"]["selected_reference_ids"] == []  # no embedding model is set up
+    assert record["brief"]["selected_reference_ids"] == []  # the references come in their own step
+    with pytest.raises(BriefUnavailable, match="No usable reference image"):
+        await service.match_references(PRODUCT_ID)
+
+    await _make_reference_live(service)
+    matched = await service.match_references(PRODUCT_ID)
+    assert matched is not None
+    assert matched["brief"]["selected_reference_ids"] == []  # no embedding model is set up
 
 
 async def test_every_product_draws_from_the_same_references(tmp_path) -> None:
     service = await _service(tmp_path, _FakeWriter())
     await service._repository.select_product(PRODUCT_ID, "nước tẩy")
+    assert await service.create_brief(PRODUCT_ID, person_photos=[b"face"]) is not None
     with pytest.raises(BriefUnavailable, match="No usable reference image"):
-        await service.create_brief(PRODUCT_ID, person_photos=[b"face"])
+        await service.match_references(PRODUCT_ID)
 
     other = {"image_url": "https://i.pinimg.com/236x/12/34/56.jpg", "pin_url": "/pin/2/", "title": "b"}
     for product_type, pin in (("áo thun", PIN), ("giày", other)):
@@ -82,7 +86,7 @@ async def test_every_product_draws_from_the_same_references(tmp_path) -> None:
         [image] = await service.reference_images("pending", product_type)
         await service.set_image_status(image["image_id"], "live")
     # none of the references was crawled for this product's own type
-    assert await service.create_brief(PRODUCT_ID, person_photos=[b"face"]) is not None
+    assert await service.match_references(PRODUCT_ID) is not None
     assert len(await service._scene_pool()) == 2
 
 
@@ -301,15 +305,16 @@ async def test_each_shot_gets_the_reference_that_fits_it(tmp_path, monkeypatch) 
     service._text_embedder, service._reference_picker = embedder, picker
     await service._repository.select_product(PRODUCT_ID, "áo thun")
     ids = await _two_described_references(service)
-    record = await service.create_brief(PRODUCT_ID, video_seconds=30, person_photos=[b"face"])
+    await service.create_brief(PRODUCT_ID, video_seconds=30, person_photos=[b"face"])
+    record = await service.match_references(PRODUCT_ID)
     brief = record["brief"]
     # the closest description comes first: the hand shot sees the hand picture first
     hand, room = ids["a hand holding a bottle"], ids["a person in a bedroom"]
     assert brief["shot_references"] == [hand, room, None]  # the third shot would repeat the room
     assert brief["selected_reference_ids"] == [hand, room]
-    # the descriptions were embedded once, then only the shots; a second brief reuses them
+    # the descriptions were embedded once, then only the shots; a second match reuses them
     assert [len(call) for call in embedder.calls] == [2, 3]
-    await service.create_brief(PRODUCT_ID, video_seconds=30, person_photos=[b"face"])
+    await service.match_references(PRODUCT_ID)
     assert [len(call) for call in embedder.calls] == [2, 3, 3]
 
 
@@ -350,6 +355,7 @@ async def test_references_that_look_like_the_product_photos_rank_first(
 ) -> None:
     service, picker, hand, room = await _look_service(tmp_path, monkeypatch)
     await service.create_brief(PRODUCT_ID, video_seconds=30, person_photos=[b"face"])
+    await service.match_references(PRODUCT_ID)
     # the texts tie, so the picture that looks like the product (the room) comes first
     assert picker.seen[0] == [room, hand]
 
@@ -358,7 +364,8 @@ async def test_references_fall_back_to_text_when_the_product_cannot_be_embedded(
     tmp_path, monkeypatch
 ) -> None:
     service, picker, hand, room = await _look_service(tmp_path, monkeypatch, fail=True)
-    record = await service.create_brief(PRODUCT_ID, video_seconds=30, person_photos=[b"face"])
+    await service.create_brief(PRODUCT_ID, video_seconds=30, person_photos=[b"face"])
+    record = await service.match_references(PRODUCT_ID)
     # nothing tells the two apart without the look of the product, so only the pair is certain
     assert record is not None and set(picker.seen[0]) == {hand, room}
 
@@ -376,7 +383,8 @@ async def test_a_reference_is_not_used_for_two_shots(tmp_path, monkeypatch) -> N
     service._text_embedder, service._reference_picker = _Embedder(), _Picker()
     await service._repository.select_product(PRODUCT_ID, "áo thun")
     ids = await _two_described_references(service)
-    record = await service.create_brief(PRODUCT_ID, video_seconds=30, person_photos=[b"face"])
+    await service.create_brief(PRODUCT_ID, video_seconds=30, person_photos=[b"face"])
+    record = await service.match_references(PRODUCT_ID)
     assert record["brief"]["shot_references"] == [ids["a hand holding a bottle"], None, None]
 
 
@@ -385,7 +393,8 @@ async def test_shots_have_no_reference_without_an_embedding_model(tmp_path, monk
     service = await _service(tmp_path, _TwoShots())
     await service._repository.select_product(PRODUCT_ID, "áo thun")
     await _two_described_references(service)
-    record = await service.create_brief(PRODUCT_ID, video_seconds=30, person_photos=[b"face"])
+    await service.create_brief(PRODUCT_ID, video_seconds=30, person_photos=[b"face"])
+    record = await service.match_references(PRODUCT_ID)
     assert record["brief"]["shot_references"] == [None, None, None]
     assert record["brief"]["selected_reference_ids"] == []
 
@@ -455,25 +464,23 @@ async def test_video_length_sets_the_shot_count_from_the_finished_length(
         await service.create_brief(PRODUCT_ID, video_seconds=20, person_photos=[b"face"])
 
 
-async def test_brief_is_rewritten_until_it_has_the_requested_number_of_shots(
+async def test_the_brief_is_the_one_answer_of_the_model_with_no_check_of_its_content(
     tmp_path, monkeypatch
 ) -> None:
     monkeypatch.setenv("AIC_CLIP_SPEED", "1.25")  # 30 seconds is 3 shots
-    counts = [1, 1, 3]
+    calls = []
 
-    class _Wrong(_FakeWriter):
+    class _Odd(_FakeWriter):
         async def write(self, product, user_idea, shot_count=1, person_photos=None, rules=""):
-            return {"title": "T", "shots": [{}] * counts.pop(0)}
+            calls.append(shot_count)
+            return {"title": "T", "shots": [{"voiceover": "Sản phẩm tốt nhất"}] * 2}
 
-    service = await _service(tmp_path, _Wrong())
+    service = await _service(tmp_path, _Odd())
     await service._repository.select_product(PRODUCT_ID, "áo thun")
-    await _make_reference_live(service)
     record = await service.create_brief(PRODUCT_ID, video_seconds=30, person_photos=[b"face"])
-    assert record is not None and len(record["brief"]["shots"]) == 3 and counts == []
-
-    counts[:] = [4, 4, 4]
-    with pytest.raises(BriefGenerationError, match="4 shots instead of 3"):
-        await service.create_brief(PRODUCT_ID, video_seconds=30, person_photos=[b"face"])
+    # asked once, kept as written: two shots instead of three and an absolute claim are not checked
+    assert calls == [3] and len(record["brief"]["shots"]) == 2
+    assert "warnings" not in record["brief"]
 
 
 async def test_editing_the_script_flags_what_was_already_made_from_it(tmp_path) -> None:
@@ -533,7 +540,8 @@ async def test_the_run_log_says_when_no_reference_has_been_described(tmp_path) -
     service._text_embedder, service._reference_picker = _Embedder(), _Picker()
     await service._repository.select_product(PRODUCT_ID, "áo thun")
     await _make_reference_live(service)  # live, but the review left no description on it
-    record = await service.create_brief(PRODUCT_ID, video_seconds=30, person_photos=[b"face"])
+    await service.create_brief(PRODUCT_ID, video_seconds=30, person_photos=[b"face"])
+    record = await service.match_references(PRODUCT_ID)
     assert set(record["brief"]["shot_references"]) == {None}
     last = [e for e in await service.events(PRODUCT_ID) if e["step"] == "references"][-1]
     assert last["status"] == "warning" and "has a description yet" in last["message"]
@@ -552,7 +560,8 @@ async def test_a_picker_that_cannot_be_reached_is_reported_not_counted_as_no_mat
     service._text_embedder, service._reference_picker = _Embedder(), _DownPicker()
     await service._repository.select_product(PRODUCT_ID, "áo thun")
     await _two_described_references(service)
-    record = await service.create_brief(PRODUCT_ID, video_seconds=30, person_photos=[b"face"])
+    await service.create_brief(PRODUCT_ID, video_seconds=30, person_photos=[b"face"])
+    record = await service.match_references(PRODUCT_ID)
     assert record["brief"]["shot_references"] == [None, None, None]
     [event] = [e for e in await service.events(PRODUCT_ID) if e["step"] == "references"]
     assert event["status"] == "error" and "connection refused" in event["message"]

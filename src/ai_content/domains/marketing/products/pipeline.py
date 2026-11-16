@@ -47,14 +47,14 @@ async def run_pipeline(
     until: str = "video",
     persona_id: str | None = None,
 ) -> None:
-    """Brief, person, keyframes, clips, voice-over, video and post text, resuming what exists.
+    """Brief, references, keyframes, clips, voice-over, video and post text, resuming what exists.
 
-    Anything already approved or made is kept. The run stops with PipelineStopped when a
-    result needs a human look (a failed or flagged image or clip) instead of paying for more.
-    With until="script" it ends once the script is written, for a person to read before any image
-    is paid for. With until="images" it ends once every image exists, leaving the follow-up shots
-    for review. A master keyframe the check flagged always stops the run, since every other image
-    is made to match it.
+    Nothing is approved here: a person approves every image. Anything already approved or made is
+    kept. The run stops with PipelineStopped when a result needs a human look (an image that is
+    not approved yet, a failed or flagged clip) instead of paying for more.
+    With until="script" it ends once the script is written. With until="images" it makes the
+    first image and ends so a person can look at it; once that one is approved, it makes the other
+    images and ends again. With until="video" every image must be approved already.
     """
     record = await service.get_brief(product_id)
     if record is None:
@@ -63,17 +63,19 @@ async def run_pipeline(
         record = await service.create_brief(product_id, idea, video_seconds, photos, persona_id)
         if record is None:
             raise PipelineStopped("Product not captured")
+        report("Choosing reference photos")
+        record = await service.match_references(product_id) or record
     if until == "script":
         return
-    if record["status"] != "approved":
-        report("Approving brief")
-        record = await service.update_brief(product_id, {}, "approved")
-        assert record is not None
-    brief = record["brief"]
-    shot_count = len(brief.get("shots") or [])
+    shot_count = len(record["brief"].get("shots") or [])
 
     keyframes = {k["shot_index"]: k for k in await service.list_keyframes(product_id)}
-    if keyframes.get(0, {}).get("status") != "approved":
+    master = keyframes.get(0, {})
+    if master.get("status") != "approved":
+        if until == "video" or master.get("status") == "ready":
+            raise PipelineStopped(
+                "Approve the first image in the Images step: the other scenes are made to match it"
+            )
         report("Generating master keyframe")
         made = {
             k["shot_index"]: k
@@ -85,34 +87,21 @@ async def run_pipeline(
                 f"Master keyframe failed: {master.get('error') or 'no image'}. "
                 "Retry it in the Images step"
             )
-        if master.get("qa_problem"):
-            raise PipelineStopped(
-                f"Master keyframe needs a look ({master['qa_problem']}). "
-                "Review it in the Images step, then create the other scenes"
-            )
-        await service.set_keyframe_status(product_id, 0, "approved")
+        return  # a person looks at the first image before the others are made
 
-    report("Generating remaining scene keyframes")
-    rest = {
-        k["shot_index"]: k for k in await service.generate_keyframes(product_id, media_root) or []
-    }
     if until == "images":
+        report("Generating remaining scene keyframes")
+        await service.generate_keyframes(product_id, media_root)
         return
-    to_review: list[int] = []
-    for index in range(1, shot_count):
-        keyframe = rest.get(index, {})
-        if keyframe.get("status") == "approved":
-            continue
-        if keyframe.get("status") == "ready" and not keyframe.get("qa_problem"):
-            await service.set_keyframe_status(product_id, index, "approved")
-        else:
-            to_review.append(index + 1)
-    if to_review:
-        shots = ", ".join(str(number) for number in to_review)
-        raise PipelineStopped(
-            f"Review the images of shot {shots} (failed or flagged by the image check), "
-            "then run again"
-        )
+    keyframes = {k["shot_index"]: k for k in await service.list_keyframes(product_id)}
+    to_approve = [
+        index + 1
+        for index in range(shot_count)
+        if keyframes.get(index, {}).get("status") != "approved"
+    ]
+    if to_approve:
+        shots = ", ".join(str(number) for number in to_approve)
+        raise PipelineStopped(f"Approve the images of shot {shots} in the Images step first")
 
     report("Creating video clips (this takes a few minutes)")
     clips = await service.clips(product_id, media_root)

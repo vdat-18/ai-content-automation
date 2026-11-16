@@ -199,7 +199,6 @@ export function FinishStep({ productId, record, frames, hasVideo, run }: { produ
             <h2>Caption and hashtags</h2>
             {pack ? (
               <>
-                {!!pack.warnings?.length && <div className="notice notice-warn" role="alert"><div>TikTok may flag these words. Rewrite them before posting:<ul>{pack.warnings.map((warning) => <li key={warning}>{warning}</li>)}</ul></div></div>}
                 {pack.captions.map((caption, index) => (
                   <div className="caption-box" key={index}>
                     <p>{caption}</p>

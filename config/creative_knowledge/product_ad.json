@@ -1,6 +1,6 @@
 {
   "schema_version": "creative-knowledge-bootstrap@2",
-  "bootstrap_id": "product-ad-v10",
+  "bootstrap_id": "product-ad-v11",
   "items": [
     {
       "knowledge_id": "product-ad-body-proportions",
@@ -215,7 +215,7 @@
       "knowledge_id": "product-ad-claims-safety",
       "knowledge_type": "hard_rule",
       "title": "Safe, grounded claims",
-      "content": "WHEN: Writing any text, voiceover or on-screen text. DO: Take every number, percentage, price, material and feature from the product facts. DO NOT: Invent figures or features, use absolute claims (tốt nhất, rẻ nhất, số 1, 100%, chắc chắn), name other shopping or social platforms, or promise medical results.",
+      "content": "WHEN: Writing any text, voiceover or on-screen text. DO: Take every number, percentage, price, material and feature from the product facts. DO NOT: Invent figures or features, use absolute claims (tốt nhất, rẻ nhất, số 1, 100%, chắc chắn), name other shopping or social platforms, promise medical results, or promise a gift or reward for tapping the link.",
       "applies_to": [
         "preparation",
         "review"
