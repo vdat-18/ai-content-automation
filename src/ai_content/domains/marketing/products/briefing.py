@@ -23,7 +23,9 @@ _DOWNLOAD_TIMEOUT = 30
 # so give up on a silent call and ask again instead of waiting out the long default timeout.
 _CALL_SECONDS = 360
 _CALL_TRIES = 3
-_RETRY_DELAY = 5.0
+# The gateway locks a model for about 30 seconds after an error and refuses every call meanwhile,
+# so the first wait is longer than that and each next one is longer still.
+_RETRY_DELAY = 35.0
 
 
 class BriefGenerationError(RuntimeError):
@@ -188,5 +190,5 @@ class ContentBriefWriter:
                 if attempt == _CALL_TRIES:
                     raise
                 logger.warning("Brief call failed ({}), asking again", str(error)[:120])
-                await asyncio.sleep(self._retry_delay)
+                await asyncio.sleep(self._retry_delay * attempt)
         raise AssertionError("unreachable")
