@@ -148,6 +148,10 @@ function DraftContentBrief(
     duration_seconds, on_screen_text (a short Vietnamese caption, or an empty string) and
     voiceover (Vietnamese, as long as the rules for a narrated or a talking shot say).
 
+    Length, so every brief comes out about the same size: description is one or two sentences, every
+    keyframe_prompt is about 120 to 150 words and every motion_prompt about 50 to 70 words. Spend the
+    words on what the image or the motion needs and leave out repeated wording and filler.
+
     Nobody reviews the brief after you, so check it yourself before you answer, shot by shot,
     and fix what fails. Every approved rule is met, counting the words of each voiceover when a
     rule gives a word count. Every statement about what the product does, how well, what it is
