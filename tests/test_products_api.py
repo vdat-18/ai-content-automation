@@ -92,6 +92,8 @@ def test_ingest_list_detail_and_junk_filter(client: TestClient) -> None:
     _capture_product(client)
     assert [p["product_id"] for p in client.get("/api/v1/products").json()] == [PRODUCT_ID]
     assert client.get(f"/api/v1/products/{PRODUCT_ID}").json()["title"] == "Áo thun"
+    assert "raw_product_info" not in client.get("/api/v1/products").json()[0]
+    assert "raw_product_info" in client.get(f"/api/v1/products/{PRODUCT_ID}").json()
     assert client.get("/api/v1/products/missing").status_code == 404
 
     voucher = HTML.replace("Áo thun", "E-voucher giảm 50k").replace(PRODUCT_ID, "9")

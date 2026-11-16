@@ -2407,8 +2407,8 @@ class ProductCatalogService:
     async def queue(self, limit: int) -> list[str]:
         return await self._repository.queue(limit)
 
-    async def details(self, include_junk: bool = False) -> list[dict[str, Any]]:
-        products = [_with_category(p) for p in await self._repository.list_details()]
+    async def details(self, include_junk: bool = False, lean: bool = False) -> list[dict[str, Any]]:
+        products = [_with_category(p) for p in await self._repository.list_details(lean)]
         return products if include_junk else [p for p in products if junk_reason(p) is None]
 
     async def download_media(self, media_root: Path) -> MediaDownloadReport:

@@ -93,7 +93,8 @@ async def list_products(
     include_junk: bool = False,
     service: ProductCatalogService = Depends(get_product_catalog_service),
 ) -> list[dict[str, Any]]:
-    return await service.details(include_junk)
+    # The page never reads the raw TikTok payload, which is most of the data (about 57 KB each)
+    return await service.details(include_junk, lean=True)
 
 
 # Routes of the one shared person come first: `/persona` must not be read as a product id

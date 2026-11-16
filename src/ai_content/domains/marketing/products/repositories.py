@@ -33,7 +33,7 @@ class ProductRepository(Protocol):
 
     async def queue(self, limit: int) -> list[str]: ...
 
-    async def list_details(self) -> list[dict[str, Any]]: ...
+    async def list_details(self, lean: bool = False) -> list[dict[str, Any]]: ...
 
     async def list_listing(self) -> list[dict[str, Any]]: ...
 
@@ -248,10 +248,16 @@ class PostgresProductRepository:
             rows = (await connection.execute(statement)).scalars().all()
         return _queue_candidates(list(rows), limit)
 
-    async def list_details(self) -> list[dict[str, Any]]:
-        """Every collected product page; the category of the list it came from rides along."""
+    async def list_details(self, lean: bool = False) -> list[dict[str, Any]]:
+        """Every collected product page; the category of the list it came from rides along.
+
+        Lean leaves out the raw TikTok payload (about 57 KB a product), cut in the database.
+        """
+        detail = marketplace_products.c.detail
+        if lean:
+            detail = detail.op("-")("raw_product_info").label("detail")
         statement = (
-            select(marketplace_products.c.detail, marketplace_products.c.listing)
+            select(detail, marketplace_products.c.listing)
             .where(
                 marketplace_products.c.detail.is_not(None),
                 marketplace_products.c.deleted.is_(False),
