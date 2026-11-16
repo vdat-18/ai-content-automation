@@ -19,9 +19,9 @@ from ai_content.domains.marketing.products.keyframe_check import _image
 
 _CONCURRENCY = 2
 _DOWNLOAD_TIMEOUT = 30
-# A brief takes 1 to 2 minutes; the gateway sometimes stalls or drops the call, so give up on a
-# silent call early and ask again instead of waiting out the long default timeout.
-_CALL_SECONDS = 180
+# A brief of 6 shots takes 2 to 4 minutes to write; the gateway sometimes stalls or drops the call,
+# so give up on a silent call and ask again instead of waiting out the long default timeout.
+_CALL_SECONDS = 360
 _CALL_TRIES = 3
 _RETRY_DELAY = 5.0
 
