@@ -247,6 +247,21 @@ class _Checker:
         return self.verdicts.pop(0)
 
 
+class _HungChecker:
+    async def check(self, description, photos, keyframe, master=None, persona=None, previous=None):
+        await asyncio.sleep(60)
+
+
+async def test_a_check_that_hangs_is_given_up_and_the_image_is_still_saved(
+    tmp_path, monkeypatch
+) -> None:
+    monkeypatch.setattr(service_module, "CHECK_SECONDS", 0.05)
+    service = await _service(tmp_path, _FakeKeyframer())
+    service._checker = _HungChecker()
+    [record] = await service.generate_keyframes(PRODUCT_ID, tmp_path)
+    assert record["status"] == "ready" and record["qa_problem"].startswith("Not checked")
+
+
 async def test_a_failed_check_only_advises_and_never_makes_another_image(tmp_path) -> None:
     keyframer = _FakeKeyframer()
     service = await _service(tmp_path, keyframer)

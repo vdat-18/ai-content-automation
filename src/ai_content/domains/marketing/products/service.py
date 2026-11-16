@@ -179,6 +179,7 @@ BRIEF_FIELDS = (
 
 SCREEN_BATCH = 20  # pictures reviewed before progress is reported
 REFERENCE_CANDIDATES = 5  # pictures a model compares for one shot
+CHECK_SECONDS = 90  # the check only advises, so a person never waits longer than this for it
 
 
 def _scaled(scores: dict[str, float]) -> dict[str, float]:
@@ -1374,21 +1375,6 @@ class ProductCatalogService:
             await self._check_keyframe(shot, check_photos or photos, image, master, persona, before)
             or ""
         )
-        # The check only advises: the person decides, and the lesson goes to the AI memory.
-        # What is wrong with one person's face says nothing about other videos.
-        if (
-            problem
-            and problem != NOT_CHECKED
-            and self._knowledge is not None
-            and getattr(problem, "category", "other") != "face"
-        ):
-            await propose_feedback(
-                self._knowledge,
-                product_id=product_id,
-                text=problem,
-                contributor="gemini-qa",
-                authority=KnowledgeAuthority.EXTERNAL,
-            )
         relative = f"keyframes/{product_id}/shot_{index}.jpg"
         await self.media(media_root).write(relative, image)
         await self._repository.save_keyframe(
@@ -1410,6 +1396,21 @@ class ProductCatalogService:
             + (f". Rules used: {', '.join(shot['rule_ids'])}" if shot.get("rule_ids") else ""),
             index,
         )
+        # The check only advises: the person decides, and the lesson goes to the AI memory once
+        # the image is saved. What is wrong with one person's face says nothing about other videos.
+        if (
+            problem
+            and problem != NOT_CHECKED
+            and self._knowledge is not None
+            and getattr(problem, "category", "other") != "face"
+        ):
+            await propose_feedback(
+                self._knowledge,
+                product_id=product_id,
+                text=problem,
+                contributor="gemini-qa",
+                authority=KnowledgeAuthority.EXTERNAL,
+            )
 
     async def _keyframe_before(self, product_id: str, index: int, media_root: Path) -> bytes | None:
         """The image of the shot just before this one, so the cut between them can be checked."""
@@ -1445,7 +1446,13 @@ class ProductCatalogService:
             description = f"{description}\n\nApproved rules:\n{shot['qa_rules']}"
         if shot.get("retouch") is False:
             description = f"{description}\n\n{KEEP_SKIN_NOTE}"
-        problem = await self._checker.check(description, photos, image, master, persona, before)
+        try:
+            problem = await asyncio.wait_for(
+                self._checker.check(description, photos, image, master, persona, before),
+                CHECK_SECONDS,
+            )
+        except TimeoutError:
+            problem = None
         return NOT_CHECKED if problem is None else problem
 
     async def recheck_keyframe(
