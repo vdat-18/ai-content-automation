@@ -16,8 +16,8 @@ export function StudioPage() {
   const client = useQueryClient();
   const products = useProducts();
   const selections = useSelections();
-  const brief = useBrief(productId);
   const pipeline = usePipeline(productId);
+  const brief = useBrief(productId, pipeline.data?.status === "running");
   const keyframes = useKeyframes(productId, !!brief.data);
   const video = useVideoInfo(productId);
 

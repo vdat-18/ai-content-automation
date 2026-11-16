@@ -19,9 +19,10 @@ export const useOutputs = () => useQuery({ queryKey: ["outputs"], queryFn: ({ si
 
 export const useBriefs = () => useQuery({ queryKey: ["briefs"], queryFn: ({ signal }) => getJson<BriefRecord[]>(`${API}/briefs`, signal) });
 
-export const useBrief = (productId: string) =>
+export const useBrief = (productId: string, live = false) =>
   useQuery({
     queryKey: ["brief", productId],
+    refetchInterval: live ? 3000 : false,
     queryFn: async ({ signal }) => {
       try {
         return await getJson<BriefRecord>(`${API}/${productId}/brief`, signal);

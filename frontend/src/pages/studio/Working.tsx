@@ -1,6 +1,9 @@
+import { useQuery } from "@tanstack/react-query";
 import { Check } from "lucide-react";
 import { Spinner } from "../../components/ui";
+import { API } from "../../hooks/useStudio";
 import { friendlyStep } from "../../lib/studio";
+import { getJson } from "../../services/http";
 import type { BriefRecord, Keyframe, PipelineRun } from "../../types/studio";
 
 const STAGES = ["Writing your script", "Creating the first image", "Creating the other scenes", "Filming the scenes", "Recording the voice-over", "Putting the video together", "Writing the caption"];
@@ -9,6 +12,8 @@ const STAGES = ["Writing your script", "Creating the first image", "Creating the
 export function Working({ run, record, frames }: { productId: string; run: PipelineRun; record: BriefRecord | null; frames: Keyframe[] }) {
   const current = friendlyStep(run.step);
   const index = Math.max(0, STAGES.indexOf(current));
+  const scenes = useQuery({ queryKey: ["reference-images", "live"], queryFn: ({ signal }) => getJson<{ image_id: string; image_url: string }[]>(`${API}/reference-images?status=live`, signal), enabled: !!record });
+  const shots = record?.brief.shots ?? [];
   const toVideo = index >= 3 || (record?.status === "approved" && frames.some((frame) => frame.status === "approved") && index > 0);
   return (
     <div className="card pad stack" style={{ maxWidth: 640 }} role="status" aria-live="polite">
@@ -30,6 +35,24 @@ export function Working({ run, record, frames }: { productId: string; run: Pipel
           );
         })}
       </ol>
+      {shots.length > 0 && (
+        <section className="stack" aria-label="The script so far">
+          <h2 style={{ fontSize: 18 }}>{record?.brief.title}</h2>
+          {shots.map((shot, at) => {
+            const reference = scenes.data?.find((scene) => scene.image_id === record?.brief.shot_references?.[at]);
+            return (
+              <div key={at} className="row" style={{ alignItems: "flex-start", gap: 12 }}>
+                {reference ? <img className="ref-thumb" style={{ width: 56, aspectRatio: "1", objectFit: "cover", borderRadius: 8 }} src={reference.image_url} alt="Reference for this scene" referrerPolicy="no-referrer" /> : <span className="muted small" style={{ width: 56 }}>{index > 0 ? "No reference" : ""}</span>}
+                <div className="stack" style={{ gap: 2 }}>
+                  <strong className="small">{`Scene ${at + 1}`}</strong>
+                  <span className="small">{shot.voiceover}</span>
+                  {shot.on_screen_text && <span className="muted small">{`On screen: ${shot.on_screen_text}`}</span>}
+                </div>
+              </div>
+            );
+          })}
+        </section>
+      )}
     </div>
   );
 }
