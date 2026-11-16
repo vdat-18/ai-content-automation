@@ -889,7 +889,7 @@ class ProductCatalogService:
 
         The text of the shot is matched to the written descriptions of the references by
         embedding, and references that look like the product photos rank higher; a model then
-        looks at the closest few pictures and keeps one, or none.
+        looks at the closest few pictures and must keep one.
         """
         shots = brief.get("shots") or []
         none: list[str | None] = [None] * len(shots)
@@ -923,16 +923,19 @@ class ProductCatalogService:
         looks = await self._product_look(product, brief, {i["image_id"] for i in pool})
         picker = self._reference_picker
         failures: list[str] = []
-
-        async def pick(shot: dict[str, Any], query: list[float]) -> str | None:
+        seen: set[str] = set()
+        result: list[str | None] = []
+        for shot, query in zip(shots, queries, strict=True):
             text = _scaled({i["image_id"]: cosine(query, vectors[i["image_id"]]) for i in pool})
+            # every shot gets its own picture while the pool has enough of them
+            available = [i for i in pool if i["image_id"] not in seen] or pool
             closest = sorted(
-                pool,
+                available,
                 key=lambda image: text[image["image_id"]] + looks.get(image["image_id"], 0.0),
                 reverse=True,
             )[:REFERENCE_CANDIDATES]
             try:
-                return await picker.choose(
+                image_id = await picker.choose(
                     product,
                     shot,
                     [
@@ -946,13 +949,8 @@ class ProductCatalogService:
                 )
             except ReferencePickerError as error:
                 failures.append(str(error))
-                return None
-
-        picked = await asyncio.gather(*(pick(s, q) for s, q in zip(shots, queries, strict=True)))
-        seen: set[str] = set()
-        result: list[str | None] = []
-        for image_id in picked:  # the same picture is not used twice
-            result.append(image_id if image_id and image_id not in seen else None)
+                image_id = None
+            result.append(image_id)
             if image_id:
                 seen.add(image_id)
         matched = f"Matched references to {sum(1 for item in result if item)} of {len(shots)} shot(s)"

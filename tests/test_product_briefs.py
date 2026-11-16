@@ -310,7 +310,8 @@ async def test_each_shot_gets_the_reference_that_fits_it(tmp_path, monkeypatch) 
     brief = record["brief"]
     # the closest description comes first: the hand shot sees the hand picture first
     hand, room = ids["a hand holding a bottle"], ids["a person in a bedroom"]
-    assert brief["shot_references"] == [hand, room, None]  # the third shot would repeat the room
+    # every shot has one; the third has to repeat a picture because only two exist
+    assert brief["shot_references"][:2] == [hand, room] and brief["shot_references"][2] in (hand, room)
     assert brief["selected_reference_ids"] == [hand, room]
     # the descriptions were embedded once, then only the shots; a second match reuses them
     assert [len(call) for call in embedder.calls] == [2, 3]
@@ -370,7 +371,7 @@ async def test_references_fall_back_to_text_when_the_product_cannot_be_embedded(
     assert record is not None and set(picker.seen[0]) == {hand, room}
 
 
-async def test_a_reference_is_not_used_for_two_shots(tmp_path, monkeypatch) -> None:
+async def test_shots_get_different_references_while_the_pool_has_enough(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("AIC_CLIP_SPEED", "1.25")  # 30 seconds is 3 shots
     class _SameShots(_TwoShots):
         async def write(self, product, user_idea, shot_count=1, person_photos=None, rules=""):
@@ -385,7 +386,9 @@ async def test_a_reference_is_not_used_for_two_shots(tmp_path, monkeypatch) -> N
     ids = await _two_described_references(service)
     await service.create_brief(PRODUCT_ID, video_seconds=30, person_photos=[b"face"])
     record = await service.match_references(PRODUCT_ID)
-    assert record["brief"]["shot_references"] == [ids["a hand holding a bottle"], None, None]
+    first, second, third = record["brief"]["shot_references"]
+    assert first == ids["a hand holding a bottle"] and second == ids["a person in a bedroom"]
+    assert third is not None  # only two exist, so the last shot repeats one of them
 
 
 async def test_shots_have_no_reference_without_an_embedding_model(tmp_path, monkeypatch) -> None:

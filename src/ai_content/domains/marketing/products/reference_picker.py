@@ -21,7 +21,7 @@ _SHOT_KEYS = ("role", "description", "keyframe_prompt", "delivery")
 
 
 class ReferencePickerError(RuntimeError):
-    """The model could not be reached or did not answer, which is not the same as "none fits"."""
+    """The model could not be reached or did not name one of the candidates."""
 
 
 class _BamlPickerClient(Protocol):
@@ -56,7 +56,7 @@ class ShotReferencePicker:
         candidates: list[dict[str, str]],
         http: httpx.AsyncClient | None = None,
     ) -> str | None:
-        """candidates: image_id, note, url. Returns the chosen image_id, or None when none fits."""
+        """candidates: image_id, note, url. Returns the chosen image_id; None only when no candidate could be downloaded."""
         owned = http is None
         http = http or httpx.AsyncClient(timeout=30, follow_redirects=True)
 
@@ -94,4 +94,6 @@ class ShotReferencePicker:
             raise ReferencePickerError(str(error)[:300]) from error
         logger.info("Shot reference: model chose {!r} among {}", result.choice, list(labeled))
         found = labeled.get(result.choice.strip())
-        return found[0]["image_id"] if found else None
+        if found is None:
+            raise ReferencePickerError(f"The model chose {result.choice!r}, which is not a candidate")
+        return found[0]["image_id"]
