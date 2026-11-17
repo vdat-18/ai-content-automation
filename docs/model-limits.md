@@ -66,8 +66,10 @@ or up to 7 reference images (up to 10 seconds). The product must be correct alre
 
 One model per variable, no fallback; an error names the model that failed. Image-count limit not
 measured. Reached through an OpenAI-compatible endpoint (`AIC_SCREENING_BASE_URL`); the endpoint
-used so far was 9Router. The brief sends every product photo of the page (up to 9 so far) and still
-works. No `max_tokens` is set (`build_client_registry` leaves it out unless a caller passes
-`max_output_tokens`), and the brief writer sends `reasoning_effort: "none"`, because a reasoning
-model that spends its tokens on thinking cut the output short when a limit was set. The steps that build their client with `reasoning_effort=None`
+used so far was 9Router. The brief sends at most 3 product photos and the person photo, each shrunk to 512 px (about
+365 and 270 input tokens each), and works. No `max_tokens` is set (`build_client_registry` leaves it out unless a caller passes
+`max_output_tokens`), and the brief writer sends `reasoning_effort: "low"`: measured on 6 products, "none" gave
+narrated voice-overs of 57 and 58 words (the rules say 40 to 46) and sometimes 3 or 4 shots for 2,
+"low" gave the right shots, talking lines of 18 to 23 words, and was faster with fewer output tokens.
+A reasoning model that spends its tokens on thinking cuts the output short when a limit is set. The steps that build their client with `reasoning_effort=None`
 (hooks, shortening, voice pick, reference picks, clip check) send none. Measure again when the model or the endpoint changes.
