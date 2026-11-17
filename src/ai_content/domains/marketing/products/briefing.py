@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import io
 import json
 from typing import Any, Protocol
 
@@ -10,6 +11,7 @@ import httpx
 from baml_py import Image as BamlImage
 from baml_py.baml_py import BamlError
 from loguru import logger
+from PIL import Image
 
 from ai_content.domains.marketing.products.adapters.baml_client import types as baml_types
 from ai_content.domains.marketing.products.adapters.baml_client.async_client import b
@@ -18,6 +20,10 @@ from ai_content.domains.marketing.products.keyframe_check import _image
 
 _CONCURRENCY = 2
 _DOWNLOAD_TIMEOUT = 30
+_MAX_PRODUCT_PHOTOS = 3
+# The brief reads the look, the label and the outfit, not every pixel: a smaller picture costs
+# fewer input tokens. The image model still gets the full-size photos.
+_PHOTO_EDGE = 512
 # A brief of 6 shots takes 2 to 4 minutes to write; a call that stays silent longer is an error.
 _CALL_SECONDS = 360
 
@@ -41,6 +47,14 @@ class _BamlBriefClient(Protocol):
         person_images: list[BamlImage],
         rules: str,
     ) -> baml_types.ContentBrief: ...
+
+
+def _small_image(content: bytes) -> BamlImage:
+    picture = Image.open(io.BytesIO(content)).convert("RGB")
+    picture.thumbnail((_PHOTO_EDGE, _PHOTO_EDGE))
+    buffer = io.BytesIO()
+    picture.save(buffer, "JPEG", quality=80)
+    return _image(buffer.getvalue())
 
 
 def product_facts(product: dict[str, Any]) -> dict[str, Any]:
@@ -124,7 +138,7 @@ class ContentBriefWriter:
     ) -> dict[str, Any]:
         """Return the brief as a dict.
 
-        The model sees every product photo and picks the ones the image model will use (reported
+        The model sees the first product photos and picks the ones the image model will use (reported
         as urls). Reference photos are matched to the shots afterwards. With person photos the
         storyboard follows that person; without them it shows no person.
         """
@@ -140,9 +154,9 @@ class ContentBriefWriter:
                 except httpx.HTTPError as error:
                     logger.warning("Brief image download failed: {}", str(error)[:200])
                     return None
-            return _image(response.content)
+            return _small_image(response.content)
 
-        urls = [url for url in (product.get("images") or []) if url]
+        urls = [url for url in (product.get("images") or []) if url][:_MAX_PRODUCT_PHOTOS]
         try:
             downloaded = await asyncio.gather(*(fetch(url) for url in urls))
         finally:
@@ -159,7 +173,7 @@ class ContentBriefWriter:
             shot_count,
             [photo for _, photo in photos],
             bool(person_photos),
-            [_image(photo) for photo in person_photos or []],
+            [_small_image(photo) for photo in person_photos or []],
             rules,
         )
         try:

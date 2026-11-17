@@ -50,12 +50,11 @@ function DraftContentBrief(
     The brief is a storyboard for one vertical ad video of exactly {{ shot_count }} shot(s). Every
     shot is first made as a still keyframe image and later animated into a 15 second clip.
 
-    Product photos: they are numbered. product_photo_numbers lists every photo that shows the
-    product, most useful first. Only the first three reach the image model, so they must show the
-    chosen version and its front label most clearly, each from a different angle (front label,
-    back or side, size or use), and together every item of a set. A collage or a photo with text is
-    fine when it shows the product or real facts such as a size chart. Read sizes and materials
-    from all photos, size charts included.
+    Product photos: at most three, numbered. product_photo_numbers lists the ones the image model
+    will use, most useful first: they must show the chosen version and its front label most
+    clearly, each from a different angle (front label, back or side, size or use), and together
+    every item of a set. A collage or a photo with text is fine when it shows the product or real
+    facts such as a size chart. Read sizes and materials from the photos.
 
     Version: when the product comes in several versions (colors, scents, sizes), pick exactly ONE
     for the whole video: the one in the first photos or the best seller. Describe it in

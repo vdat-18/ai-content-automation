@@ -1,9 +1,12 @@
 import asyncio
+import base64
+import io
 from types import SimpleNamespace
 
 import httpx
 import pytest
 from baml_py.baml_py import BamlClientError
+from PIL import Image
 from tests.pgstore import product_repository
 
 from ai_content.domains.marketing.products import service as service_module
@@ -155,10 +158,16 @@ class _FakeBamlClient:
         )
 
 
+def _picture(width: int = 40, height: int = 40) -> bytes:
+    buffer = io.BytesIO()
+    Image.new("RGB", (width, height), "white").save(buffer, "PNG")
+    return buffer.getvalue()
+
+
 def _photo_server(request: httpx.Request) -> httpx.Response:
     if "gone" in request.url.path:
         return httpx.Response(404)
-    return httpx.Response(200, content=b"img", headers={"content-type": "image/png"})
+    return httpx.Response(200, content=_picture(), headers={"content-type": "image/png"})
 
 
 async def test_writer_maps_photo_numbers_to_urls() -> None:
@@ -169,8 +178,8 @@ async def test_writer_maps_photo_numbers_to_urls() -> None:
     client = _FakeBamlClient()
     async with httpx.AsyncClient(transport=httpx.MockTransport(_photo_server)) as http:
         brief = await ContentBriefWriter(client).write(product, "", http)
-    # every photo is tried and one is gone: the model sees the other ten
-    assert client.seen == [10]
+    # only the first three photos are used and one is gone: the model sees the other two
+    assert client.seen == [2]
     assert "product_photo_numbers" not in brief and "selected_reference_ids" not in brief
     # numbers count the photos the model saw: 2 is p3 because p2 is gone; repeats and 40 are dropped
     assert brief["product_photo_urls"] == ["https://x/p3.jpg", "https://x/p1.jpg"]
@@ -180,16 +189,40 @@ async def test_the_writer_gives_the_model_the_photos_of_the_person() -> None:
     client = _FakeBamlClient()
     product = {"images": ["https://x/p1.jpg"]}
     async with httpx.AsyncClient(transport=httpx.MockTransport(_photo_server)) as http:
-        await ContentBriefWriter(client).write(product, "", http, person_photos=[b"a", b"b"])
+        await ContentBriefWriter(client).write(product, "", http, person_photos=[_picture(), _picture()])
         await ContentBriefWriter(client).write(product, "", http)
     assert client.people == [(True, 2), (False, 0)]
 
 
-async def test_writer_uses_all_photos_when_the_model_picks_none() -> None:
+async def test_writer_uses_the_photos_it_showed_when_the_model_picks_none() -> None:
     product = {"images": [f"https://x/p{i}.jpg" for i in range(1, 9)]}
     async with httpx.AsyncClient(transport=httpx.MockTransport(_photo_server)) as http:
         brief = await ContentBriefWriter(_FakeBamlClient(numbers=[])).write(product, "", http)
-    assert brief["product_photo_urls"] == [f"https://x/p{i}.jpg" for i in range(1, 9)]
+    assert brief["product_photo_urls"] == [f"https://x/p{i}.jpg" for i in range(1, 4)]
+
+
+async def test_the_pictures_the_brief_reads_are_shrunk() -> None:
+    seen: list[tuple[int, int]] = []
+
+    class _Looks(_FakeBamlClient):
+        async def DraftContentBrief(
+            self, product_json, user_idea, shot_count, product_images, with_person, person_images, rules
+        ):
+            for picture in [*product_images, *person_images]:
+                data = base64.b64decode(picture.as_base64()[0])
+                seen.append(Image.open(io.BytesIO(data)).size)
+            return await super().DraftContentBrief(
+                product_json, user_idea, shot_count, product_images, with_person, person_images, rules
+            )
+
+    def big(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, content=_picture(1000, 2000))
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(big)) as http:
+        await ContentBriefWriter(_Looks()).write(
+            {"images": ["https://x/p1.jpg"]}, "", http, person_photos=[_picture(1086, 1448)]
+        )
+    assert seen == [(256, 512), (384, 512)]
 
 
 async def test_writer_errors() -> None:
