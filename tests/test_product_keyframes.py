@@ -435,7 +435,7 @@ async def test_prompts_name_the_person_only_when_there_is_one() -> None:
     assert with_person[1] == 4 and "Images 1 to 2 are the real product photos" in with_person[0]
     assert "Image 3 shows the person in the ad" in with_person[0]
     assert (
-        "Image 4 is a scene reference" in with_person[0]
+        "Image 4 is a loose reference for the pose" in with_person[0]
         and "Do not show any human face" not in with_person[0]
     )
     assert "Rules to follow in the picture:" + chr(10) + "- Clear skin: no acne" in with_person[0]

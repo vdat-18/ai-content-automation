@@ -273,8 +273,9 @@ class KeyframeGenerator:
         if scene is not None:
             images.append(scene)
             parts.append(
-                f"Image {len(images)} is a scene reference: borrow only its setting, light and "
-                "styling, never its objects, brand, text or people."
+                f"Image {len(images)} is a loose reference for the pose, framing and camera angle "
+                "only: the room, light, person and product come from the other images and the shot "
+                "text; never copy its objects, brand, text or people."
             )
         parts += [_PRODUCT_RULE, "" if persona else _NO_PEOPLE]
         parts += [_variant_note(shot), _size_note(shot), _rules_part(shot)]

@@ -14,6 +14,7 @@ from ai_content.domains.marketing.creative_knowledge.models import (
     KnowledgeAuthority,
     KnowledgeScope,
     KnowledgeStage,
+    KnowledgeStatus,
     KnowledgeType,
 )
 from ai_content.domains.marketing.creative_knowledge.service import (
@@ -68,12 +69,13 @@ async def propose_feedback(
 ) -> CreativeKnowledge:
     """Store feedback on a generated image or video as a proposal that a human must approve.
 
-    With once=True a rule that already exists (even approved or rejected) is left as it is,
-    so an automatic source cannot put a decided rule back to "proposed".
+    An approved rule is never put back to "proposed". With once=True a rule that already exists
+    (even rejected) is left as it is, so an automatic source cannot reopen a decided rule.
     """
     text = text.strip()
     digest = hashlib.sha1(f"{asset_type}:{text}".casefold().encode()).hexdigest()[:12]
-    if once and (known := await knowledge.repository.get(f"feedback-{digest}")) is not None:
+    known = await knowledge.repository.get(f"feedback-{digest}")
+    if known is not None and (once or known.status == KnowledgeStatus.APPROVED):
         return known
     return await knowledge.propose(
         knowledge_id=f"feedback-{digest}",

@@ -17,6 +17,8 @@ import boto3
 from botocore.config import Config
 from botocore.exceptions import ClientError
 
+from ai_content.platform.artifacts.object_storage import sha256_file
+
 KEY_PREFIX = "affiliate-media/"
 
 
@@ -60,13 +62,15 @@ class S3RemoteMedia:
         )
 
     def put(self, key: str, source: Path, content_type: str) -> None:
+        checksum, size = sha256_file(source)  # the backup checks every object against this
         with source.open("rb") as body:
             self._client.put_object(
                 Bucket=self._bucket,
                 Key=key,
                 Body=body,
-                ContentLength=source.stat().st_size,
+                ContentLength=size,
                 ContentType=content_type,
+                Metadata={"sha256": checksum},
             )
 
     def get(self, key: str, target: Path) -> bool:

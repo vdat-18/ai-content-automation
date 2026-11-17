@@ -244,10 +244,7 @@ class BackupService:
             key = normalize_object_key(str(summary["Key"]))
             response = self._s3.get_object(Bucket=self._storage.bucket, Key=key)
             metadata = response.get("Metadata", {})
-            expected = metadata.get("sha256")
-            if not expected:
-                response["Body"].close()
-                raise BackupValidationError(f"Object is missing SHA-256 metadata: {key}")
+            expected = metadata.get("sha256")  # media stored before it was recorded has none
             path = _object_path(root, key)
             path.parent.mkdir(parents=True, exist_ok=True)
             digest = hashlib.sha256()
@@ -260,14 +257,15 @@ class BackupService:
                         size += len(chunk)
             finally:
                 response["Body"].close()
-            if digest.hexdigest() != expected or size != int(response["ContentLength"]):
+            checksum = digest.hexdigest()
+            if (expected and checksum != expected) or size != int(response["ContentLength"]):
                 raise BackupValidationError(f"Downloaded object failed verification: {key}")
             inventory.append(
                 ObjectInventory(
                     key=key,
                     size_bytes=size,
                     content_type=response.get("ContentType", "application/octet-stream"),
-                    sha256=expected,
+                    sha256=checksum,
                 )
             )
         return tuple(sorted(inventory, key=lambda item: item.key))
