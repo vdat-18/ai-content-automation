@@ -6,6 +6,7 @@ import re
 
 import httpx
 import pytest
+from baml_py.baml_py import BamlError
 from PIL import Image
 from tests.pgstore import product_repository, usage_repository
 
@@ -147,7 +148,6 @@ def _client(handler) -> KeyframeImageClient:
         api_key="k",
         model="m",
         http=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
-        retry_delay=0,
     )
 
 
@@ -186,7 +186,6 @@ async def test_client_edits_mode_posts_images_to_the_edits_endpoint() -> None:
         model="m",
         api="edits",
         http=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
-        retry_delay=0,
     )
     assert await client.generate("prompt", [b"one", b"two"]) == PNG
     assert seen["path"] == "/v1/images/edits"
@@ -204,29 +203,28 @@ async def test_client_edits_mode_reads_a_base64_image_field() -> None:
         model="m",
         api="edits",
         http=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
-        retry_delay=0,
     )
     assert await client.generate("prompt", [b"one"]) == PNG
 
 
-async def test_client_reads_inline_base64_and_retries_overload() -> None:
-    attempts = []
-
+async def test_client_reads_inline_base64() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
-        attempts.append(1)
-        if len(attempts) < 3:
-            return httpx.Response(503, text="overloaded")
         data = "data:image/png;base64," + base64.b64encode(PNG).decode()
         return httpx.Response(200, json={"choices": [{"message": {"content": data}}]})
 
     assert await _client(handler).generate("p", []) == PNG
-    assert len(attempts) == 3
 
 
-async def test_client_gives_up_and_rejects_client_errors() -> None:
-    always_busy = _client(lambda request: httpx.Response(503, text="busy"))
+async def test_client_returns_every_error_without_asking_again() -> None:
+    attempts = []
+
+    def busy(request: httpx.Request) -> httpx.Response:
+        attempts.append(1)
+        return httpx.Response(503, text="busy")
+
     with pytest.raises(KeyframeGenerationError, match="HTTP 503"):
-        await always_busy.generate("p", [])
+        await _client(busy).generate("p", [])
+    assert len(attempts) == 1
     forbidden = _client(lambda request: httpx.Response(403, text="subscribe first"))
     with pytest.raises(KeyframeGenerationError, match="HTTP 403"):
         await forbidden.generate("p", [])
@@ -245,6 +243,20 @@ class _Checker:
     async def check(self, description, photos, keyframe, master=None, persona=None, previous=None):
         self.calls += 1
         return self.verdicts.pop(0)
+
+
+class _BrokenChecker:
+    async def check(self, description, photos, keyframe, master=None, persona=None, previous=None):
+        raise BamlError("quota exceeded")
+
+
+async def test_a_check_that_errors_keeps_the_image_and_logs_the_error(tmp_path) -> None:
+    service = await _service(tmp_path, _FakeKeyframer())
+    service._checker = _BrokenChecker()
+    [record] = await service.generate_keyframes(PRODUCT_ID, tmp_path)
+    assert record["status"] == "ready" and record["qa_problem"].startswith("Not checked")
+    events = [e for e in await service.events(PRODUCT_ID) if e["step"] == "keyframe"]
+    assert events[-1]["status"] == "error" and "quota exceeded" in events[-1]["message"]
 
 
 class _HungChecker:

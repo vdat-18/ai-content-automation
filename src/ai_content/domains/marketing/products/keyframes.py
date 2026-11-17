@@ -16,9 +16,6 @@ ASPECT_SIZE = "1024x1792"
 ASPECT_RATIO = "9:16"
 EDITS_SIZE = "1024x1792"  # gpt-image-2 gives exactly 9:16 (941x1672) for this size
 _REQUEST_TIMEOUT = 240
-_TRIES = 3
-_RETRY_STATUSES = {429, 500, 502, 503, 504}
-_RETRY_DELAY = 5.0
 _DOWNLOAD_TIMEOUT = 40
 _MAX_INPUT_SIDE = 1792  # the long side of the generated keyframes
 _VERTICAL = 9 / 16  # the video is 9:16, so the keyframe it starts from must be too
@@ -188,7 +185,6 @@ class KeyframeImageClient:
         model: str,
         api: str = "chat",
         http: httpx.AsyncClient | None = None,
-        retry_delay: float = _RETRY_DELAY,
     ) -> None:
         """`api` is "chat" (chat completions) or "edits" (the images/edits endpoint)."""
         path = "/images/edits" if api == "edits" else "/chat/completions"
@@ -197,7 +193,6 @@ class KeyframeImageClient:
         self._headers = {"Authorization": f"Bearer {api_key}"}
         self.model = model
         self._http = http or httpx.AsyncClient(timeout=_REQUEST_TIMEOUT, follow_redirects=True)
-        self._retry_delay = retry_delay
 
     async def generate(self, prompt: str, images: list[bytes]) -> bytes:
         urls = [_data_url(i) for i in images]
@@ -218,28 +213,16 @@ class KeyframeImageClient:
                 "size": ASPECT_SIZE,
                 "messages": [{"role": "user", "content": content}],
             }
-        last = "no response"
-        for attempt in range(_TRIES):
-            try:
-                response = await self._http.post(self._url, json=body, headers=self._headers)
-            except httpx.HTTPError as error:
-                last = f"request failed: {error!r}"[:200]
-            else:
-                if response.status_code == 200:
-                    image = await self._extract(response.text)
-                    if image:
-                        return _to_vertical(image)
-                    last = "no image in the response"
-                elif response.status_code in _RETRY_STATUSES:
-                    last = f"HTTP {response.status_code}: {response.text[:150]}"
-                else:
-                    raise KeyframeGenerationError(
-                        f"HTTP {response.status_code}: {response.text[:200]}"
-                    )
-            logger.warning("Keyframe request attempt {} failed: {}", attempt + 1, last)
-            if attempt < _TRIES - 1:
-                await asyncio.sleep(self._retry_delay)
-        raise KeyframeGenerationError(last)
+        try:
+            response = await self._http.post(self._url, json=body, headers=self._headers)
+        except httpx.HTTPError as error:
+            raise KeyframeGenerationError(f"request failed: {error!r}"[:200]) from error
+        if response.status_code != 200:
+            raise KeyframeGenerationError(f"HTTP {response.status_code}: {response.text[:200]}")
+        image = await self._extract(response.text)
+        if not image:
+            raise KeyframeGenerationError("no image in the response")
+        return _to_vertical(image)
 
     async def _extract(self, text: str) -> bytes | None:
         inline = re.search(r"data:image/\w+;base64,([A-Za-z0-9+/=]+)", text) or re.search(

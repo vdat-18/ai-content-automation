@@ -66,16 +66,6 @@ class StitchUnavailable(RuntimeError):
     """The clips cannot be stitched yet; the message says what to do first."""
 
 
-# A refused job costs nothing. A gateway error (502, 504) may rarely hide a job that did start, a
-# risk taken so that a hiccup of the service does not stop a whole run.
-_BUSY_MARKERS = ("HTTP 429", "HTTP 502", "HTTP 503", "HTTP 504", "lượng lớn")
-
-
-def is_busy_error(message: str | None) -> bool:
-    """True when the video service refused a job only because it is overloaded right now."""
-    return bool(message) and any(marker in str(message) for marker in _BUSY_MARKERS)
-
-
 @dataclass(frozen=True)
 class JobState:
     status: str

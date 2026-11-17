@@ -29,7 +29,6 @@ from ai_content.domains.marketing.products.clips import (
     clip_frames,
     clip_seconds_for,
     cover_frame,
-    is_busy_error,
     sharpness,
     shot_seconds,
     still_tail_seconds,
@@ -194,7 +193,6 @@ async def test_video_client_reports_http_errors() -> None:
         await failing.status("v1", "m")
     lost = await _client(lambda request: httpx.Response(404)).status("v1", "m")
     assert lost.status == "failed" and "lost" in lost.error
-    assert is_busy_error("HTTP 502: bad gateway") and not is_busy_error("HTTP 500: boom")
 
 
 async def test_stitch_requires_clips_and_ffmpeg(tmp_path, monkeypatch) -> None:

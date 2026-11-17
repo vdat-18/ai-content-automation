@@ -19,9 +19,6 @@ from .word_timing import Timing
 
 WordTimer = Callable[[Path, str], Awaitable[Timing]]  # audio, text -> when each word starts
 _TIMEOUT = 120
-_TRIES = 3
-_RETRY_STATUSES = {429, 500, 502, 503, 504}
-_RETRY_DELAY = 4.0
 MAX_SPEEDUP = 1.5
 VOICE_LUFS = -16.0  # every reading is brought to this loudness
 MAX_GAIN_DB = 12.0
@@ -70,14 +67,12 @@ class SpeechClient:
         model: str,
         voice: str = "",
         http: httpx.AsyncClient | None = None,
-        retry_delay: float = _RETRY_DELAY,
     ) -> None:
         self._url = base_url.rstrip("/") + "/audio/speech"
         self._headers = {"Authorization": f"Bearer {api_key}"}
         self.model = model
         self._voice = voice or _DEFAULT_VOICE
         self._http = http or httpx.AsyncClient(timeout=_TIMEOUT)
-        self._retry_delay = retry_delay
 
     async def speak(self, text: str, voice: str | None = None) -> bytes:
         body = {
@@ -86,22 +81,13 @@ class SpeechClient:
             "voice": voice or self._voice,
             "response_format": "mp3",
         }
-        last = "no response"
-        for attempt in range(_TRIES):
-            try:
-                response = await self._http.post(self._url, json=body, headers=self._headers)
-            except httpx.HTTPError as error:
-                last = f"request failed: {error!r}"[:200]
-            else:
-                if response.status_code == 200 and response.content[:1] != b"{":
-                    return response.content
-                last = f"HTTP {response.status_code}: {response.text[:150]}"
-                if response.status_code not in _RETRY_STATUSES and response.status_code != 200:
-                    raise SpeechError(last)
-            logger.warning("Speech attempt {} failed: {}", attempt + 1, last)
-            if attempt < _TRIES - 1:
-                await asyncio.sleep(self._retry_delay)
-        raise SpeechError(last)
+        try:
+            response = await self._http.post(self._url, json=body, headers=self._headers)
+        except httpx.HTTPError as error:
+            raise SpeechError(f"request failed: {error!r}"[:200]) from error
+        if response.status_code != 200 or response.content[:1] == b"{":
+            raise SpeechError(f"HTTP {response.status_code}: {response.text[:150]}")
+        return response.content
 
 
 async def _probe_seconds(path: Path) -> float:

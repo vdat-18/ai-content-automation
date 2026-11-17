@@ -7,16 +7,13 @@ from collections.abc import Callable
 from pathlib import Path
 
 from .briefing import BriefGenerationError, BriefUnavailable
-from .clips import StitchUnavailable, is_busy_error
+from .clips import StitchUnavailable
 from .posting import PostingPackageError
 from .references import ProfileGenerationError
 from .service import KeyframeUnavailable, ProductCatalogService
 
 CLIP_POLL_SECONDS = 5.0
 CLIP_WAIT_SECONDS = 20 * 60
-# The video service sometimes refuses jobs for a while ("busy, retry"); wait and send them again.
-CLIP_BUSY_WAIT_SECONDS = 60.0
-CLIP_BUSY_RETRIES = 15
 
 # Stops that are expected: the message tells the user what to do before running again.
 EXPECTED_STOPS = (
@@ -43,7 +40,6 @@ async def run_pipeline(
     voice: str | None,
     report: Callable[[str], None],
     poll_seconds: float = CLIP_POLL_SECONDS,
-    busy_wait_seconds: float = CLIP_BUSY_WAIT_SECONDS,
     until: str = "video",
     persona_id: str | None = None,
 ) -> None:
@@ -110,13 +106,9 @@ async def run_pipeline(
             # the first clip alone: if it is bad, the run stops before the rest are paid for
             report("Making the first clip alone to check it before the rest")
             await service.generate_clips(product_id, media_root, 0)
-            await _wait_for_clips(
-                service, product_id, media_root, 1, poll_seconds, report, busy_wait_seconds
-            )
+            await _wait_for_clips(service, product_id, media_root, 1, poll_seconds)
         await service.generate_clips(product_id, media_root)
-    await _wait_for_clips(
-        service, product_id, media_root, shot_count, poll_seconds, report, busy_wait_seconds
-    )
+    await _wait_for_clips(service, product_id, media_root, shot_count, poll_seconds)
 
     report("Synthesizing voiceover")
     await service.create_voiceover(product_id, media_root, voice)
@@ -132,35 +124,18 @@ async def _wait_for_clips(
     media_root: Path,
     shot_count: int,
     poll_seconds: float,
-    report: Callable[[str], None],
-    busy_wait_seconds: float,
 ) -> None:
     waited = 0.0
-    busy_retries: dict[int, int] = {}
     while True:
         # each call also collects the video jobs that have finished
         clips = await service.clips(product_id, media_root)
         failed = [clip for clip in clips if clip["status"] == "failed"]
-        broken = [clip for clip in failed if not is_busy_error(clip["error"])]
-        if broken:
-            shots = ", ".join(str(clip["shot_index"] + 1) for clip in broken)
+        if failed:
+            shots = ", ".join(str(clip["shot_index"] + 1) for clip in failed)
             raise PipelineStopped(
-                f"The clip of shot {shots} failed: {broken[0]['error'] or 'video job failed'}. "
+                f"The clip of shot {shots} failed: {failed[0]['error'] or 'video job failed'}. "
                 "Make it again from the clips list on the Finish step"
             )
-        busy = [clip["shot_index"] for clip in failed]
-        if busy:
-            if any(busy_retries.get(index, 0) >= CLIP_BUSY_RETRIES for index in busy):
-                raise PipelineStopped(
-                    "The video service stayed overloaded and refused the clips "
-                    "(no credit was used). Try again later"
-                )
-            report("Video service is busy, trying again shortly")
-            await asyncio.sleep(busy_wait_seconds)
-            for index in busy:  # one at a time: a burst is what gets refused
-                busy_retries[index] = busy_retries.get(index, 0) + 1
-                await service.generate_clips(product_id, media_root, index)
-            continue
         if sum(clip["status"] == "ready" for clip in clips) >= shot_count:
             flagged = [clip for clip in clips if clip["qa_problem"]]
             if flagged:

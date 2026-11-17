@@ -225,13 +225,10 @@ async def test_the_writer_asks_again_when_a_call_stalls_and_gives_up_after_three
     briefing._CALL_SECONDS = 0.05
     try:
         async with httpx.AsyncClient(transport=httpx.MockTransport(_photo_server)) as http:
-            slow = _Stalls(stalls=2)
-            brief = await ContentBriefWriter(slow, retry_delay=0).write(product, "", http)
-            assert slow.calls == 3 and brief["title"] == "T"
             hung = _Stalls(stalls=99)
             with pytest.raises(BriefGenerationError):
-                await ContentBriefWriter(hung, retry_delay=0).write(product, "", http)
-            assert hung.calls == 3
+                await ContentBriefWriter(hung).write(product, "", http)
+            assert hung.calls == 1  # a silent call is an error, it is not asked again
     finally:
         briefing._CALL_SECONDS = original
 

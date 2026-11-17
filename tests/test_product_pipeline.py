@@ -86,7 +86,6 @@ async def _run(service: _FakeService, steps: list[str] | None = None) -> None:
         voice="hamy.mp3",
         report=(steps if steps is not None else []).append,
         poll_seconds=0,
-        busy_wait_seconds=0,
     )
 
 
@@ -164,32 +163,14 @@ async def test_failed_or_flagged_clips_stop_the_run_before_the_voice() -> None:
     assert not any(call.startswith("voiceover") for call in flagged.calls)
 
 
-_BUSY = "Hệ thống đang xử lý lượng lớn yêu cầu cùng lúc. Vui lòng thử lại"
-
-
-async def test_clips_refused_as_busy_are_sent_again_one_at_a_time_until_they_work() -> None:
+async def test_a_clip_the_video_service_refused_stops_the_run_with_its_message() -> None:
     service = _ready_to_film(_FakeService(shots=3))
     service.clip_states = [
-        [],  # the first look, before any clip is started
-        [_clip(0, "ready")],  # the first clip, made alone
-        [_clip(0, "ready"), _clip(1, "failed", error=_BUSY), _clip(2, "failed", error=_BUSY)],
-        [_clip(0, "ready"), _clip(1, "processing"), _clip(2, "failed", error=_BUSY)],
-        [_clip(i, "ready") for i in range(3)],
+        [_clip(0, "ready"), _clip(1, "failed", error="HTTP 503: overloaded"), _clip(2, "ready")],
     ]
-    steps: list[str] = []
-    await _run(service, steps)
-    assert service.restarted == [0, 1, 2, 2]
-    assert "Video service is busy, trying again shortly" in steps
-    assert service.calls[-3:] == ["voiceover:hamy.mp3", "build_video", "post_package"]
-
-
-async def test_clips_that_stay_busy_stop_the_run_instead_of_retrying_forever() -> None:
-    service = _ready_to_film(_FakeService())
-    service.clip_states = [[_clip(0, "ready"), _clip(1, "failed", error=_BUSY)]]
-    with pytest.raises(PipelineStopped, match="stayed overloaded"):
+    with pytest.raises(PipelineStopped, match="shot 2 failed: HTTP 503: overloaded"):
         await _run(service)
-    assert len(service.restarted) == 15
-    assert not any(call.startswith("voiceover") for call in service.calls)
+    assert service.restarted == [] and not any(c.startswith("voiceover") for c in service.calls)
 
 
 async def _run_until(service: _FakeService, until: str) -> None:

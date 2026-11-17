@@ -2,13 +2,10 @@
 
 from __future__ import annotations
 
-import asyncio
 import base64
 from typing import Protocol
 
 from baml_py import Image as BamlImage
-from baml_py.baml_py import BamlError
-from loguru import logger
 
 from ai_content.domains.marketing.products.adapters.baml_client import types as baml_types
 from ai_content.domains.marketing.products.adapters.baml_client.async_client import b
@@ -26,8 +23,6 @@ class _BamlCheckClient(Protocol):
         previous_keyframe: BamlImage | None,
     ) -> baml_types.KeyframeCheck: ...
 
-_TRIES = 3
-_RETRY_DELAY = 3.0
 
 
 class QAProblem(str):
@@ -55,11 +50,8 @@ def _image(content: bytes) -> BamlImage:
 class KeyframeChecker:
     """Ask the BAML screening model whether a keyframe matches the product photos."""
 
-    def __init__(
-        self, client: _BamlCheckClient, retry_delay: float = _RETRY_DELAY
-    ) -> None:
+    def __init__(self, client: _BamlCheckClient) -> None:
         self._client = client
-        self._retry_delay = retry_delay
 
     @classmethod
     def from_settings(cls, *, base_url: str, api_key: str, model: str) -> KeyframeChecker:
@@ -82,23 +74,15 @@ class KeyframeChecker:
         persona: list[bytes] | None = None,
         previous: bytes | None = None,
     ) -> str | None:
-        """Return "" when the keyframe passes, the problem text when it fails, None if unchecked."""
-        for attempt in range(_TRIES):
-            try:
-                result = await self._client.CheckKeyframe(
-                    shot_description,
-                    [_image(photo) for photo in product_photos],
-                    _image(master) if master else None,
-                    _image(keyframe),
-                    [_image(photo) for photo in persona or []],
-                    _image(previous) if previous else None,
-                )
-            except BamlError as error:
-                logger.warning("Keyframe check attempt {} failed: {}", attempt + 1, str(error)[:300])
-                if attempt < _TRIES - 1:
-                    await asyncio.sleep(self._retry_delay)
-                continue
-            if result.passed:
-                return ""
-            return QAProblem(result.problem.strip() or "The keyframe does not match.", result.category)
-        return None
+        """Return "" when the keyframe passes or the problem text when it fails; a model error raises."""
+        result = await self._client.CheckKeyframe(
+            shot_description,
+            [_image(photo) for photo in product_photos],
+            _image(master) if master else None,
+            _image(keyframe),
+            [_image(photo) for photo in persona or []],
+            _image(previous) if previous else None,
+        )
+        if result.passed:
+            return ""
+        return QAProblem(result.problem.strip() or "The keyframe does not match.", result.category)

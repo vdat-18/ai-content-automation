@@ -19,6 +19,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import quote_plus, urlsplit
 
+from baml_py.baml_py import BamlError
 from loguru import logger
 from openpyxl import Workbook
 from openpyxl.styles import Font
@@ -1371,22 +1372,34 @@ class ProductCatalogService:
         if previous_done is not None:
             await previous_done.wait()  # the cut check needs the shot before this one
         before = await self._keyframe_before(product_id, index, media_root)
-        problem = (
-            await self._check_keyframe(shot, check_photos or photos, image, master, persona, before)
-            or ""
-        )
         relative = f"keyframes/{product_id}/shot_{index}.jpg"
         await self.media(media_root).write(relative, image)
-        await self._repository.save_keyframe(
-            {
-                **record,
-                "attempts": attempts,
-                "status": "ready",
-                "image_path": relative,
-                "error": None,
-                "qa_problem": str(problem),
-            }
-        )
+        made = {
+            **record,
+            "attempts": attempts,
+            "status": "ready",
+            "image_path": relative,
+            "error": None,
+        }
+        # The paid image is kept first; the check only advises and may fail on its own.
+        await self._repository.save_keyframe({**made, "qa_problem": NOT_CHECKED})
+        try:
+            problem = (
+                await self._check_keyframe(
+                    shot, check_photos or photos, image, master, persona, before
+                )
+                or ""
+            )
+        except (BamlError, TimeoutError) as error:
+            await self._log(
+                product_id,
+                "keyframe",
+                "error",
+                f"The image is saved but the check failed: {error}"[:400],
+                index,
+            )
+            return
+        await self._repository.save_keyframe({**made, "qa_problem": str(problem)})
         await self._log(
             product_id,
             "keyframe",
@@ -1446,13 +1459,10 @@ class ProductCatalogService:
             description = f"{description}\n\nApproved rules:\n{shot['qa_rules']}"
         if shot.get("retouch") is False:
             description = f"{description}\n\n{KEEP_SKIN_NOTE}"
-        try:
-            problem = await asyncio.wait_for(
-                self._checker.check(description, photos, image, master, persona, before),
-                CHECK_SECONDS,
-            )
-        except TimeoutError:
-            problem = None
+        problem = await asyncio.wait_for(
+            self._checker.check(description, photos, image, master, persona, before),
+            CHECK_SECONDS,
+        )
         return NOT_CHECKED if problem is None else problem
 
     async def recheck_keyframe(
@@ -1591,7 +1601,17 @@ class ProductCatalogService:
                 content = await self._videographer.download(state.video_url)
                 relative = f"clips/{clip['product_id']}/shot_{clip['shot_index']}.mp4"
                 await self.media(media_root).write(relative, content)
-                problem = await self._check_clip(clip, relative, media_root)
+                try:
+                    problem = await self._check_clip(clip, relative, media_root)
+                except (BamlError, TimeoutError) as error:
+                    await self._log(
+                        clip["product_id"],
+                        "clip",
+                        "error",
+                        f"The clip is saved but the check failed: {error}"[:400],
+                        clip["shot_index"],
+                    )
+                    problem = NOT_CHECKED
                 face = getattr(problem, "category", "") == "face"
                 if problem and problem != NOT_CHECKED and not face and self._knowledge is not None:
                     await propose_feedback(

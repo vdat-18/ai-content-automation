@@ -55,7 +55,6 @@ def _client(handler) -> SpeechClient:
         model="bh2/tts-1",
         voice="kimoanh.mp3",
         http=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
-        retry_delay=0,
     )
 
 
@@ -72,22 +71,18 @@ async def test_speech_client_sends_the_voice_and_returns_the_audio() -> None:
     assert seen[0].url.path.endswith("/audio/speech")
 
 
-async def test_speech_client_retries_overload_and_rejects_other_errors() -> None:
+async def test_speech_client_returns_every_error_without_asking_again() -> None:
     attempts = []
 
-    def flaky(request: httpx.Request) -> httpx.Response:
+    def busy(request: httpx.Request) -> httpx.Response:
         attempts.append(1)
-        return (
-            httpx.Response(503, text="busy")
-            if len(attempts) < 3
-            else httpx.Response(200, content=b"ok")
-        )
+        return httpx.Response(503, text="busy")
 
-    assert await _client(flaky).speak("a") == b"ok"
+    with pytest.raises(SpeechError, match="HTTP 503"):
+        await _client(busy).speak("a")
+    assert len(attempts) == 1
     with pytest.raises(SpeechError, match="HTTP 403"):
         await _client(lambda request: httpx.Response(403, text="subscribe")).speak("a")
-    with pytest.raises(SpeechError, match="HTTP 503"):
-        await _client(lambda request: httpx.Response(503, text="busy")).speak("a")
     json_error = _client(lambda request: httpx.Response(200, content=b'{"error":"x"}'))
     with pytest.raises(SpeechError):
         await json_error.speak("a")

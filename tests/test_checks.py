@@ -31,19 +31,19 @@ class _Flaky:
 
 
 async def _keyframe(client: _Flaky) -> str | None:
-    return await KeyframeChecker(client, retry_delay=0).check("d", [PHOTO], PHOTO)  # type: ignore[arg-type]
+    return await KeyframeChecker(client).check("d", [PHOTO], PHOTO)  # type: ignore[arg-type]
 
 
 async def _clip(client: _Flaky) -> str | None:
-    return await ClipChecker(client, retry_delay=0).check("d", [PHOTO], PHOTO, [PHOTO])  # type: ignore[arg-type]
+    return await ClipChecker(client).check("d", [PHOTO], PHOTO, [PHOTO])  # type: ignore[arg-type]
 
 
 @pytest.mark.parametrize("check", [_keyframe, _clip])
-async def test_a_check_is_tried_again_before_it_gives_up(check) -> None:
-    recovering = _Flaky(failures=2)
-    assert await check(recovering) == "" and recovering.calls == 3
+async def test_a_check_that_fails_raises_its_error_and_is_asked_only_once(check) -> None:
     down = _Flaky(failures=9)
-    assert await check(down) is None and down.calls == 3
+    with pytest.raises(BamlError):
+        await check(down)
+    assert down.calls == 1
 
 
 @pytest.mark.parametrize("check", [_keyframe, _clip])
