@@ -137,6 +137,8 @@ function DraftContentBrief(
     {{ photo }}
     {% endfor %}
 
+    Write exactly {{ shot_count }} shot(s) in shots, no more and no fewer.
+
     {{ ctx.output_format }}
   "#
 }

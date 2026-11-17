@@ -154,6 +154,7 @@ class _FakeBamlClient:
             model_dump=lambda: {
                 "title": "T",
                 "product_photo_numbers": list(self.numbers),
+                "shots": [{}] * shot_count,
             }
         )
 
@@ -199,6 +200,18 @@ async def test_writer_uses_the_photos_it_showed_when_the_model_picks_none() -> N
     async with httpx.AsyncClient(transport=httpx.MockTransport(_photo_server)) as http:
         brief = await ContentBriefWriter(_FakeBamlClient(numbers=[])).write(product, "", http)
     assert brief["product_photo_urls"] == [f"https://x/p{i}.jpg" for i in range(1, 4)]
+
+
+async def test_a_brief_with_the_wrong_number_of_shots_is_an_error() -> None:
+    class _TooMany(_FakeBamlClient):
+        async def DraftContentBrief(self, product_json, user_idea, shot_count, *rest):
+            return await super().DraftContentBrief(product_json, user_idea, shot_count + 1, *rest)
+
+    async with httpx.AsyncClient(transport=httpx.MockTransport(_photo_server)) as http:
+        with pytest.raises(BriefGenerationError, match="3 shot\\(s\\) instead of 2"):
+            await ContentBriefWriter(_TooMany()).write(
+                {"images": ["https://x/p1.jpg"]}, "", http, shot_count=2
+            )
 
 
 async def test_the_pictures_the_brief_reads_are_shrunk() -> None:
@@ -249,7 +262,9 @@ async def test_the_writer_asks_again_when_a_call_stalls_and_gives_up_after_three
             self.calls += 1
             if self.calls <= self.stalls:
                 await asyncio.sleep(10)
-            return SimpleNamespace(model_dump=lambda: {"title": "T", "product_photo_numbers": [1]})
+            return SimpleNamespace(
+                model_dump=lambda: {"title": "T", "product_photo_numbers": [1], "shots": [{}]}
+            )
 
     product = {"images": ["https://x/ok.jpg"]}
     original = briefing._CALL_SECONDS

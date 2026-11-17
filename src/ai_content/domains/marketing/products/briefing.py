@@ -189,6 +189,10 @@ class ContentBriefWriter:
         except (BamlError, TimeoutError) as error:
             raise BriefGenerationError(str(error) or "The model did not answer in time") from error
         brief = draft.model_dump()
+        if len(brief["shots"]) != shot_count:  # every shot is a 15 second clip: the length is the user's
+            raise BriefGenerationError(
+                f"The model wrote {len(brief['shots'])} shot(s) instead of {shot_count}"
+            )
         numbers = dict.fromkeys(brief.pop("product_photo_numbers"))
         chosen = [photos[number - 1][0] for number in numbers if 1 <= number <= len(photos)]
         brief["product_photo_urls"] = chosen or [url for url, _ in photos]
