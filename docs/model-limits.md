@@ -13,7 +13,7 @@ Measured on the `/images/edits` endpoint with numbered test cards.
 | Input images per request | Every size of list returns HTTP 200 (tried 1, 5, 11, 16, 17, 30, 40), but only the **first 10 images** are used. Asking for "the last input card" returned card 5 with 5 inputs and card 10 with 11, 16, 30 and 40 inputs. Images after the 10th are dropped without an error, so put the most important images first |
 | Output images per request | **1 image**. `n: 3` is rejected: "'n' must be an integer from 1 to 1" |
 | Time | 26 to 85 seconds per request (more input images tend to take longer) |
-| Portrait size | `size: "1024x1792"` or `size: "9:16"` gives **941x1672**, which is exactly 9:16. The size `1024x1536` (what `EDITS_SIZE` in `keyframes.py` sends) gives 1024x1536, which is 2:3 and has to be cropped. With no `size`, or with `aspect_ratio: "9:16"` only, the result is also 1024x1536: `aspect_ratio` has no effect |
+| Portrait size | `size: "1024x1792"` or `size: "9:16"` gives **941x1672**, which is exactly 9:16; `EDITS_SIZE` in `keyframes.py` sends `1024x1792`. The size `1024x1536` gives 1024x1536, which is 2:3 and would have to be cropped (`_to_vertical` still crops any image that is not 9:16). With no `size`, or with `aspect_ratio: "9:16"` only, the result is also 1024x1536: `aspect_ratio` has no effect |
 | Price | Not measured: the response has no cost field. Read it from the ViLao balance |
 
 The table below was measured on the old model `veo/gemini-3.1-flash-image` (2026-11-05 and
@@ -65,7 +65,9 @@ or up to 7 reference images (up to 10 seconds). The product must be correct alre
 ## Writer and review models (`AIC_WRITER_MODEL`, `AIC_REVIEW_MODEL`)
 
 One model per variable, no fallback; an error names the model that failed. Image-count limit not
-measured. Reached through 9Router (`AIC_SCREENING_BASE_URL`). The brief
-currently sends up to 9 product images and still works. Seen: output is cut short when `max_tokens`
-is small, because Gemini spends tokens on thinking; so `max_output_tokens` is set to 12000 for the
-brief and 4000 for the checking steps.
+measured. Reached through an OpenAI-compatible endpoint (`AIC_SCREENING_BASE_URL`); the endpoint
+used so far was 9Router. The brief sends every product photo of the page (up to 9 so far) and still
+works. No `max_tokens` is set (`build_client_registry` leaves it out unless a caller passes
+`max_output_tokens`), and the brief writer sends `reasoning_effort: "none"`, because a reasoning
+model that spends its tokens on thinking cut the output short when a limit was set. The steps that build their client with `reasoning_effort=None`
+(hooks, shortening, voice pick, reference picks, clip check) send none. Measure again when the model or the endpoint changes.

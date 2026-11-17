@@ -1,6 +1,6 @@
 [Unit]
 Description=AI Content verified PostgreSQL and object-storage backup
-Documentation=file:///opt/ai-content-automation/docs/BACKUP_RESTORE.md
+Documentation=file:///opt/ai-content-automation/README.md
 Requires=docker.service
 After=docker.service network-online.target
 Wants=network-online.target

@@ -2,7 +2,9 @@
 
 Status: implemented (see the README). This file is kept as the original design; some details have
 changed since: the video follows a person from the user's photos, there is a voice-over, keyframes are
-cropped to 9:16, and the script is reviewed before any image is made. Goal: a short video ad stitched
+cropped to 9:16, there is no separate script review (the brief writer checks its own work), every
+shot gets its own reference photo (section 4 below no longer applies: no two shots share one while
+the pool allows) and a video has 1 to 7 shots, each filmed for 15 seconds. Goal: a short video ad stitched
 from several clips where **the product and the setting look the same in every clip** and match the
 real product.
 

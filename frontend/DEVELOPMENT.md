@@ -7,7 +7,7 @@ anything, send messages, or fall back to browser mock data.
 
 - `/` (home): videos in progress and finished
 - `/products`: collected products; pick one to make a video
-- `/studio/:productId`: the steps of one video (Idea, Script, Images, Finish)
+- `/studio/:productId`: the steps of one video (Idea, Images, Finish)
 - `/videos`: every video, finished or in progress
 - `/memory`: rules the AI follows and reference scenes
 - `/notifications`: runs that ended or need a look
@@ -27,7 +27,7 @@ pnpm --dir frontend build
 ```
 
 Open `http://localhost:4174/dashboard/` (keep the trailing slash). Vite proxies
-`/api`, `/health`, and `/artifacts` to FastAPI. If the backend is unavailable,
+`/api`, `/health`, and `/artifacts` to FastAPI (the API has no `/artifacts` route any more). If the backend is unavailable,
 active operational surfaces show the API error rather than synthetic records.
 
 ## Docker Development
@@ -45,8 +45,8 @@ docker compose --env-file deploy/.env -f deploy/compose.yaml -f deploy/compose.d
 
 ## Tests
 
-The Node suites check the routing, the HTTP boundary and the research and
-Memory (rules) pages:
+The Node suites check the routing, the HTTP boundary, the English-only interface,
+the human approval of AI-proposed rules and the image review before the video is paid for:
 
 ```powershell
 pnpm --dir frontend test
@@ -59,6 +59,5 @@ pnpm --dir frontend test
 - Browser-local mock workflow modules and their legacy-only tests were removed;
   active pages use persisted backend state only.
 
-Use the VI/EN selector to localize interface copy, status labels, dates, and
-numbers. Source evidence, briefs, feedback, and generated marketing content keep
-their original language.
+The interface is English only and has no translation layer. Briefs, feedback and
+generated marketing content keep the language they were written in (Vietnamese).

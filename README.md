@@ -3,8 +3,8 @@
 # AI Content Automation
 
 Turns one TikTok Shop product into a finished Vietnamese affiliate video ad: script, scene images,
-video clips, natural voice-over, stitched 9:16 video, captions and hashtags. The user only reads and
-approves at two gates: the **script** and the **images**.
+video clips, natural voice-over, stitched 9:16 video, captions and hashtags. The user reads the
+**script** and approves every **image** before any video is paid for.
 
 > Built for the Vietnamese market. Prompts, the banned-word list, captions and voices are Vietnamese
 > on purpose. Code, configuration and the dashboard are English.
@@ -22,10 +22,13 @@ flowchart LR
    are sent to `POST /api/v1/products/ingest`.
 2. **Idea → Script**: each video follows **one person** from a library (photo uploaded once, reused for
    every product). The generated face matches that photo; clothes and setting change per scene. An LLM
-   writes the brief. The script is checked for TikTok Shop banned words and for numbers and claims that
-   are not in the product data (including numbers spelled out). The pipeline pauses for you to read it.
+   writes the brief. The approved rules in `config/creative_knowledge/product_ad.json` tell it to avoid
+   TikTok Shop banned words and to use only numbers and claims from the product data. No code checks
+   the text afterwards, so read it: each line of the script is shown on its image card in the Images
+   step, and the API can stop after the script (`until=script`) or edit it (`PUT .../brief`).
 3. **Images**: the master image first, then the other scenes. Every image is checked against the real
-   product photo and the model photo. A flagged master stops the pipeline.
+   product photo and the model photo. The pipeline always stops after the master image until you
+   approve it; an image the check flags is marked, and one it could not check shows "Not checked".
 4. **Finish**: image → video clips, voice-over, 9:16 stitching with stickers, captions timed to the
    speech, and hashtags. Failed or flagged clips are listed under "Scenes that need a look".
 
@@ -58,11 +61,16 @@ You supply the model endpoints and keys; nothing is bundled.
 
 | Setting | Used for |
 |---|---|
-| `AIC_SCREENING_*` | LLM that writes the brief, checks images and clips, reviews the script (OpenAI-compatible) |
+| `AIC_SCREENING_BASE_URL`, `AIC_SCREENING_API_KEY` | OpenAI-compatible endpoint for every LLM step; with no key all LLM steps are off |
+| `AIC_WRITER_MODEL` | Model that writes the brief, hooks, captions, shortened lines and rules (required) |
+| `AIC_REVIEW_MODEL` | Model that checks images, keyframes and clips, and picks references and the voice (required) |
 | `AIC_IMAGE_*`, `AIC_IMAGE_API` | Image model (`chat` or `edits`) |
 | `AIC_VIDEO_*` | Image → video model; `AIC_VIDEO_FRAME_FIELDS` picks the first-frame field |
 | `AIC_TTS_*` | Voice-over |
 | `AIC_TEXT_EMBEDDING_MODEL` | Matches reference images to scenes (empty = off) |
+| `AIC_EMBEDDING_MODEL` | Local image model that drops duplicate references (`dinov3-vits16`, `dinov2-small`; empty = off, and then no reference image is stored) |
+| `AIC_TTS_SPEED`, `AIC_CLIP_SPEED`, `AIC_DUPLICATE_SIMILARITY` | Voice-over pace (default 1.1), clip playback speed (1.1), duplicate threshold (0.80) |
+| `AIC_BGM_PATH`, `AIC_CAPTION_FONT` | Optional background music file and caption font (defaults: `config/default_bgm.wav`, DejaVu Sans) |
 | `AIC_AI_DATABASE_URL` | PostgreSQL URL (`postgresql+psycopg://...`); the only supported database |
 
 Video models are usually billed per request, so each clip costs real money. See
@@ -70,6 +78,14 @@ Video models are usually billed per request, so each clip costs real money. See
 
 Default ad rules live in `config/creative_knowledge/product_ad.json` and load at startup. If you edit
 the file, change its `bootstrap_id`; a test reminds you.
+
+## Backup and restore
+
+`just backup` (or `just backup-server` on a Linux host) stops the API and dashboard for a moment, writes
+a verified set of the PostgreSQL dump and every object of the bucket to `.backups/<id>`, and copies it
+off-site when `AIC_BACKUP_OFFSITE_ENABLED` is on. `just deploy-safe` makes a backup first, then pulls,
+rebuilds and runs the smoke test. `deploy/scripts/restore-drill.sh <backup set>` restores a set into a
+throwaway stack to prove it works. `deploy/systemd/` has a daily timer for a server.
 
 ## Responsible use
 
@@ -88,7 +104,9 @@ just test            # or: just test tests/test_stickers.py
 just lint
 ```
 
-Or directly on your machine (tests that need ffmpeg are skipped if it is missing):
+Or directly on your machine. The tests need an empty throwaway PostgreSQL database in
+`AIC_AI_DATABASE_URL` (every test empties it) and ffmpeg (tests that need it are skipped if it is
+missing); do not run two test sessions against the same database:
 
 ```bash
 uv run ruff check .

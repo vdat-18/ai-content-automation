@@ -18,7 +18,7 @@ class ApplicationSettings(BaseSettings):
     data_root: Path = Field(Path(".creative-pilot"), validation_alias="AIC_AI_DATA_ROOT")
     config_dir: Path = Field(Path("config"), validation_alias="AIC_AI_CONFIG_DIR")
 
-    # --- Reference keyword drafting and image review (BAML, OpenAI-compatible endpoint) ---
+    # --- Every LLM step (BAML, OpenAI-compatible endpoint) ---
     screening_base_url: str = Field(
         "http://127.0.0.1:1234/v1", validation_alias="AIC_SCREENING_BASE_URL"
     )
