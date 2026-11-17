@@ -6,8 +6,8 @@ class LabeledReference {
 class StoryboardShot {
   role "hook" | "problem" | "demo" | "benefit" | "call_to_action"
   description string @description("Vietnamese: what the viewer sees, one or two sentences")
-  keyframe_prompt string @description("A complete, self-contained English prompt for the image model, about 120 to 150 words, with no repeated wording or filler")
-  motion_prompt string @description("English, about 50 to 70 words, only motion: the keyframe already shows how everything looks")
+  keyframe_prompt string @description("A complete, self-contained English prompt for the image model, about 150 to 170 words, with no repeated wording or filler")
+  motion_prompt string @description("English, about 70 to 90 words (four or five timed beats), only motion: the keyframe already shows how everything looks")
   delivery "narrated" | "talking"
   on_screen_text string @description("A short Vietnamese caption, or an empty string")
   voiceover string @description("Vietnamese, as long as the rules for a narrated or a talking shot say")
