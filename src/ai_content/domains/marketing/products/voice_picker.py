@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import base64
 import json
 from dataclasses import dataclass
 from pathlib import Path
@@ -15,6 +14,7 @@ from loguru import logger
 from ai_content.domains.marketing.products.adapters.baml_client import types as baml_types
 from ai_content.domains.marketing.products.adapters.baml_client.async_client import b
 from ai_content.domains.marketing.products.adapters.baml_registry import build_client_registry
+from ai_content.domains.marketing.products.keyframe_check import _image
 
 CATALOG = Path("config/voices.json")  # relative to the working directory, like config/creative_knowledge
 
@@ -33,11 +33,6 @@ class _BamlVoiceClient(Protocol):
 
 def load_catalog() -> list[dict[str, Any]]:
     return json.loads(CATALOG.read_text(encoding="utf-8"))
-
-
-def _image(content: bytes) -> BamlImage:
-    media_type = "image/png" if content[:4] == b"\x89PNG" else "image/jpeg"
-    return BamlImage.from_base64(media_type, base64.b64encode(content).decode("ascii"))
 
 
 def settle(gender: str, voice: str, reason: str, catalog: list[dict[str, Any]]) -> VoiceChoice:

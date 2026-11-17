@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import base64
 from typing import Protocol
 
 from baml_py import Image as BamlImage
@@ -10,7 +9,7 @@ from baml_py import Image as BamlImage
 from ai_content.domains.marketing.products.adapters.baml_client import types as baml_types
 from ai_content.domains.marketing.products.adapters.baml_client.async_client import b
 from ai_content.domains.marketing.products.adapters.baml_registry import build_client_registry
-from ai_content.domains.marketing.products.keyframe_check import QAProblem
+from ai_content.domains.marketing.products.keyframe_check import QAProblem, _image
 
 
 class _BamlClipClient(Protocol):
@@ -23,11 +22,6 @@ class _BamlClipClient(Protocol):
         clip_frames: list[BamlImage],
     ) -> baml_types.ClipCheck: ...
 
-
-
-def _image(content: bytes) -> BamlImage:
-    media_type = "image/png" if content[:4] == b"\x89PNG" else "image/jpeg"
-    return BamlImage.from_base64(media_type, base64.b64encode(content).decode("ascii"))
 
 
 class ClipChecker:

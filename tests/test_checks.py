@@ -77,3 +77,24 @@ def test_a_webp_picture_is_sent_as_a_real_jpeg() -> None:
     data, media_type = _image(buffer.getvalue()).as_base64()
     assert media_type == "image/jpeg"
     assert Image.open(io.BytesIO(base64.b64decode(data))).format == "JPEG"
+
+
+async def test_the_clip_check_sends_a_webp_product_photo_as_jpeg() -> None:
+    import base64
+    import io
+
+    from PIL import Image
+
+    seen = []
+
+    class _Client:
+        async def CheckClip(self, description, photos, keyframe, characters, frames):
+            seen.extend(photos)
+            return SimpleNamespace(passed=True, problem="", category="other")
+
+    buffer = io.BytesIO()
+    Image.new("RGB", (8, 8), "red").save(buffer, "WEBP")
+    assert await ClipChecker(_Client()).check("shot", [buffer.getvalue()], b"key", [b"frame"]) == ""
+    data, media_type = seen[0].as_base64()
+    assert media_type == "image/jpeg"
+    assert Image.open(io.BytesIO(base64.b64decode(data))).format == "JPEG"
