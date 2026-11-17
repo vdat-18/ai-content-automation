@@ -68,9 +68,8 @@ async def test_brief_needs_a_selection_and_the_references_are_chosen_apart(tmp_p
         await service.match_references(PRODUCT_ID)
 
     await _make_reference_live(service)
-    matched = await service.match_references(PRODUCT_ID)
-    assert matched is not None
-    assert matched["brief"]["selected_reference_ids"] == []  # no embedding model is set up
+    with pytest.raises(BriefUnavailable, match="No text embedding model"):
+        await service.match_references(PRODUCT_ID)
 
 
 async def test_every_product_draws_from_the_same_references(tmp_path) -> None:
@@ -86,7 +85,6 @@ async def test_every_product_draws_from_the_same_references(tmp_path) -> None:
         [image] = await service.reference_images("pending", product_type)
         await service.set_image_status(image["image_id"], "live")
     # none of the references was crawled for this product's own type
-    assert await service.match_references(PRODUCT_ID) is not None
     assert len(await service._scene_pool()) == 2
 
 
@@ -388,15 +386,16 @@ async def test_shots_get_different_references_while_the_pool_has_enough(tmp_path
     assert third is not None  # only two exist, so the last shot repeats one of them
 
 
-async def test_shots_have_no_reference_without_an_embedding_model(tmp_path, monkeypatch) -> None:
+async def test_matching_stops_without_an_embedding_model(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("AIC_CLIP_SPEED", "1.25")  # 30 seconds is 3 shots
     service = await _service(tmp_path, _TwoShots())
     await service._repository.select_product(PRODUCT_ID, "áo thun")
     await _two_described_references(service)
     await service.create_brief(PRODUCT_ID, video_seconds=30, person_photos=[b"face"])
-    record = await service.match_references(PRODUCT_ID)
+    with pytest.raises(BriefUnavailable, match="No text embedding model"):
+        await service.match_references(PRODUCT_ID)
+    record = await service.get_brief(PRODUCT_ID)
     assert record["brief"]["shot_references"] == [None, None, None]
-    assert record["brief"]["selected_reference_ids"] == []
 
 
 async def test_text_embedder_sends_batches_and_orders_the_vectors() -> None:
@@ -541,10 +540,8 @@ async def test_the_run_log_says_when_no_reference_has_been_described(tmp_path) -
     await service._repository.select_product(PRODUCT_ID, "áo thun")
     await _make_reference_live(service)  # live, but the review left no description on it
     await service.create_brief(PRODUCT_ID, video_seconds=30, person_photos=[b"face"])
-    record = await service.match_references(PRODUCT_ID)
-    assert set(record["brief"]["shot_references"]) == {None}
-    last = [e for e in await service.events(PRODUCT_ID) if e["step"] == "references"][-1]
-    assert last["status"] == "warning" and "has a description yet" in last["message"]
+    with pytest.raises(BriefUnavailable, match="has a description yet"):
+        await service.match_references(PRODUCT_ID)
 
 
 class _DownPicker:
@@ -561,7 +558,5 @@ async def test_a_picker_that_cannot_be_reached_is_reported_not_counted_as_no_mat
     await service._repository.select_product(PRODUCT_ID, "áo thun")
     await _two_described_references(service)
     await service.create_brief(PRODUCT_ID, video_seconds=30, person_photos=[b"face"])
-    record = await service.match_references(PRODUCT_ID)
-    assert record["brief"]["shot_references"] == [None, None, None]
-    [event] = [e for e in await service.events(PRODUCT_ID) if e["step"] == "references"]
-    assert event["status"] == "error" and "connection refused" in event["message"]
+    with pytest.raises(BriefUnavailable, match="shot 1.*connection refused"):
+        await service.match_references(PRODUCT_ID)

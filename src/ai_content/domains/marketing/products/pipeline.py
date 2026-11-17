@@ -59,6 +59,10 @@ async def run_pipeline(
         record = await service.create_brief(product_id, idea, video_seconds, photos, persona_id)
         if record is None:
             raise PipelineStopped("Product not captured")
+    chosen = record["brief"].get("shot_references") or []
+    if until != "video" and (
+        len(chosen) < len(record["brief"].get("shots") or []) or not all(chosen)
+    ):
         report("Choosing reference photos")
         record = await service.match_references(product_id) or record
     if until == "script":

@@ -24,10 +24,12 @@ class _FakeService:
         self.made_keyframes = [_keyframe(i, "ready") for i in range(shots)]
         self.clip_states: list[list[dict]] = [[_clip(i, "ready") for i in range(shots)]]
         self.has_brief = False
+        self.matched = True  # a new script has no references until they are matched
         self.restarted: list[int] = []
 
     def _record(self) -> dict:
-        brief = {"shots": [{}] * self.shots}
+        references = ["ref" if self.matched else None] * self.shots
+        brief = {"shots": [{}] * self.shots, "shot_references": references}
         return {"product_id": PRODUCT_ID, "status": self.brief_status, "brief": brief}
 
     async def get_brief(self, product_id):
@@ -39,10 +41,12 @@ class _FakeService:
     async def create_brief(self, product_id, idea, video_seconds, person_photos, persona_id):
         self.calls.append(f"create_brief:{video_seconds}:{len(person_photos)}")
         self.has_brief = True
+        self.matched = False
         return self._record()
 
     async def match_references(self, product_id):
         self.calls.append("match_references")
+        self.matched = True
         return self._record()
 
     async def list_keyframes(self, product_id):
@@ -192,6 +196,14 @@ async def test_a_run_until_the_script_writes_it_and_chooses_the_references_only(
     await _run_until(service, "script")
     assert service.calls == ["create_brief:30:1", "match_references"]
     assert service.brief_status == "draft"  # a person approves the script
+
+
+async def test_a_script_left_without_references_gets_them_on_the_next_run() -> None:
+    service = _FakeService()
+    service.has_brief = True
+    service.matched = False  # the run that wrote this script stopped before matching
+    await _run_until(service, "images")
+    assert service.calls[:2] == ["match_references", "generate_keyframes:0"]
 
 
 async def test_a_fresh_run_until_images_makes_the_first_image_and_stops_for_a_person() -> None:

@@ -886,48 +886,36 @@ class ProductCatalogService:
         product: dict[str, Any],
         brief: dict[str, Any],
         live: list[dict[str, Any]],
-    ) -> list[str | None]:
-        """For every shot, the image id of the reference that fits it best, or None.
+    ) -> list[str]:
+        """For every shot, the image id of the reference that fits it best.
 
         The text of the shot is matched to the written descriptions of the references by
         embedding, and references that look like the product photos rank higher; a model then
-        looks at the closest few pictures and must keep one.
+        looks at the closest few pictures and must keep one. When a shot cannot get one, the
+        run stops with BriefUnavailable and says why.
         """
         shots = brief.get("shots") or []
-        none: list[str | None] = [None] * len(shots)
         if self._text_embedder is None or self._reference_picker is None:
-            await self._log(
-                product_id,
-                "references",
-                "warning",
-                "No text embedding model: shots have no reference",
-            )
-            return none
+            raise BriefUnavailable("No text embedding model is set up, so no reference can be chosen")
         try:
             vectors = await self._reference_vectors(live)
             queries = await self._text_embedder.embed(
                 [f"{shot.get('role', '')}. {shot.get('keyframe_prompt', '')}" for shot in shots]
             )
         except TextEmbeddingError as error:
-            await self._log(product_id, "references", "error", str(error))
-            return none
+            raise BriefUnavailable(f"The reference descriptions could not be embedded: {error}") from error
         pool = [image for image in live if image["image_id"] in vectors]
         if not pool:
-            # A picture only counts once the review has described it, so say why nothing matched
-            await self._log(
-                product_id,
-                "references",
-                "warning",
+            # A picture only counts once the review has described it
+            raise BriefUnavailable(
                 f"None of the {len(live)} live reference(s) has a description yet: "
-                "shots have no reference",
+                "review the references first"
             )
-            return none
         looks = await self._product_look(product, brief, {i["image_id"] for i in pool})
         picker = self._reference_picker
-        failures: list[str] = []
         seen: set[str] = set()
-        result: list[str | None] = []
-        for shot, query in zip(shots, queries, strict=True):
+        result: list[str] = []
+        for number, (shot, query) in enumerate(zip(shots, queries, strict=True), start=1):
             text = _scaled({i["image_id"]: cosine(query, vectors[i["image_id"]]) for i in pool})
             # every shot gets its own picture while the pool has enough of them
             available = [i for i in pool if i["image_id"] not in seen] or pool
@@ -950,26 +938,23 @@ class ProductCatalogService:
                     ],
                 )
             except ReferencePickerError as error:
-                failures.append(str(error))
-                image_id = None
+                raise BriefUnavailable(
+                    f"No reference could be chosen for shot {number}: {error}"
+                ) from error
+            if image_id is None:
+                raise BriefUnavailable(
+                    f"No reference could be chosen for shot {number}: "
+                    "none of the candidate pictures could be downloaded"
+                )
             result.append(image_id)
-            if image_id:
-                seen.add(image_id)
-        matched = f"Matched references to {sum(1 for item in result if item)} of {len(shots)} shot(s)"
-        if failures:
-            await self._log(
-                product_id,
-                "references",
-                "error",
-                f"{matched}; the model could not choose for {len(failures)} shot(s): {failures[0]}",
-            )
-        else:
-            await self._log(
-                product_id,
-                "references",
-                "ok",
-                f"{matched} from {len(pool)} described reference(s)",
-            )
+            seen.add(image_id)
+        await self._log(
+            product_id,
+            "references",
+            "ok",
+            f"Matched references to {len(result)} of {len(shots)} shot(s) "
+            f"from {len(pool)} described reference(s)",
+        )
         return result
 
     async def match_references(self, product_id: str) -> dict[str, Any] | None:
