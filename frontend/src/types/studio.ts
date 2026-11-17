@@ -4,7 +4,6 @@ export type Shot = {
   keyframe_prompt: string;
   motion_prompt: string;
   delivery?: "narrated" | "talking";
-  duration_seconds: number;
   on_screen_text: string;
   voiceover: string;
 };

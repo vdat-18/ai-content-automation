@@ -195,7 +195,7 @@ class ContentBriefAst:
     def __init__(self, tb: type_builder.TypeBuilder):
         _tb = tb._tb # type: ignore (we know how to use this private attribute)
         self._bldr = _tb.class_("ContentBrief")
-        self._properties: typing.Set[str] = set([  "title",  "format",  "script",  "product_photo_numbers",  "scene",  "product_placement",  "product_variant",  "product_size",  "selling_angle",  "target_audience",  "style",  "colors",  "skin_sensitive",  "shots",  ])
+        self._properties: typing.Set[str] = set([  "title",  "script",  "product_photo_numbers",  "scene",  "product_placement",  "product_variant",  "product_size",  "selling_angle",  "target_audience",  "style",  "colors",  "skin_sensitive",  "shots",  ])
         self._props = ContentBriefProperties(self._bldr, self._properties)
 
     def type(self) -> baml_py.FieldType:
@@ -226,10 +226,6 @@ class ContentBriefProperties:
     @property
     def title(self) -> type_builder.ClassPropertyViewer:
         return type_builder.ClassPropertyViewer(self.__bldr.property("title"))
-    
-    @property
-    def format(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("format"))
     
     @property
     def script(self) -> type_builder.ClassPropertyViewer:
@@ -760,7 +756,7 @@ class StoryboardShotAst:
     def __init__(self, tb: type_builder.TypeBuilder):
         _tb = tb._tb # type: ignore (we know how to use this private attribute)
         self._bldr = _tb.class_("StoryboardShot")
-        self._properties: typing.Set[str] = set([  "role",  "description",  "keyframe_prompt",  "motion_prompt",  "delivery",  "duration_seconds",  "on_screen_text",  "voiceover",  ])
+        self._properties: typing.Set[str] = set([  "role",  "description",  "keyframe_prompt",  "motion_prompt",  "delivery",  "on_screen_text",  "voiceover",  ])
         self._props = StoryboardShotProperties(self._bldr, self._properties)
 
     def type(self) -> baml_py.FieldType:
@@ -807,10 +803,6 @@ class StoryboardShotProperties:
     @property
     def delivery(self) -> type_builder.ClassPropertyViewer:
         return type_builder.ClassPropertyViewer(self.__bldr.property("delivery"))
-    
-    @property
-    def duration_seconds(self) -> type_builder.ClassPropertyViewer:
-        return type_builder.ClassPropertyViewer(self.__bldr.property("duration_seconds"))
     
     @property
     def on_screen_text(self) -> type_builder.ClassPropertyViewer:

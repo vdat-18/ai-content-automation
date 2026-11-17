@@ -57,6 +57,12 @@ def _small_image(content: bytes) -> BamlImage:
     return _image(buffer.getvalue())
 
 
+def _clean_text(text: str) -> str:
+    """A seller's text without its odd spaces and blank lines, which only cost tokens."""
+    lines = (" ".join(line.split()) for line in text.splitlines())
+    return "\n".join(line for line in lines if line)
+
+
 def product_facts(product: dict[str, Any]) -> dict[str, Any]:
     """Compact, grounded product facts the model may rely on."""
     price = product.get("price") or {}
@@ -64,12 +70,14 @@ def product_facts(product: dict[str, Any]) -> dict[str, Any]:
         "title": product.get("title"),
         "categories": product.get("categories"),
         "price_vnd": price.get("sale"),
+        "list_price_vnd": price.get("original"),
+        "discount": price.get("discount"),
         "sold_count": product.get("sold_count"),
         "rating": product.get("rating"),
         "review_count": product.get("review_count"),
         "specifications": dict(list((product.get("specifications") or {}).items())[:20]),
         "variants": [v.get("variant") for v in (product.get("variants") or [])[:10]],
-        "description": (product.get("description") or "")[:3_000],
+        "description": _clean_text(product.get("description") or "")[:3_000],
     }
 
 
@@ -168,7 +176,7 @@ class ContentBriefWriter:
         if not photos:
             raise BriefGenerationError("None of the product photos could be downloaded")
         arguments = (
-            json.dumps(product_facts(product), ensure_ascii=False),
+            json.dumps(product_facts(product), ensure_ascii=False, separators=(",", ":")),
             user_idea.strip(),
             shot_count,
             [photo for _, photo in photos],

@@ -53,20 +53,19 @@ class ClipCheck(BaseModel):
     category: typing.Union[typing_extensions.Literal['face'], typing_extensions.Literal['product'], typing_extensions.Literal['skin'], typing_extensions.Literal['body'], typing_extensions.Literal['scene'], typing_extensions.Literal['other']]
 
 class ContentBrief(BaseModel):
-    title: str
-    format: typing.Union[typing_extensions.Literal['problem_solution'], typing_extensions.Literal['step_by_step'], typing_extensions.Literal['before_after'], typing_extensions.Literal['unboxing'], typing_extensions.Literal['worth_it_text']]
-    script: str
-    product_photo_numbers: typing.List[int]
-    scene: str
-    product_placement: str
-    product_variant: str
-    product_size: str
-    selling_angle: str
-    target_audience: str
-    style: typing.List[str]
-    colors: typing.List[str]
-    skin_sensitive: bool
-    shots: typing.List["StoryboardShot"]
+    title: str = Field(description='A short Vietnamese name for the brief')
+    script: str = Field(description='The whole voice-over as one continuous Vietnamese text, written first and then cut into consecutive parts, one per shot, so the voiceovers in order give the script again')
+    product_photo_numbers: typing.List[int] = Field(description='Numbers of the photos the image model will use, most useful first')
+    scene: str = Field(description='The one lived-in place, suited to the target audience, where the whole video happens')
+    product_placement: str = Field(description='Exactly where and how the product sits in the scene')
+    product_variant: str = Field(description='The one version shown in the whole video, in English: color, finish, shape and the name on the label as in the photos')
+    product_size: str = Field(description='The real size in English, worked out from the title, attributes and photos, so the scale against a person and the room is clear (for example \'about 40 x 40 x 60 cm, knee height on a standing adult\')')
+    selling_angle: str = Field(description='The single strongest reason to buy, in Vietnamese')
+    target_audience: str = Field(description='Who buys it and why, in Vietnamese')
+    style: typing.List[str] = Field(description='Up to 4 short words')
+    colors: typing.List[str] = Field(description='Up to 4 color names')
+    skin_sensitive: bool = Field(description='True for skincare, cosmetics, acne or hair treatment and health products, whose result a shopper judges on the skin or body; false otherwise')
+    shots: typing.List["StoryboardShot"] = Field(description='In story order')
 
 class CuratedRule(BaseModel):
     title: str
@@ -121,13 +120,12 @@ class ShotReferenceChoice(BaseModel):
 
 class StoryboardShot(BaseModel):
     role: typing.Union[typing_extensions.Literal['hook'], typing_extensions.Literal['problem'], typing_extensions.Literal['demo'], typing_extensions.Literal['benefit'], typing_extensions.Literal['call_to_action']]
-    description: str
-    keyframe_prompt: str
-    motion_prompt: str
+    description: str = Field(description='Vietnamese: what the viewer sees, one or two sentences')
+    keyframe_prompt: str = Field(description='A complete, self-contained English prompt for the image model, about 120 to 150 words, with no repeated wording or filler')
+    motion_prompt: str = Field(description='English, about 50 to 70 words, only motion: the keyframe already shows how everything looks')
     delivery: typing.Union[typing_extensions.Literal['narrated'], typing_extensions.Literal['talking']]
-    duration_seconds: int
-    on_screen_text: str
-    voiceover: str
+    on_screen_text: str = Field(description='A short Vietnamese caption, or an empty string')
+    voiceover: str = Field(description='Vietnamese, as long as the rules for a narrated or a talking shot say')
 
 class VoicePick(BaseModel):
     gender: str

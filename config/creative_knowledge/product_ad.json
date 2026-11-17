@@ -1,6 +1,6 @@
 {
   "schema_version": "creative-knowledge-bootstrap@2",
-  "bootstrap_id": "product-ad-v11",
+  "bootstrap_id": "product-ad-v12",
   "items": [
     {
       "knowledge_id": "product-ad-body-proportions",
@@ -60,10 +60,10 @@
       "auto_approve": true
     },
     {
-      "knowledge_id": "product-ad-voice-register",
+      "knowledge_id": "product-ad-1-story",
       "knowledge_type": "hard_rule",
-      "title": "Voice-over sounds like a young Vietnamese seller",
-      "content": "WHEN: Writing or checking any voiceover or script. DO: Write the way a young Vietnamese seller talks to a friend on TikTok: short sentences, spoken particles such as nha, nè, á, luôn, thật sự, plain everyday words. DO NOT: Use written, Sino-Vietnamese or advertising words (cao cấp, sang trọng, đẳng cấp, tối ưu, sở hữu).",
+      "title": "One story told in different shots",
+      "content": "WHEN: Writing the script and cutting it into shots. DO: Tell one story in this order: a hook, a problem shoppers know, the product solving it, one or two concrete benefits, a call to open the product link. Give the shots these roles in order: hook, problem, demo, benefit, call_to_action (with fewer than five shots merge neighbouring roles, with more shots repeat demo or benefit; the first shot is always the hook and the last always the call_to_action). Each shot follows from the one before (cause and effect), and the voiceovers read in order give the script with nothing added or repeated. Open the first shot on a close-up of the product or a problem shoppers know, with movement already in the very first frame, put a short on-screen question or claim in its on_screen_text, and end on a frame close to the opening one so the video loops. Change the camera angle, the distance and the action between shots, and where the story needs it the spot inside the same home. DO NOT: Start a new topic in a later shot, open on a still or empty frame, add shots just to fill every role, or make shots that only zoom or drift or look alike in framing, camera movement or action (it would play like a slideshow).",
       "applies_to": [
         "preparation",
         "review"
@@ -74,15 +74,15 @@
       },
       "authority": "lead",
       "source_refs": [
-        "team:v2"
+        "team:v3"
       ],
       "auto_approve": true
     },
     {
-      "knowledge_id": "product-ad-voice-numbers",
+      "knowledge_id": "product-ad-2-voice-content",
       "knowledge_type": "hard_rule",
-      "title": "Numbers in words, no English",
-      "content": "WHEN: A voiceover contains numbers, units or foreign words. DO: Write every number in words as it is read aloud (hai trăm sáu mươi tám mi-li-lít, không 268ml). DO NOT: Use digits or English words a speaker would have to read out.",
+      "title": "What the voice says",
+      "content": "WHEN: Writing any voiceover. DO: Open the first shot on a situation or question the shopper knows from daily life, such as a problem they just had, so the product answers something they already feel. Give the reason, the benefit or the feeling that the picture cannot show, and let the picture show the look, the shape and the action; every sentence must tell the shopper something new. When a size, a quantity, a duration or a price from the product facts is spoken, follow it at once with what it means in everyday life, worked out only from the same facts (a 300 ml bottle fills a big glass, a 40 cm length reaches the knee). DO NOT: Open with a greeting, an introduction or an announcement (chào mọi người, hôm nay mình review, sau đây mình sẽ giới thiệu), describe what is already on screen (ở đây các bạn thấy, nhìn vào đây), repeat a point already made, add a sentence only to fill the time, recite a bare figure, or let a meaning add a benefit or result that the product facts do not state.",
       "applies_to": [
         "preparation",
         "review"
@@ -93,15 +93,15 @@
       },
       "authority": "lead",
       "source_refs": [
-        "team:v2"
+        "team:v3"
       ],
       "auto_approve": true
     },
     {
-      "knowledge_id": "product-ad-voice-opens-in-situation",
+      "knowledge_id": "product-ad-3-voice-style",
       "knowledge_type": "hard_rule",
-      "title": "The first spoken line starts inside a situation",
-      "content": "WHEN: Writing the voiceover of the first shot. DO: Open on a situation or question the shopper knows from daily life, such as a problem they just had, so the product answers something they already feel. DO NOT: Open with a greeting, an introduction or an announcement (chào mọi người, hôm nay mình review, sau đây mình sẽ giới thiệu).",
+      "title": "How the voice is written",
+      "content": "WHEN: Writing or checking any voiceover or script. DO: Write the way a young Vietnamese seller talks to a friend on TikTok: short sentences and plain everyday words, in a natural tone. Cut the speech into sentences of 12 words or fewer, with a comma or a full stop at least every 8 words, so the voice pauses naturally. Write every number in words as it is read aloud (hai trăm sáu mươi tám mi-li-lít, không 268ml). DO NOT: Use written, Sino-Vietnamese or advertising words (cao cấp, sang trọng, đẳng cấp, tối ưu, sở hữu), slang or filler particles added only to sound casual, digits, or English words a speaker would have to read out.",
       "applies_to": [
         "preparation",
         "review"
@@ -112,15 +112,15 @@
       },
       "authority": "lead",
       "source_refs": [
-        "team:v2"
+        "team:v3"
       ],
       "auto_approve": true
     },
     {
-      "knowledge_id": "product-ad-voice-not-the-picture",
+      "knowledge_id": "product-ad-4-voice-length",
       "knowledge_type": "hard_rule",
-      "title": "The voice says what the picture cannot",
-      "content": "WHEN: Writing any voiceover. DO: Give the reason, the benefit or the feeling that the picture cannot show, and let the picture show the look, the shape and the action; every sentence must tell the shopper something new. DO NOT: Describe what is already on screen (ở đây các bạn thấy, nhìn vào đây), repeat a point already made, or add a sentence only to fill the time.",
+      "title": "Voiceover length of each shot",
+      "content": "WHEN: Writing the voiceover of a shot. DO: For a narrated shot (nobody is seen speaking) write 40 to 46 words (never below 38 or above 48) so the voice speaks for 11 to 12 seconds (the voices read 3.5 to 4 words per second) inside the 13 second shot, and fit the moment the shot shows. For a talking shot (the person speaks to the camera) keep it concise and punchy, 16 to 22 words (never below 15 or above 25), about 4 to 5 seconds of clear speech, so lip-sync looks natural. DO NOT: Leave long silences or run over, or write long talking lines that make the mouth drift or the model hallucinate speech.",
       "applies_to": [
         "preparation",
         "review"
@@ -131,186 +131,15 @@
       },
       "authority": "lead",
       "source_refs": [
-        "team:v2"
+        "team:v3"
       ],
       "auto_approve": true
     },
     {
-      "knowledge_id": "product-ad-voice-figure-meaning",
-      "knowledge_type": "hard_rule",
-      "title": "A figure comes with what it means to the shopper",
-      "content": "WHEN: A voiceover speaks a size, a quantity, a duration or a price taken from the product facts. DO: Follow it at once with what it means in everyday life, worked out only from the same facts (a 300 ml bottle fills a big glass, a 40 cm length reaches the knee). DO NOT: Recite a bare figure, or let the meaning add a benefit or result that the product facts do not state.",
-      "applies_to": [
-        "preparation",
-        "review"
-      ],
-      "scope": {
-        "task_type": "product_ad",
-        "asset_type": "brief"
-      },
-      "authority": "lead",
-      "source_refs": [
-        "team:v2"
-      ],
-      "auto_approve": true
-    },
-    {
-      "knowledge_id": "product-ad-voice-short-runs",
-      "knowledge_type": "hard_rule",
-      "title": "Short sentences the voice can breathe in",
-      "content": "WHEN: Writing any voiceover. DO: Cut the speech into sentences of 12 words or fewer, with a comma or a full stop at least every 8 words, so the voice pauses naturally. DO NOT: Write more than 12 words in a row without a comma or a full stop.",
-      "applies_to": [
-        "preparation",
-        "review"
-      ],
-      "scope": {
-        "task_type": "product_ad",
-        "asset_type": "brief"
-      },
-      "authority": "lead",
-      "source_refs": [
-        "team:v2"
-      ],
-      "auto_approve": true
-    },
-    {
-      "knowledge_id": "product-ad-voice-length-narrated",
-      "knowledge_type": "hard_rule",
-      "title": "Narrated shot voiceover length",
-      "content": "WHEN: A shot is narrated (nobody is seen speaking). DO: Write 40 to 46 words (never below 38 or above 48) so the voice speaks for 11 to 12 seconds (the voices read 3.5 to 4 words per second) inside the 13 second shot, and fit the moment the shot shows. DO NOT: Leave long silences or run over.",
-      "applies_to": [
-        "preparation",
-        "review"
-      ],
-      "scope": {
-        "task_type": "product_ad",
-        "asset_type": "brief"
-      },
-      "authority": "lead",
-      "source_refs": [
-        "team:v2"
-      ],
-      "auto_approve": true
-    },
-    {
-      "knowledge_id": "product-ad-voice-length-talking",
-      "knowledge_type": "hard_rule",
-      "title": "Talking shot voiceover length",
-      "content": "WHEN: A shot is talking (the person speaks to the camera). DO: Keep it concise and punchy, 16 to 22 words (never below 15 or above 25), about 4 to 5 seconds of clear speech, so lip-sync looks natural. DO NOT: Write long lines that make the mouth drift or the model hallucinate speech.",
-      "applies_to": [
-        "preparation",
-        "review"
-      ],
-      "scope": {
-        "task_type": "product_ad",
-        "asset_type": "brief"
-      },
-      "authority": "lead",
-      "source_refs": [
-        "team:v2"
-      ],
-      "auto_approve": true
-    },
-    {
-      "knowledge_id": "product-ad-claims-safety",
-      "knowledge_type": "hard_rule",
-      "title": "Safe, grounded claims",
-      "content": "WHEN: Writing any text, voiceover or on-screen text. DO: Take every number, percentage, price, material and feature from the product facts. DO NOT: Invent figures or features, use absolute claims (tốt nhất, rẻ nhất, số 1, 100%, chắc chắn), name other shopping or social platforms, promise medical results, or promise a gift or reward for tapping the link.",
-      "applies_to": [
-        "preparation",
-        "review"
-      ],
-      "scope": {
-        "task_type": "product_ad",
-        "asset_type": "brief"
-      },
-      "authority": "lead",
-      "source_refs": [
-        "team:v2"
-      ],
-      "auto_approve": true
-    },
-    {
-      "knowledge_id": "product-ad-script-flow",
-      "knowledge_type": "hard_rule",
-      "title": "One story across the shots",
-      "content": "WHEN: Writing the script and cutting it into shots. DO: Tell one story in this order: a hook, a problem shoppers know, the product solving it, one or two concrete benefits, a call to open the product link; each shot follows from the one before (cause and effect) and the shots' voiceovers read in order give the script with nothing added or repeated. DO NOT: Start a new topic in a later shot.",
-      "applies_to": [
-        "preparation",
-        "review"
-      ],
-      "scope": {
-        "task_type": "product_ad",
-        "asset_type": "brief"
-      },
-      "authority": "lead",
-      "source_refs": [
-        "team:v2"
-      ],
-      "auto_approve": true
-    },
-    {
-      "knowledge_id": "product-ad-hook-first-seconds",
-      "knowledge_type": "hard_rule",
-      "title": "Hook in the first three seconds",
-      "content": "WHEN: Writing the first shot and the last shot. DO: Open on a close-up of the product or a problem shoppers know, with movement already in the very first frame, and put a short on-screen question or claim in the first shot's on_screen_text; give the shots these roles in order: hook, problem, demo, benefit, call_to_action (with fewer than five shots merge neighbouring roles, with more shots repeat demo or benefit; the first shot is always the hook and the last always the call_to_action); end on a frame close to the opening one so the video loops. DO NOT: Open on a still or empty frame, or add shots just to fill every role.",
-      "applies_to": [
-        "preparation",
-        "review"
-      ],
-      "scope": {
-        "task_type": "product_ad",
-        "asset_type": "brief"
-      },
-      "authority": "lead",
-      "source_refs": [
-        "team:v2"
-      ],
-      "auto_approve": true
-    },
-    {
-      "knowledge_id": "product-ad-shot-variety",
-      "knowledge_type": "hard_rule",
-      "title": "Shots must differ",
-      "content": "WHEN: Writing a storyboard with several shots. DO: Change the camera angle, the distance and the action between shots, and where the story needs it the spot inside the same home. DO NOT: Make shots that only zoom or drift, or that look alike in framing, camera movement or action (it would play like a slideshow).",
-      "applies_to": [
-        "preparation",
-        "review"
-      ],
-      "scope": {
-        "task_type": "product_ad",
-        "asset_type": "brief"
-      },
-      "authority": "lead",
-      "source_refs": [
-        "team:v2"
-      ],
-      "auto_approve": true
-    },
-    {
-      "knowledge_id": "product-ad-product-always-visible",
-      "knowledge_type": "hard_rule",
-      "title": "Product in every shot",
-      "content": "WHEN: Writing any keyframe_prompt or motion_prompt. DO: Keep the real product clearly visible and recognisable from the first frame to the last, held, worn, placed or in use. DO NOT: Hide it, crop it out or let it become tiny.",
-      "applies_to": [
-        "preparation",
-        "review"
-      ],
-      "scope": {
-        "task_type": "product_ad",
-        "asset_type": "brief"
-      },
-      "authority": "lead",
-      "source_refs": [
-        "team:v2"
-      ],
-      "auto_approve": true
-    },
-    {
-      "knowledge_id": "product-ad-keyframe-prompt-style",
+      "knowledge_id": "product-ad-5-keyframe-prompt",
       "knowledge_type": "hard_rule",
       "title": "Keyframe prompt reads like a phone photo",
-      "content": "WHEN: Writing a keyframe_prompt. DO: Describe an ordinary photo taken on a phone: natural window or room light, a little grain, a lived-in Vietnamese home with everyday clutter, natural skin and hair; say what is seen (action, framing, distance, camera angle). DO NOT: Use perfect, flawless, cinematic, stunning, studio, professional, glossy or 8k, vague mood words, or show a product version other than product_variant.",
+      "content": "WHEN: Writing a keyframe_prompt. DO: Describe an ordinary photo taken on a phone: natural window or room light, a little grain, a lived-in Vietnamese home with everyday clutter, natural skin and hair; say what is seen (action, framing, distance, camera angle). Keep the real product clearly visible and recognisable from the first frame to the last, held, worn, placed or in use. When a person is in the shot, frame the face and mouth in the middle of the picture, above the lower third where the spoken words appear and away from the top left corner where price stickers slide in. DO NOT: Use perfect, flawless, cinematic, stunning, studio, professional, glossy or 8k, vague mood words, or show a product version other than product_variant; hide the product, crop it out or let it become tiny; put the mouth, chin or the product's label in the lower third or in the top left corner, where a caption or sticker would cover it.",
       "applies_to": [
         "preparation",
         "review"
@@ -321,12 +150,12 @@
       },
       "authority": "lead",
       "source_refs": [
-        "team:v2"
+        "team:v3"
       ],
       "auto_approve": true
     },
     {
-      "knowledge_id": "product-ad-motion-prompt-beats",
+      "knowledge_id": "product-ad-6-motion-prompt",
       "knowledge_type": "hard_rule",
       "title": "Motion prompt as timed beats",
       "content": "WHEN: Writing a motion_prompt for a 15 second clip. DO: Name the subject in a few words, then write four or five sentences as timed beats of about 3 seconds, each a new clearly visible action or camera move; name the shot size, camera height and every move with its exact term (dolly, zoom, pan, tilt, tracking, orbit, handheld); keep one continuous camera path with brisk TikTok-style energy; for a narrated shot lips stay closed or relaxed, for a talking shot the person talks naturally. DO NOT: Re-describe the face, outfit or product, use mood words, add sound or music, cut scenes, add new objects, refer to an icon, button, sticker or any on-screen graphic (the clip has none, so the model would draw one; point at a place in the frame instead), or use slow motion or a slow drift.",
@@ -340,15 +169,15 @@
       },
       "authority": "lead",
       "source_refs": [
-        "team:v2"
+        "team:v3"
       ],
       "auto_approve": true
     },
     {
-      "knowledge_id": "product-ad-video-format",
+      "knowledge_id": "product-ad-7-claims-safety",
       "knowledge_type": "hard_rule",
-      "title": "Pick a fitting video format",
-      "content": "WHEN: Choosing the video format. DO: Choose the one that suits the product and idea: problem_solution, step_by_step (how to use it), before_after (a messy situation then a tidy one), unboxing, or worth_it_text. DO NOT: Fake or exaggerate results.",
+      "title": "Safe, grounded claims",
+      "content": "WHEN: Writing any text, voiceover or on-screen text. DO: Take every number, percentage, price, material and feature from the product facts. DO NOT: Invent figures or features, use absolute claims (tốt nhất, rẻ nhất, số 1, 100%, chắc chắn), name other shopping or social platforms, promise medical results, or promise a gift or reward for tapping the link.",
       "applies_to": [
         "preparation",
         "review"
@@ -359,26 +188,7 @@
       },
       "authority": "lead",
       "source_refs": [
-        "team:v2"
-      ],
-      "auto_approve": true
-    },
-    {
-      "knowledge_id": "product-ad-caption-safe-zone",
-      "knowledge_type": "hard_rule",
-      "title": "Keep faces clear of the caption and sticker areas",
-      "content": "WHEN: Writing the picture and motion of any shot with a person. DO: Frame the face and mouth in the middle of the picture, above the lower third where the spoken words appear and away from the top left corner where price stickers slide in. DO NOT: Put the mouth, chin or the product's label in the lower third or in the top left corner, where a caption or sticker would cover it.",
-      "applies_to": [
-        "preparation",
-        "review"
-      ],
-      "scope": {
-        "task_type": "product_ad",
-        "asset_type": "brief"
-      },
-      "authority": "lead",
-      "source_refs": [
-        "team:v2"
+        "team:v3"
       ],
       "auto_approve": true
     }

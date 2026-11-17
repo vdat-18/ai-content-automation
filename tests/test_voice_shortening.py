@@ -92,7 +92,7 @@ async def _ready(tmp_path, monkeypatch) -> tuple[PostgresProductRepository, _Spe
     monkeypatch.setattr(service_module, "word_starts", heard)
     repository = product_repository()
     await repository.upsert_detail({"product_id": PRODUCT_ID, "title": "Áo", "images": ["u"]})
-    shots = [{"voiceover": LONG, "duration_seconds": 15}]
+    shots = [{"voiceover": LONG}]
     await repository.save_brief(PRODUCT_ID, "", {"shots": shots}, "approved")
     await repository.save_keyframe(
         {

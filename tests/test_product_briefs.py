@@ -279,6 +279,21 @@ def test_product_facts_are_compact() -> None:
     assert len(facts["description"]) == 3000
 
 
+def test_product_facts_drop_the_odd_spaces_and_blank_lines_and_keep_the_price_drop() -> None:
+    facts = product_facts(
+        {
+            "price": {"sale": "146.263", "original": "190.586", "discount": "-23%"},
+            "description": "CÔNG DỤNG:\u202f\u202f\xa0\n\n  - Làm sạch\u202f\xa0da \n\n",
+        }
+    )
+    assert facts["description"] == "CÔNG DỤNG:\n- Làm sạch da"
+    assert (facts["price_vnd"], facts["list_price_vnd"], facts["discount"]) == (
+        "146.263",
+        "190.586",
+        "-23%",
+    )
+
+
 class _TwoShots:
     async def write(self, product, user_idea, shot_count=1, person_photos=None, rules=""):
         prompts = ["a hand applies lotion", "sitting in a room", "standing in a room"]

@@ -164,7 +164,6 @@ KEYFRAME_REVIEW_STATUSES = frozenset({"approved", "ready", "rejected"})
 BRIEF_FIELDS = (
     "title",
     "product_variant",
-    "format",
     "script",
     "scene",
     "product_placement",
@@ -1852,8 +1851,9 @@ class ProductCatalogService:
                         f"Make the clip for shot {index + 1} first: its voice follows the "
                         "speech Grok made with the clip"
                     )
-            seconds = min(float(shot.get("duration_seconds") or CLIP_SECONDS), CLIP_SECONDS)
-            segments.append(Reading(str(shot.get("voiceover") or ""), shot_seconds(seconds), guide))
+            segments.append(
+                Reading(str(shot.get("voiceover") or ""), shot_seconds(CLIP_SECONDS), guide)
+            )
         if hook.strip():
             if segments[0].guide is not None and opening_clip is None:
                 raise KeyframeUnavailable(_TALKING_OPENING)
@@ -2063,7 +2063,7 @@ class ProductCatalogService:
             clip = clips.get(index)
             if clip is None or clip["status"] != "ready":
                 raise StitchUnavailable(f"The clip for shot {index + 1} is not ready yet")
-            duration = min(float(shot.get("duration_seconds") or clip["seconds"]), clip["seconds"])
+            duration = float(clip["seconds"])
             if str(index) in held:  # the voice-over was cut to its words; cut the picture to match
                 duration = min(duration, clip_seconds_for(float(held[str(index)])))
             caption = str(shot.get("on_screen_text") or "") if captions else ""
@@ -2312,7 +2312,6 @@ class ProductCatalogService:
             "brief": {
                 "title": brief.get("title"),
                 "status": record["status"],
-                "format": brief.get("format"),
                 "user_idea": record["user_idea"],
                 "selling_angle": brief.get("selling_angle"),
                 "target_audience": brief.get("target_audience"),

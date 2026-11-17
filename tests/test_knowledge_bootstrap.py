@@ -10,7 +10,7 @@ _PRODUCT_AD = Path(__file__).parents[1] / "config/creative_knowledge/product_ad.
 
 def test_manifest_loads_with_unique_ids_and_sources() -> None:
     manifest = load_knowledge_bootstrap(_PRODUCT_AD)
-    assert len(manifest.items) >= 15
+    assert len(manifest.items) >= 10
     assert all(item.source_refs for item in manifest.items)
 
 
@@ -19,8 +19,8 @@ def test_product_ad_rules_change_only_together_with_their_bootstrap_id() -> None
     manifest = load_knowledge_bootstrap(_PRODUCT_AD)
     content = hashlib.sha256(_PRODUCT_AD.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
     assert (manifest.bootstrap_id, content) == (
-        "product-ad-v11",
-        "2e4e97e5ee2bb1b268355c096898ae7e6ee9b9332251fdd94f45ae20330f9c3d",
+        "product-ad-v12",
+        "8514601a4855842b391777a4449e0c44bc9d714801b2d1d6d2f06b83b5cc9f4c",
     )
     assert all(item.auto_approve for item in manifest.items)
 

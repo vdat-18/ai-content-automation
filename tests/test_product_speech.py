@@ -205,7 +205,7 @@ async def test_a_talking_shot_whose_clip_speech_cannot_be_followed_is_read_at_it
 
 async def test_a_talking_shot_needs_its_clip_before_the_voice(tmp_path) -> None:
     repository = product_repository()
-    shots = [{"voiceover": "Xin chào", "duration_seconds": 15, "delivery": "talking"}]
+    shots = [{"voiceover": "Xin chào", "delivery": "talking"}]
     await repository.save_brief(PRODUCT_ID, "", {"shots": shots}, "approved")
     await repository.save_keyframe(
         {
@@ -231,7 +231,7 @@ async def test_a_clip_without_speech_is_read_at_its_own_pace(tmp_path, monkeypat
 
     monkeypatch.setattr(service_module, "word_starts", heard_nothing_like_it)
     repository = product_repository()
-    shots = [{"voiceover": "Xin chào", "duration_seconds": 15, "delivery": "talking"}]
+    shots = [{"voiceover": "Xin chào", "delivery": "talking"}]
     await repository.save_brief(PRODUCT_ID, "", {"shots": shots}, "approved")
     keyframe = {
         "product_id": PRODUCT_ID,
@@ -274,7 +274,7 @@ async def test_a_clip_without_speech_is_read_at_its_own_pace(tmp_path, monkeypat
 
 async def test_service_needs_the_speaker_and_an_approved_keyframe(tmp_path) -> None:
     repository = product_repository()
-    shots = [{"voiceover": "Xin chào", "duration_seconds": 15}]
+    shots = [{"voiceover": "Xin chào"}]
     await repository.save_brief(PRODUCT_ID, "", {"shots": shots}, "approved")
     assert await ProductCatalogService(repository).create_voiceover("missing", tmp_path) is None
     with pytest.raises(KeyframeUnavailable, match="not configured"):

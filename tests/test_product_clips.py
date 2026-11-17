@@ -43,8 +43,8 @@ from ai_content.domains.marketing.products.service import (
 
 PRODUCT_ID = "1730000000000000001"
 SHOTS = [
-    {"role": "hook", "motion_prompt": "push in", "duration_seconds": 5},
-    {"role": "demo", "motion_prompt": "pan left", "duration_seconds": 8},
+    {"role": "hook", "motion_prompt": "push in"},
+    {"role": "demo", "motion_prompt": "pan left"},
 ]
 
 
