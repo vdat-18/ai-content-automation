@@ -1,8 +1,10 @@
+import hashlib
 from pathlib import Path
 
 import pytest
 
-from ai_content.domains.marketing.products.media_store import KEY_PREFIX, MediaStore
+from ai_content.domains.marketing.products import media_store
+from ai_content.domains.marketing.products.media_store import KEY_PREFIX, MediaStore, S3RemoteMedia
 
 
 class _Remote:
@@ -81,3 +83,19 @@ async def test_remove_tree_deletes_a_folder_in_both_places(tmp_path) -> None:
     await store.remove_tree("clips/p")
     assert not (tmp_path / "clips" / "p").exists()
     assert list(remote.objects) == [KEY_PREFIX + "clips/other/shot_0.mp4"]
+
+
+def test_an_uploaded_object_carries_its_sha256_for_the_backup(tmp_path, monkeypatch) -> None:
+    sent: dict[str, object] = {}
+
+    class _Client:
+        def put_object(self, **kwargs: object) -> None:
+            sent.update(kwargs)
+
+    monkeypatch.setattr(media_store.boto3, "client", lambda *args, **kwargs: _Client())
+    remote = S3RemoteMedia(endpoint_url="http://s3", bucket="b", access_key="k", secret_key="s")
+    source = tmp_path / "shot.mp4"
+    source.write_bytes(b"video")
+    remote.put("affiliate-media/shot.mp4", source, "video/mp4")
+    assert sent["Metadata"] == {"sha256": hashlib.sha256(b"video").hexdigest()}
+    assert sent["ContentLength"] == 5

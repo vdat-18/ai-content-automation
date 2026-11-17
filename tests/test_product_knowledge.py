@@ -217,6 +217,17 @@ async def test_an_automatic_proposal_never_reopens_a_decided_rule(tmp_path) -> N
     assert len(await knowledge.repository.list()) == 1
 
 
+async def test_feedback_never_puts_an_approved_rule_back_to_proposed(tmp_path) -> None:
+    knowledge = _knowledge(tmp_path)
+    first = await _feedback(knowledge, "Acne visible on the cheek")
+    await knowledge.decide(first.knowledge_id, status=KnowledgeStatus.APPROVED, reviewer="lead")
+    again = await _feedback(knowledge, "Acne visible on the cheek")  # without once=True
+    assert again.status == KnowledgeStatus.APPROVED and again.approved_by == "lead"
+    assert (await approved_rules(knowledge, KnowledgeStage.ORCHESTRATION, "keyframe")).ids == [
+        first.knowledge_id
+    ]
+
+
 async def test_a_check_problem_seen_in_two_videos_becomes_a_proposed_script_rule(tmp_path) -> None:
     knowledge = _knowledge(tmp_path)
     repository = product_repository()
