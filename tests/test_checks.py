@@ -58,8 +58,22 @@ def test_a_picture_is_typed_by_its_bytes_not_by_what_the_cdn_says() -> None:
 
     samples = {
         b"\x89PNG\r\n\x1a\n": "image/png",
-        b"RIFF\x00\x00\x00\x00WEBPVP8 ": "image/webp",
         b"\xff\xd8\xff\xe0": "image/jpeg",
     }
     for content, expected in samples.items():
         assert _image(content).as_base64()[1] == expected
+
+
+def test_a_webp_picture_is_sent_as_a_real_jpeg() -> None:
+    import base64
+    import io
+
+    from PIL import Image
+
+    from ai_content.domains.marketing.products.keyframe_check import _image
+
+    buffer = io.BytesIO()
+    Image.new("RGB", (8, 8), "red").save(buffer, "WEBP")
+    data, media_type = _image(buffer.getvalue()).as_base64()
+    assert media_type == "image/jpeg"
+    assert Image.open(io.BytesIO(base64.b64decode(data))).format == "JPEG"

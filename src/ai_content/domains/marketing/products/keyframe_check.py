@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import base64
+import io
 from typing import Protocol
 
 from baml_py import Image as BamlImage
+from PIL import Image
 
 from ai_content.domains.marketing.products.adapters.baml_client import types as baml_types
 from ai_content.domains.marketing.products.adapters.baml_client.async_client import b
@@ -37,12 +39,18 @@ class QAProblem(str):
 
 
 def _image(content: bytes) -> BamlImage:
-    """The type comes from the bytes: a CDN often labels a webp picture as jpeg."""
+    """The type comes from the bytes: a CDN often labels a webp picture as jpeg.
+
+    A webp picture is sent as jpeg: the gateway labels it jpeg on its way to Claude, which refuses
+    the mismatch.
+    """
     if content[:4] == b"\x89PNG":
         media_type = "image/png"
-    elif content[:4] == b"RIFF" and content[8:12] == b"WEBP":
-        media_type = "image/webp"
     else:
+        if content[:4] == b"RIFF" and content[8:12] == b"WEBP":
+            buffer = io.BytesIO()
+            Image.open(io.BytesIO(content)).convert("RGB").save(buffer, "JPEG", quality=92)
+            content = buffer.getvalue()
         media_type = "image/jpeg"
     return BamlImage.from_base64(media_type, base64.b64encode(content).decode("ascii"))
 
