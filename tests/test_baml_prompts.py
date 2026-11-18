@@ -3,6 +3,7 @@ from pathlib import Path
 _BAML = Path(__file__).parents[1] / "baml_src"
 # prompts that put text from a seller's page or a user in front of the model
 _PROMPTS_WITH_SELLER_TEXT = (
+    "align_shot",
     "content_brief",
     "posting_package",
     "shot_reference",

@@ -301,8 +301,10 @@ class KeyframeGenerator:
         parts.append(_product_note(len(images) - len(product_photos) + 1, len(images)))
         images.append(master)
         parts.append(
-            f"Image {len(images)} is the approved master keyframe: keep the same product, light, "
-            "colors and the same style of place."
+            f"Image {len(images)} is the approved first picture of this video. Use it only for the "
+            "person's look, the room, the light, the colors and the product. Never copy its pose, "
+            "hand gesture, camera angle, framing or the way the product is held: those are exactly "
+            "what the shot text below says, so this picture looks clearly different from it."
         )
         if reference is not None:
             images.append(reference)

@@ -34,6 +34,7 @@ from ai_content.domains.marketing.products.reference_ad import AdAnalyzer
 from ai_content.domains.marketing.products.reference_picker import ShotReferencePicker
 from ai_content.domains.marketing.products.service import ProductCatalogService
 from ai_content.domains.marketing.products.shortening import VoiceShortener
+from ai_content.domains.marketing.products.shot_alignment import ShotAligner
 from ai_content.domains.marketing.products.speech import SpeechClient
 from ai_content.domains.marketing.products.text_embedding import TextEmbedder
 from ai_content.entrypoints.postgres_runtime import PostgresRuntimeContainer
@@ -396,6 +397,16 @@ def _reference_picker(settings: ApiRuntimeSettings) -> ShotReferencePicker | Non
     )
 
 
+def _shot_aligner(settings: ApiRuntimeSettings) -> ShotAligner | None:
+    if not settings.screening_api_key:
+        return None
+    return ShotAligner.from_settings(
+        base_url=settings.screening_base_url,
+        api_key=settings.screening_api_key,
+        model=settings.writer_model,
+    )
+
+
 def _voice_shortener(settings: ApiRuntimeSettings) -> VoiceShortener | None:
     if not settings.screening_api_key:
         return None
@@ -438,6 +449,7 @@ async def product_catalog_scope(postgres: Any) -> AsyncIterator[ProductCatalogSe
         knowledge=postgres.creative_knowledge_service,
         ad_analyzer=_ad_analyzer(settings),
         voice_shortener=_voice_shortener(settings),
+        shot_aligner=_shot_aligner(settings),
         usage=AIUsageTracker(postgres.ai_usage_repository),
     )
 

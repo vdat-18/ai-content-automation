@@ -23,11 +23,15 @@ class StreamState(BaseModel, typing.Generic[StreamStateValueT]):
     value: StreamStateValueT
     state: typing_extensions.Literal["Pending", "Incomplete", "Complete"]
 # #########################################################################
-# Generated classes (12)
+# Generated classes (13)
 # #########################################################################
 
 class AdStructure(BaseModel):
     rules: typing.List[str]
+
+class AlignedShot(BaseModel):
+    description: typing.Optional[str] = Field(default=None, description='Vietnamese, one or two sentences: what the picture shows and what happens in the shot, matching the picture')
+    motion_prompt: typing.Optional[str] = Field(default=None, description='English, about 50 to 80 words: ONE main action that goes on through the 15 seconds, two or three short beats, only motion, matching the picture')
 
 class ClipCheck(BaseModel):
     passed: typing.Optional[bool] = None
@@ -108,13 +112,14 @@ class StoryboardShot(BaseModel):
 
 
 # #########################################################################
-# Model rebuilds (12)
+# Model rebuilds (13)
 # #########################################################################
 # Resolve string forward references now that every model above is defined so
 # class declaration order never breaks Pydantic construction (issue #793).
 # Recursive models are intentionally omitted (Pydantic resolves those lazily;
 # eagerly rebuilding them can recurse).
 AdStructure.model_rebuild()
+AlignedShot.model_rebuild()
 ClipCheck.model_rebuild()
 ContentBrief.model_rebuild()
 CuratedRule.model_rebuild()

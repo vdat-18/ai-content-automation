@@ -107,7 +107,10 @@ function DraftContentBrief(
     last shot shows the result and must not repeat the first: another camera angle (for example
     a side or three-quarter view at the mirror), another framing and another action (for example
     touching the skin, trying the product on, enjoying it), with the product still clearly
-    visible, placed in the frame or held in a different way. Make the person look real: the
+    visible, placed in the frame or held in a different way. The result is what is left once the
+    use is over (skin rinsed clean and smooth, the dish eaten, the garment on), seen as a picture,
+    never the use still going on. Before you finish, compare the first and the last keyframe_prompt:
+    they must not share a gesture, a head position or the way the product is held. Make the person look real: the
     hair may be styled for the action (tied up, tucked behind the ears or held back, for example
     before washing the face) and may move a little in the air; say so in the keyframe_prompt
     when the action needs it.

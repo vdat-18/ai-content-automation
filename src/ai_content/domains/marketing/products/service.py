@@ -90,6 +90,7 @@ from .reference_picker import ReferencePickerError, ShotReferencePicker
 from .references import GENERAL_TYPE, ProfileGenerationError, ReferenceProfile
 from .repositories import ProductRepository
 from .shortening import VoiceShortener, words_that_fit
+from .shot_alignment import ShotAligner
 from .speech import (
     DEFAULT_VOICE,
     MAX_SPEEDUP,
@@ -325,10 +326,12 @@ class ProductCatalogService:
         knowledge: CreativeKnowledgeService | None = None,
         ad_analyzer: AdAnalyzer | None = None,
         voice_shortener: VoiceShortener | None = None,
+        shot_aligner: ShotAligner | None = None,
         usage: AIUsageTracker | None = None,
     ) -> None:
         self._usage = usage
         self._voice_shortener = voice_shortener
+        self._shot_aligner = shot_aligner
         self._ad_analyzer = ad_analyzer
         self._repository = repository
         self._reviewer = reviewer
@@ -1147,7 +1150,38 @@ class ProductCatalogService:
         async with asyncio.TaskGroup() as group:
             for index in wanted:
                 group.create_task(make(index))
+        if note.strip() and shot_index is not None:
+            await self._align_shot(product_id, shot_index, note, media_root)
         return await self._repository.list_keyframes(product_id)
+
+    async def _align_shot(
+        self, product_id: str, index: int, note: str, media_root: Path
+    ) -> None:
+        """After a reviewer's change, rewrite the shot's description and motion for the new picture.
+
+        The clip is filmed from the motion text and checked against the description, so both
+        must describe the picture that was approved. The picture itself is not touched.
+        """
+        if self._shot_aligner is None:
+            return
+        record = await self._repository.get_brief(product_id)
+        frame = next(
+            (k for k in await self._repository.list_keyframes(product_id) if k["shot_index"] == index),
+            None,
+        )
+        shots = list((record or {}).get("brief", {}).get("shots") or [])
+        if record is None or frame is None or not frame.get("image_path") or index >= len(shots):
+            return
+        image = await self.media(media_root).read(frame["image_path"])
+        aligned = await self._shot_aligner.align(shots[index], image, note)
+        if aligned is None:
+            await self._log(product_id, "keyframe", "warning", "The scene text could not be matched to the new picture", index)
+            return
+        shots[index] = {**shots[index], **aligned}
+        await self._repository.save_brief(
+            product_id, record["user_idea"], {**record["brief"], "shots": shots}, record["status"]
+        )
+        await self._log(product_id, "keyframe", "ok", "Rewrote the scene text to match the new picture", index)
 
     async def _shot_references(self, brief: dict[str, Any], wanted: list[int]) -> dict[int, bytes]:
         """The picture of the reference chosen for each wanted shot, when it has one."""

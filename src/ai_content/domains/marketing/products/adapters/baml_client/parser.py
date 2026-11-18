@@ -23,6 +23,12 @@ class LlmResponseParser:
     def __init__(self, options: DoNotUseDirectlyCallManager):
         self.__options = options
 
+    def AlignShot(
+        self, llm_response: str, baml_options: BamlCallOptions = {},
+    ) -> types.AlignedShot:
+        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="AlignShot", llm_response=llm_response, mode="request")
+        return typing.cast(types.AlignedShot, __result__)
+
     def AnalyzeAdStructure(
         self, llm_response: str, baml_options: BamlCallOptions = {},
     ) -> types.AdStructure:
@@ -84,6 +90,12 @@ class LlmStreamParser:
 
     def __init__(self, options: DoNotUseDirectlyCallManager):
         self.__options = options
+
+    def AlignShot(
+        self, llm_response: str, baml_options: BamlCallOptions = {},
+    ) -> stream_types.AlignedShot:
+        __result__ = self.__options.merge_options(baml_options).parse_response(function_name="AlignShot", llm_response=llm_response, mode="stream")
+        return typing.cast(stream_types.AlignedShot, __result__)
 
     def AnalyzeAdStructure(
         self, llm_response: str, baml_options: BamlCallOptions = {},

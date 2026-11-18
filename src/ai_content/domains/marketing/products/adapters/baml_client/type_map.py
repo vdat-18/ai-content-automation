@@ -19,6 +19,9 @@ type_map = {
     "types.AdStructure": types.AdStructure,
     "stream_types.AdStructure": stream_types.AdStructure,
 
+    "types.AlignedShot": types.AlignedShot,
+    "stream_types.AlignedShot": stream_types.AlignedShot,
+
     "types.ClipCheck": types.ClipCheck,
     "stream_types.ClipCheck": stream_types.ClipCheck,
 

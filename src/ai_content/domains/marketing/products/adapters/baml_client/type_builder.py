@@ -20,7 +20,7 @@ from .globals import DO_NOT_USE_DIRECTLY_UNLESS_YOU_KNOW_WHAT_YOURE_DOING_RUNTIM
 class TypeBuilder(type_builder.TypeBuilder):
     def __init__(self):
         super().__init__(classes=set(
-          ["AdStructure","ClipCheck","ContentBrief","CuratedRule","KeyframeCheck","LabeledReference","PostingPackage","ReferenceCandidate","ReferenceImageReview","ShortenedLine","ShotReferenceChoice","StoryboardShot",]
+          ["AdStructure","AlignedShot","ClipCheck","ContentBrief","CuratedRule","KeyframeCheck","LabeledReference","PostingPackage","ReferenceCandidate","ReferenceImageReview","ShortenedLine","ShotReferenceChoice","StoryboardShot",]
         ), enums=set(
           []
         ), runtime=DO_NOT_USE_DIRECTLY_UNLESS_YOU_KNOW_WHAT_YOURE_DOING_RUNTIME)
@@ -31,12 +31,16 @@ class TypeBuilder(type_builder.TypeBuilder):
 
 
     # #########################################################################
-    # Generated classes 12
+    # Generated classes 13
     # #########################################################################
 
     @property
     def AdStructure(self) -> "AdStructureViewer":
         return AdStructureViewer(self)
+
+    @property
+    def AlignedShot(self) -> "AlignedShotViewer":
+        return AlignedShotViewer(self)
 
     @property
     def ClipCheck(self) -> "ClipCheckViewer":
@@ -90,7 +94,7 @@ class TypeBuilder(type_builder.TypeBuilder):
 
 
 # #########################################################################
-# Generated classes 12
+# Generated classes 13
 # #########################################################################
 
 class AdStructureAst:
@@ -128,6 +132,49 @@ class AdStructureProperties:
     @property
     def rules(self) -> type_builder.ClassPropertyViewer:
         return type_builder.ClassPropertyViewer(self.__bldr.property("rules"))
+    
+    
+
+
+class AlignedShotAst:
+    def __init__(self, tb: type_builder.TypeBuilder):
+        _tb = tb._tb # type: ignore (we know how to use this private attribute)
+        self._bldr = _tb.class_("AlignedShot")
+        self._properties: typing.Set[str] = set([  "description",  "motion_prompt",  ])
+        self._props = AlignedShotProperties(self._bldr, self._properties)
+
+    def type(self) -> baml_py.FieldType:
+        return self._bldr.field()
+
+    @property
+    def props(self) -> "AlignedShotProperties":
+        return self._props
+
+
+class AlignedShotViewer(AlignedShotAst):
+    def __init__(self, tb: type_builder.TypeBuilder):
+        super().__init__(tb)
+
+    
+    def list_properties(self) -> typing.List[typing.Tuple[str, type_builder.ClassPropertyViewer]]:
+        return [(name, type_builder.ClassPropertyViewer(self._bldr.property(name))) for name in self._properties]
+    
+
+
+class AlignedShotProperties:
+    def __init__(self, bldr: baml_py.ClassBuilder, properties: typing.Set[str]):
+        self.__bldr = bldr
+        self.__properties = properties # type: ignore (we know how to use this private attribute) # noqa: F821
+
+    
+    
+    @property
+    def description(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("description"))
+    
+    @property
+    def motion_prompt(self) -> type_builder.ClassPropertyViewer:
+        return type_builder.ClassPropertyViewer(self.__bldr.property("motion_prompt"))
     
     
 

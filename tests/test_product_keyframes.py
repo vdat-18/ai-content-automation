@@ -368,7 +368,7 @@ async def test_prompts_name_the_person_only_when_there_is_one() -> None:
     assert without[1] == 1 and "Do not show any human face" in without[0]
     assert follow[1] == 3 and "Image 1 shows the person from the character image" in follow[0]
     assert "Image 2 is the real product photo" in follow[0]
-    assert "Image 3 is the approved master keyframe" in follow[0]
+    assert "Image 3 is the approved first picture of this video" in follow[0]
     assert with_reference[1] == 4 and "Image 4 is a loose reference" in with_reference[0]
     assert "loose reference" not in follow[0]
 
@@ -514,7 +514,7 @@ async def test_the_person_comes_first_then_the_product_then_the_references() -> 
         for text in (
             "Images 1 to 2 show the person from the character image",
             "Images 3 to 5 are the real product photos",
-            "Image 6 is the approved master keyframe",
+            "Image 6 is the approved first picture of this video",
             "Image 7 is a loose reference",
         )
     ]
@@ -574,6 +574,43 @@ async def test_a_note_is_the_first_thing_the_image_model_is_asked_to_fix(tmp_pat
     service = await _service(tmp_path, keyframer)
     await service.generate_keyframes(PRODUCT_ID, tmp_path, 0, "faint marks on the cheek")
     assert keyframer.calls == [("master", 2, "faint marks on the cheek")]
+
+
+class _Aligner:
+    def __init__(self, answer) -> None:
+        self.answer = answer
+        self.seen: list[tuple[str, bytes, str]] = []
+
+    async def align(self, shot, image, note):
+        self.seen.append((shot["description"], image, note))
+        return self.answer
+
+
+async def test_a_remade_picture_brings_the_scene_text_with_it_and_stays_unapproved(tmp_path) -> None:
+    shots = [{"role": "hook", "keyframe_prompt": "a", "description": "old text", "motion_prompt": "old motion", "voiceover": "v"}]
+    service = await _service(tmp_path, _FakeKeyframer(), shots)
+    aligner = _Aligner({"description": "new text", "motion_prompt": "new motion"})
+    service._shot_aligner = aligner  # type: ignore[assignment]
+    await service.generate_keyframes(PRODUCT_ID, tmp_path, 0)
+    assert aligner.seen == []  # a plain remake has no change to follow
+
+    await service.generate_keyframes(PRODUCT_ID, tmp_path, 0, "show it from the side")
+    [seen] = aligner.seen
+    assert seen == ("old text", PNG + b"master", "show it from the side")
+    shot = (await service._repository.get_brief(PRODUCT_ID))["brief"]["shots"][0]
+    assert (shot["description"], shot["motion_prompt"], shot["voiceover"]) == ("new text", "new motion", "v")
+    [frame] = await service.list_keyframes(PRODUCT_ID)
+    assert (frame["status"], frame["qa_problem"]) == ("ready", "")  # not flagged as an old picture
+
+
+async def test_a_scene_text_the_model_cannot_rewrite_is_left_as_it_was(tmp_path) -> None:
+    shots = [{"role": "hook", "keyframe_prompt": "a", "description": "old text", "motion_prompt": "old motion"}]
+    service = await _service(tmp_path, _FakeKeyframer(), shots)
+    service._shot_aligner = _Aligner(None)  # type: ignore[assignment]
+    await service.generate_keyframes(PRODUCT_ID, tmp_path, 0, "fix it")
+    shot = (await service._repository.get_brief(PRODUCT_ID))["brief"]["shots"][0]
+    assert (shot["description"], shot["motion_prompt"]) == ("old text", "old motion")
+    assert (await service.events(PRODUCT_ID))[-1]["status"] == "warning"
 
 
 async def test_a_keyframe_is_checked_only_on_demand_without_a_new_image(tmp_path) -> None:
