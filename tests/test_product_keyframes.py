@@ -432,16 +432,16 @@ async def test_prompts_name_the_person_only_when_there_is_one() -> None:
     await generator.follow_up(shot, b"master", [b"p1"], persona=[b"face"])
     await generator.follow_up(shot, b"master", [b"p1"], persona=[b"face"], reference=b"pose")
     with_person, without, follow, with_reference = client.calls
-    assert with_person[1] == 4 and "Images 1 to 2 are the real product photos" in with_person[0]
-    assert "Image 3 shows the person in the ad" in with_person[0]
+    assert with_person[1] == 4 and "Image 1 shows the person from the character image" in with_person[0]
+    assert "Images 2 to 3 are the real product photos" in with_person[0]
     assert (
         "Image 4 is a loose reference for the pose" in with_person[0]
         and "Do not show any human face" not in with_person[0]
     )
     assert "Rules to follow in the picture:" + chr(10) + "- Clear skin: no acne" in with_person[0]
     assert without[1] == 1 and "Do not show any human face" in without[0]
-    assert follow[1] == 3 and "Image 1 is the real product photo" in follow[0]
-    assert "Image 2 shows the person in the ad" in follow[0]
+    assert follow[1] == 3 and "Image 1 shows the person from the character image" in follow[0]
+    assert "Image 2 is the real product photo" in follow[0]
     assert "Image 3 is the approved master keyframe" in follow[0]
     assert with_reference[1] == 4 and "Image 4 is a loose reference" in with_reference[0]
     assert "loose reference" not in follow[0]
@@ -581,11 +581,11 @@ async def test_the_prompt_names_every_photo_of_the_person() -> None:
     shot = {"keyframe_prompt": "he folds the basket"}
     await generator.master(shot, [b"p1"], None, persona=[b"a", b"b", b"c"])
     [(prompt, count)] = client.calls
-    assert count == 4 and "Images 2 to 4 show the person in the ad" in prompt
+    assert count == 4 and "Images 1 to 3 show the person from the character image" in prompt
     assert not re.search(r"\b(she|her)\b", prompt)
 
 
-async def test_the_product_comes_first_then_the_person_then_the_references() -> None:
+async def test_the_person_comes_first_then_the_product_then_the_references() -> None:
     from ai_content.domains.marketing.products.keyframes import KeyframeGenerator
 
     client = _RecordingClient()
@@ -599,8 +599,8 @@ async def test_the_product_comes_first_then_the_person_then_the_references() -> 
     order = [
         prompt.index(text)
         for text in (
-            "Images 1 to 3 are the real product photos",
-            "Images 4 to 5 show the person in the ad",
+            "Images 1 to 2 show the person from the character image",
+            "Images 3 to 5 are the real product photos",
             "Image 6 is the approved master keyframe",
             "Image 7 is a loose reference",
         )
@@ -625,7 +625,7 @@ def test_the_story_note_gives_one_shot_the_whole_video() -> None:
     }
     note = keyframes_module.story_note(brief, 1)
     assert "shot 2 of 2" in note and "phòng trọ nhỏ" in note and "cạnh giường" in note
-    assert "What is said over this shot: câu hai" in note
+    assert "câu hai" not in note  # a still image does not need the voice-over
     assert "1. hook: mở đầu" in note and "2. demo: dùng thử" in note
 
 
@@ -768,3 +768,9 @@ async def test_every_image_call_is_counted_in_the_usage_ledger(tmp_path) -> None
     )
     [counted] = (await ledger.summary(window)).by_operation
     assert (counted.key, counted.request_count, counted.succeeded) == ("keyframe", 1, 1)
+
+
+def test_a_version_or_size_ending_with_a_full_stop_does_not_double_it() -> None:
+    shot = {"product_variant": "a red tube.", "product_size": "15 cm tall."}
+    assert ".." not in keyframes_module._variant_note(shot)
+    assert ".." not in keyframes_module._size_note(shot)

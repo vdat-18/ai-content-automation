@@ -33,7 +33,7 @@ _PRIORITY = (
     "of the setting, light or pose; it never overrides the product or the face."
 )
 _PERSONA_RULE = (
-    "the person in the ad. The face in the new picture must be exactly this face, as if the same "
+    "the person from the character image. The face in the new picture must be exactly this face, as if the same "
     "real person were photographed again: copy the face shape, jawline, forehead, eyebrows, eyes, "
     "nose, lips, ears, hairline, hair length and style, skin tone, age and body from these images "
     "in every shot, and ignore any other description of their looks in the text below. "
@@ -55,7 +55,7 @@ _CLOTHES = (
 
 
 def _size_note(shot: dict[str, Any]) -> str:
-    size = str(shot.get("product_size") or "").strip()
+    size = str(shot.get("product_size") or "").strip().rstrip(". ")
     return (
         f"Real size of the product, keep this scale next to the person and the room: {size}."
         if size
@@ -64,7 +64,7 @@ def _size_note(shot: dict[str, Any]) -> str:
 
 
 def _variant_note(shot: dict[str, Any]) -> str:
-    variant = str(shot.get("product_variant") or "").strip()
+    variant = str(shot.get("product_variant") or "").strip().rstrip(". ")
     return (
         f"The product comes in several versions; show only this one: {variant}. Ignore the "
         "other versions in the photos."
@@ -99,7 +99,6 @@ def story_note(brief: dict[str, Any], index: int) -> str:
             f"Where the product sits: {brief.get('product_placement', '')}.",
             f"Style: {', '.join(brief.get('style') or [])}. "
             f"Colors: {', '.join(brief.get('colors') or [])}.",
-            f"What is said over this shot: {shots[index].get('voiceover', '')}",
             "The shots in order:",
             *(
                 f"{i + 1}. {s.get('role', '')}: {s.get('description', '')}"
@@ -260,16 +259,13 @@ class KeyframeGenerator:
         fix: str = "",
         persona: list[bytes] | None = None,
     ) -> bytes:
-        # Order matters to the model: the product first, then the face, the scene last
-        images: list[bytes] = list(product_photos)
-        parts: list[str] = [_PRIORITY, _product_note(1, len(images))]
+        # Order of the pictures: the person, the product, the loose scene last
+        images: list[bytes] = list(persona or [])
+        parts: list[str] = [_PRIORITY]
         if persona:
-            images += persona
-            parts.append(
-                _persona_note(
-                    len(images) - len(persona) + 1, len(images), shot.get("retouch", True)
-                )
-            )
+            parts.append(_persona_note(1, len(images), shot.get("retouch", True)))
+        images += product_photos
+        parts.append(_product_note(len(images) - len(product_photos) + 1, len(images)))
         if scene is not None:
             images.append(scene)
             parts.append(
@@ -293,15 +289,12 @@ class KeyframeGenerator:
         persona: list[bytes] | None = None,
         reference: bytes | None = None,
     ) -> bytes:
-        images: list[bytes] = list(product_photos)
-        parts: list[str] = [_PRIORITY, _product_note(1, len(images))]
+        images: list[bytes] = list(persona or [])
+        parts: list[str] = [_PRIORITY]
         if persona:
-            images += persona
-            parts.append(
-                _persona_note(
-                    len(images) - len(persona) + 1, len(images), shot.get("retouch", True)
-                )
-            )
+            parts.append(_persona_note(1, len(images), shot.get("retouch", True)))
+        images += product_photos
+        parts.append(_product_note(len(images) - len(product_photos) + 1, len(images)))
         images.append(master)
         parts.append(
             f"Image {len(images)} is the approved master keyframe: keep the same product, light, "

@@ -59,9 +59,8 @@ function DraftContentBrief(
 
     Scene: reference photos are matched to shots later, so write every keyframe_prompt on its own:
     action, framing, distance and camera angle, the real product as the clear hero, the shared
-    scene, lighting, style and colors, and an explicit instruction that the product, in the version
-    of product_variant, keeps its real shape, color, proportions, label and its real size from
-    product_size next to the person and the room, never enlarged or shrunk.
+    scene, lighting, style and colors. The image model is told the version, the real look and the
+    real size of the product separately: do not repeat them in the keyframe_prompt.
 
     {% if with_person %}
     People: the video sells the product, what it does and how well. One recurring person, the one
