@@ -5,7 +5,7 @@ import { useSearchParams } from "react-router-dom";
 import { ErrorNote, Spinner } from "../../components/ui";
 import { ClipsPanel } from "./ClipsPanel";
 import { VoiceChoice } from "./VoiceChoice";
-import { API, useStartPipeline, useVideoCheck, useVideoInfo, useVoice } from "../../hooks/useStudio";
+import { API, useStartPipeline, useVideoCheck, useVoice } from "../../hooks/useStudio";
 import { imagesApproved, runStopped } from "../../lib/studio";
 import { getJson, postJson } from "../../services/http";
 import type { BriefRecord, Keyframe, PipelineRun, PostPackage } from "../../types/studio";
@@ -39,10 +39,6 @@ export function FinishStep({ productId, record, frames, hasVideo, run }: { produ
   const check = useVideoCheck(productId, version).data;
   const usage = useQuery({ queryKey: ["usage", productId, version], queryFn: ({ signal }) => getJson<Usage>(`/api/v1/ai-usage/summary?correlation_id=${productId}`, signal) });
   const used = (usage.data?.by_operation ?? []).filter((item) => USED[item.key]);
-  const lastVoice = useVideoInfo(productId).data?.voice_id;
-  // Until a voice is chosen, keep the voice that read the current video, else let the AI pick
-  const selectedVoice = chosenVoice || lastVoice || "auto";
-  const sentVoice = selectedVoice === "auto" ? null : selectedVoice;
 
   const writePack = useMutation({
     mutationFn: () => postJson<PostPackage>(`${API}/${productId}/post-package`),
@@ -59,7 +55,7 @@ export function FinishStep({ productId, record, frames, hasVideo, run }: { produ
     onSuccess: () => client.invalidateQueries({ queryKey: ["hooks", productId] }),
   });
   const buildHook = useMutation({
-    mutationFn: (hook: Hook) => postJson(`${API}/${productId}/hooks/${hook.id}/video`, { voice: sentVoice, captions, stickers }),
+    mutationFn: (hook: Hook) => postJson(`${API}/${productId}/hooks/${hook.id}/video`, { voice: chosenVoice, captions, stickers }),
     onSuccess: () => client.invalidateQueries({ queryKey: ["hooks", productId] }),
   });
   // While the opening is being filmed, ask every 10 seconds: the call that finds it ready makes the video
@@ -75,7 +71,7 @@ export function FinishStep({ productId, record, frames, hasVideo, run }: { produ
   }, [filmingId]);
   const remake = useMutation({
     mutationFn: async () => {
-      await postJson(`${API}/${productId}/voiceover`, { voice: sentVoice });
+      await postJson(`${API}/${productId}/voiceover`, { voice: chosenVoice });
       await postJson(`${API}/${productId}/video`, { captions, stickers });
     },
     onSuccess: () => {
@@ -182,7 +178,7 @@ export function FinishStep({ productId, record, frames, hasVideo, run }: { produ
             <details open>
               <summary className="muted small" style={{ cursor: "pointer" }}>More options: change the voice or show on-screen text</summary>
               <div className="stack" style={{ marginTop: 12 }}>
-                <VoiceChoice voice={selectedVoice === "auto" ? "" : selectedVoice} onChoose={chooseVoice} />
+                <VoiceChoice voice={chosenVoice} onChoose={chooseVoice} />
                 <label className="check"><input type="checkbox" checked={captions} onChange={(event) => setCaptions(event.target.checked)} />Show the on-screen text in the video (it can cover the product).</label>
                 <label className="check"><input type="checkbox" checked={stickers} onChange={(event) => setStickers(event.target.checked)} />Show price, sales and rating stickers from the product data, in the shot that mentions them.</label>
                 <div><button className="btn" disabled={remake.isPending} onClick={() => remake.mutate()}>{remake.isPending ? <><Spinner size={14} />Remaking…</> : "Remake the video with these choices"}</button></div>

@@ -46,6 +46,7 @@ VOICES: dict[str, str] = {
     "huuduc.mp3": "Hữu Đức",
     "giongadam.mp3": "Giọng Adam",
 }
+DEFAULT_VOICE = "giongadam.mp3"  # every video is read in this voice unless another is chosen
 SAMPLE_TEXT = (
     "Căn hộ nhỏ mà quần áo bừa bãi làm nhà cửa chật chội? "
     "Sọt lưới gấp gọn thông minh, giúp bạn tối ưu không gian. Bấm vào giỏ hàng nhé!"

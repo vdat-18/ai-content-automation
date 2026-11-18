@@ -91,6 +91,7 @@ from .references import GENERAL_TYPE, ProfileGenerationError, ReferenceProfile
 from .repositories import ProductRepository
 from .shortening import VoiceShortener, words_that_fit
 from .speech import (
+    DEFAULT_VOICE,
     MAX_SPEEDUP,
     SAMPLE_TEXT,
     VOICES,
@@ -1770,10 +1771,11 @@ class ProductCatalogService:
             return None
         if self._speaker is None:
             raise KeyframeUnavailable("Text-to-speech is not configured (AIC_TTS_MODEL)")
-        if voice and voice not in VOICES:
+        voice = voice or DEFAULT_VOICE
+        if voice not in VOICES:
             raise KeyframeUnavailable(f"Unknown voice {voice}")
         voice_reason = ""
-        if not voice and self._voice_picker is not None:
+        if voice == "auto" and self._voice_picker is not None:
             brief = record["brief"]
             photos = (await self.persona_photos(media_root, brief.get("persona_id")))[:2]
             choice = await self._voice_picker.pick(brief, photos if brief.get("with_person") else [])

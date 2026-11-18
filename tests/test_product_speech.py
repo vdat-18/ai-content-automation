@@ -262,12 +262,16 @@ async def test_a_clip_without_speech_is_read_at_its_own_pace(tmp_path, monkeypat
         }
     )
 
+    voices: list[str | None] = []
+
     class _Fake:
         async def speak(self, text, voice=None):
+            voices.append(voice)
             return _tone(3.0)
 
     service = ProductCatalogService(repository, speaker=_Fake())  # type: ignore[arg-type]
     made = await service.create_voiceover(PRODUCT_ID, tmp_path)  # nothing to follow: not a crash
+    assert set(voices) == {"giongadam.mp3"}  # without a choice, Adam reads every video
     assert made["voiceover"] == "mp3" and (tmp_path / "videos" / PRODUCT_ID / "voiceover.mp3").is_file()
     assert made["misread_shots"] == [1]  # only a tenth of its words were heard
 

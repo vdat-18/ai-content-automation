@@ -72,11 +72,13 @@ export const useEvents = (productId: string, running: boolean) =>
 
 export const VOICE_KEY = "aic-voice";
 
-/** The voice a person picked once and every video uses; "auto" (the AI picks) counts as not chosen. */
+export const DEFAULT_VOICE = "giongadam.mp3"; // the server reads every video in this voice unless another is chosen
+
+/** The voice every video uses: the one a person picked, else the default. "auto" is not a voice. */
 export function useVoice(): [string, (id: string) => void] {
   const [voice, setVoice] = useState(() => {
     const saved = window.localStorage.getItem(VOICE_KEY) ?? "";
-    return saved === "auto" ? "" : saved;
+    return saved && saved !== "auto" ? saved : DEFAULT_VOICE;
   });
   return [voice, (id) => { setVoice(id); window.localStorage.setItem(VOICE_KEY, id); }];
 }
