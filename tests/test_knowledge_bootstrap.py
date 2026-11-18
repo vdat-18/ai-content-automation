@@ -19,8 +19,8 @@ def test_product_ad_rules_change_only_together_with_their_bootstrap_id() -> None
     manifest = load_knowledge_bootstrap(_PRODUCT_AD)
     content = hashlib.sha256(_PRODUCT_AD.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
     assert (manifest.bootstrap_id, content) == (
-        "product-ad-v14",
-        "94ea21f40c12b3ad9cee5d9f41857c4eabaeaca7af685c64e9326f7ed113926e",
+        "product-ad-v15",
+        "ddf75c99fe586ca604852543fac234aaa3f4b3206ee1f1648aa2db340c738828",
     )
     assert all(item.auto_approve for item in manifest.items)
 

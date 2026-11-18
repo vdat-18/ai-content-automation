@@ -94,9 +94,13 @@ function DraftContentBrief(
     portrait. The product and its effect fill at least half the frame and the product is clearly
     recognisable from the first frame to the last. Suit actions, outfit and setting to the person
     you see, but keep them in the background: mostly hands, arms and body doing something concrete
-    with the product. Only the first and the last shot may show the face, with the product held up
-    close to the camera, at least as big as the face; in every other shot the face is not seen
-    (turned away, cut off by the frame or small in a wide frame). Make the person look real: the
+    with the product. Only the first and the last shot may show the face; in every other shot the
+    face is not seen (turned away, cut off by the frame or small in a wide frame). The first shot
+    shows the face with the product held up close to the camera, at least as big as the face. The
+    last shot shows the result and must not repeat the first: another camera angle (for example
+    a side or three-quarter view at the mirror), another framing and another action (for example
+    touching the skin, trying the product on, enjoying it), with the product still clearly
+    visible, placed in the frame or held in a different way. Make the person look real: the
     hair may be styled for the action (tied up, tucked behind the ears or held back, for example
     before washing the face) and may move a little in the air; say so in the keyframe_prompt
     when the action needs it.
@@ -113,7 +117,8 @@ function DraftContentBrief(
     speaking, so hide the mouth or keep it out of focus (from behind or the side, hands and product
     close-up, face turned down or away, or small in a wide frame). talking: the person speaks in a
     relaxed conversation to the camera, framed at chest level with the product held up close. Use
-    talking for the hook and the call to action, narrated for the middle shots.
+    talking for the hook, narrated for the middle shots, and talking or narrated for the call to
+    action, whichever fits the result it shows.
     {% else %}
     Every shot is narrated: the picture shows only the product, the place and hands, and nobody is
     seen speaking. Never use talking.
