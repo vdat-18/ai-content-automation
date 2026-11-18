@@ -40,5 +40,9 @@ export function doneSteps(brief: BriefRecord | null | undefined, keyframes: Keyf
 /** The step a person most likely wants next: scenes and video are one page. */
 export const suggestedStep = (brief: BriefRecord | null | undefined): StepId => (brief ? "images" : "idea");
 
+/** A product can have many videos: the id of a video is the product id, then "-v" and a suffix. */
+export const productOf = (projectId: string) => projectId.split("-v")[0];
+export const newProjectId = (productId: string) => `${productId}-v${Date.now().toString(36)}`;
+
 export const toNumber = (value: number | string | null | undefined) => Number(String(value ?? 0).replace(/[.,]/g, "")) || 0;
 export const vnd = (value: string | null | undefined) => (value ? `${toNumber(value).toLocaleString("en-US")} ₫` : "");

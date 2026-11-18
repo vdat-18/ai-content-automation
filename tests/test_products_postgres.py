@@ -107,7 +107,7 @@ async def _round_trip() -> None:
         assert passed["screening"] == {"usable": True}
 
         class _Writer:
-            async def write(self, product, user_idea, shot_count=1, person_photos=None, rules=""):
+            async def write(self, product, user_idea, shot_count=1, person_photos=None, rules="", earlier=""):
                 return {"title": "T", "scene": "s", "idea": user_idea}
 
         briefer = ProductCatalogService(PostgresProductRepository(engine), briefer=_Writer())  # type: ignore[arg-type]

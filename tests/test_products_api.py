@@ -236,7 +236,7 @@ def test_brief_endpoints(client: TestClient, repository: PostgresProductReposito
 
 
 class _FakeWriter:
-    async def write(self, product, user_idea, shot_count=1, person_photos=None, rules=""):
+    async def write(self, product, user_idea, shot_count=1, person_photos=None, rules="", earlier=""):
         return {"title": "T", "idea_seen": user_idea, "selected_reference_ids": []}
 
 

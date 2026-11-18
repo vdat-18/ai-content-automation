@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Empty, PageHead, Skeleton } from "../components/ui";
 import { useBriefs, useOutputs, useProducts } from "../hooks/useStudio";
+import { productOf } from "../lib/studio";
 import { VideoCard } from "./Home";
 
 type Tab = "all" | "finished" | "working";
@@ -38,7 +39,7 @@ export function VideosPage() {
           {shown.working.map((record) => (
             <Link key={record.product_id} to={`/studio/${record.product_id}`} className="video-card">
               <div className="cover">
-                {imageById.get(record.product_id) && <img src={imageById.get(record.product_id)} alt="" loading="lazy" referrerPolicy="no-referrer" />}
+                {imageById.get(productOf(record.product_id)) && <img src={imageById.get(productOf(record.product_id))} alt="" loading="lazy" referrerPolicy="no-referrer" />}
                 <span className="tag pill pill-warn">In progress</span>
               </div>
               <div><strong>{record.brief.title}</strong><span className="muted small">{`${record.brief.shots?.length ?? 0} scenes`}</span></div>

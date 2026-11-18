@@ -102,12 +102,12 @@ class ShotReferenceChoice(BaseModel):
 
 class StoryboardShot(BaseModel):
     role: typing.Optional[typing.Union[typing_extensions.Literal['hook'], typing_extensions.Literal['problem'], typing_extensions.Literal['demo'], typing_extensions.Literal['benefit'], typing_extensions.Literal['call_to_action']]] = None
-    description: typing.Optional[str] = Field(default=None, description='Vietnamese: what the viewer sees, one or two sentences')
+    description: typing.Optional[str] = Field(default=None, description='Vietnamese: what the viewer sees and what it proves about the product, one or two sentences')
     keyframe_prompt: typing.Optional[str] = Field(default=None, description='A complete, self-contained English prompt for the image model, about 110 to 160 words, with no repeated wording or filler')
-    motion_prompt: typing.Optional[str] = Field(default=None, description='English, about 65 to 100 words (four or five timed beats), only motion: the keyframe already shows how everything looks')
+    motion_prompt: typing.Optional[str] = Field(default=None, description='English, about 65 to 100 words (four or five timed beats), only motion: the keyframe already shows how everything looks. Keep the face exactly as in the keyframe with a natural relaxed expression and the mouth mostly closed or in a slight smile; hair may move a little in the air')
     delivery: typing.Optional[typing.Union[typing_extensions.Literal['narrated'], typing_extensions.Literal['talking']]] = None
     on_screen_text: typing.Optional[str] = Field(default=None, description='A short Vietnamese caption, or an empty string')
-    voiceover: typing.Optional[str] = Field(default=None, description='Vietnamese, as long as the rules for a narrated or a talking shot say')
+    voiceover: typing.Optional[str] = Field(default=None, description='Vietnamese, natural spoken words that fill most of the 15 seconds of the shot: about 55 to 65 words')
 
 class VoicePick(BaseModel):
     gender: typing.Optional[str] = None

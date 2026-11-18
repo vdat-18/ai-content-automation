@@ -164,18 +164,18 @@ class BamlSyncClient:
                 "new_rule": new_rule,"existing_rules": existing_rules,
             })
             return typing.cast(types.CuratedRule, __result__.cast_to(types, types, stream_types, False, __runtime__))
-    def DraftContentBrief(self, product_json: str,user_idea: str,shot_count: int,product_images: typing.List[baml_py.Image],with_person: bool,person_images: typing.List[baml_py.Image],rules: str,
+    def DraftContentBrief(self, product_json: str,user_idea: str,shot_count: int,product_images: typing.List[baml_py.Image],with_person: bool,person_images: typing.List[baml_py.Image],rules: str,earlier_videos: str,
         baml_options: BamlCallOptions = {},
     ) -> types.ContentBrief:
         # Check if on_tick is provided
         if 'on_tick' in baml_options:
-            __stream__ = self.stream.DraftContentBrief(product_json=product_json,user_idea=user_idea,shot_count=shot_count,product_images=product_images,with_person=with_person,person_images=person_images,rules=rules,
+            __stream__ = self.stream.DraftContentBrief(product_json=product_json,user_idea=user_idea,shot_count=shot_count,product_images=product_images,with_person=with_person,person_images=person_images,rules=rules,earlier_videos=earlier_videos,
                 baml_options=baml_options)
             return __stream__.get_final_response()
         else:
             # Original non-streaming code
             __result__ = self.__options.merge_options(baml_options).call_function_sync(function_name="DraftContentBrief", args={
-                "product_json": product_json,"user_idea": user_idea,"shot_count": shot_count,"product_images": product_images,"with_person": with_person,"person_images": person_images,"rules": rules,
+                "product_json": product_json,"user_idea": user_idea,"shot_count": shot_count,"product_images": product_images,"with_person": with_person,"person_images": person_images,"rules": rules,"earlier_videos": earlier_videos,
             })
             return typing.cast(types.ContentBrief, __result__.cast_to(types, types, stream_types, False, __runtime__))
     def PickVoice(self, brief_json: str,voices_json: str,person_photos: typing.List[baml_py.Image],
@@ -317,11 +317,11 @@ class BamlStreamClient:
           lambda x: typing.cast(types.CuratedRule, x.cast_to(types, types, stream_types, False, __runtime__)),
           __ctx__,
         )
-    def DraftContentBrief(self, product_json: str,user_idea: str,shot_count: int,product_images: typing.List[baml_py.Image],with_person: bool,person_images: typing.List[baml_py.Image],rules: str,
+    def DraftContentBrief(self, product_json: str,user_idea: str,shot_count: int,product_images: typing.List[baml_py.Image],with_person: bool,person_images: typing.List[baml_py.Image],rules: str,earlier_videos: str,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.BamlSyncStream[stream_types.ContentBrief, types.ContentBrief]:
         __ctx__, __result__ = self.__options.merge_options(baml_options).create_sync_stream(function_name="DraftContentBrief", args={
-            "product_json": product_json,"user_idea": user_idea,"shot_count": shot_count,"product_images": product_images,"with_person": with_person,"person_images": person_images,"rules": rules,
+            "product_json": product_json,"user_idea": user_idea,"shot_count": shot_count,"product_images": product_images,"with_person": with_person,"person_images": person_images,"rules": rules,"earlier_videos": earlier_videos,
         })
         return baml_py.BamlSyncStream[stream_types.ContentBrief, types.ContentBrief](
           __result__,
@@ -432,11 +432,11 @@ class BamlHttpRequestClient:
             "new_rule": new_rule,"existing_rules": existing_rules,
         }, mode="request")
         return __result__
-    def DraftContentBrief(self, product_json: str,user_idea: str,shot_count: int,product_images: typing.List[baml_py.Image],with_person: bool,person_images: typing.List[baml_py.Image],rules: str,
+    def DraftContentBrief(self, product_json: str,user_idea: str,shot_count: int,product_images: typing.List[baml_py.Image],with_person: bool,person_images: typing.List[baml_py.Image],rules: str,earlier_videos: str,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.baml_py.HTTPRequest:
         __result__ = self.__options.merge_options(baml_options).create_http_request_sync(function_name="DraftContentBrief", args={
-            "product_json": product_json,"user_idea": user_idea,"shot_count": shot_count,"product_images": product_images,"with_person": with_person,"person_images": person_images,"rules": rules,
+            "product_json": product_json,"user_idea": user_idea,"shot_count": shot_count,"product_images": product_images,"with_person": with_person,"person_images": person_images,"rules": rules,"earlier_videos": earlier_videos,
         }, mode="request")
         return __result__
     def PickVoice(self, brief_json: str,voices_json: str,person_photos: typing.List[baml_py.Image],
@@ -517,11 +517,11 @@ class BamlHttpStreamRequestClient:
             "new_rule": new_rule,"existing_rules": existing_rules,
         }, mode="stream")
         return __result__
-    def DraftContentBrief(self, product_json: str,user_idea: str,shot_count: int,product_images: typing.List[baml_py.Image],with_person: bool,person_images: typing.List[baml_py.Image],rules: str,
+    def DraftContentBrief(self, product_json: str,user_idea: str,shot_count: int,product_images: typing.List[baml_py.Image],with_person: bool,person_images: typing.List[baml_py.Image],rules: str,earlier_videos: str,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.baml_py.HTTPRequest:
         __result__ = self.__options.merge_options(baml_options).create_http_request_sync(function_name="DraftContentBrief", args={
-            "product_json": product_json,"user_idea": user_idea,"shot_count": shot_count,"product_images": product_images,"with_person": with_person,"person_images": person_images,"rules": rules,
+            "product_json": product_json,"user_idea": user_idea,"shot_count": shot_count,"product_images": product_images,"with_person": with_person,"person_images": person_images,"rules": rules,"earlier_videos": earlier_videos,
         }, mode="stream")
         return __result__
     def PickVoice(self, brief_json: str,voices_json: str,person_photos: typing.List[baml_py.Image],

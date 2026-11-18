@@ -35,7 +35,7 @@ PIN = {"image_url": "https://i.pinimg.com/236x/ab/cd/ef.jpg", "pin_url": "/pin/1
 
 
 class _FakeWriter:
-    async def write(self, product, user_idea, shot_count=1, person_photos=None, rules=""):
+    async def write(self, product, user_idea, shot_count=1, person_photos=None, rules="", earlier=""):
         return {
             "title": "Brief",
             "scene": "Phòng giặt",
@@ -147,7 +147,7 @@ class _FakeBamlClient:
         self.people: list[tuple[bool, int]] = []
 
     async def DraftContentBrief(
-        self, product_json, user_idea, shot_count, product_images, with_person, person_images, rules
+        self, product_json, user_idea, shot_count, product_images, with_person, person_images, rules, earlier_videos=""
     ):
         if self.fail:
             raise BamlClientError("503", "503", "503")
@@ -222,13 +222,13 @@ async def test_the_pictures_the_brief_reads_are_shrunk() -> None:
 
     class _Looks(_FakeBamlClient):
         async def DraftContentBrief(
-            self, product_json, user_idea, shot_count, product_images, with_person, person_images, rules
+            self, product_json, user_idea, shot_count, product_images, with_person, person_images, rules, earlier_videos=""
         ):
             for picture in [*product_images, *person_images]:
                 data = base64.b64decode(picture.as_base64()[0])
                 seen.append(Image.open(io.BytesIO(data)).size)
             return await super().DraftContentBrief(
-                product_json, user_idea, shot_count, product_images, with_person, person_images, rules
+                product_json, user_idea, shot_count, product_images, with_person, person_images, rules, earlier_videos
             )
 
     def big(request: httpx.Request) -> httpx.Response:
@@ -313,7 +313,7 @@ def test_product_facts_drop_the_odd_spaces_and_blank_lines_and_keep_the_price_dr
 
 
 class _TwoShots:
-    async def write(self, product, user_idea, shot_count=1, person_photos=None, rules=""):
+    async def write(self, product, user_idea, shot_count=1, person_photos=None, rules="", earlier=""):
         prompts = ["a hand applies lotion", "sitting in a room", "standing in a room"]
         shots = [{"role": "demo", "keyframe_prompt": prompts[i % 3]} for i in range(shot_count)]
         return {"title": "T", "shots": shots}
@@ -435,7 +435,7 @@ async def test_references_fall_back_to_text_when_the_product_cannot_be_embedded(
 async def test_shots_get_different_references_while_the_pool_has_enough(tmp_path, monkeypatch) -> None:
     monkeypatch.setenv("AIC_CLIP_SPEED", "1.25")  # 45 seconds is 3 shots
     class _SameShots(_TwoShots):
-        async def write(self, product, user_idea, shot_count=1, person_photos=None, rules=""):
+        async def write(self, product, user_idea, shot_count=1, person_photos=None, rules="", earlier=""):
             brief = await super().write(product, user_idea, shot_count, person_photos)
             for shot in brief["shots"]:
                 shot["keyframe_prompt"] = "a hand pours lotion"
@@ -513,7 +513,7 @@ async def test_video_length_sets_one_shot_per_15_seconds_whatever_the_clip_speed
     seen: list[int] = []
 
     class _Counting(_FakeWriter):
-        async def write(self, product, user_idea, shot_count=1, person_photos=None, rules=""):
+        async def write(self, product, user_idea, shot_count=1, person_photos=None, rules="", earlier=""):
             seen.append(shot_count)
             return await super().write(product, user_idea, shot_count, person_photos)
 
@@ -535,7 +535,7 @@ async def test_the_brief_is_the_one_answer_of_the_model_with_no_check_of_its_con
     calls = []
 
     class _Odd(_FakeWriter):
-        async def write(self, product, user_idea, shot_count=1, person_photos=None, rules=""):
+        async def write(self, product, user_idea, shot_count=1, person_photos=None, rules="", earlier=""):
             calls.append(shot_count)
             return {"title": "T", "shots": [{"voiceover": "Sản phẩm tốt nhất"}] * 2}
 

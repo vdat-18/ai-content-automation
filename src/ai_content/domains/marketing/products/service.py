@@ -39,6 +39,7 @@ from ai_content.platform.ai_usage import (
 from .briefing import (
     BriefUnavailable,
     ContentBriefWriter,
+    earlier_videos,
     reference_note,
     reference_search_text,
 )
@@ -85,6 +86,7 @@ from .parsing import (
     parse_product_page,
 )
 from .posting import PostingPackageWriter
+from .projects import product_of
 from .reference_ad import AdAnalyzer, ReferenceAdUnavailable
 from .reference_picker import ReferencePickerError, ShotReferencePicker
 from .references import GENERAL_TYPE, ProfileGenerationError, ReferenceProfile
@@ -262,8 +264,9 @@ class HookClipPending(RuntimeError):
 
 
 _KEEP_PERSON = (
-    "Keep the same person (face, hair, clothes, body proportions) and the product's exact shape, "
-    "color and details in every frame; do not add, remove or change objects. "
+    "Keep the same person (face, teeth, clothes, body proportions; the hair may move naturally) and "
+    "the product's exact shape, color and details in every frame; do not add, remove or change "
+    "objects. "
 )
 _KEEP_PRODUCT = (
     "Keep the product's exact shape, color and details in every frame; do not add, remove or "
@@ -295,8 +298,8 @@ def _clip_prompt(shot: dict[str, Any], with_person: bool, fix: str = "") -> str:
     return (
         f"{shot.get('motion_prompt') or 'Slow gentle camera push-in.'} "
         f"{_KEEP_PERSON if with_person else _KEEP_PRODUCT}{_NO_ARTIFACTS}"
-        "Energetic TikTok pace: brisk natural movement and quick camera moves, "
-        "never slow motion, no long pauses. "
+        "Natural, unhurried pace: movement at normal real-life speed and calm, steady camera moves, "
+        "never slow motion. "
         f"{'' if with_person else _NO_PERSON_VIDEO}"
         f"{sound}"
         f"{f' Keep everything else as before and fix only this problem of the last version: {fix}' if fix else ''}"
@@ -801,7 +804,7 @@ class ProductCatalogService:
             return None
         if self._briefer is None:
             raise ProfileGenerationError("LLM is not configured (AIC_SCREENING_API_KEY)")
-        product_type = (await self._repository.selections()).get(product_id)
+        product_type = (await self._repository.selections()).get(product_of(product_id))
         if not product_type:
             raise BriefUnavailable("Select this product for content before writing a brief")
         if not person_photos:
@@ -814,6 +817,14 @@ class ProductCatalogService:
             shot_count=shot_count,
             person_photos=person_photos,
             rules=rules.text,
+            earlier=earlier_videos(
+                [
+                    other["brief"]
+                    for other in await self._repository.list_briefs()
+                    if product_of(other["product_id"]) == product_of(product_id)
+                    and other["product_id"] != product_id
+                ]
+            ),
         )
         brief["shot_references"] = [None] * len(brief.get("shots") or [])
         brief["selected_reference_ids"] = []
@@ -961,7 +972,7 @@ class ProductCatalogService:
         """Choose the reference of each shot again for the stored storyboard."""
         record = await self._repository.get_brief(product_id)
         detail = await self._repository.get_detail(product_id)
-        product_type = (await self._repository.selections()).get(product_id)
+        product_type = (await self._repository.selections()).get(product_of(product_id))
         if record is None or detail is None or not product_type:
             return None
         brief = dict(record["brief"])
@@ -2291,11 +2302,17 @@ class ProductCatalogService:
 
     async def delete_product(self, product_id: str, media_root: Path) -> bool:
         """Delete a product with its brief, images, clips and video; it is not collected again."""
+        projects = [product_id] + [
+            record["product_id"]
+            for record in await self._repository.list_briefs()
+            if record["product_id"] != product_id and product_of(record["product_id"]) == product_id
+        ]
         deleted = await self._repository.delete_product(product_id)
         if deleted:
             store = self.media(media_root)
-            for folder in _WORK_FOLDERS:
-                await store.remove_tree(f"{folder}/{product_id}")
+            for project in projects:
+                for folder in _WORK_FOLDERS:
+                    await store.remove_tree(f"{folder}/{project}")
         return deleted
 
     async def start_over(self, product_id: str, media_root: Path) -> bool:

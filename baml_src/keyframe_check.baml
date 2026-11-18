@@ -35,9 +35,11 @@ function CheckKeyframe(
     - Face (when character images are given and a face is visible; a keyframe with no face passes):
       it is exactly the face in the images, so that someone who knows the person would say it is
       them. Compare face width and length, jawline and chin, forehead and hairline, eyebrows, eye
-      shape and spacing, nose, lips, ears, hair length, parting and style, and skin tone one by one;
-      fail on any clear difference (a rounder or wider face, a different jaw, other eyes, other
-      hair), also when the face looks generic, younger or more handsome. Ignore the angle, the
+      shape and spacing, nose, lips, ears, hair colour and length, and skin tone one by one; the
+      hair may be styled for the action (tied up, tucked behind the ears, held back), which is not
+      a difference. Fail on any clear difference (a rounder or wider face, a different jaw, other
+      eyes, another hair colour or length), also when the face looks generic, younger or more
+      handsome. Ignore the angle, the
       expression and the light; clothes may differ when the shot asks for the product to be worn.
     - Skin: clear, with no acne, pimples, spots or scars even if the images show some. Slightly
       smoothed skin is wanted, but the features keep their real shape and size and the skin keeps

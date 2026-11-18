@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any, Protocol
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncEngine
 
@@ -23,6 +23,7 @@ from ai_content.platform.database.schema import (
 )
 
 from .parsing import SOURCE, is_non_physical, money
+from .projects import SEPARATOR, product_of
 from .references import ReferenceProfile
 
 
@@ -287,7 +288,7 @@ class PostgresProductRepository:
 
     async def get_detail(self, product_id: str) -> dict[str, Any] | None:
         statement = select(marketplace_products.c.detail).where(
-            marketplace_products.c.product_id == product_id,
+            marketplace_products.c.product_id == product_of(product_id),
             marketplace_products.c.detail.is_not(None),
             marketplace_products.c.deleted.is_(False),
         )
@@ -562,15 +563,24 @@ class PostgresProductRepository:
                 )
                 .values(deleted=True)
             )
+            await connection.execute(
+                delete(product_selections).where(product_selections.c.product_id == product_id)
+            )
             for table in (
-                product_selections,
                 product_briefs,
                 product_keyframes,
                 product_clips,
                 product_events,
                 product_pipeline_runs,
-            ):
-                await connection.execute(delete(table).where(table.c.product_id == product_id))
+            ):  # the work of every video of the product, not only the first
+                await connection.execute(
+                    delete(table).where(
+                        or_(
+                            table.c.product_id == product_id,
+                            table.c.product_id.like(f"{product_id}{SEPARATOR}%"),
+                        )
+                    )
+                )
         return bool(result.rowcount)
 
     async def clear_work(self, product_id: str) -> None:

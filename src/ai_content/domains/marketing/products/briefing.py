@@ -36,6 +36,18 @@ class BriefUnavailable(RuntimeError):
     """The product is not ready for a brief; the message says what to do first."""
 
 
+def earlier_videos(briefs: list[dict[str, Any]]) -> str:
+    """The earlier videos of a product as a short list, so a new brief can be different from them."""
+    lines = []
+    for number, brief in enumerate(briefs, 1):
+        shots = "; ".join(f"{shot.get('role')}: {shot.get('description')}" for shot in brief.get("shots") or [])
+        lines.append(
+            f"{number}. {brief.get('title', '')} | angle: {brief.get('selling_angle', '')} | "
+            f"place: {brief.get('scene', '')} | shots: {shots}"
+        )
+    return "\n".join(lines)
+
+
 class _BamlBriefClient(Protocol):
     async def DraftContentBrief(
         self,
@@ -46,6 +58,7 @@ class _BamlBriefClient(Protocol):
         with_person: bool,
         person_images: list[BamlImage],
         rules: str,
+        earlier_videos: str,
     ) -> baml_types.ContentBrief: ...
 
 
@@ -143,6 +156,7 @@ class ContentBriefWriter:
         shot_count: int = 1,
         person_photos: list[bytes] | None = None,
         rules: str = "",
+        earlier: str = "",
     ) -> dict[str, Any]:
         """Return the brief as a dict.
 
@@ -183,6 +197,7 @@ class ContentBriefWriter:
             bool(person_photos),
             [_small_image(photo) for photo in person_photos or []],
             rules,
+            earlier,
         )
         try:
             draft = await self._draft(arguments)

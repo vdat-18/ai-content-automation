@@ -3,7 +3,7 @@ import { Film, Plus, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 import { PageHead, Skeleton, Spinner } from "../components/ui";
 import { API, useBriefs, useKeyframes, useOutputs, usePipeline, useProducts, useVideoInfo } from "../hooks/useStudio";
-import { friendlyStep, imagesApproved, runStopped } from "../lib/studio";
+import { friendlyStep, imagesApproved, productOf, runStopped } from "../lib/studio";
 import { pilotApi } from "../services/pilotApi";
 import type { BriefRecord, OutputItem, Product } from "../types/studio";
 
@@ -40,7 +40,7 @@ export function HomePage() {
       {working.length > 0 && (
         <section className="stack" aria-labelledby="working">
           <h2 id="working">In progress</h2>
-          {working.map((record) => <WorkCard key={record.product_id} record={record} product={productById.get(record.product_id)} />)}
+          {working.map((record) => <WorkCard key={record.product_id} record={record} product={productById.get(productOf(record.product_id))} />)}
         </section>
       )}
 

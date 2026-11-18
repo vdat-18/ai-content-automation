@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Empty, ErrorNote, PageHead, Skeleton } from "../components/ui";
 import { API, useBriefs, useProducts } from "../hooks/useStudio";
-import { toNumber, vnd } from "../lib/studio";
+import { newProjectId, productOf, toNumber, vnd } from "../lib/studio";
 import { deleteJson, getJson, postJson } from "../services/http";
 import type { Product } from "../types/studio";
 
@@ -29,7 +29,7 @@ export function ProductsPage() {
     mutationFn: (productId: string) => postJson(`${API}/${productId}/select`),
     onSuccess: (_data, productId) => {
       refresh();
-      navigate(`/studio/${productId}`);
+      navigate(`/studio/${newProjectId(productId)}`);
     },
   });
   const remove = useMutation({
@@ -63,7 +63,7 @@ export function ProductsPage() {
   if (products.error || !products.data) {
     return <div className="page"><ErrorNote error={products.error ?? new Error("No data")} /></div>;
   }
-  const briefIds = new Set((briefs.data ?? []).map((record) => record.product_id));
+  const briefIds = new Set((briefs.data ?? []).map((record) => productOf(record.product_id)));
 
   return (
     <div className="page page-wide">
@@ -118,7 +118,7 @@ export function ProductsPage() {
                   <span className="small">{`${toNumber(product.sold_count).toLocaleString("en-US")} sold`}{product.rating ? ` · ★ ${product.rating}` : ""}</span>
                   <div className="foot">
                     <button className="btn btn-primary btn-block" disabled={start.isPending} onClick={() => start.mutate(product.product_id)}>
-                      {hasVideoWork ? "Open" : <><Sparkles size={16} aria-hidden="true" />Make a video</>}
+                      <Sparkles size={16} aria-hidden="true" />{hasVideoWork ? "Make another video" : "Make a video"}
                     </button>
                     <button
                       className="icon-button"

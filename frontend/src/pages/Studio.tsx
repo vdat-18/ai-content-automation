@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { Empty, ErrorNote, Skeleton } from "../components/ui";
 import { useBrief, useKeyframes, usePipeline, useProducts, useSelections, useVideoInfo } from "../hooks/useStudio";
-import { doneSteps, friendlyStep, STEPS, suggestedStep, type StepId } from "../lib/studio";
+import { doneSteps, friendlyStep, productOf, STEPS, suggestedStep, type StepId } from "../lib/studio";
 import { FinishStep } from "./studio/FinishStep";
 import { IdeaStep } from "./studio/IdeaStep";
 import { ImagesStep } from "./studio/ImagesStep";
@@ -33,7 +33,7 @@ export function StudioPage() {
   }, [running, client]);
 
   if (products.isLoading || brief.isLoading) return <div className="page"><Skeleton /></div>;
-  const product = products.data?.find((item) => item.product_id === productId);
+  const product = products.data?.find((item) => item.product_id === productOf(productId));
   if (!product) {
     return <div className="page"><Empty icon={<Package size={32} aria-hidden="true" />} title="Product not found" text="Pick a product from the list to make a video."><Link className="btn btn-primary" to="/products">Go to products</Link></Empty></div>;
   }
@@ -46,7 +46,7 @@ export function StudioPage() {
   const asked = params.get("step") as StepId | null;
   const step: StepId = asked && STEPS.some((item) => item.id === asked) ? asked : suggestedStep(record);
   const reachable = (id: StepId) => id === "idea" || !!record;
-  const productType = selections.data?.[productId] ?? null;
+  const productType = selections.data?.[productOf(productId)] ?? null;
   // Once the first image exists, making the other scenes and the video happens on the one scenes page
   const onePage = running && !!record && frames.length > 0;
   const makingScenes = onePage && friendlyStep(pipeline.data!.step) === "Creating the other scenes";

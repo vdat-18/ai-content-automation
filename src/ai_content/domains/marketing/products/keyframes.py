@@ -35,8 +35,12 @@ _PRIORITY = (
 _PERSONA_RULE = (
     "the person from the character image. The face in the new picture must be exactly this face, as if the same "
     "real person were photographed again: copy the face shape, jawline, forehead, eyebrows, eyes, "
-    "nose, lips, ears, hairline, hair length and style, skin tone, age and body from these images "
-    "in every shot, and ignore any other description of their looks in the text below. "
+    "nose, lips, ears, hairline, hair colour and length, skin tone, age and body from these images "
+    "in every shot, and ignore any other description of their looks in the text below, except how "
+    "the hair is worn for the action of the shot (tied up, tucked behind the ears, held back), "
+    "which you follow; hair may move slightly in the air, as real hair does. Teeth, when they are "
+    "visible, are natural, even and well aligned, evenly spaced with no gaps and none oversized; "
+    "otherwise keep the lips closed or in a soft smile. "
 )
 _RETOUCH = (
     "Retouch only the skin, as a light phone beauty filter would: remove acne, pimples, dark spots, "

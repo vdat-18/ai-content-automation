@@ -5,12 +5,12 @@ class LabeledReference {
 
 class StoryboardShot {
   role "hook" | "problem" | "demo" | "benefit" | "call_to_action"
-  description string @description("Vietnamese: what the viewer sees, one or two sentences")
+  description string @description("Vietnamese: what the viewer sees and what it proves about the product, one or two sentences")
   keyframe_prompt string @description("A complete, self-contained English prompt for the image model, about 110 to 160 words, with no repeated wording or filler")
-  motion_prompt string @description("English, about 65 to 100 words (four or five timed beats), only motion: the keyframe already shows how everything looks")
+  motion_prompt string @description("English, about 65 to 100 words (four or five timed beats), only motion: the keyframe already shows how everything looks. Keep the face exactly as in the keyframe with a natural relaxed expression and the mouth mostly closed or in a slight smile; hair may move a little in the air")
   delivery "narrated" | "talking"
   on_screen_text string @description("A short Vietnamese caption, or an empty string")
-  voiceover string @description("Vietnamese, as long as the rules for a narrated or a talking shot say")
+  voiceover string @description("Vietnamese, natural spoken words that fill most of the 15 seconds of the shot: about 55 to 65 words")
 }
 
 class ContentBrief {
@@ -36,7 +36,8 @@ function DraftContentBrief(
   product_images: image[],
   with_person: bool,
   person_images: image[],
-  rules: string
+  rules: string,
+  earlier_videos: string
 ) -> ContentBrief {
   client OrchestrationModel
   prompt #"
@@ -53,6 +54,26 @@ function DraftContentBrief(
     front label most clearly, each from a different angle, and together every item of a set. Read
     sizes and materials from the photos.
 
+    Proof: this is an ad, so the video must show what the product does for the buyer, through real
+    actions a viewer can follow, never a general introduction. First work out from the product
+    facts and photos what problem it solves or what it gives, and which real action proves it
+    (using it on the thing it is made for). Then tell it as a story in a logical order: the
+    problem or the need seen clearly first (the state before), then the real use of the product
+    step by step, then the visible result (the state after); for food and drink the real
+    experience of eating or drinking it, for clothes the real experience of wearing it. The
+    viewer must understand what the product does from the pictures alone. Do not rush: each shot
+    shows one clear thing and lets it be seen, and every shot follows from the one before it, in
+    the same place, with nothing that contradicts the shot before.
+
+    Freestyle: be inventive. Unless the user gave an idea, choose a fresh selling angle, hook and
+    setting that fit this product, specific and surprising, not the most predictable ad.
+    {% if earlier_videos %}
+    Videos already made for this product are listed below. The new brief must be clearly
+    different from every one of them: a different selling angle, a different hook, a different
+    place and a different way to show the product at work. Do not reuse their wording.
+    {{ earlier_videos }}
+    {% endif %}
+
     Version: when the product comes in several versions (colors, scents, sizes), pick exactly ONE
     for the whole video: the one in the first photos or the best seller. Every prompt shows and
     names only that version, never the others.
@@ -65,14 +86,17 @@ function DraftContentBrief(
     {% if with_person %}
     People: the video sells the product, what it does and how well. One recurring person, the one
     in the person photos, only uses it: in a keyframe_prompt call them "the person from the
-    character image" and never describe their age, face, hair, skin or clothes. Every shot shows
+    character image" and never describe their age, face, skin or clothes, or the colour and length of their hair. Every shot shows
     the product and its effect (problem, product at work, result, before and after), never a
     portrait. The product and its effect fill at least half the frame and the product is clearly
     recognisable from the first frame to the last. Suit actions, outfit and setting to the person
     you see, but keep them in the background: mostly hands, arms and body doing something concrete
     with the product. Only the first and the last shot may show the face, with the product held up
     close to the camera, at least as big as the face; in every other shot the face is not seen
-    (turned away, cut off by the frame or small in a wide frame).
+    (turned away, cut off by the frame or small in a wide frame). Make the person look real: the
+    hair may be styled for the action (tied up, tucked behind the ears or held back, for example
+    before washing the face) and may move a little in the air; say so in the keyframe_prompt
+    when the action needs it.
     {% else %}
     People: the video shows no person, no face and no body in any shot, only the real product, the
     place and, when the action needs it, hands. The product is the star, clearly recognisable in

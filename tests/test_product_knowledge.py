@@ -173,7 +173,7 @@ async def test_brief_writer_gets_the_approved_preparation_rules(tmp_path) -> Non
     seen: list[str] = []
 
     class _Writer:
-        async def write(self, product, user_idea, shot_count=1, person_photos=None, rules=""):
+        async def write(self, product, user_idea, shot_count=1, person_photos=None, rules="", earlier=""):
             seen.append(rules)
             return {
                 "title": "Brief",
