@@ -39,10 +39,12 @@ export function doneSteps(brief: BriefRecord | null | undefined, keyframes: Keyf
 }
 
 /** The step a person most likely wants next. */
-export function suggestedStep(brief: BriefRecord | null | undefined, keyframes: Keyframe[], hasVideo: boolean): StepId {
+export function suggestedStep(brief: BriefRecord | null | undefined, keyframes: Keyframe[], hasVideo: boolean, run?: PipelineRun): StepId {
   if (!brief) return "idea";
-  if (hasVideo || imagesApproved(brief, keyframes)) return "finish";
-  return "images";
+  if (hasVideo) return "finish";
+  // With every scene approved the Images page already has the button that makes the video: the Finish page opens once the video run has started
+  const filming = !!run && ["Filming the scenes", "Recording the voice-over", "Putting the video together", "Writing the caption"].includes(friendlyStep(run.step));
+  return imagesApproved(brief, keyframes) && filming ? "finish" : "images";
 }
 
 export const toNumber = (value: number | string | null | undefined) => Number(String(value ?? 0).replace(/[.,]/g, "")) || 0;

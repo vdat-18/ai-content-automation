@@ -44,7 +44,7 @@ export function StudioPage() {
   const hasVideo = !!video.data?.exists;
   const done = doneSteps(record, frames, hasVideo);
   const asked = params.get("step") as StepId | null;
-  const step: StepId = asked && STEPS.some((item) => item.id === asked) ? asked : suggestedStep(record, frames, hasVideo);
+  const step: StepId = asked && STEPS.some((item) => item.id === asked) ? asked : suggestedStep(record, frames, hasVideo, pipeline.data);
   const reachable = (id: StepId) => id === "idea" || !!record;
   const productType = selections.data?.[productId] ?? null;
   // The first image is already on screen: the other scenes appear on the same page as they are made
@@ -57,7 +57,7 @@ export function StudioPage() {
           const state = step === item.id ? "current" : done[item.id] ? "done" : "";
           return (
             <li key={item.id} className={state} aria-current={step === item.id ? "step" : undefined}>
-              <button type="button" disabled={!reachable(item.id)} onClick={() => setParams(item.id === suggestedStep(record, frames, hasVideo) ? {} : { step: item.id })}>
+              <button type="button" disabled={!reachable(item.id)} onClick={() => setParams(item.id === suggestedStep(record, frames, hasVideo, pipeline.data) ? {} : { step: item.id })}>
                 <span className="n">{done[item.id] && step !== item.id ? <Check size={14} aria-hidden="true" /> : index + 1}</span>
                 {item.label}
               </button>
