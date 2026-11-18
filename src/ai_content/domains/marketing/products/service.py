@@ -1022,6 +1022,7 @@ class ProductCatalogService:
         self, product_id: str, step: str, status: str, message: str, shot_index: int | None = None
     ) -> None:
         """Add a line to the run log; the log must never break the step it describes."""
+        logger.info("Run log {} {}[{}] {}: {}", product_id, step, shot_index, status, message[:300])
         try:
             await self._repository.add_event(product_id, step, shot_index, status, message[:600])
         except Exception as error:  # noqa: BLE001

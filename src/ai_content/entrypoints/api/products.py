@@ -516,6 +516,7 @@ async def _run_pipeline(
 
     def report(step: str) -> None:
         run["step"] = step
+        logger.info("Pipeline {} ({}): {}", product_id, body.until, step)
 
     try:
         async with open_scope() as service:
@@ -531,6 +532,7 @@ async def _run_pipeline(
                 persona_id=body.persona_id,
             )
     except (PipelineStopped, *EXPECTED_STOPS) as error:
+        logger.warning("Pipeline {} stopped: {}", product_id, str(error)[:500])
         run.update(status="paused", message=str(error)[:500])
     except Exception as error:  # noqa: BLE001
         logger.exception("Pipeline for product {} crashed", product_id)
