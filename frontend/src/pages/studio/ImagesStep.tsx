@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import { ErrorNote, Spinner } from "../../components/ui";
 import { useLightbox } from "../../hooks/useLightbox";
 import { API, useStartPipeline } from "../../hooks/useStudio";
-import { checkNote, imagesApproved, isUnchecked, runStopped } from "../../lib/studio";
+import { checkNote, friendlyStep, imagesApproved, isUnchecked, runStopped } from "../../lib/studio";
 import { pilotApi } from "../../services/pilotApi";
 import { postJson, putJson } from "../../services/http";
 import type { BriefRecord, Keyframe, PipelineRun } from "../../types/studio";
@@ -18,7 +18,7 @@ const ROLE_LABEL: Record<string, string> = {
   call_to_action: "Call to buy",
 };
 
-export function ImagesStep({ productId, record, frames, run, making = false }: { productId: string; record: BriefRecord; frames: Keyframe[]; run: PipelineRun | undefined; making?: boolean }) {
+export function ImagesStep({ productId, record, frames, run, hasVideo = false, making = false, makingVideo = false }: { productId: string; record: BriefRecord; frames: Keyframe[]; run: PipelineRun | undefined; hasVideo?: boolean; making?: boolean; makingVideo?: boolean }) {
   const client = useQueryClient();
   const lightbox = useLightbox();
   const [noteFor, setNoteFor] = useState<number | null>(null);
@@ -49,6 +49,7 @@ export function ImagesStep({ productId, record, frames, run, making = false }: {
   const rules = useQuery({ queryKey: ["creative-knowledge"], queryFn: ({ signal }) => pilotApi.creativeKnowledge(undefined, signal) });
   const imageRules = (rules.data?.items ?? []).filter((item) => item.status === "approved" && item.scope.asset_type === "keyframe");
   const all = imagesApproved(record, frames);
+  const locked = making || makingVideo;
 
   if (frames.length === 0) {
     return (
@@ -107,8 +108,8 @@ export function ImagesStep({ productId, record, frames, run, making = false }: {
                       </div>
                     ) : frame && frame.status !== "failed" && !busy ? (
                       <div className="row">
-                        <button className={isApproved ? "btn btn-sm" : "btn btn-ok btn-sm"} style={{ flex: 1 }} disabled={making || review.isPending || (index > 0 && !masterApproved && !isApproved)} onClick={() => review.mutate({ index, status: isApproved ? "ready" : "approved" })}>{isApproved ? "Undo approval" : "Approve"}</button>
-                        <button className="btn btn-sm" style={{ flex: 1 }} disabled={making || (index > 0 && !masterApproved)} onClick={() => { setNoteFor(index); setNote(""); }}>Not right</button>
+                        <button className={isApproved ? "btn btn-sm" : "btn btn-ok btn-sm"} style={{ flex: 1 }} disabled={locked || review.isPending || (index > 0 && !masterApproved && !isApproved)} onClick={() => review.mutate({ index, status: isApproved ? "ready" : "approved" })}>{isApproved ? "Undo approval" : "Approve"}</button>
+                        <button className="btn btn-sm" style={{ flex: 1 }} disabled={locked || (index > 0 && !masterApproved)} onClick={() => { setNoteFor(index); setNote(""); }}>Not right</button>
                       </div>
                     ) : !busy && (
                       <button className="btn btn-sm" disabled={redo.isPending || (index > 0 && !masterApproved)} onClick={() => redo.mutate({ index, text: "" })}><RefreshCw size={14} aria-hidden="true" />Try again</button>
@@ -128,17 +129,25 @@ export function ImagesStep({ productId, record, frames, run, making = false }: {
             <div className="progress ok" role="progressbar" aria-valuenow={approved} aria-valuemin={0} aria-valuemax={shots.length} aria-label="Scenes approved"><div style={{ width: `${shots.length ? (approved / shots.length) * 100 : 0}%` }} /></div>
             {making ? (
               <div className="row" role="status" aria-live="polite" style={{ gap: 10 }}><Spinner size={18} /><strong>Creating the other scenes…</strong></div>
+            ) : makingVideo ? (
+              <div className="row" role="status" aria-live="polite" style={{ gap: 10 }}><Spinner size={18} /><strong>{`${friendlyStep(run?.step ?? "")}…`}</strong></div>
             ) : masterApproved && frames.length < shots.length && (
               <button className="btn btn-primary btn-lg btn-block" disabled={start.isPending} onClick={() => start.mutate({ until: "images" })}>{start.isPending ? "Starting…" : "Create the other scenes"}</button>
             )}
             {making ? (
               <span className="muted small">This takes about 8 minutes. You can leave this page. We tell you when it is done.</span>
+            ) : makingVideo ? (
+              <span className="muted small">This takes about 10 minutes. You can leave this page. We tell you when it is done.</span>
+            ) : hasVideo ? (
+              <span className="muted small">Your video is ready below.</span>
             ) : all ? (
-              <button className="btn btn-primary btn-lg btn-block" disabled={start.isPending} onClick={() => start.mutate({ until: "video" })}>{start.isPending ? "Starting…" : "Make the video from these scenes"}</button>
+              <>
+                <button className="btn btn-primary btn-lg btn-block" disabled={start.isPending} onClick={() => start.mutate({ until: "video" })}>{start.isPending ? "Starting…" : "Make the video from these scenes"}</button>
+                <span className="muted small">Making the video takes about 10 minutes. You can leave the page.</span>
+              </>
             ) : (
               <button className="btn btn-lg btn-block" disabled>Approve every scene to continue</button>
             )}
-            <span className="muted small">Making the video takes about 10 minutes. You can leave the page.</span>
             <ErrorNote error={start.error} />
             {run && runStopped(run) && <div className="notice notice-warn" role="alert"><div>The last run stopped. {run.message}</div></div>}
           </div>

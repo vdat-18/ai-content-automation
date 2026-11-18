@@ -1,13 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Copy, Download } from "lucide-react";
 import { useState } from "react";
-import { useSearchParams } from "react-router-dom";
 import { ErrorNote } from "../../components/ui";
 import { ClipsPanel } from "./ClipsPanel";
-import { API, useStartPipeline } from "../../hooks/useStudio";
-import { imagesApproved, runStopped } from "../../lib/studio";
+import { API } from "../../hooks/useStudio";
+import { imagesApproved } from "../../lib/studio";
 import { getJson, postJson } from "../../services/http";
-import type { BriefRecord, Keyframe, PipelineRun, PostPackage } from "../../types/studio";
+import type { BriefRecord, Keyframe, PostPackage } from "../../types/studio";
 
 type Usage = { by_operation: { key: string; request_count: number }[] };
 const USED = { keyframe: "images", clip: "clips", voiceover: "voice readings" } as Record<string, string>;
@@ -20,10 +19,8 @@ const readLink = (productId: string) => {
   }
 };
 
-export function FinishStep({ productId, record, frames, hasVideo, run }: { productId: string; record: BriefRecord; frames: Keyframe[]; hasVideo: boolean; run: PipelineRun | undefined }) {
-  const [, setParams] = useSearchParams();
+export function FinishStep({ productId, record, frames, hasVideo }: { productId: string; record: BriefRecord; frames: Keyframe[]; hasVideo: boolean }) {
   const client = useQueryClient();
-  const start = useStartPipeline(productId);
   const [copied, setCopied] = useState("");
   const [link, setLink] = useState(() => readLink(productId));
   const [review, setReview] = useState("");
@@ -55,25 +52,8 @@ export function FinishStep({ productId, record, frames, hasVideo, run }: { produ
     }
   };
 
-  if (!hasVideo) {
-    const ready = imagesApproved(record, frames);
-    return (
-      <>
-      <div className="card pad stack" style={{ maxWidth: 640 }}>
-        <h1 style={{ fontSize: 24 }}>{ready ? "Ready to make your video" : "Approve the images first"}</h1>
-        <p className="muted">{ready ? "The AI films every scene, records the voice-over and puts it all together. It takes about 10 minutes and you can leave the page." : "Make sure every scene is approved, then come back here."}</p>
-        {run && runStopped(run) && <div className="notice notice-warn" role="alert"><div>The last run stopped. {run.message}</div></div>}
-        {ready ? (
-          <button className="btn btn-primary btn-lg" style={{ alignSelf: "flex-start" }} disabled={start.isPending} onClick={() => start.mutate({ until: "video" })}>{start.isPending ? "Starting…" : "Make the video"}</button>
-        ) : (
-          <button className="btn btn-primary btn-lg" style={{ alignSelf: "flex-start" }} onClick={() => setParams({ step: "images" })}>Go to the images</button>
-        )}
-        <ErrorNote error={start.error} />
-      </div>
-      {ready && <ClipsPanel productId={productId} />}
-      </>
-    );
-  }
+  // Before the video exists, the scenes page above has the button; here only the clips that need a look show
+  if (!hasVideo) return imagesApproved(record, frames) ? <ClipsPanel productId={productId} /> : null;
 
   const withLink = (text: string) => (link.trim() ? `${text}\n${link.trim()}` : text);
   return (

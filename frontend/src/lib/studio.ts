@@ -1,10 +1,9 @@
 import type { BriefRecord, Keyframe, PipelineRun } from "../types/studio";
 
-export type StepId = "idea" | "images" | "finish";
+export type StepId = "idea" | "images";
 export const STEPS: { id: StepId; label: string }[] = [
   { id: "idea", label: "Idea" },
-  { id: "images", label: "Images" },
-  { id: "finish", label: "Finish" },
+  { id: "images", label: "Scenes and video" },
 ];
 
 /** What the server is doing, in words a marketer uses. */
@@ -13,7 +12,7 @@ export function friendlyStep(step: string): string {
   if (text.includes("storyboard") || text.includes("reference")) return "Writing your script";
   if (text.includes("master")) return "Creating the first image";
   if (text.includes("keyframe")) return "Creating the other scenes";
-  if (text.includes("clips")) return "Filming the scenes";
+  if (text.includes("clip")) return "Filming the scenes";
   if (text.includes("voice")) return "Recording the voice-over";
   if (text.includes("stitching")) return "Putting the video together";
   if (text.includes("caption")) return "Writing the caption";
@@ -35,17 +34,11 @@ export function imagesApproved(brief: BriefRecord | null | undefined, keyframes:
 }
 
 export function doneSteps(brief: BriefRecord | null | undefined, keyframes: Keyframe[], hasVideo: boolean): Record<StepId, boolean> {
-  return { idea: !!brief, images: imagesApproved(brief, keyframes), finish: hasVideo };
+  return { idea: !!brief, images: hasVideo };
 }
 
-/** The step a person most likely wants next. */
-export function suggestedStep(brief: BriefRecord | null | undefined, keyframes: Keyframe[], hasVideo: boolean, run?: PipelineRun): StepId {
-  if (!brief) return "idea";
-  if (hasVideo) return "finish";
-  // With every scene approved the Images page already has the button that makes the video: the Finish page opens once the video run has started
-  const filming = !!run && ["Filming the scenes", "Recording the voice-over", "Putting the video together", "Writing the caption"].includes(friendlyStep(run.step));
-  return imagesApproved(brief, keyframes) && filming ? "finish" : "images";
-}
+/** The step a person most likely wants next: scenes and video are one page. */
+export const suggestedStep = (brief: BriefRecord | null | undefined): StepId => (brief ? "images" : "idea");
 
 export const toNumber = (value: number | string | null | undefined) => Number(String(value ?? 0).replace(/[.,]/g, "")) || 0;
 export const vnd = (value: string | null | undefined) => (value ? `${toNumber(value).toLocaleString("en-US")} ₫` : "");

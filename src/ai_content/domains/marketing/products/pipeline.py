@@ -74,7 +74,7 @@ async def run_pipeline(
     if master.get("status") != "approved":
         if until == "video" or master.get("status") == "ready":
             raise PipelineStopped(
-                "Approve the first image in the Images step: the other scenes are made to match it"
+                "Approve the first image on this page: the other scenes are made to match it"
             )
         report("Generating master keyframe")
         made = {
@@ -85,7 +85,7 @@ async def run_pipeline(
         if master.get("status") != "ready":
             raise PipelineStopped(
                 f"Master keyframe failed: {master.get('error') or 'no image'}. "
-                "Retry it in the Images step"
+                "Retry it on this page"
             )
         return  # a person looks at the first image before the others are made
 
@@ -101,7 +101,7 @@ async def run_pipeline(
     ]
     if to_approve:
         shots = ", ".join(str(number) for number in to_approve)
-        raise PipelineStopped(f"Approve the images of shot {shots} in the Images step first")
+        raise PipelineStopped(f"Approve the images of shot {shots} on this page first")
 
     report("Creating video clips (this takes a few minutes)")
     clips = await service.clips(product_id, media_root)
@@ -138,7 +138,7 @@ async def _wait_for_clips(
             shots = ", ".join(str(clip["shot_index"] + 1) for clip in failed)
             raise PipelineStopped(
                 f"The clip of shot {shots} failed: {failed[0]['error'] or 'video job failed'}. "
-                "Make it again from the clips list on the Finish step"
+                "Make it again from the scenes list below"
             )
         if sum(clip["status"] == "ready" for clip in clips) >= shot_count:
             flagged = [clip for clip in clips if clip["qa_problem"]]
@@ -146,10 +146,10 @@ async def _wait_for_clips(
                 shots = ", ".join(str(clip["shot_index"] + 1) for clip in flagged)
                 raise PipelineStopped(
                     f"The clip of shot {shots} looks wrong ({flagged[0]['qa_problem']}). "
-                    "On the Finish step, make it again or use it as it is"
+                    "Below, make it again or use it as it is"
                 )
             return
         if waited >= CLIP_WAIT_SECONDS:
-            raise PipelineStopped("The clips are still being made; come back to the Finish step later")
+            raise PipelineStopped("The clips are still being made; come back to this page later")
         await asyncio.sleep(poll_seconds)
         waited += poll_seconds

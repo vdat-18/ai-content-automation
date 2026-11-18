@@ -101,7 +101,7 @@ function WorkCard({ record, product }: { record: BriefRecord; product: Product |
 
 export function VideoCard({ item }: { item: OutputItem }) {
   return (
-    <Link to={`/studio/${item.product_id}?step=finish`} className="video-card">
+    <Link to={`/studio/${item.product_id}`} className="video-card">
       <div className="cover">
         <img src={item.has_cover ? `${API}/${item.product_id}/cover` : (item.image ?? "")} alt="" loading="lazy" referrerPolicy="no-referrer" />
         {item.seconds ? <span className="badge">{`${Math.round(item.seconds)} sec`}</span> : null}

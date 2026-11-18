@@ -44,11 +44,13 @@ export function StudioPage() {
   const hasVideo = !!video.data?.exists;
   const done = doneSteps(record, frames, hasVideo);
   const asked = params.get("step") as StepId | null;
-  const step: StepId = asked && STEPS.some((item) => item.id === asked) ? asked : suggestedStep(record, frames, hasVideo, pipeline.data);
+  const step: StepId = asked && STEPS.some((item) => item.id === asked) ? asked : suggestedStep(record);
   const reachable = (id: StepId) => id === "idea" || !!record;
   const productType = selections.data?.[productId] ?? null;
-  // The first image is already on screen: the other scenes appear on the same page as they are made
-  const makingScenes = running && !!record && frames.length > 0 && friendlyStep(pipeline.data!.step) === "Creating the other scenes";
+  // Once the first image exists, making the other scenes and the video happens on the one scenes page
+  const onePage = running && !!record && frames.length > 0;
+  const makingScenes = onePage && friendlyStep(pipeline.data!.step) === "Creating the other scenes";
+  const makingVideo = onePage && !makingScenes;
 
   return (
     <div className="page">
@@ -57,7 +59,7 @@ export function StudioPage() {
           const state = step === item.id ? "current" : done[item.id] ? "done" : "";
           return (
             <li key={item.id} className={state} aria-current={step === item.id ? "step" : undefined}>
-              <button type="button" disabled={!reachable(item.id)} onClick={() => setParams(item.id === suggestedStep(record, frames, hasVideo, pipeline.data) ? {} : { step: item.id })}>
+              <button type="button" disabled={!reachable(item.id)} onClick={() => setParams(item.id === suggestedStep(record) ? {} : { step: item.id })}>
                 <span className="n">{done[item.id] && step !== item.id ? <Check size={14} aria-hidden="true" /> : index + 1}</span>
                 {item.label}
               </button>
@@ -66,16 +68,17 @@ export function StudioPage() {
         })}
       </ol>
 
-      {makingScenes ? (
-        <ImagesStep productId={productId} record={record!} frames={frames} run={pipeline.data} making />
+      {onePage ? (
+        <ImagesStep productId={productId} record={record!} frames={frames} run={pipeline.data} hasVideo={hasVideo} making={makingScenes} makingVideo={makingVideo} />
       ) : running ? (
         <Working productId={productId} run={pipeline.data!} record={record} frames={frames} />
       ) : step === "idea" ? (
         <IdeaStep productId={productId} product={product} productType={productType} record={record} run={pipeline.data} />
-      ) : step === "images" && record ? (
-        <ImagesStep productId={productId} record={record} frames={frames} run={pipeline.data} />
       ) : record ? (
-        <FinishStep productId={productId} record={record} frames={frames} hasVideo={hasVideo} run={pipeline.data} />
+        <>
+          <ImagesStep productId={productId} record={record} frames={frames} run={pipeline.data} hasVideo={hasVideo} />
+          {frames.length > 0 && <FinishStep productId={productId} record={record} frames={frames} hasVideo={hasVideo} />}
+        </>
       ) : null}
     </div>
   );
