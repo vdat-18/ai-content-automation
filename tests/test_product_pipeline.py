@@ -73,8 +73,9 @@ class _FakeService:
     async def create_voiceover(self, product_id, media_root, voice):
         self.calls.append(f"voiceover:{voice}")
 
-    async def build_video(self, product_id, media_root, captions):
+    async def build_video(self, product_id, media_root, captions, stickers):
         self.calls.append("build_video")
+        self.built_with = (captions, stickers)
 
     async def create_post_package(self, product_id):
         self.calls.append("post_package")
@@ -136,6 +137,7 @@ async def test_a_repeated_run_keeps_what_is_already_made() -> None:
     assert "generate_clips" not in service.calls
     assert not any(call.startswith(("keyframe:", "generate_keyframes")) for call in service.calls)
     assert service.calls[-3:] == ["voiceover:hamy.mp3", "build_video", "post_package"]
+    assert service.built_with == (True, True)  # captions and stickers are on by default
 
 
 async def test_a_run_to_the_video_stops_while_an_image_is_not_approved_and_approves_nothing() -> None:

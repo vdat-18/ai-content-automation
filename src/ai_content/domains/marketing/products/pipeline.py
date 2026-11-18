@@ -117,7 +117,7 @@ async def run_pipeline(
     report("Synthesizing voiceover")
     await service.create_voiceover(product_id, media_root, voice)
     report("Stitching final video with transitions and music")
-    await service.build_video(product_id, media_root, False)
+    await service.build_video(product_id, media_root, captions=True, stickers=True)
     report("Writing TikTok caption and hashtags")
     await service.create_post_package(product_id)
 
