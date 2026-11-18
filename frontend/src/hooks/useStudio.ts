@@ -1,5 +1,4 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
 import { ApiError, getJson, postJson } from "../services/http";
 import type { BriefRecord, Clip, Keyframe, OutputItem, Persona, PipelineRun, Product, RunEvent, VideoCheck, VideoInfo } from "../types/studio";
 
@@ -70,19 +69,6 @@ export const useEvents = (productId: string, running: boolean) =>
     refetchInterval: running ? 3000 : false,
   });
 
-export const VOICE_KEY = "aic-voice";
-
-export const DEFAULT_VOICE = "giongadam.mp3"; // the server reads every video in this voice unless another is chosen
-
-/** The voice every video uses: the one a person picked, else the default. "auto" is not a voice. */
-export function useVoice(): [string, (id: string) => void] {
-  const [voice, setVoice] = useState(() => {
-    const saved = window.localStorage.getItem(VOICE_KEY) ?? "";
-    return saved && saved !== "auto" ? saved : DEFAULT_VOICE;
-  });
-  return [voice, (id) => { setVoice(id); window.localStorage.setItem(VOICE_KEY, id); }];
-}
-
 /** Start the server-side run. until="script" stops to read the script, "images" to review the pictures, "video" goes on to the finished video. */
 export function useStartPipeline(productId: string) {
   const client = useQueryClient();
@@ -91,7 +77,6 @@ export function useStartPipeline(productId: string) {
       postJson<PipelineRun>(`${API}/${productId}/pipeline`, {
         idea: "",
         video_seconds: 30,
-        voice: window.localStorage.getItem(VOICE_KEY) || null,
         ...body,
       }),
     onSuccess: (run) => client.setQueryData(["pipeline", productId], run),

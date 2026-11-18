@@ -4,8 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ErrorNote, Spinner } from "../../components/ui";
 import { ClipsPanel } from "./ClipsPanel";
-import { VoiceChoice } from "./VoiceChoice";
-import { API, useStartPipeline, useVideoCheck, useVoice } from "../../hooks/useStudio";
+import { API, useStartPipeline, useVideoCheck } from "../../hooks/useStudio";
 import { imagesApproved, runStopped } from "../../lib/studio";
 import { getJson, postJson } from "../../services/http";
 import type { BriefRecord, Keyframe, PipelineRun, PostPackage } from "../../types/studio";
@@ -32,7 +31,6 @@ export function FinishStep({ productId, record, frames, hasVideo, run }: { produ
   const [captions, setCaptions] = useState(false);
   const [stickers, setStickers] = useState(false);
   const [review, setReview] = useState("");
-  const [chosenVoice, chooseVoice] = useVoice();
   const pack = record.brief.post_package;
   // A person speaking in the opening scene says words that are fixed by the filmed clip
   const talkingOpening = record.brief.shots?.[0]?.delivery === "talking";
@@ -55,7 +53,7 @@ export function FinishStep({ productId, record, frames, hasVideo, run }: { produ
     onSuccess: () => client.invalidateQueries({ queryKey: ["hooks", productId] }),
   });
   const buildHook = useMutation({
-    mutationFn: (hook: Hook) => postJson(`${API}/${productId}/hooks/${hook.id}/video`, { voice: chosenVoice, captions, stickers }),
+    mutationFn: (hook: Hook) => postJson(`${API}/${productId}/hooks/${hook.id}/video`, { captions, stickers }),
     onSuccess: () => client.invalidateQueries({ queryKey: ["hooks", productId] }),
   });
   // While the opening is being filmed, ask every 10 seconds: the call that finds it ready makes the video
@@ -71,7 +69,7 @@ export function FinishStep({ productId, record, frames, hasVideo, run }: { produ
   }, [filmingId]);
   const remake = useMutation({
     mutationFn: async () => {
-      await postJson(`${API}/${productId}/voiceover`, { voice: chosenVoice });
+      await postJson(`${API}/${productId}/voiceover`);
       await postJson(`${API}/${productId}/video`, { captions, stickers });
     },
     onSuccess: () => {
@@ -105,8 +103,7 @@ export function FinishStep({ productId, record, frames, hasVideo, run }: { produ
         {run && runStopped(run) && <div className="notice notice-warn" role="alert"><div>The last run stopped. {run.message}</div></div>}
         {ready ? (
           <>
-            <VoiceChoice voice={chosenVoice} onChoose={chooseVoice} />
-            <button className="btn btn-primary btn-lg" style={{ alignSelf: "flex-start" }} disabled={start.isPending || !chosenVoice} onClick={() => start.mutate({ until: "video" })}>{start.isPending ? "Starting…" : chosenVoice ? "Make the video" : "Pick a voice to continue"}</button>
+            <button className="btn btn-primary btn-lg" style={{ alignSelf: "flex-start" }} disabled={start.isPending} onClick={() => start.mutate({ until: "video" })}>{start.isPending ? "Starting…" : "Make the video"}</button>
           </>
         ) : (
           <button className="btn btn-primary btn-lg" style={{ alignSelf: "flex-start" }} onClick={() => setParams({ step: "images" })}>Go to the images</button>
@@ -176,9 +173,8 @@ export function FinishStep({ productId, record, frames, hasVideo, run }: { produ
               <ErrorNote error={writeHooks.error ?? buildHook.error} />
             </div>
             <details open>
-              <summary className="muted small" style={{ cursor: "pointer" }}>More options: change the voice or show on-screen text</summary>
+              <summary className="muted small" style={{ cursor: "pointer" }}>More options: on-screen text and stickers</summary>
               <div className="stack" style={{ marginTop: 12 }}>
-                <VoiceChoice voice={chosenVoice} onChoose={chooseVoice} />
                 <label className="check"><input type="checkbox" checked={captions} onChange={(event) => setCaptions(event.target.checked)} />Show the on-screen text in the video (it can cover the product).</label>
                 <label className="check"><input type="checkbox" checked={stickers} onChange={(event) => setStickers(event.target.checked)} />Show price, sales and rating stickers from the product data, in the shot that mentions them.</label>
                 <div><button className="btn" disabled={remake.isPending} onClick={() => remake.mutate()}>{remake.isPending ? <><Spinner size={14} />Remaking…</> : "Remake the video with these choices"}</button></div>
