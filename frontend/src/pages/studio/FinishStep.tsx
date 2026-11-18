@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { ErrorNote, Spinner } from "../../components/ui";
 import { ClipsPanel } from "./ClipsPanel";
-import { API, useStartPipeline, useVideoCheck, useVideoInfo, VOICE_KEY } from "../../hooks/useStudio";
+import { VoiceChoice } from "./VoiceChoice";
+import { API, useStartPipeline, useVideoCheck, useVideoInfo, useVoice, VOICE_KEY } from "../../hooks/useStudio";
 import { imagesApproved, runStopped } from "../../lib/studio";
 import { getJson, postJson } from "../../services/http";
 import type { BriefRecord, Keyframe, PipelineRun, PostPackage, Voice } from "../../types/studio";
@@ -32,6 +33,7 @@ export function FinishStep({ productId, record, frames, hasVideo, run }: { produ
   const [stickers, setStickers] = useState(false);
   const [review, setReview] = useState("");
   const [voice, setVoice] = useState(() => window.localStorage.getItem(VOICE_KEY) ?? "");
+  const [chosenVoice, chooseVoice] = useVoice();
   const pack = record.brief.post_package;
   // A person speaking in the opening scene says words that are fixed by the filmed clip
   const talkingOpening = record.brief.shots?.[0]?.delivery === "talking";
@@ -108,7 +110,10 @@ export function FinishStep({ productId, record, frames, hasVideo, run }: { produ
         <p className="muted">{ready ? "The AI films every scene, records the voice-over and puts it all together. It takes about 10 minutes and you can leave the page." : "Make sure every scene is approved, then come back here."}</p>
         {run && runStopped(run) && <div className="notice notice-warn" role="alert"><div>The last run stopped. {run.message}</div></div>}
         {ready ? (
-          <button className="btn btn-primary btn-lg" style={{ alignSelf: "flex-start" }} disabled={start.isPending} onClick={() => start.mutate({ until: "video" })}>{start.isPending ? "Starting…" : "Make the video"}</button>
+          <>
+            <VoiceChoice voice={chosenVoice} onChoose={chooseVoice} />
+            <button className="btn btn-primary btn-lg" style={{ alignSelf: "flex-start" }} disabled={start.isPending || !chosenVoice} onClick={() => start.mutate({ until: "video" })}>{start.isPending ? "Starting…" : chosenVoice ? "Make the video" : "Pick a voice to continue"}</button>
+          </>
         ) : (
           <button className="btn btn-primary btn-lg" style={{ alignSelf: "flex-start" }} onClick={() => setParams({ step: "images" })}>Go to the images</button>
         )}

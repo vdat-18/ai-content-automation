@@ -4,11 +4,12 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ErrorNote, Spinner } from "../../components/ui";
 import { useLightbox } from "../../hooks/useLightbox";
-import { API, useStartPipeline } from "../../hooks/useStudio";
+import { API, useStartPipeline, useVoice } from "../../hooks/useStudio";
 import { checkNote, imagesApproved, isUnchecked, runStopped } from "../../lib/studio";
 import { pilotApi } from "../../services/pilotApi";
 import { postJson, putJson } from "../../services/http";
 import type { BriefRecord, Keyframe, PipelineRun } from "../../types/studio";
+import { VoiceChoice } from "./VoiceChoice";
 
 const ROLE_LABEL: Record<string, string> = {
   hook: "Opening",
@@ -24,6 +25,7 @@ export function ImagesStep({ productId, record, frames, run, making = false }: {
   const [noteFor, setNoteFor] = useState<number | null>(null);
   const [note, setNote] = useState("");
   const [learned, setLearned] = useState<number[]>([]);
+  const [voice, setVoice] = useVoice();
   const shots = record.brief.shots ?? [];
   const byShot = new Map(frames.map((frame) => [frame.shot_index, frame]));
   const approved = shots.filter((_, index) => byShot.get(index)?.status === "approved").length;
@@ -134,7 +136,10 @@ export function ImagesStep({ productId, record, frames, run, making = false }: {
             {making ? (
               <span className="muted small">This takes about 8 minutes. You can leave this page. We tell you when it is done.</span>
             ) : all ? (
-              <button className="btn btn-primary btn-lg btn-block" disabled={start.isPending} onClick={() => start.mutate({ until: "video" })}>{start.isPending ? "Starting…" : "Make the video from these scenes"}</button>
+              <>
+                <VoiceChoice voice={voice} onChoose={setVoice} />
+                <button className="btn btn-primary btn-lg btn-block" disabled={start.isPending || !voice} onClick={() => start.mutate({ until: "video" })}>{start.isPending ? "Starting…" : voice ? "Make the video from these scenes" : "Pick a voice to continue"}</button>
+              </>
             ) : (
               <button className="btn btn-lg btn-block" disabled>Approve every scene to continue</button>
             )}

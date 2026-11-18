@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import { ApiError, getJson, postJson } from "../services/http";
 import type { BriefRecord, Clip, Keyframe, OutputItem, Persona, PipelineRun, Product, RunEvent, VideoCheck, VideoInfo } from "../types/studio";
 
@@ -70,6 +71,15 @@ export const useEvents = (productId: string, running: boolean) =>
   });
 
 export const VOICE_KEY = "aic-voice";
+
+/** The voice a person picked once and every video uses; "auto" (the AI picks) counts as not chosen. */
+export function useVoice(): [string, (id: string) => void] {
+  const [voice, setVoice] = useState(() => {
+    const saved = window.localStorage.getItem(VOICE_KEY) ?? "";
+    return saved === "auto" ? "" : saved;
+  });
+  return [voice, (id) => { setVoice(id); window.localStorage.setItem(VOICE_KEY, id); }];
+}
 
 /** Start the server-side run. until="script" stops to read the script, "images" to review the pictures, "video" goes on to the finished video. */
 export function useStartPipeline(productId: string) {
