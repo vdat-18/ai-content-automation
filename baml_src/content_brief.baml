@@ -7,7 +7,7 @@ class StoryboardShot {
   role "hook" | "problem" | "demo" | "benefit" | "call_to_action"
   description string @description("Vietnamese: what the viewer sees and what it proves about the product, one or two sentences")
   keyframe_prompt string @description("A complete, self-contained English prompt for the image model, about 110 to 160 words, with no repeated wording or filler")
-  motion_prompt string @description("English, about 65 to 100 words (four or five timed beats), only motion: the keyframe already shows how everything looks. Keep the face exactly as in the keyframe with a natural relaxed expression and the mouth mostly closed or in a slight smile; hair may move a little in the air")
+  motion_prompt string @description("English, about 50 to 80 words (two or three beats of ONE main action that goes on through the 15 seconds, never a new action every few seconds), only motion: the keyframe already shows how everything looks. Keep the face exactly as in the keyframe with a natural relaxed expression and the mouth mostly closed or in a slight smile; hair may move a little in the air")
   delivery "narrated" | "talking"
   on_screen_text string @description("A short Vietnamese caption, or an empty string")
   voiceover string @description("Vietnamese, natural spoken words that fill most of the 15 seconds of the shot")
@@ -65,6 +65,12 @@ function DraftContentBrief(
     shows one clear thing and lets it be seen, and every shot follows from the one before it, in
     the same place, with nothing that contradicts the shot before.
 
+    Make the proof filmable. A video model films one simple action well and many actions badly,
+    and it cannot spread a paste or cream on a face. So show a product that goes on the face or
+    body working on the back of the hand or the forearm (half done and half untouched makes the
+    before and after in one picture), or on the thing it is made for, and show the face only
+    before and after the use, never during it. Every shot has ONE main action.
+
     Freestyle: be inventive. Unless the user gave an idea, choose a fresh selling angle, hook and
     setting that fit this product, specific and surprising, not the most predictable ad.
     {% if earlier_videos %}
@@ -117,8 +123,8 @@ function DraftContentBrief(
     speaking, so hide the mouth or keep it out of focus (from behind or the side, hands and product
     close-up, face turned down or away, or small in a wide frame). talking: the person speaks in a
     relaxed conversation to the camera, framed at chest level with the product held up close. Use
-    talking for the hook, narrated for the middle shots, and talking or narrated for the call to
-    action, whichever fits the result it shows.
+    talking for the hook only; every other shot is narrated, including the call to action (the
+    voice says the call to buy over a picture of the result).
     {% else %}
     Every shot is narrated: the picture shows only the product, the place and hands, and nobody is
     seen speaking. Never use talking.

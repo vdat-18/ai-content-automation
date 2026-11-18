@@ -1,6 +1,6 @@
 {
   "schema_version": "creative-knowledge-bootstrap@2",
-  "bootstrap_id": "product-ad-v15",
+  "bootstrap_id": "product-ad-v16",
   "items": [
     {
       "knowledge_id": "product-ad-body-proportions",
@@ -63,7 +63,7 @@
       "knowledge_id": "product-ad-1-story",
       "knowledge_type": "hard_rule",
       "title": "One story told in different shots",
-      "content": "WHEN: Writing the script and cutting it into shots. DO: Tell one story in this order: a hook, a problem shoppers know, the product solving it, one or two concrete benefits, a call to open the product link. Give the shots these roles in order: hook, problem, demo, benefit, call_to_action (with fewer than five shots merge neighbouring roles, with more shots repeat demo or benefit; the first shot is always the hook and the last always the call_to_action). Each shot follows from the one before (cause and effect), and the voiceovers read in order give the script with nothing added or repeated. Open the first shot on a close-up of the product or a problem shoppers know, with movement already in the very first frame, put a short on-screen question or claim in its on_screen_text, and end on the result: the last shot shows the state after use in a framing, camera angle and action clearly different from the first shot. Change the camera angle, the distance and the action between shots, and where the story needs it the spot inside the same home. DO NOT: Start a new topic in a later shot, open on a still or empty frame, add shots just to fill every role, or make shots that only zoom or drift or look alike in framing, camera movement or action (it would play like a slideshow).",
+      "content": "WHEN: Writing the script and cutting it into shots. DO: Tell one story in this order: a hook, a problem shoppers know, the product solving it, one or two concrete benefits, a call to open the product link. Give the shots these roles in order: hook, problem, demo, benefit, call_to_action (with fewer than five shots merge neighbouring roles, with more shots repeat demo or benefit; the first shot is always the hook and the last always the call_to_action). Each shot follows from the one before (cause and effect), and the voiceovers read in order give the script with nothing added or repeated. Open the first shot on a close-up of the product or a problem shoppers know, with movement already in the very first frame, put a short on-screen question or claim in its on_screen_text, and end on the result: the last shot shows the state after use in a framing, camera angle and action clearly different from the first shot, and show the before in the problem and the after in the result so the viewer sees the change. Change the camera angle, the distance and the action between shots, and where the story needs it the spot inside the same home. DO NOT: Start a new topic in a later shot, open on a still or empty frame, add shots just to fill every role, or make shots that only zoom or drift or look alike in framing, camera movement or action (it would play like a slideshow).",
       "applies_to": [
         "preparation",
         "review"
@@ -158,7 +158,7 @@
       "knowledge_id": "product-ad-6-motion-prompt",
       "knowledge_type": "hard_rule",
       "title": "Motion prompt as timed beats",
-      "content": "WHEN: Writing a motion_prompt for a 15 second clip. DO: Name the subject in a few words, then write four or five sentences as timed beats of about 3 seconds, each a new clearly visible action or camera move; name the shot size, camera height and every move with its exact term (dolly, zoom, pan, tilt, tracking, orbit, handheld); keep one continuous camera path with brisk TikTok-style energy; for a narrated shot lips stay closed or relaxed, for a talking shot the person talks naturally. DO NOT: Re-describe the face, outfit or product, use mood words, add sound or music, cut scenes, add new objects, refer to an icon, button, sticker or any on-screen graphic (the clip has none, so the model would draw one; point at a place in the frame instead), or use slow motion or a slow drift.",
+      "content": "WHEN: Writing a motion_prompt for a 15 second clip. DO: Name the subject in a few words, then write two or three sentences about ONE main action that goes on through the whole 15 seconds (for example a hand working the product in, or the person turning the product to show the label), with at most a small change of camera or hand movement along the way; name the shot size, camera height and the camera move with its exact term (dolly, zoom, pan, tilt, tracking, orbit, handheld); keep one calm continuous camera path at a natural real-life pace; for a narrated shot lips stay closed or relaxed, for a talking shot the person talks naturally. DO NOT: Stack several different actions into one clip, re-describe the face, outfit or product, use mood words, add sound or music, cut scenes, add new objects, refer to an icon, button, sticker or any on-screen graphic (the clip has none, so the model would draw one; point at a place in the frame instead), or use slow motion or a slow drift.",
       "applies_to": [
         "preparation",
         "review"

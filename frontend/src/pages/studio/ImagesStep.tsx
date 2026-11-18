@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ErrorNote, Spinner } from "../../components/ui";
 import { useLightbox } from "../../hooks/useLightbox";
-import { API, useStartPipeline } from "../../hooks/useStudio";
+import { API, useClips, useStartPipeline } from "../../hooks/useStudio";
 import { checkNote, friendlyStep, imagesApproved, isUnchecked, runStopped } from "../../lib/studio";
 import { pilotApi } from "../../services/pilotApi";
 import { postJson, putJson } from "../../services/http";
@@ -46,6 +46,17 @@ export function ImagesStep({ productId, record, frames, run, hasVideo = false, m
     },
   });
   const recheck = useMutation({ mutationFn: (index: number) => postJson(`${API}/${productId}/keyframes/${index}/check`), onSuccess: refresh });
+  const clips = useClips(productId);
+  const clipOf = new Map((clips.data ?? []).map((clip) => [clip.shot_index, clip]));
+  const refreshClips = () => client.invalidateQueries({ queryKey: ["clips", productId] });
+  const remakeClip = useMutation({ mutationFn: (index: number) => postJson(`${API}/${productId}/clips`, { shot_index: index }), onSuccess: refreshClips });
+  const acceptClip = useMutation({ mutationFn: (index: number) => putJson(`${API}/${productId}/clips/${index}/review`, {}), onSuccess: refreshClips });
+  const recheckClip = useMutation({ mutationFn: (index: number) => postJson(`${API}/${productId}/clips/${index}/check`), onSuccess: refreshClips });
+  const clipNeedsLook = (index: number) => {
+    const clip = clipOf.get(index);
+    return !!clip && (clip.status === "failed" || (clip.status === "ready" && !!clip.qa_problem));
+  };
+  const needsLook = shots.map((_, index) => index).filter(clipNeedsLook);
   const start = useStartPipeline(productId);
   const rules = useQuery({ queryKey: ["creative-knowledge"], queryFn: ({ signal }) => pilotApi.creativeKnowledge(undefined, signal) });
   const imageRules = (rules.data?.items ?? []).filter((item) => item.status === "approved" && item.scope.asset_type === "keyframe");
@@ -76,10 +87,13 @@ export function ImagesStep({ productId, record, frames, run, hasVideo = false, m
       <div className="studio-cols">
         <div className="studio-main">
           {!masterApproved && byShot.has(0) && <div className="notice"><div>Approve scene 1 first. The other scenes are made to match it.</div></div>}
-          <ErrorNote error={review.error ?? redo.error ?? recheck.error} />
+          <ErrorNote error={review.error ?? redo.error ?? recheck.error ?? remakeClip.error ?? acceptClip.error ?? recheckClip.error} />
           <div className="shot-grid">
             {shots.map((shot, index) => {
               const frame = byShot.get(index);
+              const clip = clipOf.get(index);
+              const filming = clip?.status === "processing";
+              const clipBusy = (remakeClip.isPending && remakeClip.variables === index) || (acceptClip.isPending && acceptClip.variables === index);
               const waiting = making && index > 0 && !frame; // being made right now
               const busy = (redo.isPending && redo.variables?.index === index) || waiting;
               const isApproved = frame?.status === "approved";
@@ -88,14 +102,28 @@ export function ImagesStep({ productId, record, frames, run, hasVideo = false, m
               return (
                 <article key={index} className={`card shot-card${isApproved ? " approved" : ""}`}>
                   <div className="media">
-                    {src ? <img src={src} alt={`Scene ${index + 1}`} {...lightbox.zoom(lightboxImages, lightboxImages.findIndex((item) => item.index === index))} /> : <div className="empty">{frame?.error ? "This image could not be created." : "No image yet"}</div>}
+                    {clip?.status === "ready" ? <video src={`${API}/${productId}/clips/${index}/video?v=${clip.attempts}`} poster={src ?? undefined} controls playsInline preload="metadata" aria-label={`Clip of scene ${index + 1}`} /> : src ? <img src={src} alt={`Scene ${index + 1}`} {...lightbox.zoom(lightboxImages, lightboxImages.findIndex((item) => item.index === index))} /> : <div className="empty">{frame?.error ? "This image could not be created." : "No image yet"}</div>}
+                    {filming && !busy && <div className="over"><Spinner size={28} />Filming this scene, about 4 minutes</div>}
                     {busy && <div className="over"><Spinner size={28} />{waiting ? "Creating this scene, about 2 minutes" : "The AI is fixing this scene, about 2 minutes"}</div>}
-                    {isApproved && !busy && <span className="tag"><Check size={13} aria-hidden="true" />Approved</span>}
+                    {isApproved && !busy && !clip && <span className="tag"><Check size={13} aria-hidden="true" />Approved</span>}
                   </div>
                   <div className="body">
                     <strong>{`Scene ${index + 1} · ${ROLE_LABEL[shot.role] ?? shot.role.replaceAll("_", " ")}`}</strong>
                     <p className="line">{`"${shot.voiceover}"`}</p>
-                    {frame && <p className={frame.qa_problem ? "check-warn" : "check-ok"}>{checkNote(frame.qa_problem)}</p>}
+                    {frame && !clip && <p className={frame.qa_problem ? "check-warn" : "check-ok"}>{checkNote(frame.qa_problem)}</p>}
+                    {clip?.status === "ready" && !clip.qa_problem && <p className="check-ok">The clip is ready.</p>}
+                    {clip?.status === "failed" && <p className="check-warn">{`This scene could not be filmed: ${clip.error ?? "the video job failed"}`}</p>}
+                    {clip?.status === "ready" && clip.qa_problem && <p className="check-warn">{isUnchecked(clip.qa_problem) ? clip.qa_problem : `The AI suggests a second look: ${clip.qa_problem}`}</p>}
+                    {clipNeedsLook(index) && (
+                      <div className="stack" style={{ gap: 8 }}>
+                        <span className="muted small">Filming a scene again costs one more clip.</span>
+                        <div className="row">
+                          <button className="btn btn-sm" style={{ flex: 1 }} disabled={clipBusy} onClick={() => remakeClip.mutate(index)}>{remakeClip.isPending && remakeClip.variables === index ? <><Spinner size={14} />Starting…</> : "Film again"}</button>
+                          {clip?.status === "ready" && <button className="btn btn-ok btn-sm" style={{ flex: 1 }} disabled={clipBusy} onClick={() => acceptClip.mutate(index)}>Use it as it is</button>}
+                        </div>
+                        {clip?.status === "ready" && isUnchecked(clip.qa_problem) && <button className="btn btn-sm" disabled={recheckClip.isPending} onClick={() => recheckClip.mutate(index)}>Check again</button>}
+                      </div>
+                    )}
                     {frame && isUnchecked(frame.qa_problem) && !busy && <button className="btn btn-sm" disabled={recheck.isPending} onClick={() => recheck.mutate(index)}>{recheck.isPending && recheck.variables === index ? <><Spinner size={14} />Checking…</> : "Check again"}</button>}
                     {open ? (
                       <div className="stack" style={{ gap: 8 }}>
@@ -107,7 +135,7 @@ export function ImagesStep({ productId, record, frames, run, hasVideo = false, m
                         </div>
                         <span className="muted small">The AI turns this into a rule that applies to every next video.</span>
                       </div>
-                    ) : frame && frame.status !== "failed" && !busy ? (
+                    ) : clip ? null : frame && frame.status !== "failed" && !busy ? (
                       <div className="row">
                         <button className={isApproved ? "btn btn-sm" : "btn btn-ok btn-sm"} style={{ flex: 1 }} disabled={locked || review.isPending || (index > 0 && !masterApproved && !isApproved)} onClick={() => review.mutate({ index, status: isApproved ? "ready" : "approved" })}>{isApproved ? "Undo approval" : "Approve"}</button>
                         <button className="btn btn-sm" style={{ flex: 1 }} disabled={locked || (index > 0 && !masterApproved)} onClick={() => { setNoteFor(index); setNote(""); }}>Not right</button>
@@ -141,6 +169,8 @@ export function ImagesStep({ productId, record, frames, run, hasVideo = false, m
               <span className="muted small">This takes about 10 minutes. You can leave this page. We tell you when it is done.</span>
             ) : hasVideo ? (
               <span className="muted small">Your video is ready below.</span>
+            ) : all && needsLook.length > 0 ? (
+              <button className="btn btn-lg btn-block" disabled>{`Look at scene ${needsLook[0] + 1} first`}</button>
             ) : all ? (
               <>
                 <button className="btn btn-primary btn-lg btn-block" disabled={start.isPending} onClick={() => start.mutate({ until: "video" })}>{start.isPending ? "Starting…" : "Make the video from these scenes"}</button>
@@ -150,7 +180,7 @@ export function ImagesStep({ productId, record, frames, run, hasVideo = false, m
               <button className="btn btn-lg btn-block" disabled>Approve every scene to continue</button>
             )}
             <ErrorNote error={start.error} />
-            {run && runStopped(run) && <div className="notice notice-warn" role="alert"><div>The last run stopped. {run.message}</div></div>}
+            {run && runStopped(run) && needsLook.length === 0 && <div className="notice notice-warn" role="alert"><div>The last run stopped. {run.message}</div></div>}
           </div>
           {imageRules.length > 0 && (
             <div className="card pad stack">

@@ -207,6 +207,7 @@ img { max-width: 100%; }
 .shot-card { overflow: hidden; border-width: 2px; }
 .shot-card.approved { border-color: var(--ok); }
 .shot-card .media { position: relative; background: var(--soft); }
+.shot-card .media video { display: block; width: 100%; aspect-ratio: 9 / 16; object-fit: cover; background: #000; }
 .shot-card .media img { display: block; width: 100%; aspect-ratio: 9 / 16; object-fit: cover; cursor: zoom-in; }
 .shot-card .over { position: absolute; inset: 0; background: color-mix(in srgb, var(--bg) 88%, transparent); display: flex; flex-direction: column; gap: 10px; align-items: center; justify-content: center; text-align: center; padding: 16px; font-weight: 600; color: var(--brand); }
 .shot-card .tag { position: absolute; top: 10px; left: 10px; display: inline-flex; gap: 6px; align-items: center; padding: 5px 10px; border-radius: 999px; background: var(--ok); color: #fff; font-size: 13px; font-weight: 600; }

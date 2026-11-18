@@ -77,7 +77,7 @@ export function StudioPage() {
       ) : record ? (
         <>
           <ImagesStep productId={productId} record={record} frames={frames} run={pipeline.data} hasVideo={hasVideo} />
-          {frames.length > 0 && <FinishStep productId={productId} record={record} frames={frames} hasVideo={hasVideo} />}
+          {frames.length > 0 && <FinishStep productId={productId} record={record} hasVideo={hasVideo} />}
         </>
       ) : null}
     </div>

@@ -2,11 +2,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Copy, Download } from "lucide-react";
 import { useState } from "react";
 import { ErrorNote } from "../../components/ui";
-import { ClipsPanel } from "./ClipsPanel";
 import { API } from "../../hooks/useStudio";
-import { imagesApproved } from "../../lib/studio";
 import { getJson, postJson } from "../../services/http";
-import type { BriefRecord, Keyframe, PostPackage } from "../../types/studio";
+import type { BriefRecord, PostPackage } from "../../types/studio";
 
 type Usage = { by_operation: { key: string; request_count: number }[] };
 const USED = { keyframe: "images", clip: "clips", voiceover: "voice readings" } as Record<string, string>;
@@ -19,7 +17,7 @@ const readLink = (productId: string) => {
   }
 };
 
-export function FinishStep({ productId, record, frames, hasVideo }: { productId: string; record: BriefRecord; frames: Keyframe[]; hasVideo: boolean }) {
+export function FinishStep({ productId, record, hasVideo }: { productId: string; record: BriefRecord; hasVideo: boolean }) {
   const client = useQueryClient();
   const [copied, setCopied] = useState("");
   const [link, setLink] = useState(() => readLink(productId));
@@ -52,8 +50,8 @@ export function FinishStep({ productId, record, frames, hasVideo }: { productId:
     }
   };
 
-  // Before the video exists, the scenes page above has the button; here only the clips that need a look show
-  if (!hasVideo) return imagesApproved(record, frames) ? <ClipsPanel productId={productId} /> : null;
+  // Before the video exists, everything is on the scenes page above
+  if (!hasVideo) return null;
 
   const withLink = (text: string) => (link.trim() ? `${text}\n${link.trim()}` : text);
   return (

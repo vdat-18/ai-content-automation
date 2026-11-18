@@ -26,7 +26,7 @@ export const runStopped = (run: PipelineRun | undefined) => !!run && ["paused", 
 export const isUnchecked = (problem: string) => problem.startsWith("Not checked");
 
 /** What to tell the person about the AI check of one picture or clip. */
-export const checkNote = (problem: string) => (problem ? (isUnchecked(problem) ? problem : `The AI suggests a second look: ${problem}`) : "The AI checked: matches the real product");
+export const checkNote = (problem: string) => (problem ? (isUnchecked(problem) ? problem : `The AI suggests a second look: ${problem}`) : "The AI check found no problem");
 
 export function imagesApproved(brief: BriefRecord | null | undefined, keyframes: Keyframe[]): boolean {
   const shots = brief?.brief.shots?.length ?? 0;
