@@ -6,13 +6,11 @@ import re
 
 import httpx
 import pytest
-from baml_py.baml_py import BamlError
 from PIL import Image
 from tests.pgstore import product_repository, usage_repository
 
 from ai_content.domains.marketing.products import keyframes as keyframes_module
 from ai_content.domains.marketing.products import service as service_module
-from ai_content.domains.marketing.products.keyframe_check import QAProblem
 from ai_content.domains.marketing.products.keyframes import (
     KeyframeGenerationError,
     KeyframeGenerator,
@@ -20,7 +18,6 @@ from ai_content.domains.marketing.products.keyframes import (
     _to_vertical,
 )
 from ai_content.domains.marketing.products.service import (
-    NOT_CHECKED,
     KeyframeUnavailable,
     ProductCatalogService,
 )
@@ -245,77 +242,6 @@ class _Checker:
         return self.verdicts.pop(0)
 
 
-class _BrokenChecker:
-    async def check(self, description, photos, keyframe, master=None, persona=None, previous=None):
-        raise BamlError("quota exceeded")
-
-
-async def test_a_check_that_errors_keeps_the_image_and_logs_the_error(tmp_path) -> None:
-    service = await _service(tmp_path, _FakeKeyframer())
-    service._checker = _BrokenChecker()
-    [record] = await service.generate_keyframes(PRODUCT_ID, tmp_path)
-    assert record["status"] == "ready" and record["qa_problem"].startswith("Not checked")
-    events = [e for e in await service.events(PRODUCT_ID) if e["step"] == "keyframe"]
-    assert events[-1]["status"] == "error" and "quota exceeded" in events[-1]["message"]
-
-
-class _HungChecker:
-    async def check(self, description, photos, keyframe, master=None, persona=None, previous=None):
-        await asyncio.sleep(60)
-
-
-async def test_a_check_that_hangs_is_given_up_and_the_image_is_still_saved(
-    tmp_path, monkeypatch
-) -> None:
-    monkeypatch.setattr(service_module, "CHECK_SECONDS", 0.05)
-    service = await _service(tmp_path, _FakeKeyframer())
-    service._checker = _HungChecker()
-    [record] = await service.generate_keyframes(PRODUCT_ID, tmp_path)
-    assert record["status"] == "ready" and record["qa_problem"].startswith("Not checked")
-
-
-async def test_a_failed_check_only_advises_and_never_makes_another_image(tmp_path) -> None:
-    keyframer = _FakeKeyframer()
-    service = await _service(tmp_path, keyframer)
-    checker = _Checker(["wrong color"])
-    service._checker = checker
-    [record] = await service.generate_keyframes(PRODUCT_ID, tmp_path)
-    assert checker.calls == 1 and keyframer.calls == [("master", 2, "")]
-    assert (record["status"], record["attempts"], record["qa_problem"]) == (
-        "ready",
-        1,
-        "wrong color",
-    )
-
-
-async def test_unchecked_keyframe_is_not_regenerated(tmp_path) -> None:
-    keyframer = _FakeKeyframer()
-    service = await _service(tmp_path, keyframer)
-    service._checker = _Checker([None])
-    [record] = await service.generate_keyframes(PRODUCT_ID, tmp_path)
-    assert len(keyframer.calls) == 1 and record["qa_problem"] == NOT_CHECKED
-
-
-class _RecordingChecker:
-    def __init__(self) -> None:
-        self.previous: list[bytes | None] = []
-
-    async def check(self, description, photos, keyframe, master=None, persona=None, previous=None):
-        self.previous.append(previous)
-        return ""
-
-
-async def test_later_shots_are_checked_against_the_shot_before_them(tmp_path) -> None:
-    service = await _service(tmp_path, _FakeKeyframer())
-    checker = _RecordingChecker()
-    service._checker = checker
-    await service.generate_keyframes(PRODUCT_ID, tmp_path)
-    await service.set_keyframe_status(PRODUCT_ID, 0, "approved")
-    await service.generate_keyframes(PRODUCT_ID, tmp_path)
-    # master and shot 1 (which follows the master) have no earlier shot; shot 2 sees shot 1
-    assert checker.previous == [None, None, PNG + b"follow"]
-
-
 class _PersonaKeyframer(_FakeKeyframer):
     def __init__(self) -> None:
         super().__init__()
@@ -447,7 +373,7 @@ async def test_prompts_name_the_person_only_when_there_is_one() -> None:
     assert "loose reference" not in follow[0]
 
 
-async def test_the_real_product_size_reaches_the_image_prompt_and_the_checker(tmp_path) -> None:
+async def test_the_real_product_size_reaches_the_image_prompt_and_the_recheck(tmp_path) -> None:
     prompts: list[str] = []
 
     class _Client:
@@ -479,6 +405,8 @@ async def test_the_real_product_size_reaches_the_image_prompt_and_the_checker(tm
     }
     await repository.save_brief(PRODUCT_ID, "", brief, "approved")
     await service.generate_keyframes(PRODUCT_ID, tmp_path)
+    assert seen == []  # making an image does not run the check
+    await service.recheck_keyframe(PRODUCT_ID, 0, tmp_path)
     assert "about 60 cm tall, knee height" in prompts[0]
     assert "about 60 cm tall, knee height" in seen[0]
     # one version of the product, shot like an ordinary phone photo
@@ -488,15 +416,14 @@ async def test_the_real_product_size_reaches_the_image_prompt_and_the_checker(tm
 
 async def test_each_step_is_written_to_the_run_log(tmp_path) -> None:
     service = await _service(tmp_path, _FakeKeyframer())
-    service._checker = _Checker(["wrong color"])
     await service.generate_keyframes(PRODUCT_ID, tmp_path)
     await service.set_keyframe_status(PRODUCT_ID, 0, "approved")
     events = await service.events(PRODUCT_ID)
     assert [(e["step"], e["status"], e["shot_index"]) for e in events] == [
-        ("keyframe", "flagged", 0),
+        ("keyframe", "ok", 0),
         ("keyframe", "approved", 0),
     ]
-    assert "wrong color" in events[0]["message"]
+    assert events[0]["message"].startswith("Image ready")
 
 
 async def test_generated_keyframes_are_uploaded_and_restored_from_the_remote(tmp_path) -> None:
@@ -531,31 +458,17 @@ class _SlowKeyframer(_FakeKeyframer):
         return await super().follow_up(shot, master, photos, fix, persona, reference)
 
 
-class _CutChecker:
-    def __init__(self) -> None:
-        self.previous: dict[str, bytes | None] = {}
-
-    async def check(self, description, photos, keyframe, master=None, persona=None, previous=None):
-        self.previous[description.splitlines()[0]] = previous
-        return ""
-
-
-async def test_follow_up_shots_run_together_and_cut_check_sees_the_shot_before(tmp_path) -> None:
+async def test_follow_up_shots_run_together(tmp_path) -> None:
     shots = [
         {"role": "r", "keyframe_prompt": f"shot {i}", "description": f"d{i}"} for i in range(4)
     ]
     keyframer = _SlowKeyframer()
     service = await _service(tmp_path, keyframer, shots)
-    checker = _CutChecker()
     await service.generate_keyframes(PRODUCT_ID, tmp_path)
     await service.set_keyframe_status(PRODUCT_ID, 0, "approved")
-    service._checker = checker
     await service.generate_keyframes(PRODUCT_ID, tmp_path)
 
     assert keyframer.peak > 1
-    assert checker.previous["d1"] is None
-    assert checker.previous["d2"] == PNG + b"follow"
-    assert checker.previous["d3"] == PNG + b"follow"
 
 
 def _jpeg(size: tuple[int, int]) -> bytes:
@@ -629,7 +542,7 @@ def test_the_story_note_gives_one_shot_the_whole_video() -> None:
     assert "1. hook: mở đầu" in note and "2. demo: dùng thử" in note
 
 
-async def test_the_story_reaches_the_image_prompt_and_the_checker(tmp_path) -> None:
+async def test_the_story_reaches_the_image_prompt_and_the_recheck(tmp_path) -> None:
     prompts: list[str] = []
 
     class _Client:
@@ -651,6 +564,7 @@ async def test_the_story_reaches_the_image_prompt_and_the_checker(tmp_path) -> N
     brief = {"title": "b", "scene": "phòng trọ nhỏ", "shots": SHOTS}
     await service._repository.save_brief(PRODUCT_ID, "", brief, "approved")
     await service.generate_keyframes(PRODUCT_ID, tmp_path)
+    await service.recheck_keyframe(PRODUCT_ID, 0, tmp_path)
     assert "The whole video, for context:" in prompts[0] and "phòng trọ nhỏ" in prompts[0]
     assert "phòng trọ nhỏ" in seen[0]
 
@@ -662,18 +576,18 @@ async def test_a_note_is_the_first_thing_the_image_model_is_asked_to_fix(tmp_pat
     assert keyframer.calls == [("master", 2, "faint marks on the cheek")]
 
 
-async def test_an_unchecked_keyframe_can_be_checked_again_without_a_new_image(tmp_path) -> None:
+async def test_a_keyframe_is_checked_only_on_demand_without_a_new_image(tmp_path) -> None:
     keyframer = _FakeKeyframer()
     service = await _service(tmp_path, keyframer)
-    checker = _Checker([None, "wrong label"])
+    checker = _Checker(["wrong label"])
     service._checker = checker
     [record] = await service.generate_keyframes(PRODUCT_ID, tmp_path)
-    assert record["qa_problem"] == NOT_CHECKED
+    assert record["qa_problem"] == "" and checker.calls == 0  # making an image runs no check
 
     checked = await service.recheck_keyframe(PRODUCT_ID, 0, tmp_path)
     assert checked["qa_problem"] == "wrong label" and checked["status"] == "ready"
     assert (await service.list_keyframes(PRODUCT_ID))[0]["qa_problem"] == "wrong label"
-    assert len(keyframer.calls) == 1 and checker.calls == 2
+    assert len(keyframer.calls) == 1 and checker.calls == 1
     assert await service.recheck_keyframe(PRODUCT_ID, 2, tmp_path) is None
 
 
@@ -699,7 +613,7 @@ class _PhotoChecker:
         return ""
 
 
-async def test_the_check_sees_more_product_photos_than_the_image_model(tmp_path) -> None:
+async def test_the_recheck_sees_more_product_photos_than_the_image_model(tmp_path) -> None:
     urls = [f"https://img.example/{i}.jpg" for i in range(1, 9)]
     keyframer = _FakeKeyframer()
     service = await _service(tmp_path, keyframer)
@@ -707,35 +621,9 @@ async def test_the_check_sees_more_product_photos_than_the_image_model(tmp_path)
     checker = _PhotoChecker()
     service._checker = checker
     await service.generate_keyframes(PRODUCT_ID, tmp_path)
-    assert keyframer.calls[-1][1] == 3 and checker.photos == [4]
+    assert keyframer.calls[-1][1] == 3 and checker.photos == []
     await service.recheck_keyframe(PRODUCT_ID, 0, tmp_path)
-    assert checker.photos == [4, 4]
-
-
-class _FaceChecker:
-    """Fails every image on the face, as a strict check does."""
-
-    def __init__(self, category: str) -> None:
-        self.category = category
-        self.calls = 0
-
-    async def check(self, description, photos, keyframe, master=None, persona=None, previous=None):
-        self.calls += 1
-        return QAProblem(f"problem {self.calls}", self.category)
-
-
-async def test_a_face_problem_is_not_proposed_as_a_rule_but_others_are(tmp_path) -> None:
-    from tests.test_product_knowledge import _knowledge
-
-    knowledge = _knowledge(tmp_path)
-    service = await _service(tmp_path, _FakeKeyframer())
-    service._knowledge = knowledge
-    service._checker = _FaceChecker("face")
-    await service.generate_keyframes(PRODUCT_ID, tmp_path)
-    assert await knowledge.repository.list() == []
-    service._checker = _FaceChecker("product")
-    await service.generate_keyframes(PRODUCT_ID, tmp_path, shot_index=0)
-    assert [item.content for item in await knowledge.repository.list()] == ["problem 1"]
+    assert checker.photos == [4]
 
 
 async def test_a_skin_product_keeps_the_skin_of_the_person_as_it_is() -> None:
@@ -760,7 +648,6 @@ async def test_every_image_call_is_counted_in_the_usage_ledger(tmp_path) -> None
     service = await _service(tmp_path, _FakeKeyframer())
     ledger = usage_repository()
     service._usage = AIUsageTracker(ledger)
-    service._checker = _Checker(["wrong color"])
     await service.generate_keyframes(PRODUCT_ID, tmp_path)
     now = datetime.now(UTC)
     window = AIUsageFilters(

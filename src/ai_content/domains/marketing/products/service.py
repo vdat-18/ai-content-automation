@@ -1231,12 +1231,11 @@ class ProductCatalogService:
                     "Upload the photos of the person again, or write a new brief without a person"
                 )
         detail = await self._repository.get_detail(product_id)
-        check_photos = await fetch_images(
-            _product_photo_urls(record["brief"], detail or {})[:KEYFRAME_CHECK_PHOTOS]
+        photos = await fetch_images(
+            _product_photo_urls(record["brief"], detail or {})[:PRODUCT_PHOTOS_PER_SHOT]
         )
-        if not check_photos:
+        if not photos:
             raise KeyframeUnavailable("No product photo could be downloaded")
-        photos = check_photos[:PRODUCT_PHOTOS_PER_SHOT]
         references = await self._shot_references(record["brief"], wanted)
         master = (
             await self.media(media_root).read(existing[0]["image_path"]) if master_ready else None
@@ -1248,39 +1247,30 @@ class ProductCatalogService:
         rules = await approved_rules(
             self._knowledge, KnowledgeStage.ORCHESTRATION, "keyframe", skip
         )
-        qa_rules = await approved_rules(self._knowledge, KnowledgeStage.REVIEW, "keyframe", skip)
-        rule_ids = sorted({*rules.ids, *qa_rules.ids})
         limit = asyncio.Semaphore(KEYFRAME_CONCURRENCY)
-        done = {index: asyncio.Event() for index in wanted}
 
         async def make(index: int) -> None:
             async with limit:
-                try:
-                    await self._make_keyframe(
-                        product_id,
-                        index,
-                        {
-                            **shots[index],
-                            "product_size": size,
-                            "product_variant": variant,
-                            "retouch": not sensitive,
-                            "rules": rules.text,
-                            "qa_rules": qa_rules.text,
-                            "rule_ids": rule_ids,
-                            "story": story_note(record["brief"], index),
-                        },
-                        existing.get(index),
-                        media_root,
-                        photos,
-                        references.get(index),
-                        master,
-                        persona_images,
-                        done.get(index - 1),
-                        note,
-                        check_photos,
-                    )
-                finally:
-                    done[index].set()
+                await self._make_keyframe(
+                    product_id,
+                    index,
+                    {
+                        **shots[index],
+                        "product_size": size,
+                        "product_variant": variant,
+                        "retouch": not sensitive,
+                        "rules": rules.text,
+                        "rule_ids": rules.ids,
+                        "story": story_note(record["brief"], index),
+                    },
+                    existing.get(index),
+                    media_root,
+                    photos,
+                    references.get(index),
+                    master,
+                    persona_images,
+                    note,
+                )
 
         async with asyncio.TaskGroup() as group:
             for index in wanted:
@@ -1316,9 +1306,7 @@ class ProductCatalogService:
         reference: bytes | None,
         master: bytes | None,
         persona: list[bytes] | None = None,
-        previous_done: asyncio.Event | None = None,
         note: str = "",
-        check_photos: list[bytes] | None = None,
     ) -> None:
         assert self._keyframer is not None
         attempts = (previous or {}).get("attempts", 0) + 1
@@ -1353,61 +1341,26 @@ class ProductCatalogService:
         await self._count_call(
             product_id, "keyframe", "image", self._keyframer, output_bytes=len(image)
         )
-        if previous_done is not None:
-            await previous_done.wait()  # the cut check needs the shot before this one
-        before = await self._keyframe_before(product_id, index, media_root)
         relative = f"keyframes/{product_id}/shot_{index}.jpg"
         await self.media(media_root).write(relative, image)
-        made = {
-            **record,
-            "attempts": attempts,
-            "status": "ready",
-            "image_path": relative,
-            "error": None,
-        }
-        # The paid image is kept first; the check only advises and may fail on its own.
-        await self._repository.save_keyframe({**made, "qa_problem": NOT_CHECKED})
-        try:
-            problem = (
-                await self._check_keyframe(
-                    shot, check_photos or photos, image, master, persona, before
-                )
-                or ""
-            )
-        except (BamlError, TimeoutError) as error:
-            await self._log(
-                product_id,
-                "keyframe",
-                "error",
-                f"The image is saved but the check failed: {error}"[:400],
-                index,
-            )
-            return
-        await self._repository.save_keyframe({**made, "qa_problem": str(problem)})
+        await self._repository.save_keyframe(
+            {
+                **record,
+                "attempts": attempts,
+                "status": "ready",
+                "image_path": relative,
+                "error": None,
+                "qa_problem": "",
+            }
+        )
         await self._log(
             product_id,
             "keyframe",
-            "flagged" if problem else "ok",
+            "ok",
             "Image ready"
-            + (f", the check says: {problem}" if problem else "")
             + (f". Rules used: {', '.join(shot['rule_ids'])}" if shot.get("rule_ids") else ""),
             index,
         )
-        # The check only advises: the person decides, and the lesson goes to the AI memory once
-        # the image is saved. What is wrong with one person's face says nothing about other videos.
-        if (
-            problem
-            and problem != NOT_CHECKED
-            and self._knowledge is not None
-            and getattr(problem, "category", "other") != "face"
-        ):
-            await propose_feedback(
-                self._knowledge,
-                product_id=product_id,
-                text=problem,
-                contributor="gemini-qa",
-                authority=KnowledgeAuthority.EXTERNAL,
-            )
 
     async def _keyframe_before(self, product_id: str, index: int, media_root: Path) -> bytes | None:
         """The image of the shot just before this one, so the cut between them can be checked."""

@@ -120,7 +120,7 @@ async def test_a_failed_curation_keeps_the_approved_rule_as_it_was(tmp_path) -> 
     assert (await knowledge.curate(item.knowledge_id, _Failing())).title == "acne again"
 
 
-async def test_rules_reach_the_image_model_and_checker_and_qa_problems_become_proposals(
+async def test_rules_reach_the_image_model_and_the_recheck_and_making_an_image_proposes_nothing(
     tmp_path, monkeypatch
 ) -> None:
     async def fetch_images(urls, http=None):
@@ -159,10 +159,11 @@ async def test_rules_reach_the_image_model_and_checker_and_qa_problems_become_pr
     await repository.save_brief(PRODUCT_ID, "", brief, "approved")
     await service.generate_keyframes(PRODUCT_ID, tmp_path)
     assert shots[0]["rules"] == "- Clear skin: DO: Clear skin"
+    assert descriptions == []  # making an image runs no check
+    await service.recheck_keyframe(PRODUCT_ID, 0, tmp_path)
     assert "Approved rules:\n- Body ratio: DO: Body ratio" in descriptions[0]
     items = await knowledge.repository.list()
-    proposed = [i for i in items if i.status == KnowledgeStatus.PROPOSED]
-    assert [(i.content, i.contributor) for i in proposed] == [("arm too long", "gemini-qa")]
+    assert [i for i in items if i.status == KnowledgeStatus.PROPOSED] == []
 
 
 async def test_brief_writer_gets_the_approved_preparation_rules(tmp_path) -> None:
