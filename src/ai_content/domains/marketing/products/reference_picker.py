@@ -14,8 +14,7 @@ from loguru import logger
 from ai_content.domains.marketing.products.adapters.baml_client import types as baml_types
 from ai_content.domains.marketing.products.adapters.baml_client.async_client import b
 from ai_content.domains.marketing.products.adapters.baml_registry import build_client_registry
-from ai_content.domains.marketing.products.briefing import product_facts
-from ai_content.domains.marketing.products.keyframe_check import _image
+from ai_content.domains.marketing.products.briefing import _small_image
 
 _SHOT_KEYS = ("role", "description", "keyframe_prompt", "delivery")
 
@@ -67,7 +66,8 @@ class ShotReferencePicker:
             except httpx.HTTPError as error:
                 logger.warning("Reference download failed: {}", str(error)[:200])
                 return None
-            return _image(response.content)
+            # only the pose and framing matter, not the pixels
+            return _small_image(response.content)
 
         try:
             images = await asyncio.gather(*(fetch(item["url"]) for item in candidates))
@@ -83,7 +83,12 @@ class ShotReferencePicker:
             return None
         try:
             result = await self._client.ChooseShotReference(
-                json.dumps(product_facts(product), ensure_ascii=False),
+                # the kind of product is enough to judge a place; the rest only costs tokens
+                json.dumps(
+                    {"title": product.get("title"), "categories": product.get("categories")},
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                ),
                 json.dumps({key: shot.get(key) for key in _SHOT_KEYS}, ensure_ascii=False),
                 [
                     baml_types.ReferenceCandidate(label=label, note=item["note"], photo=image)

@@ -16,7 +16,10 @@ from ai_content.domains.marketing.products.briefing import (
     ContentBriefWriter,
     product_facts,
 )
-from ai_content.domains.marketing.products.reference_picker import ReferencePickerError
+from ai_content.domains.marketing.products.reference_picker import (
+    ReferencePickerError,
+    ShotReferencePicker,
+)
 from ai_content.domains.marketing.products.references import ProfileGenerationError
 from ai_content.domains.marketing.products.service import ProductCatalogService
 
@@ -622,3 +625,28 @@ async def test_a_picker_that_cannot_be_reached_is_reported_not_counted_as_no_mat
     await service.create_brief(PRODUCT_ID, video_seconds=30, person_photos=[b"face"])
     with pytest.raises(BriefUnavailable, match="shot 1.*connection refused"):
         await service.match_references(PRODUCT_ID)
+
+
+async def test_the_picker_sends_small_photos_and_only_the_kind_of_product() -> None:
+    sent: dict = {}
+
+    class _Client:
+        async def ChooseShotReference(self, product_json, shot_json, candidates):
+            sent.update(product=product_json, photos=candidates)
+            return SimpleNamespace(choice="ref_1")
+
+    big = io.BytesIO()
+    Image.new("RGB", (736, 1308), (200, 100, 50)).save(big, "JPEG")
+
+    def serve(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, content=big.getvalue())
+
+    product = {"title": "Kem", "categories": ["Beauty"], "description": "d" * 3000, "price": {}}
+    async with httpx.AsyncClient(transport=httpx.MockTransport(serve)) as http:
+        chosen = await ShotReferencePicker(_Client()).choose(
+            product, {"role": "hook"}, [{"image_id": "a", "note": "n", "url": "https://x/a.jpg"}], http
+        )
+    assert chosen == "a"
+    assert sent["product"] == '{"title":"Kem","categories":["Beauty"]}'
+    photo = Image.open(io.BytesIO(base64.b64decode(sent["photos"][0].photo.as_base64()[0])))
+    assert max(photo.size) == 512
