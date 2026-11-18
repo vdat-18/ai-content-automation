@@ -101,7 +101,8 @@ function DraftContentBrief(
     recognisable from the first frame to the last. Suit actions, outfit and setting to the person
     you see, but keep them in the background: mostly hands, arms and body doing something concrete
     with the product. Only the first and the last shot may show the face; in every other shot the
-    face is not seen (turned away, cut off by the frame or small in a wide frame). The first shot
+    face is not seen (turned away, cut off by the frame or small in a wide frame). A shot without the face never shows a mirror or another reflective surface:
+    the video model invents a stranger in the reflection. The first shot
     shows the face with the product held up close to the camera, at least as big as the face. The
     last shot shows the result and must not repeat the first: another camera angle (for example
     a side or three-quarter view at the mirror), another framing and another action (for example
