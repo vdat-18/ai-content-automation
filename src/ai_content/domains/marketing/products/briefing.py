@@ -37,15 +37,11 @@ class BriefUnavailable(RuntimeError):
 
 
 def earlier_videos(briefs: list[dict[str, Any]]) -> str:
-    """The earlier videos of a product as a short list, so a new brief can be different from them."""
-    lines = []
-    for number, brief in enumerate(briefs, 1):
-        shots = "; ".join(f"{shot.get('role')}: {shot.get('description')}" for shot in brief.get("shots") or [])
-        lines.append(
-            f"{number}. {brief.get('title', '')} | angle: {brief.get('selling_angle', '')} | "
-            f"place: {brief.get('scene', '')} | shots: {shots}"
-        )
-    return "\n".join(lines)
+    """The scripts of a product's earlier videos, so a new brief can be different from them."""
+    return "\n\n".join(
+        f"{number}. {brief.get('title', '')} (place: {brief.get('scene', '')})\n{brief.get('script', '')}"
+        for number, brief in enumerate(briefs, 1)
+    )
 
 
 class _BamlBriefClient(Protocol):

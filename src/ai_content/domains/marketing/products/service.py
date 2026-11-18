@@ -1562,17 +1562,6 @@ class ProductCatalogService:
                         clip["shot_index"],
                     )
                     problem = NOT_CHECKED
-                face = getattr(problem, "category", "") == "face"
-                if problem and problem != NOT_CHECKED and not face and self._knowledge is not None:
-                    await propose_feedback(
-                        self._knowledge,
-                        product_id=clip["product_id"],
-                        text=problem,
-                        contributor="gemini-qa",
-                        authority=KnowledgeAuthority.EXTERNAL,
-                        asset_type="brief",
-                        once=True,
-                    )
                 update = {
                     "status": "ready",
                     "video_path": relative,

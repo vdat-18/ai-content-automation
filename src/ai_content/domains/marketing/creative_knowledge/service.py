@@ -38,6 +38,15 @@ class CreativeKnowledgeService:
     def __init__(self, repository: CreativeKnowledgeRepository) -> None:
         self.repository = repository
 
+    async def _curable_others(self, item: CreativeKnowledge) -> tuple[CreativeKnowledge, ...]:
+        """The approved rules a new rule may be folded into; hard rules are never touched."""
+        return tuple(
+            other
+            for other in await self.resolve(item.scope)
+            if other.knowledge_id != item.knowledge_id
+            and other.knowledge_type != KnowledgeType.HARD_RULE
+        )
+
     async def curate(self, knowledge_id: str, curator: KnowledgeCurator) -> CreativeKnowledge:
         """Let the curator rewrite an approved item and retire the items it replaces."""
         item = await self.repository.get(knowledge_id)
@@ -45,12 +54,7 @@ class CreativeKnowledgeService:
             raise ValueError("Creative knowledge not found")
         if item.status != KnowledgeStatus.APPROVED:
             raise ValueError("Only approved knowledge can be curated")
-        others = tuple(
-            other
-            for other in await self.resolve(item.scope)
-            if other.knowledge_id != item.knowledge_id
-            and other.knowledge_type != KnowledgeType.HARD_RULE
-        )
+        others = await self._curable_others(item)
         curated = await curator.rewrite(item, others)
         if curated is None:
             return item
@@ -60,6 +64,32 @@ class CreativeKnowledgeService:
         rewritten = replace(item, title=curated.title, content=curated.content)
         await self.repository.save(rewritten)
         return rewritten
+
+    async def learn(
+        self, knowledge_id: str, curator: KnowledgeCurator, reviewer: str
+    ) -> CreativeKnowledge:
+        """Turn a proposed item into a rule in the rulebook's form and approve it in one step.
+
+        The item is approved only with the curator's rewrite: when the curator cannot answer the
+        item stays proposed instead of entering the rulebook as raw feedback.
+        """
+        item = await self.repository.get(knowledge_id)
+        if item is None:
+            raise ValueError("Creative knowledge not found")
+        others = await self._curable_others(item)
+        curated = await curator.rewrite(item, others)
+        if curated is None:
+            return item
+        for other in others:
+            if other.knowledge_id in curated.replaces:
+                await self.repository.save(replace(other, status=KnowledgeStatus.EXPIRED))
+        rule = replace(
+            item.decide(KnowledgeStatus.APPROVED, reviewer),
+            title=curated.title,
+            content=curated.content,
+        )
+        await self.repository.save(rule)
+        return rule
 
     async def propose(
         self,

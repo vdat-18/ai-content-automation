@@ -120,6 +120,34 @@ async def test_a_failed_curation_keeps_the_approved_rule_as_it_was(tmp_path) -> 
     assert (await knowledge.curate(item.knowledge_id, _Failing())).title == "acne again"
 
 
+async def test_learning_feedback_approves_it_only_in_the_rulebook_form(tmp_path) -> None:
+    knowledge = _knowledge(tmp_path)
+    stages = (KnowledgeStage.ORCHESTRATION,)
+    await _approved(knowledge, "old", "No pimples", stages)
+    item = await _feedback(knowledge, "acne again")
+    rule = await knowledge.learn(item.knowledge_id, _Curator(), "feedback")
+    assert (rule.title, rule.content, rule.status) == (
+        "Clear skin",
+        "WHEN: a face. DO: clear skin.",
+        KnowledgeStatus.APPROVED,
+    )
+    assert rule.approved_by == "feedback"
+    by_id = {i.knowledge_id: i.status for i in await knowledge.repository.list()}
+    assert by_id["old"] == KnowledgeStatus.EXPIRED
+
+
+async def test_feedback_the_curator_cannot_rewrite_stays_proposed_not_raw(tmp_path) -> None:
+    class _Failing:
+        async def rewrite(self, item, others):
+            return None
+
+    knowledge = _knowledge(tmp_path)
+    item = await _feedback(knowledge, "acne again")
+    kept = await knowledge.learn(item.knowledge_id, _Failing(), "feedback")
+    assert (kept.content, kept.status) == ("acne again", KnowledgeStatus.PROPOSED)
+    assert not (await approved_rules(knowledge, KnowledgeStage.ORCHESTRATION, "keyframe")).ids
+
+
 async def test_rules_reach_the_image_model_and_the_recheck_and_making_an_image_proposes_nothing(
     tmp_path, monkeypatch
 ) -> None:

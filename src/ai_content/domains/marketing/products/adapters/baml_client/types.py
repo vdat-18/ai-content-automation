@@ -125,7 +125,7 @@ class StoryboardShot(BaseModel):
     motion_prompt: str = Field(description='English, about 65 to 100 words (four or five timed beats), only motion: the keyframe already shows how everything looks. Keep the face exactly as in the keyframe with a natural relaxed expression and the mouth mostly closed or in a slight smile; hair may move a little in the air')
     delivery: typing.Union[typing_extensions.Literal['narrated'], typing_extensions.Literal['talking']]
     on_screen_text: str = Field(description='A short Vietnamese caption, or an empty string')
-    voiceover: str = Field(description='Vietnamese, natural spoken words that fill most of the 15 seconds of the shot: about 55 to 65 words')
+    voiceover: str = Field(description='Vietnamese, natural spoken words that fill most of the 15 seconds of the shot')
 
 class VoicePick(BaseModel):
     gender: str

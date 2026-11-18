@@ -33,7 +33,7 @@ export function FinishStep({ productId, record, frames, hasVideo }: { productId:
     onSuccess: () => client.invalidateQueries({ queryKey: ["brief", productId] }),
   });
   const sendReview = useMutation({
-    mutationFn: () => postJson(`${API}/${productId}/feedback`, { text: review.trim(), asset_type: "brief" }),
+    mutationFn: () => postJson<{ status: string }>(`${API}/${productId}/feedback`, { text: review.trim(), asset_type: "brief" }),
     onSuccess: () => setReview(""),
   });
 
@@ -82,7 +82,7 @@ export function FinishStep({ productId, record, frames, hasVideo }: { productId:
               </label>
               <div className="row">
                 <button className="btn btn-sm" disabled={!review.trim() || sendReview.isPending} onClick={() => sendReview.mutate()}>Send to AI memory</button>
-                {sendReview.isSuccess && <span className="muted small">Sent. Approve it in AI memory to use it in the next videos.</span>}
+                {sendReview.isSuccess && <span className="muted small">{sendReview.data?.status === "approved" ? "Saved as a rule. The AI uses it from the next video." : "Sent. It waits in AI memory until the AI can turn it into a rule."}</span>}
               </div>
               <ErrorNote error={sendReview.error} />
             </div>

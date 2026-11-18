@@ -468,8 +468,7 @@ async def test_finished_clip_is_checked_and_a_flag_is_kept_until_it_is_made_agai
     assert (unchecked["status"], unchecked["qa_problem"]) == ("ready", NOT_CHECKED)
 
 
-async def test_a_flagged_clip_proposes_a_script_rule_once(tmp_path, monkeypatch) -> None:
-    from ai_content.domains.marketing.creative_knowledge.models import KnowledgeStatus
+async def test_a_flagged_clip_shows_its_problem_but_makes_no_rule(tmp_path, monkeypatch) -> None:
     from ai_content.domains.marketing.creative_knowledge.service import CreativeKnowledgeService
 
     video = _FakeVideo()
@@ -484,18 +483,9 @@ async def test_a_flagged_clip_proposes_a_script_rule_once(tmp_path, monkeypatch)
     monkeypatch.setattr(service_module, "clip_frames", frames)
     await service.generate_clips(PRODUCT_ID, tmp_path)
     video.states["job0"] = JobState("completed", video_url="https://v/x.mp4")
-    await service.clips(PRODUCT_ID, tmp_path)
-    [item] = await knowledge.repository.list()
-    assert item.content == "long sleeves appear in frame 2" and item.contributor == "gemini-qa"
-    assert item.scope.asset_type == "brief" and item.status is KnowledgeStatus.PROPOSED
-
-    await knowledge.decide(item.knowledge_id, status=KnowledgeStatus.REJECTED, reviewer="user")
-    service._clip_checker = _FakeClipChecker(["long sleeves appear in frame 2"])  # type: ignore[assignment]
-    await service.generate_clips(PRODUCT_ID, tmp_path, shot_index=0)
-    video.states["job1"] = JobState("completed", video_url="https://v/y.mp4")
-    await service.clips(PRODUCT_ID, tmp_path)
-    [same] = await knowledge.repository.list()
-    assert same.status is KnowledgeStatus.REJECTED
+    [flagged, *_] = await service.clips(PRODUCT_ID, tmp_path)
+    assert flagged["qa_problem"] == "long sleeves appear in frame 2"
+    assert await knowledge.repository.list() == []  # a defect of one clip is not a rule
 
 
 @pytest.mark.skipif(shutil.which("ffmpeg") is None, reason="ffmpeg is not installed")

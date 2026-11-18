@@ -15,7 +15,10 @@ from fastapi.responses import FileResponse
 from loguru import logger
 from pydantic import BaseModel, Field
 
-from ai_content.domains.marketing.creative_knowledge.models import KnowledgeAuthority
+from ai_content.domains.marketing.creative_knowledge.models import (
+    KnowledgeAuthority,
+    KnowledgeStatus,
+)
 from ai_content.domains.marketing.creative_knowledge.service import CreativeKnowledgeService
 from ai_content.domains.marketing.products.briefing import BriefGenerationError, BriefUnavailable
 from ai_content.domains.marketing.products.clips import StitchUnavailable
@@ -43,6 +46,7 @@ from .dependencies import (
     get_creative_knowledge_service,
     get_product_catalog_service,
     get_runtime_settings,
+    knowledge_curator,
     notification_scope_for,
     product_catalog_scope_for,
 )
@@ -1011,7 +1015,9 @@ async def send_feedback(
     payload: FeedbackRequest,
     knowledge: CreativeKnowledgeService = Depends(get_creative_knowledge_service),
 ) -> dict[str, str]:
-    """Propose a rule from feedback on a generated image or video; a reviewer must approve it."""
+    """Turn feedback on a generated image or video into a rule: the AI rewrites it into the
+    rulebook's form, replaces the rules it contradicts and approves it. Without the AI it stays
+    proposed."""
     item = await propose_feedback(
         knowledge,
         product_id=product_id,
@@ -1020,7 +1026,10 @@ async def send_feedback(
         authority=KnowledgeAuthority.INDIVIDUAL,
         asset_type=payload.asset_type,
     )
-    return {"knowledge_id": item.knowledge_id, "status": item.status.value}
+    curator = knowledge_curator(get_runtime_settings())
+    if curator is not None and item.status == KnowledgeStatus.PROPOSED:
+        item = await knowledge.learn(item.knowledge_id, curator, "feedback")
+    return {"knowledge_id": item.knowledge_id, "status": item.status.value, "rule": item.title}
 
 
 VIDEO_TYPES = {"video/mp4", "video/quicktime", "video/webm"}

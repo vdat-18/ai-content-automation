@@ -195,22 +195,31 @@ async def decide_knowledge(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="decision must be approved or rejected",
         )
+    curator = knowledge_curator(get_runtime_settings())
     try:
-        item = await service.decide(
-            knowledge_id,
-            status=payload.decision,
-            reviewer=payload.reviewer,
-        )
+        current = await service.repository.get(knowledge_id)
+        if (
+            curator is not None
+            and current is not None
+            and payload.decision == KnowledgeStatus.APPROVED
+            and any(ref.startswith(FEEDBACK_SOURCE) for ref in current.source_refs)
+        ):
+            # feedback enters the rulebook only in the rulebook's form
+            item = await service.learn(knowledge_id, curator, payload.reviewer)
+            if item.status != KnowledgeStatus.APPROVED:
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail="The AI could not turn this feedback into a rule; try again",
+                )
+        else:
+            item = await service.decide(
+                knowledge_id,
+                status=payload.decision,
+                reviewer=payload.reviewer,
+            )
     except ValueError as exc:
         code = status.HTTP_404_NOT_FOUND if "not found" in str(exc) else status.HTTP_409_CONFLICT
         raise HTTPException(status_code=code, detail=str(exc)) from exc
-    curator = knowledge_curator(get_runtime_settings())
-    if (
-        curator is not None
-        and item.status == KnowledgeStatus.APPROVED
-        and any(ref.startswith(FEEDBACK_SOURCE) for ref in item.source_refs)
-    ):
-        item = await service.curate(item.knowledge_id, curator)
     return _response(item)
 
 

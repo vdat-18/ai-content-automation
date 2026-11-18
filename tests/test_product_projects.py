@@ -7,16 +7,9 @@ def test_a_project_belongs_to_the_product_before_its_suffix() -> None:
     assert product_of("1730000000000000001-v2") == "1730000000000000001"
 
 
-def test_the_earlier_videos_are_listed_with_their_angle_place_and_shots() -> None:
-    brief = {
-        "title": "Dai khong rach",
-        "selling_angle": "strong paper",
-        "scene": "a kitchen",
-        "shots": [{"role": "hook", "description": "a wet table"}],
-    }
-    text = earlier_videos([brief])
-    assert text.startswith("1. Dai khong rach")
-    assert "strong paper" in text and "a kitchen" in text and "hook: a wet table" in text
+def test_the_earlier_videos_are_listed_with_their_script_and_place() -> None:
+    brief = {"title": "Dai khong rach", "scene": "a kitchen", "script": "Ban bi tham nuoc?"}
+    assert earlier_videos([brief]) == "1. Dai khong rach (place: a kitchen)\nBan bi tham nuoc?"
     assert earlier_videos([]) == ""
 
 

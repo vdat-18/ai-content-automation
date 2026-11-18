@@ -36,11 +36,12 @@ export function ImagesStep({ productId, record, frames, run, hasVideo = false, m
   });
   const redo = useMutation({
     mutationFn: async ({ index, text }: { index: number; text: string }) => {
-      if (text) await postJson(`${API}/${productId}/feedback`, { text, asset_type: "keyframe" });
-      return postJson<Keyframe[]>(`${API}/${productId}/keyframes`, { shot_index: index, note: text });
+      const rule = text ? await postJson<{ status: string }>(`${API}/${productId}/feedback`, { text, asset_type: "keyframe" }) : null;
+      await postJson<Keyframe[]>(`${API}/${productId}/keyframes`, { shot_index: index, note: text });
+      return rule?.status === "approved";
     },
-    onSuccess: (_data, { index, text }) => {
-      if (text) setLearned((list) => [...list, index]);
+    onSuccess: (saved, { index }) => {
+      if (saved) setLearned((list) => [...list, index]);
       void refresh();
     },
   });
@@ -104,7 +105,7 @@ export function ImagesStep({ productId, record, frames, run, hasVideo = false, m
                           <button className="btn btn-primary btn-sm" disabled={!note.trim() || redo.isPending} onClick={() => { redo.mutate({ index, text: note.trim() }); setNoteFor(null); setNote(""); }}>Fix this scene</button>
                           <button className="btn btn-sm" onClick={() => setNoteFor(null)}>Cancel</button>
                         </div>
-                        <span className="muted small">The AI remembers this. You approve it in AI memory and it applies to every next video.</span>
+                        <span className="muted small">The AI turns this into a rule that applies to every next video.</span>
                       </div>
                     ) : frame && frame.status !== "failed" && !busy ? (
                       <div className="row">
@@ -114,7 +115,7 @@ export function ImagesStep({ productId, record, frames, run, hasVideo = false, m
                     ) : !busy && (
                       <button className="btn btn-sm" disabled={redo.isPending || (index > 0 && !masterApproved)} onClick={() => redo.mutate({ index, text: "" })}><RefreshCw size={14} aria-hidden="true" />Try again</button>
                     )}
-                    {learned.includes(index) && !busy && <span className="check-ok">Noted. The AI will avoid this next time once you approve it in AI memory.</span>}
+                    {learned.includes(index) && !busy && <span className="check-ok">Saved as a rule. The AI will avoid this in the next videos.</span>}
                   </div>
                 </article>
               );

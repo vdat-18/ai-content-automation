@@ -1,6 +1,6 @@
 {
   "schema_version": "creative-knowledge-bootstrap@2",
-  "bootstrap_id": "product-ad-v12",
+  "bootstrap_id": "product-ad-v13",
   "items": [
     {
       "knowledge_id": "product-ad-body-proportions",
@@ -120,7 +120,7 @@
       "knowledge_id": "product-ad-4-voice-length",
       "knowledge_type": "hard_rule",
       "title": "Voiceover length of each shot",
-      "content": "WHEN: Writing the voiceover of a shot. DO: For a narrated shot (nobody is seen speaking) write 40 to 46 words (never below 38 or above 48) so the voice speaks for 11 to 12 seconds (the voices read 3.5 to 4 words per second) inside the 13 second shot, and fit the moment the shot shows. For a talking shot (the person speaks to the camera) keep it concise and punchy, 16 to 22 words (never below 15 or above 25), about 4 to 5 seconds of clear speech, so lip-sync looks natural. DO NOT: Leave long silences or run over, or write long talking lines that make the mouth drift or the model hallucinate speech.",
+      "content": "WHEN: Writing the voiceover of a shot. DO: Each shot lasts 15 seconds and the video follows the length of the voice, so write the voiceover of every shot as 55 to 65 Vietnamese words (never below 50 or above 70), which the voice reads in about 11 to 13 seconds, enough to fill nearly the whole shot; this holds for a shot where the person talks to the camera as well. DO NOT: Write a short line that leaves the paid clip mostly unused and the video much shorter than planned, or a line so long that it runs past the end of the shot.",
       "applies_to": [
         "preparation",
         "review"

@@ -10,7 +10,7 @@ class StoryboardShot {
   motion_prompt string @description("English, about 65 to 100 words (four or five timed beats), only motion: the keyframe already shows how everything looks. Keep the face exactly as in the keyframe with a natural relaxed expression and the mouth mostly closed or in a slight smile; hair may move a little in the air")
   delivery "narrated" | "talking"
   on_screen_text string @description("A short Vietnamese caption, or an empty string")
-  voiceover string @description("Vietnamese, natural spoken words that fill most of the 15 seconds of the shot: about 55 to 65 words")
+  voiceover string @description("Vietnamese, natural spoken words that fill most of the 15 seconds of the shot")
 }
 
 class ContentBrief {
@@ -68,9 +68,10 @@ function DraftContentBrief(
     Freestyle: be inventive. Unless the user gave an idea, choose a fresh selling angle, hook and
     setting that fit this product, specific and surprising, not the most predictable ad.
     {% if earlier_videos %}
-    Videos already made for this product are listed below. The new brief must be clearly
-    different from every one of them: a different selling angle, a different hook, a different
-    place and a different way to show the product at work. Do not reuse their wording.
+    The scripts of the videos already made for this product are listed below. The new brief
+    must be clearly different from every one of them: a different selling angle, a different
+    hook, a different place and a different way to show the product at work. Do not reuse their
+    wording.
     {{ earlier_videos }}
     {% endif %}
 
