@@ -1,6 +1,6 @@
 {
   "schema_version": "creative-knowledge-bootstrap@2",
-  "bootstrap_id": "product-ad-v13",
+  "bootstrap_id": "product-ad-v14",
   "items": [
     {
       "knowledge_id": "product-ad-body-proportions",
@@ -120,7 +120,7 @@
       "knowledge_id": "product-ad-4-voice-length",
       "knowledge_type": "hard_rule",
       "title": "Voiceover length of each shot",
-      "content": "WHEN: Writing the voiceover of a shot. DO: Each shot lasts 15 seconds and the video follows the length of the voice, so write the voiceover of every shot as 55 to 65 Vietnamese words (never below 50 or above 70), which the voice reads in about 11 to 13 seconds, enough to fill nearly the whole shot; this holds for a shot where the person talks to the camera as well. DO NOT: Write a short line that leaves the paid clip mostly unused and the video much shorter than planned, or a line so long that it runs past the end of the shot.",
+      "content": "WHEN: Writing the voiceover of a shot. DO: Each shot lasts 15 seconds and the video follows the length of the voice, so write the voiceover of every shot as about 62 Vietnamese words (never below 56 or above 70), which the voice reads in about 12 to 13 seconds, enough to fill nearly the whole shot; count the words of each shot before answering and lengthen a shot that is short with one more concrete detail of the story, never with filler; this holds for a shot where the person talks to the camera as well. DO NOT: Write a short line that leaves the paid clip mostly unused and the video much shorter than planned, or a line so long that it runs past the end of the shot.",
       "applies_to": [
         "preparation",
         "review"

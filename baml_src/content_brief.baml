@@ -70,8 +70,10 @@ function DraftContentBrief(
     {% if earlier_videos %}
     The scripts of the videos already made for this product are listed below. The new brief
     must be clearly different from every one of them: a different selling angle, a different
-    hook, a different place and a different way to show the product at work. Do not reuse their
-    wording.
+    hook and a different way to show the product at work, and none of their wording. Change the
+    place only when another place fits how the product is really used; when it does not (a face
+    scrub stays in a bathroom), change what is shown there instead: the light, the time of day,
+    who or what is in it, the action and the story.
     {{ earlier_videos }}
     {% endif %}
 
