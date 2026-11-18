@@ -5,10 +5,10 @@ import { useSearchParams } from "react-router-dom";
 import { ErrorNote, Spinner } from "../../components/ui";
 import { ClipsPanel } from "./ClipsPanel";
 import { VoiceChoice } from "./VoiceChoice";
-import { API, useStartPipeline, useVideoCheck, useVideoInfo, useVoice, VOICE_KEY } from "../../hooks/useStudio";
+import { API, useStartPipeline, useVideoCheck, useVideoInfo, useVoice } from "../../hooks/useStudio";
 import { imagesApproved, runStopped } from "../../lib/studio";
 import { getJson, postJson } from "../../services/http";
-import type { BriefRecord, Keyframe, PipelineRun, PostPackage, Voice } from "../../types/studio";
+import type { BriefRecord, Keyframe, PipelineRun, PostPackage } from "../../types/studio";
 
 type Hook = { id: string; angle: string; text: string; built: boolean; filming: boolean };
 type Usage = { by_operation: { key: string; request_count: number }[] };
@@ -32,7 +32,6 @@ export function FinishStep({ productId, record, frames, hasVideo, run }: { produ
   const [captions, setCaptions] = useState(false);
   const [stickers, setStickers] = useState(false);
   const [review, setReview] = useState("");
-  const [voice, setVoice] = useState(() => window.localStorage.getItem(VOICE_KEY) ?? "");
   const [chosenVoice, chooseVoice] = useVoice();
   const pack = record.brief.post_package;
   // A person speaking in the opening scene says words that are fixed by the filmed clip
@@ -40,10 +39,9 @@ export function FinishStep({ productId, record, frames, hasVideo, run }: { produ
   const check = useVideoCheck(productId, version).data;
   const usage = useQuery({ queryKey: ["usage", productId, version], queryFn: ({ signal }) => getJson<Usage>(`/api/v1/ai-usage/summary?correlation_id=${productId}`, signal) });
   const used = (usage.data?.by_operation ?? []).filter((item) => USED[item.key]);
-  const voices = useQuery({ queryKey: ["voices"], queryFn: ({ signal }) => getJson<Voice[]>(`${API}/voices`, signal), staleTime: Infinity });
   const lastVoice = useVideoInfo(productId).data?.voice_id;
-  // Until a voice is chosen here, keep the voice that read the current video, else let the AI pick
-  const selectedVoice = voice || lastVoice || "auto";
+  // Until a voice is chosen, keep the voice that read the current video, else let the AI pick
+  const selectedVoice = chosenVoice || lastVoice || "auto";
   const sentVoice = selectedVoice === "auto" ? null : selectedVoice;
 
   const writePack = useMutation({
@@ -181,15 +179,10 @@ export function FinishStep({ productId, record, frames, hasVideo, run }: { produ
               ))}
               <ErrorNote error={writeHooks.error ?? buildHook.error} />
             </div>
-            <details>
+            <details open>
               <summary className="muted small" style={{ cursor: "pointer" }}>More options: change the voice or show on-screen text</summary>
               <div className="stack" style={{ marginTop: 12 }}>
-                <label className="field">Voice
-                  <select value={selectedVoice} onChange={(event) => { setVoice(event.target.value); window.localStorage.setItem(VOICE_KEY, event.target.value); }}>
-                    {(voices.data ?? []).map((option) => <option key={option.id} value={option.id}>{option.label}</option>)}
-                  </select>
-                </label>
-                {sentVoice && <audio key={selectedVoice} controls preload="none" src={`${API}/voices/${encodeURIComponent(selectedVoice)}/sample`} />}
+                <VoiceChoice voice={selectedVoice === "auto" ? "" : selectedVoice} onChoose={chooseVoice} />
                 <label className="check"><input type="checkbox" checked={captions} onChange={(event) => setCaptions(event.target.checked)} />Show the on-screen text in the video (it can cover the product).</label>
                 <label className="check"><input type="checkbox" checked={stickers} onChange={(event) => setStickers(event.target.checked)} />Show price, sales and rating stickers from the product data, in the shot that mentions them.</label>
                 <div><button className="btn" disabled={remake.isPending} onClick={() => remake.mutate()}>{remake.isPending ? <><Spinner size={14} />Remaking…</> : "Remake the video with these choices"}</button></div>
