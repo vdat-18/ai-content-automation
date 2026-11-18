@@ -139,7 +139,7 @@ class ContentBriefWriter:
             base_url=base_url,
             model=model,
             api_key=api_key,
-            reasoning_effort="low",
+            reasoning_effort="medium",
             temperature=0.4,
         )
         return cls(b.with_options(client_registry=registry))
