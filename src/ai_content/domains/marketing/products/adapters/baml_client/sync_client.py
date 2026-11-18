@@ -178,20 +178,6 @@ class BamlSyncClient:
                 "product_json": product_json,"user_idea": user_idea,"shot_count": shot_count,"product_images": product_images,"with_person": with_person,"person_images": person_images,"rules": rules,"earlier_videos": earlier_videos,
             })
             return typing.cast(types.ContentBrief, __result__.cast_to(types, types, stream_types, False, __runtime__))
-    def PickVoice(self, brief_json: str,voices_json: str,person_photos: typing.List[baml_py.Image],
-        baml_options: BamlCallOptions = {},
-    ) -> types.VoicePick:
-        # Check if on_tick is provided
-        if 'on_tick' in baml_options:
-            __stream__ = self.stream.PickVoice(brief_json=brief_json,voices_json=voices_json,person_photos=person_photos,
-                baml_options=baml_options)
-            return __stream__.get_final_response()
-        else:
-            # Original non-streaming code
-            __result__ = self.__options.merge_options(baml_options).call_function_sync(function_name="PickVoice", args={
-                "brief_json": brief_json,"voices_json": voices_json,"person_photos": person_photos,
-            })
-            return typing.cast(types.VoicePick, __result__.cast_to(types, types, stream_types, False, __runtime__))
     def ReviewReferenceImage(self, image: baml_py.Image,
         baml_options: BamlCallOptions = {},
     ) -> types.ReferenceImageReview:
@@ -220,20 +206,6 @@ class BamlSyncClient:
                 "line": line,"max_words": max_words,"rules": rules,
             })
             return typing.cast(types.ShortenedLine, __result__.cast_to(types, types, stream_types, False, __runtime__))
-    def WriteHooks(self, product_json: str,story_json: str,rules: str,count: int,
-        baml_options: BamlCallOptions = {},
-    ) -> types.HookOptions:
-        # Check if on_tick is provided
-        if 'on_tick' in baml_options:
-            __stream__ = self.stream.WriteHooks(product_json=product_json,story_json=story_json,rules=rules,count=count,
-                baml_options=baml_options)
-            return __stream__.get_final_response()
-        else:
-            # Original non-streaming code
-            __result__ = self.__options.merge_options(baml_options).call_function_sync(function_name="WriteHooks", args={
-                "product_json": product_json,"story_json": story_json,"rules": rules,"count": count,
-            })
-            return typing.cast(types.HookOptions, __result__.cast_to(types, types, stream_types, False, __runtime__))
     def WritePostingPackage(self, product_json: str,brief_json: str,
         baml_options: BamlCallOptions = {},
     ) -> types.PostingPackage:
@@ -329,18 +301,6 @@ class BamlStreamClient:
           lambda x: typing.cast(types.ContentBrief, x.cast_to(types, types, stream_types, False, __runtime__)),
           __ctx__,
         )
-    def PickVoice(self, brief_json: str,voices_json: str,person_photos: typing.List[baml_py.Image],
-        baml_options: BamlCallOptions = {},
-    ) -> baml_py.BamlSyncStream[stream_types.VoicePick, types.VoicePick]:
-        __ctx__, __result__ = self.__options.merge_options(baml_options).create_sync_stream(function_name="PickVoice", args={
-            "brief_json": brief_json,"voices_json": voices_json,"person_photos": person_photos,
-        })
-        return baml_py.BamlSyncStream[stream_types.VoicePick, types.VoicePick](
-          __result__,
-          lambda x: typing.cast(stream_types.VoicePick, x.cast_to(types, types, stream_types, True, __runtime__)),
-          lambda x: typing.cast(types.VoicePick, x.cast_to(types, types, stream_types, False, __runtime__)),
-          __ctx__,
-        )
     def ReviewReferenceImage(self, image: baml_py.Image,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.BamlSyncStream[stream_types.ReferenceImageReview, types.ReferenceImageReview]:
@@ -363,18 +323,6 @@ class BamlStreamClient:
           __result__,
           lambda x: typing.cast(stream_types.ShortenedLine, x.cast_to(types, types, stream_types, True, __runtime__)),
           lambda x: typing.cast(types.ShortenedLine, x.cast_to(types, types, stream_types, False, __runtime__)),
-          __ctx__,
-        )
-    def WriteHooks(self, product_json: str,story_json: str,rules: str,count: int,
-        baml_options: BamlCallOptions = {},
-    ) -> baml_py.BamlSyncStream[stream_types.HookOptions, types.HookOptions]:
-        __ctx__, __result__ = self.__options.merge_options(baml_options).create_sync_stream(function_name="WriteHooks", args={
-            "product_json": product_json,"story_json": story_json,"rules": rules,"count": count,
-        })
-        return baml_py.BamlSyncStream[stream_types.HookOptions, types.HookOptions](
-          __result__,
-          lambda x: typing.cast(stream_types.HookOptions, x.cast_to(types, types, stream_types, True, __runtime__)),
-          lambda x: typing.cast(types.HookOptions, x.cast_to(types, types, stream_types, False, __runtime__)),
           __ctx__,
         )
     def WritePostingPackage(self, product_json: str,brief_json: str,
@@ -439,13 +387,6 @@ class BamlHttpRequestClient:
             "product_json": product_json,"user_idea": user_idea,"shot_count": shot_count,"product_images": product_images,"with_person": with_person,"person_images": person_images,"rules": rules,"earlier_videos": earlier_videos,
         }, mode="request")
         return __result__
-    def PickVoice(self, brief_json: str,voices_json: str,person_photos: typing.List[baml_py.Image],
-        baml_options: BamlCallOptions = {},
-    ) -> baml_py.baml_py.HTTPRequest:
-        __result__ = self.__options.merge_options(baml_options).create_http_request_sync(function_name="PickVoice", args={
-            "brief_json": brief_json,"voices_json": voices_json,"person_photos": person_photos,
-        }, mode="request")
-        return __result__
     def ReviewReferenceImage(self, image: baml_py.Image,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.baml_py.HTTPRequest:
@@ -458,13 +399,6 @@ class BamlHttpRequestClient:
     ) -> baml_py.baml_py.HTTPRequest:
         __result__ = self.__options.merge_options(baml_options).create_http_request_sync(function_name="ShortenVoiceover", args={
             "line": line,"max_words": max_words,"rules": rules,
-        }, mode="request")
-        return __result__
-    def WriteHooks(self, product_json: str,story_json: str,rules: str,count: int,
-        baml_options: BamlCallOptions = {},
-    ) -> baml_py.baml_py.HTTPRequest:
-        __result__ = self.__options.merge_options(baml_options).create_http_request_sync(function_name="WriteHooks", args={
-            "product_json": product_json,"story_json": story_json,"rules": rules,"count": count,
         }, mode="request")
         return __result__
     def WritePostingPackage(self, product_json: str,brief_json: str,
@@ -524,13 +458,6 @@ class BamlHttpStreamRequestClient:
             "product_json": product_json,"user_idea": user_idea,"shot_count": shot_count,"product_images": product_images,"with_person": with_person,"person_images": person_images,"rules": rules,"earlier_videos": earlier_videos,
         }, mode="stream")
         return __result__
-    def PickVoice(self, brief_json: str,voices_json: str,person_photos: typing.List[baml_py.Image],
-        baml_options: BamlCallOptions = {},
-    ) -> baml_py.baml_py.HTTPRequest:
-        __result__ = self.__options.merge_options(baml_options).create_http_request_sync(function_name="PickVoice", args={
-            "brief_json": brief_json,"voices_json": voices_json,"person_photos": person_photos,
-        }, mode="stream")
-        return __result__
     def ReviewReferenceImage(self, image: baml_py.Image,
         baml_options: BamlCallOptions = {},
     ) -> baml_py.baml_py.HTTPRequest:
@@ -543,13 +470,6 @@ class BamlHttpStreamRequestClient:
     ) -> baml_py.baml_py.HTTPRequest:
         __result__ = self.__options.merge_options(baml_options).create_http_request_sync(function_name="ShortenVoiceover", args={
             "line": line,"max_words": max_words,"rules": rules,
-        }, mode="stream")
-        return __result__
-    def WriteHooks(self, product_json: str,story_json: str,rules: str,count: int,
-        baml_options: BamlCallOptions = {},
-    ) -> baml_py.baml_py.HTTPRequest:
-        __result__ = self.__options.merge_options(baml_options).create_http_request_sync(function_name="WriteHooks", args={
-            "product_json": product_json,"story_json": story_json,"rules": rules,"count": count,
         }, mode="stream")
         return __result__
     def WritePostingPackage(self, product_json: str,brief_json: str,

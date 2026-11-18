@@ -23,7 +23,7 @@ class StreamState(BaseModel, typing.Generic[StreamStateValueT]):
     value: StreamStateValueT
     state: typing_extensions.Literal["Pending", "Incomplete", "Complete"]
 # #########################################################################
-# Generated classes (15)
+# Generated classes (12)
 # #########################################################################
 
 class AdStructure(BaseModel):
@@ -53,13 +53,6 @@ class CuratedRule(BaseModel):
     title: typing.Optional[str] = None
     content: typing.Optional[str] = None
     replaces: typing.List[str]
-
-class HookOption(BaseModel):
-    angle: typing.Optional[str] = None
-    text: typing.Optional[str] = None
-
-class HookOptions(BaseModel):
-    hooks: typing.List["HookOption"]
 
 class KeyframeCheck(BaseModel):
     passed: typing.Optional[bool] = None
@@ -109,18 +102,13 @@ class StoryboardShot(BaseModel):
     on_screen_text: typing.Optional[str] = Field(default=None, description='A short Vietnamese caption, or an empty string')
     voiceover: typing.Optional[str] = Field(default=None, description='Vietnamese, natural spoken words that fill most of the 15 seconds of the shot')
 
-class VoicePick(BaseModel):
-    gender: typing.Optional[str] = None
-    voice: typing.Optional[str] = None
-    reason: typing.Optional[str] = None
-
 # #########################################################################
 # Generated type aliases (0)
 # #########################################################################
 
 
 # #########################################################################
-# Model rebuilds (15)
+# Model rebuilds (12)
 # #########################################################################
 # Resolve string forward references now that every model above is defined so
 # class declaration order never breaks Pydantic construction (issue #793).
@@ -130,8 +118,6 @@ AdStructure.model_rebuild()
 ClipCheck.model_rebuild()
 ContentBrief.model_rebuild()
 CuratedRule.model_rebuild()
-HookOption.model_rebuild()
-HookOptions.model_rebuild()
 KeyframeCheck.model_rebuild()
 LabeledReference.model_rebuild()
 PostingPackage.model_rebuild()
@@ -140,4 +126,3 @@ ReferenceImageReview.model_rebuild()
 ShortenedLine.model_rebuild()
 ShotReferenceChoice.model_rebuild()
 StoryboardShot.model_rebuild()
-VoicePick.model_rebuild()

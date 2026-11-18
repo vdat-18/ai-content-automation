@@ -21,7 +21,6 @@ from ai_content.domains.marketing.products.briefing import ContentBriefWriter
 from ai_content.domains.marketing.products.clip_check import ClipChecker
 from ai_content.domains.marketing.products.clips import VideoClient
 from ai_content.domains.marketing.products.embedding import ImageEmbedder
-from ai_content.domains.marketing.products.hooks import HookWriter
 from ai_content.domains.marketing.products.image_review import ReferenceImageReviewer
 from ai_content.domains.marketing.products.keyframe_check import KeyframeChecker
 from ai_content.domains.marketing.products.keyframes import (
@@ -37,7 +36,6 @@ from ai_content.domains.marketing.products.service import ProductCatalogService
 from ai_content.domains.marketing.products.shortening import VoiceShortener
 from ai_content.domains.marketing.products.speech import SpeechClient
 from ai_content.domains.marketing.products.text_embedding import TextEmbedder
-from ai_content.domains.marketing.products.voice_picker import VoicePicker
 from ai_content.entrypoints.postgres_runtime import PostgresRuntimeContainer
 from ai_content.platform.ai_usage import (
     AIUsageRepository,
@@ -398,16 +396,6 @@ def _reference_picker(settings: ApiRuntimeSettings) -> ShotReferencePicker | Non
     )
 
 
-def _hook_writer(settings: ApiRuntimeSettings) -> HookWriter | None:
-    if not settings.screening_api_key:
-        return None
-    return HookWriter.from_settings(
-        base_url=settings.screening_base_url,
-        api_key=settings.screening_api_key,
-        model=settings.writer_model,
-    )
-
-
 def _voice_shortener(settings: ApiRuntimeSettings) -> VoiceShortener | None:
     if not settings.screening_api_key:
         return None
@@ -415,16 +403,6 @@ def _voice_shortener(settings: ApiRuntimeSettings) -> VoiceShortener | None:
         base_url=settings.screening_base_url,
         api_key=settings.screening_api_key,
         model=settings.writer_model,
-    )
-
-
-def _voice_picker(settings: ApiRuntimeSettings) -> VoicePicker | None:
-    if not settings.screening_api_key:
-        return None
-    return VoicePicker.from_settings(
-        base_url=settings.screening_base_url,
-        api_key=settings.screening_api_key,
-        model=settings.review_model,
     )
 
 
@@ -459,8 +437,6 @@ async def product_catalog_scope(postgres: Any) -> AsyncIterator[ProductCatalogSe
         clip_checker=_clip_checker(settings),
         knowledge=postgres.creative_knowledge_service,
         ad_analyzer=_ad_analyzer(settings),
-        hook_writer=_hook_writer(settings),
-        voice_picker=_voice_picker(settings),
         voice_shortener=_voice_shortener(settings),
         usage=AIUsageTracker(postgres.ai_usage_repository),
     )

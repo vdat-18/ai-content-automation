@@ -299,24 +299,6 @@ async def test_speech_client_uses_the_voice_it_is_asked_for() -> None:
     assert '"voice":"maichi.mp3"' in seen[0].content.decode()
 
 
-async def test_voice_sample_is_made_once_and_unknown_voices_are_refused(tmp_path) -> None:
-    calls: list[str] = []
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        calls.append(request.content.decode())
-        return httpx.Response(200, content=b"ID3audio")
-
-    service = ProductCatalogService(
-        product_repository(), speaker=_client(handler)
-    )
-    first = await service.voice_sample("hamy.mp3", tmp_path)
-    second = await service.voice_sample("hamy.mp3", tmp_path)
-    assert first == second and first.read_bytes() == b"ID3audio"
-    assert len(calls) == 1 and '"voice":"hamy.mp3"' in calls[0]
-    with pytest.raises(KeyframeUnavailable, match="Unknown voice"):
-        await service.voice_sample("../evil", tmp_path)
-
-
 def test_low_room_noise_after_the_words_is_not_counted_as_speech() -> None:
     import numpy as np
 

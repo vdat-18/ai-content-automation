@@ -257,27 +257,6 @@ async def test_feedback_never_puts_an_approved_rule_back_to_proposed(tmp_path) -
     ]
 
 
-async def test_a_check_problem_seen_in_two_videos_becomes_a_proposed_script_rule(tmp_path) -> None:
-    knowledge = _knowledge(tmp_path)
-    repository = product_repository()
-    service = ProductCatalogService(repository, knowledge=knowledge)
-    for product in ("p1", "p2"):
-        await repository.save_brief(product, "", {"title": product, "shots": []}, "approved")
-    issue = {"code": "no_hook", "severity": "minor", "message": "m"}
-    await service._write_json(
-        tmp_path, "videos/p1/video.json", {"check": {"score": 90, "issues": [issue]}}
-    )
-    await service._learn_from_check("p2", tmp_path, {"score": 90, "issues": [issue]})
-    [item] = await knowledge.repository.list()
-    assert item.status == KnowledgeStatus.PROPOSED and item.contributor == "video-check"
-    assert item.scope.asset_type == "brief" and "hook" in item.content
-
-    await service._learn_from_check("p2", tmp_path, {"score": 90, "issues": []})
-    quiet = {"code": "silence", "severity": "minor", "message": "m"}
-    await service._learn_from_check("p2", tmp_path, {"score": 90, "issues": [quiet]})
-    assert len(await knowledge.repository.list()) == 1  # silence has not been seen before
-
-
 async def test_rules_can_be_skipped_and_are_capped(tmp_path, monkeypatch) -> None:
     from ai_content.domains.marketing.products import knowledge as knowledge_module
 

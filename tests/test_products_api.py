@@ -406,21 +406,6 @@ def test_video_info_reports_whether_a_stitched_video_exists(
     (video.parent / "voiceover.mp3").write_bytes(b"v")
     (video.parent / "voiceover.json").write_text('{"voice_id": "tiendat.mp3"}', encoding="utf-8")
     assert client.get(url).json() == {"exists": True, "voiceover": True, "voice_id": "tiendat.mp3"}
-    assert client.get(url.replace("video-info", "voiceover")).content == b"v"
-
-
-def test_voiceover_upload_replaces_the_previous_file(tmp_path: Path, client: TestClient) -> None:
-    url = f"/api/v1/products/{PRODUCT_ID}/voiceover"
-    folder = tmp_path / "media" / "videos" / PRODUCT_ID
-    assert client.put(url, content=b"x", headers={"content-type": "text/plain"}).status_code == 415
-    assert client.put(url, content=b"", headers={"content-type": "audio/wav"}).status_code == 422
-    assert client.put(url, content=b"mp3", headers={"content-type": "audio/mpeg"}).json() == {
-        "voiceover": "mp3"
-    }
-    assert client.put(url, content=b"wav", headers={"content-type": "audio/wav"}).json() == {
-        "voiceover": "wav"
-    }
-    assert sorted(p.name for p in folder.iterdir()) == ["voiceover.json", "voiceover.wav"]
 
 
 def test_people_are_created_given_photos_made_default_and_removed(client: TestClient) -> None:
@@ -459,12 +444,6 @@ def test_people_are_created_given_photos_made_default_and_removed(client: TestCl
     left = client.delete(f"{base}/{lan['id']}").json()  # the default moves on
     assert [(p["name"], p["default"]) for p in left] == [("Đạt", True)]
     assert client.delete(f"{base}/{lan['id']}").status_code == 404
-
-
-def test_voice_list_and_unknown_voice_sample(client: TestClient) -> None:
-    listed = client.get("/api/v1/products/voices").json()
-    assert {"id": "kimoanh.mp3", "label": "Kim Oanh"} in listed
-    assert client.get("/api/v1/products/voices/nope/sample").status_code == 409
 
 
 def test_deleting_a_product_removes_it_and_what_was_made_from_it(

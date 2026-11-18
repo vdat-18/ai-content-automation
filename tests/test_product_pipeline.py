@@ -70,8 +70,8 @@ class _FakeService:
         if shot_index is not None:
             self.restarted.append(shot_index)
 
-    async def create_voiceover(self, product_id, media_root, voice):
-        self.calls.append(f"voiceover:{voice}")
+    async def create_voiceover(self, product_id, media_root):
+        self.calls.append("voiceover")
 
     async def build_video(self, product_id, media_root, captions, stickers):
         self.calls.append("build_video")
@@ -88,7 +88,6 @@ async def _run(service: _FakeService, steps: list[str] | None = None) -> None:
         Path("."),
         idea="",
         video_seconds=30,
-        voice="hamy.mp3",
         report=(steps if steps is not None else []).append,
         poll_seconds=0,
     )
@@ -112,7 +111,7 @@ async def test_a_run_goes_through_every_stage_in_order_once_the_images_are_appro
         "clips",
         "generate_clips",
         "clips",
-        "voiceover:hamy.mp3",
+        "voiceover",
         "build_video",
         "post_package",
     ]
@@ -136,7 +135,7 @@ async def test_a_repeated_run_keeps_what_is_already_made() -> None:
     assert not any(call.startswith(("create_brief", "match_references")) for call in service.calls)
     assert "generate_clips" not in service.calls
     assert not any(call.startswith(("keyframe:", "generate_keyframes")) for call in service.calls)
-    assert service.calls[-3:] == ["voiceover:hamy.mp3", "build_video", "post_package"]
+    assert service.calls[-3:] == ["voiceover", "build_video", "post_package"]
     assert service.built_with == (True, True)  # captions and stickers are on by default
 
 
@@ -186,7 +185,6 @@ async def _run_until(service: _FakeService, until: str) -> None:
         Path("."),
         idea="",
         video_seconds=30,
-        voice=None,
         report=lambda step: None,
         poll_seconds=0,
         until=until,

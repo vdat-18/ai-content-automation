@@ -37,7 +37,6 @@ async def run_pipeline(
     *,
     idea: str,
     video_seconds: int,
-    voice: str | None,
     report: Callable[[str], None],
     poll_seconds: float = CLIP_POLL_SECONDS,
     until: str = "video",
@@ -115,7 +114,7 @@ async def run_pipeline(
     await _wait_for_clips(service, product_id, media_root, shot_count, poll_seconds)
 
     report("Synthesizing voiceover")
-    await service.create_voiceover(product_id, media_root, voice)
+    await service.create_voiceover(product_id, media_root)
     report("Stitching final video with transitions and music")
     await service.build_video(product_id, media_root, captions=True, stickers=True)
     report("Writing TikTok caption and hashtags")

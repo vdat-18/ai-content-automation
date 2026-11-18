@@ -10,7 +10,6 @@ from typing import Any, Literal
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
-from fastapi import Path as PathParam
 from fastapi.responses import FileResponse
 from loguru import logger
 from pydantic import BaseModel, Field
@@ -35,11 +34,9 @@ from ai_content.domains.marketing.products.references import (
 )
 from ai_content.domains.marketing.products.service import (
     VOICEOVER_TYPES,
-    HookClipPending,
     KeyframeUnavailable,
     ProductCatalogService,
 )
-from ai_content.domains.marketing.products.speech import VOICES
 from ai_content.platform.notifications import Notification
 
 from .dependencies import (
@@ -65,23 +62,6 @@ async def ingest_capture(
         return await service.ingest(payload)
     except ProfileGenerationError as error:
         raise HTTPException(status_code=503, detail=str(error)) from error
-
-
-@router.get("/voices")
-async def voices() -> list[dict[str, str]]:
-    return [{"id": key, "label": label} for key, label in VOICES.items()]
-
-
-@router.get("/voices/{voice}/sample")
-async def voice_sample(
-    voice: str,
-    service: ProductCatalogService = Depends(get_product_catalog_service),
-) -> FileResponse:
-    try:
-        path = await service.voice_sample(voice, _media_root())
-    except KeyframeUnavailable as error:
-        raise HTTPException(status_code=409, detail=str(error)) from error
-    return FileResponse(path, media_type="audio/mpeg")
 
 
 @router.get("/queue")
@@ -466,7 +446,6 @@ _pipeline_runs: dict[str, dict[str, str]] = {}
 class PipelineRequest(BaseModel):
     idea: str = ""
     video_seconds: Literal[15, 30, 45, 60, 75, 90] = 60
-    voice: str | None = None
     until: Literal["script", "images", "video"] = "video"
     persona_id: str | None = None  # the default person when empty
 
@@ -530,7 +509,6 @@ async def _run_pipeline(
                 media_root,
                 idea=body.idea,
                 video_seconds=body.video_seconds,
-                voice=body.voice,
                 report=report,
                 until=body.until,
                 persona_id=body.persona_id,
@@ -809,79 +787,6 @@ async def build_video(
     return {"video": f"/api/v1/products/{product_id}/video"}
 
 
-class HookVideoRequest(BaseModel):
-    voice: str | None = None
-    captions: bool = False
-    stickers: bool = False
-
-
-@router.post("/{product_id}/hooks")
-async def write_hooks(
-    product_id: str,
-    service: ProductCatalogService = Depends(get_product_catalog_service),
-) -> list[dict[str, str]]:
-    """Write alternative opening lines to try on the same clips."""
-    try:
-        hooks = await service.write_hooks(product_id, _media_root())
-    except KeyframeUnavailable as error:
-        raise HTTPException(status_code=409, detail=str(error)) from error
-    if hooks is None:
-        raise HTTPException(status_code=404, detail="No brief for this product")
-    return hooks
-
-
-@router.get("/{product_id}/hooks")
-async def list_hooks(
-    product_id: str,
-    service: ProductCatalogService = Depends(get_product_catalog_service),
-) -> list[dict[str, Any]]:
-    return await service.hooks(product_id, _media_root())
-
-
-@router.post("/{product_id}/hooks/{hook_id}/video")
-async def build_hook_video(
-    product_id: str,
-    hook_id: str,
-    payload: HookVideoRequest | None = None,
-    service: ProductCatalogService = Depends(get_product_catalog_service),
-) -> dict[str, str]:
-    """Make the video for one hook from the clips already generated.
-
-    A hook on an opening where the person speaks films one new clip first: the answer is then
-    "filming" until it is ready, and asking again makes the video.
-    """
-    options = payload or HookVideoRequest()
-    try:
-        path = await service.build_hook_video(
-            product_id, _media_root(), hook_id, options.voice, options.captions, options.stickers
-        )
-    except HookClipPending:
-        return {"status": "filming"}
-    except (KeyframeUnavailable, StitchUnavailable) as error:
-        raise HTTPException(status_code=409, detail=str(error)) from error
-    if path is None:
-        raise HTTPException(status_code=404, detail="No such hook")
-    return {"status": "ready", "video": f"/api/v1/products/{product_id}/hooks/{hook_id}/video"}
-
-
-@router.get("/{product_id}/hooks/{hook_id}/video")
-async def hook_video(
-    product_id: str,
-    hook_id: str = PathParam(pattern=r"^hook_\d+$"),
-    download: bool = False,
-    service: ProductCatalogService = Depends(get_product_catalog_service),
-) -> FileResponse:
-    path = await service.media(_media_root()).fetch(f"videos/{product_id}/{hook_id}/video.mp4")
-    if path is None:
-        raise HTTPException(status_code=404, detail="This hook has no video yet")
-    return FileResponse(
-        path,
-        media_type="video/mp4",
-        headers={"Cache-Control": "no-cache"},
-        filename=f"{product_id}_{hook_id}.mp4" if download else None,
-    )
-
-
 @router.get("/{product_id}/events")
 async def run_log(
     product_id: str,
@@ -907,15 +812,6 @@ async def video_info(
         ),
         "voice_id": await service.last_voice(product_id, _media_root()),
     }
-
-
-@router.get("/{product_id}/video-check")
-async def video_check(
-    product_id: str,
-    service: ProductCatalogService = Depends(get_product_catalog_service),
-) -> dict[str, Any] | None:
-    """Score and problems the automatic check found in the finished video."""
-    return await service.video_check(product_id, _media_root())
 
 
 @router.get("/{product_id}/video")
@@ -981,28 +877,6 @@ async def create_post_package(
     return package
 
 
-@router.put("/{product_id}/voiceover")
-async def upload_voiceover(
-    product_id: str,
-    request: Request,
-    service: ProductCatalogService = Depends(get_product_catalog_service),
-) -> dict[str, str]:
-    """Keep one voice-over file for the video; the next stitch lays it over the clips."""
-    kind = request.headers.get("content-type", "").split(";")[0].strip()
-    extension = VOICEOVER_TYPES.get(kind)
-    if extension is None:
-        raise HTTPException(status_code=415, detail=f"Use one of {sorted(VOICEOVER_TYPES)}")
-    content = await request.body()
-    if not content:
-        raise HTTPException(status_code=422, detail="The file is empty")
-    store = service.media(_media_root())
-    for old in VOICEOVER_TYPES.values():
-        await store.remove(f"videos/{product_id}/voiceover.{old}")
-    await store.write(f"videos/{product_id}/voiceover.{extension}", content)
-    await service.note_voice(product_id, _media_root(), "uploaded file")
-    return {"voiceover": extension}
-
-
 class FeedbackRequest(BaseModel):
     text: str = Field(min_length=1)
     contributor: str = Field(default="user", min_length=1)
@@ -1055,42 +929,3 @@ async def learn_from_reference_ad(
     except KeyframeUnavailable as error:
         raise HTTPException(status_code=409, detail=str(error)) from error
     return {"rules": rules}
-
-
-class VoiceoverRequest(BaseModel):
-    voice: str | None = None
-
-
-@router.post("/{product_id}/voiceover")
-async def make_voiceover_track(
-    product_id: str,
-    payload: VoiceoverRequest | None = None,
-    service: ProductCatalogService = Depends(get_product_catalog_service),
-) -> dict[str, Any]:
-    """Read every approved shot's voice-over with the text-to-speech model."""
-    try:
-        result = await service.create_voiceover(
-            product_id, _media_root(), payload.voice if payload else None
-        )
-    except KeyframeUnavailable as error:
-        raise HTTPException(status_code=409, detail=str(error)) from error
-    if result is None:
-        raise HTTPException(status_code=404, detail="No brief for this product")
-    return result
-
-
-@router.get("/{product_id}/voiceover")
-async def voiceover_audio(
-    product_id: str,
-    service: ProductCatalogService = Depends(get_product_catalog_service),
-) -> FileResponse:
-    store = service.media(_media_root())
-    for extension, media_type in (
-        ("mp3", "audio/mpeg"),
-        ("wav", "audio/wav"),
-        ("m4a", "audio/mp4"),
-    ):
-        path = await store.fetch(f"videos/{product_id}/voiceover.{extension}")
-        if path is not None:
-            return FileResponse(path, media_type=media_type, headers={"Cache-Control": "no-cache"})
-    raise HTTPException(status_code=404, detail="No voice-over yet")

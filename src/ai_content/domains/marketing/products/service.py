@@ -14,7 +14,6 @@ from dataclasses import replace
 from datetime import UTC, datetime
 from functools import partial
 from io import BytesIO
-from itertools import accumulate
 from pathlib import Path
 from typing import Any
 from urllib.parse import quote_plus, urlsplit
@@ -62,7 +61,6 @@ from .clips import (
     video_seconds,
 )
 from .embedding import ImageEmbedder, cosine, dhash, download_images, hamming
-from .hooks import HookWriter
 from .identity import PIN_SIZE_DIR, media_source_fingerprint
 from .image_review import ReferenceImageReviewer
 from .jumpcuts import zoom_windows
@@ -95,7 +93,6 @@ from .shortening import VoiceShortener, words_that_fit
 from .speech import (
     DEFAULT_VOICE,
     MAX_SPEEDUP,
-    SAMPLE_TEXT,
     VOICES,
     Reading,
     SpeechClient,
@@ -105,8 +102,6 @@ from .speech import (
 )
 from .stickers import render_stickers, sticker_lines, sticker_start, stickers_by_shot
 from .text_embedding import TextEmbedder, TextEmbeddingError
-from .video_check import LESSONS, VideoCheckUnavailable, judge, measure
-from .voice_picker import VoicePicker
 from .word_timing import MISREAD_BELOW, word_starts
 
 # filter_genai asks Pinterest to show fewer AI pictures, whatever the account setting is
@@ -158,10 +153,6 @@ _STALE_IMAGE = "The script of this scene changed after its image was made"
 _STALE_CLIP = "The script of this scene changed after it was filmed"
 # Kept as the problem of an image or clip whose AI check could not run, so a person looks at it
 NOT_CHECKED = "Not checked: the AI check could not run"
-_TALKING_OPENING = (
-    "The opening scene shows the person speaking, so its words come from the filmed clip: "
-    "a hook needs a clip of its own"
-)
 AI_LABEL_REMINDER = "Video này do AI tạo. Hãy bật nhãn nội dung do AI tạo khi đăng lên TikTok."
 KEYFRAME_REVIEW_STATUSES = frozenset({"approved", "ready", "rejected"})
 BRIEF_FIELDS = (
@@ -241,14 +232,14 @@ VOICEOVER_TYPES = {
 }
 
 
-def video_folder(product_id: str, variant: str = "") -> str:
-    """Where a product's video files live; a hook variant keeps its own files in a sub-folder."""
-    return f"videos/{product_id}" + (f"/{variant}" if variant else "")
+def video_folder(product_id: str) -> str:
+    """Where a product's video files live."""
+    return f"videos/{product_id}"
 
 
-def find_voiceover(media_root: Path, product_id: str, variant: str = "") -> Path | None:
+def find_voiceover(media_root: Path, product_id: str) -> Path | None:
     """The voice-over file kept beside the stitched video, if there is one."""
-    folder = Path(media_root) / video_folder(product_id, variant)
+    folder = Path(media_root) / video_folder(product_id)
     return next(
         (p for ext in VOICEOVER_TYPES.values() if (p := folder / f"voiceover.{ext}").is_file()),
         None,
@@ -257,10 +248,6 @@ def find_voiceover(media_root: Path, product_id: str, variant: str = "") -> Path
 
 class KeyframeUnavailable(RuntimeError):
     """Keyframes cannot be made yet; the message says what to do first."""
-
-
-class HookClipPending(RuntimeError):
-    """The clip of a hook is still being filmed; ask again in a little while."""
 
 
 _KEEP_PERSON = (
@@ -337,16 +324,12 @@ class ProductCatalogService:
         clip_checker: ClipChecker | None = None,
         knowledge: CreativeKnowledgeService | None = None,
         ad_analyzer: AdAnalyzer | None = None,
-        hook_writer: HookWriter | None = None,
-        voice_picker: VoicePicker | None = None,
         voice_shortener: VoiceShortener | None = None,
         usage: AIUsageTracker | None = None,
     ) -> None:
         self._usage = usage
         self._voice_shortener = voice_shortener
-        self._voice_picker = voice_picker
         self._ad_analyzer = ad_analyzer
-        self._hook_writer = hook_writer
         self._repository = repository
         self._reviewer = reviewer
         self._briefer = briefer
@@ -361,130 +344,6 @@ class ProductCatalogService:
         self._reference_picker = reference_picker
         self._clip_checker = clip_checker
         self._knowledge = knowledge
-
-    async def write_hooks(self, product_id: str, media_root: Path) -> list[dict[str, str]] | None:
-        """Write alternative opening lines for the brief and keep them; None without a brief."""
-        record = await self._repository.get_brief(product_id)
-        detail = await self._repository.get_detail(product_id)
-        if record is None or detail is None:
-            return None
-        if self._hook_writer is None:
-            raise KeyframeUnavailable("The AI model is not configured (AIC_SCREENING_API_KEY)")
-        rules = await approved_rules(self._knowledge, KnowledgeStage.PREPARATION, "brief")
-        hooks = await self._hook_writer.write(detail, record["brief"], rules.text)
-        if not hooks:
-            raise KeyframeUnavailable(
-                "No hook passed the checks (7 words or fewer, no flagged words, no invented "
-                "numbers); try again"
-            )
-        stored = [{"id": f"hook_{n}", **hook} for n, hook in enumerate(hooks, start=1)]
-        await self._write_json(media_root, f"videos/{product_id}/hooks.json", {"hooks": stored})
-        return stored
-
-    async def hooks(self, product_id: str, media_root: Path) -> list[dict[str, Any]]:
-        """The saved hooks, each with whether its video has been made."""
-        saved = (await self._read_json(media_root, f"videos/{product_id}/hooks.json")) or {}
-        store = self.media(media_root)
-        hooks = []
-        for hook in saved.get("hooks") or []:
-            clip = await self._read_json(media_root, f"videos/{product_id}/{hook['id']}/clip.json")
-            hooks.append(
-                {
-                    **hook,
-                    "built": await store.exists(f"videos/{product_id}/{hook['id']}/video.mp4"),
-                    "filming": bool(clip and clip["status"] == "processing"),
-                }
-            )
-        return hooks
-
-    async def build_hook_video(
-        self,
-        product_id: str,
-        media_root: Path,
-        hook_id: str,
-        voice: str | None = None,
-        captions: bool = False,
-        stickers: bool = False,
-    ) -> str | None:
-        """Make the video for one saved hook from the clips already generated.
-
-        When the opening scene is a person speaking, the hook needs one new clip of its own: the
-        first call starts filming it and raises HookClipPending until it is ready.
-        """
-        hook = next(
-            (h for h in await self.hooks(product_id, media_root) if h["id"] == hook_id), None
-        )
-        if hook is None:
-            return None
-        opening = await self._opening_clip(product_id, media_root, hook_id, hook["text"])
-        await self.create_voiceover(
-            product_id,
-            media_root,
-            voice,
-            variant=hook_id,
-            hook=hook["text"],
-            opening_clip=opening,
-        )
-        return await self.build_video(
-            product_id,
-            media_root,
-            captions,
-            stickers,
-            variant=hook_id,
-            hook=hook["text"],
-            opening_clip=opening,
-        )
-
-    async def _opening_clip(
-        self, product_id: str, media_root: Path, hook_id: str, text: str
-    ) -> Path | None:
-        """The clip in which the person says a hook; None when the opening is not a person speaking.
-
-        Raises HookClipPending while that clip is being filmed.
-        """
-        record = await self._repository.get_brief(product_id)
-        keyframes = {k["shot_index"]: k for k in await self._repository.list_keyframes(product_id)}
-        approved = [i for i, k in sorted(keyframes.items()) if k["status"] == "approved"]
-        shots = (record or {}).get("brief", {}).get("shots") or []
-        if not approved or approved[0] >= len(shots) or shots[approved[0]].get("delivery") != "talking":
-            return None
-        if self._videographer is None:
-            raise KeyframeUnavailable("Video model is not configured (AIC_VIDEO_MODEL)")
-        where = video_folder(product_id, hook_id)
-        store = self.media(media_root)
-        state = await self._read_json(media_root, f"{where}/clip.json")
-        if state is None or state["text"] != text or state["status"] == "failed":
-            frame = await store.read(keyframes[approved[0]]["image_path"])
-            prompt = _clip_prompt(
-                {**shots[approved[0]], "voiceover": text}, bool(record["brief"].get("with_person"))
-            )
-            try:
-                job_id, job_model = await self._videographer.submit(prompt, frame, CLIP_SECONDS)
-            except ClipGenerationError as error:
-                raise KeyframeUnavailable(f"The opening clip could not be started: {error}") from error
-            await self._count_call(product_id, "clip", "video", self._videographer)
-            state = {"status": "processing", "job_id": job_id, "job_model": job_model, "text": text}
-            await self._write_json(media_root, f"{where}/clip.json", state)
-            await self._log(product_id, "clip", "started", f"Opening clip of {hook_id} started")
-        if state["status"] == "processing":
-            try:
-                job = await self._videographer.status(state["job_id"], state["job_model"])
-            except ClipGenerationError as error:
-                logger.warning("Opening clip of {} could not be checked yet: {}", hook_id, error)
-                raise HookClipPending(hook_id) from error
-            if job.status == "failed":
-                await self._write_json(media_root, f"{where}/clip.json", {**state, "status": "failed"})
-                raise KeyframeUnavailable(
-                    f"The opening clip failed: {job.error or 'the video job failed'}"
-                )
-            if job.status != "completed" or not job.video_url:
-                raise HookClipPending(hook_id)
-            await store.write(f"{where}/shot_0.mp4", await self._videographer.download(job.video_url))
-            await self._write_json(media_root, f"{where}/clip.json", {**state, "status": "ready"})
-        found = await store.fetch(f"{where}/shot_0.mp4")
-        if found is None:
-            raise KeyframeUnavailable("The opening clip file is missing; make the hook video again")
-        return found
 
     async def learn_from_reference_ad(self, content: bytes) -> list[dict[str, str]]:
         """Describe how an example ad is built and propose that as rules for a human to approve.
@@ -1760,10 +1619,6 @@ class ProductCatalogService:
         self,
         product_id: str,
         media_root: Path,
-        voice: str | None = None,
-        variant: str = "",
-        hook: str = "",
-        opening_clip: Path | None = None,
     ) -> dict[str, Any] | None:
         """Read each approved shot's voice-over so its words start with the shot."""
         record = await self._repository.get_brief(product_id)
@@ -1771,16 +1626,7 @@ class ProductCatalogService:
             return None
         if self._speaker is None:
             raise KeyframeUnavailable("Text-to-speech is not configured (AIC_TTS_MODEL)")
-        voice = voice or DEFAULT_VOICE
-        if voice not in VOICES:
-            raise KeyframeUnavailable(f"Unknown voice {voice}")
-        voice_reason = ""
-        if voice == "auto" and self._voice_picker is not None:
-            brief = record["brief"]
-            photos = (await self.persona_photos(media_root, brief.get("persona_id")))[:2]
-            choice = await self._voice_picker.pick(brief, photos if brief.get("with_person") else [])
-            if choice is not None:
-                voice, voice_reason = choice.voice, choice.reason
+        voice = DEFAULT_VOICE
         keyframes = {k["shot_index"]: k for k in await self._repository.list_keyframes(product_id)}
         shots = record["brief"].get("shots") or []
         approved = [
@@ -1810,14 +1656,8 @@ class ProductCatalogService:
             segments.append(
                 Reading(str(shot.get("voiceover") or ""), shot_seconds(CLIP_SECONDS), guide)
             )
-        if hook.strip():
-            if segments[0].guide is not None and opening_clip is None:
-                raise KeyframeUnavailable(_TALKING_OPENING)
-            segments[0] = replace(
-                segments[0], text=hook.strip(), guide=opening_clip or segments[0].guide
-            )
         store = self.media(media_root)
-        where = video_folder(product_id, variant)
+        where = video_folder(product_id)
         folder = store.path(where)
         folder.mkdir(parents=True, exist_ok=True)
         for extension in VOICEOVER_TYPES.values():
@@ -1844,9 +1684,7 @@ class ProductCatalogService:
 
         try:
             lengths = await read_all()
-            shortened = await self._shorten_long_lines(
-                segments, lengths, planned, hook.strip() != ""
-            )
+            shortened = await self._shorten_long_lines(segments, lengths, planned)
             if shortened:
                 segments[:] = [
                     replace(r, text=shortened.get(i, r.text)) for i, r in enumerate(original)
@@ -1880,9 +1718,8 @@ class ProductCatalogService:
             await self.note_voice(
                 product_id,
                 media_root,
-                VOICES.get(voice or "", voice or "default"),
+                VOICES.get(voice, voice),
                 heard,
-                variant,
                 held,
                 voice or "",
                 words,
@@ -1904,16 +1741,14 @@ class ProductCatalogService:
             product_id,
             "voiceover",
             "warning" if too_long or misread else "ok",
-            f"Read in voice {voice or 'default'}; shots {[round(n, 1) for n in lengths]} s"
-            + (f"; chosen because: {voice_reason}" if voice_reason else "")
+            f"Read in voice {voice}; shots {[round(n, 1) for n in lengths]} s"
             + (f"; shortened and read again: {[n + 1 for n in shortened]}" if shortened else "")
             + (f"; too long: {too_long}" if too_long else "")
             + (f"; the voice does not say the script in shots {misread}" if misread else ""),
         )
         return {
             "voiceover": "mp3",
-            "voice": voice or "",
-            "voice_reason": voice_reason,
+            "voice": voice,
             "seconds": [round(n, 1) for n in lengths],
             "too_long_shots": too_long,
             "misread_shots": misread,
@@ -1924,12 +1759,11 @@ class ProductCatalogService:
         segments: list[Reading],
         lengths: list[float],
         planned: list[float],
-        hook_opens: bool,
     ) -> dict[int, str]:
         """New text for each shot whose reading cannot be sped up enough to end inside its shot.
 
-        A talking shot that follows the speech of its clip and an opening line replaced by a hook
-        keep their text. Keyed by the position of the shot in `segments`.
+        A talking shot that follows the speech of its clip keeps its text. Keyed by the position
+        of the shot in `segments`.
         """
         if self._voice_shortener is None:
             return {}
@@ -1940,7 +1774,6 @@ class ProductCatalogService:
                 length <= seconds * MAX_SPEEDUP
                 or reading.guide is not None
                 or not reading.text.strip()
-                or (i == 0 and hook_opens)
             ):
                 continue
             shorter = await self._voice_shortener.shorten(
@@ -1959,32 +1792,12 @@ class ProductCatalogService:
             brief["shots"][index]["voiceover"] = text
         await self._repository.save_brief(product_id, record["user_idea"], brief, record["status"])
 
-    async def voice_sample(self, voice: str, media_root: Path) -> Path:
-        """A short reading in one voice, made once and kept so listening again costs nothing."""
-        if self._speaker is None:
-            raise KeyframeUnavailable("Text-to-speech is not configured (AIC_TTS_MODEL)")
-        if voice not in VOICES:
-            raise KeyframeUnavailable(f"Unknown voice {voice}")
-        relative = f"voice_samples/{voice.removesuffix('.mp3')}.mp3"
-        store = self.media(media_root)
-        found = await store.fetch(relative)
-        if found is None:
-            try:
-                audio = await self._speaker.speak(SAMPLE_TEXT, voice)
-            except SpeechError as error:
-                raise KeyframeUnavailable(f"The sample could not be made: {error}") from error
-            found = await store.write(relative, audio)
-        return found
-
     async def build_video(
         self,
         product_id: str,
         media_root: Path,
         captions: bool = False,
         stickers: bool = False,
-        variant: str = "",
-        hook: str = "",
-        opening_clip: Path | None = None,
         music: bool = True,
     ) -> str | None:
         """Stitch the ready clips of approved shots, in story order, into one mp4.
@@ -2001,11 +1814,10 @@ class ProductCatalogService:
         clips = {c["shot_index"]: c for c in await self.clips(product_id, media_root)}
         keyframes = {k["shot_index"]: k for k in await self._repository.list_keyframes(product_id)}
         parts: list[StitchClip] = []
-        first_words = ""
         used: dict[int, int] = {}
         spoken_texts: list[str] = []
         scripts: list[tuple[int, str]] = []  # per part: its shot number and what the voice says
-        where = video_folder(product_id, variant)
+        where = video_folder(product_id)
         made = (await self._read_json(media_root, f"{where}/voiceover.json")) or {}
         heard = made.get("speech_seconds") or {}
         held = made.get("shot_seconds") or {}
@@ -2014,8 +1826,6 @@ class ProductCatalogService:
         for index, shot in enumerate(shots):
             if keyframes.get(index, {}).get("status") != "approved":
                 continue
-            if hook.strip() and not parts:  # a hook variant only changes the opening line
-                shot = {**shot, "voiceover": hook.strip(), "on_screen_text": hook.strip()}
             clip = clips.get(index)
             if clip is None or clip["status"] != "ready":
                 raise StitchUnavailable(f"The clip for shot {index + 1} is not ready yet")
@@ -2023,11 +1833,7 @@ class ProductCatalogService:
             if str(index) in held:  # the voice-over was cut to its words; cut the picture to match
                 duration = min(duration, clip_seconds_for(float(held[str(index)])))
             caption = str(shot.get("on_screen_text") or "") if captions else ""
-            local = (
-                opening_clip
-                if opening_clip is not None and not parts
-                else await self.media(media_root).fetch(clip["video_path"])
-            )
+            local = await self.media(media_root).fetch(clip["video_path"])
             if local is None:
                 raise StitchUnavailable(f"The clip file for shot {index + 1} is missing")
             cues = tuple(
@@ -2052,13 +1858,11 @@ class ProductCatalogService:
             )
             spoken_texts.append(f"{shot.get('voiceover') or ''} {shot.get('on_screen_text') or ''}")
             scripts.append((index, str(shot.get("voiceover") or "")))
-            if not parts[1:]:
-                first_words = str(shot.get("on_screen_text") or shot.get("voiceover") or "")
             used[index] = clip["attempts"]
         relative = f"{where}/video.mp4"
         store = self.media(media_root)
         await store.fetch_first([f"{where}/voiceover.{ext}" for ext in VOICEOVER_TYPES.values()])
-        voice = find_voiceover(media_root, product_id, variant)
+        voice = find_voiceover(media_root, product_id)
         shown: list[list[str]] = [[] for _ in parts]
         with tempfile.TemporaryDirectory() as scratch:
             font = caption_font()
@@ -2082,34 +1886,16 @@ class ProductCatalogService:
         cover = f"{where}/cover.jpg"
         await cover_frame(store.path(relative), store.path(cover))
         await store.push(cover)
-        check = None
-        try:
-            check = judge(
-                await measure(store.path(relative), voice),
-                expected_seconds=sum(shot_seconds(p.duration) for p in parts),
-                hook_text=first_words,
-                burned_texts=[p.caption for p in parts if p.caption and not p.cues],
-                wants_audio=voice is not None,
-                shot_starts=list(
-                    accumulate(shot_seconds(p.duration) for p in parts[:-1])
-                ),
-            )
-        except VideoCheckUnavailable as error:
-            logger.warning("Final video check skipped: {}", error)
-        if check is not None and not variant:
-            await self._learn_from_check(product_id, media_root, check)
         await self._write_json(
             media_root,
             f"{where}/video.json",
             {
-                "hook": hook.strip(),
                 "built_at": datetime.now(UTC).isoformat(),
                 "captions": captions,
                 "music": music,
                 "stickers": [kind for kinds in shown for kind in kinds],
                 "seconds": round(sum(shot_seconds(p.duration) for p in parts), 1),
                 "clip_attempts": used,
-                "check": check,
                 "voice": await self._read_json(media_root, f"{where}/voiceover.json"),
             },
         )
@@ -2118,41 +1904,9 @@ class ProductCatalogService:
             "video",
             "ok",
             f"Stitched {len(parts)} clip(s), voice-over {'yes' if voice else 'no'}, "
-            f"captions {'yes' if captions else 'no'}"
-            + (f", hook variant {variant}" if variant else ""),
+            f"captions {'yes' if captions else 'no'}",
         )
         return relative
-
-    async def _learn_from_check(
-        self, product_id: str, media_root: Path, check: dict[str, Any]
-    ) -> None:
-        """Propose a script rule for a problem that has now shown up in two or more videos."""
-        if self._knowledge is None:
-            return
-        found = {i["code"] for i in check["issues"] if i["code"] in LESSONS}
-        for record in await self._repository.list_briefs():
-            if not found:
-                break
-            if record["product_id"] == product_id:
-                continue
-            earlier = await self._read_json(media_root, f"videos/{record['product_id']}/video.json")
-            seen = {i.get("code") for i in ((earlier or {}).get("check") or {}).get("issues", [])}
-            for code in found & seen:
-                await propose_feedback(
-                    self._knowledge,
-                    product_id=product_id,
-                    text=LESSONS[code],
-                    contributor="video-check",
-                    authority=KnowledgeAuthority.EXTERNAL,
-                    asset_type="brief",
-                    once=True,
-                )
-            found -= seen
-
-    async def video_check(self, product_id: str, media_root: Path) -> dict[str, Any] | None:
-        """The automatic check made when the video was stitched, or None when there is none."""
-        built = await self._read_json(media_root, f"videos/{product_id}/video.json") or {}
-        return built.get("check")
 
     async def _write_json(self, media_root: Path, relative: str, data: dict[str, Any]) -> None:
         await self.media(media_root).write(relative, json.dumps(data, ensure_ascii=False).encode())
@@ -2169,7 +1923,6 @@ class ProductCatalogService:
         media_root: Path,
         voice: str,
         heard: dict[str, float] | None = None,
-        variant: str = "",
         held: dict[str, float] | None = None,
         voice_id: str = "",
         words: dict[str, list[float]] | None = None,
@@ -2179,7 +1932,7 @@ class ProductCatalogService:
         when measured, when each word starts."""
         await self._write_json(
             media_root,
-            f"{video_folder(product_id, variant)}/voiceover.json",
+            f"{video_folder(product_id)}/voiceover.json",
             {
                 "voice": voice,
                 "voice_id": voice_id,

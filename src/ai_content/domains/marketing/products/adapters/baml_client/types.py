@@ -41,7 +41,7 @@ def all_succeeded(checks: typing.Dict[CheckName, Check]) -> bool:
 # #########################################################################
 
 # #########################################################################
-# Generated classes (15)
+# Generated classes (12)
 # #########################################################################
 
 class AdStructure(BaseModel):
@@ -71,13 +71,6 @@ class CuratedRule(BaseModel):
     title: str
     content: str
     replaces: typing.List[str]
-
-class HookOption(BaseModel):
-    angle: str
-    text: str
-
-class HookOptions(BaseModel):
-    hooks: typing.List["HookOption"]
 
 class KeyframeCheck(BaseModel):
     passed: bool
@@ -127,18 +120,13 @@ class StoryboardShot(BaseModel):
     on_screen_text: str = Field(description='A short Vietnamese caption, or an empty string')
     voiceover: str = Field(description='Vietnamese, natural spoken words that fill most of the 15 seconds of the shot')
 
-class VoicePick(BaseModel):
-    gender: str
-    voice: str
-    reason: str
-
 # #########################################################################
 # Generated type aliases (0)
 # #########################################################################
 
 
 # #########################################################################
-# Model rebuilds (15)
+# Model rebuilds (12)
 # #########################################################################
 # Resolve string forward references now that every model above is defined so
 # class declaration order never breaks Pydantic construction (issue #793).
@@ -148,8 +136,6 @@ AdStructure.model_rebuild()
 ClipCheck.model_rebuild()
 ContentBrief.model_rebuild()
 CuratedRule.model_rebuild()
-HookOption.model_rebuild()
-HookOptions.model_rebuild()
 KeyframeCheck.model_rebuild()
 LabeledReference.model_rebuild()
 PostingPackage.model_rebuild()
@@ -158,4 +144,3 @@ ReferenceImageReview.model_rebuild()
 ShortenedLine.model_rebuild()
 ShotReferenceChoice.model_rebuild()
 StoryboardShot.model_rebuild()
-VoicePick.model_rebuild()
