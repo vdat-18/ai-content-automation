@@ -18,7 +18,7 @@ const ROLE_LABEL: Record<string, string> = {
   call_to_action: "Call to buy",
 };
 
-export function ImagesStep({ productId, record, frames, run }: { productId: string; record: BriefRecord; frames: Keyframe[]; run: PipelineRun | undefined }) {
+export function ImagesStep({ productId, record, frames, run, making = false }: { productId: string; record: BriefRecord; frames: Keyframe[]; run: PipelineRun | undefined; making?: boolean }) {
   const client = useQueryClient();
   const lightbox = useLightbox();
   const [noteFor, setNoteFor] = useState<number | null>(null);
@@ -78,7 +78,8 @@ export function ImagesStep({ productId, record, frames, run }: { productId: stri
           <div className="shot-grid">
             {shots.map((shot, index) => {
               const frame = byShot.get(index);
-              const busy = redo.isPending && redo.variables?.index === index;
+              const waiting = making && index > 0 && !frame; // being made right now
+              const busy = (redo.isPending && redo.variables?.index === index) || waiting;
               const isApproved = frame?.status === "approved";
               const open = noteFor === index && !busy;
               const src = frame && frame.status !== "failed" ? `${API}/${productId}/keyframes/${index}/image?v=${frame.attempts}` : null;
@@ -86,7 +87,7 @@ export function ImagesStep({ productId, record, frames, run }: { productId: stri
                 <article key={index} className={`card shot-card${isApproved ? " approved" : ""}`}>
                   <div className="media">
                     {src ? <img src={src} alt={`Scene ${index + 1}`} {...lightbox.zoom(lightboxImages, lightboxImages.findIndex((item) => item.index === index))} /> : <div className="empty">{frame?.error ? "This image could not be created." : "No image yet"}</div>}
-                    {busy && <div className="over"><Spinner size={28} />The AI is fixing this scene, about 2 minutes</div>}
+                    {busy && <div className="over"><Spinner size={28} />{waiting ? "Creating this scene, about 2 minutes" : "The AI is fixing this scene, about 2 minutes"}</div>}
                     {isApproved && !busy && <span className="tag"><Check size={13} aria-hidden="true" />Approved</span>}
                   </div>
                   <div className="body">
@@ -106,8 +107,8 @@ export function ImagesStep({ productId, record, frames, run }: { productId: stri
                       </div>
                     ) : frame && frame.status !== "failed" && !busy ? (
                       <div className="row">
-                        <button className={isApproved ? "btn btn-sm" : "btn btn-ok btn-sm"} style={{ flex: 1 }} disabled={review.isPending || (index > 0 && !masterApproved && !isApproved)} onClick={() => review.mutate({ index, status: isApproved ? "ready" : "approved" })}>{isApproved ? "Undo approval" : "Approve"}</button>
-                        <button className="btn btn-sm" style={{ flex: 1 }} disabled={index > 0 && !masterApproved} onClick={() => { setNoteFor(index); setNote(""); }}>Not right</button>
+                        <button className={isApproved ? "btn btn-sm" : "btn btn-ok btn-sm"} style={{ flex: 1 }} disabled={making || review.isPending || (index > 0 && !masterApproved && !isApproved)} onClick={() => review.mutate({ index, status: isApproved ? "ready" : "approved" })}>{isApproved ? "Undo approval" : "Approve"}</button>
+                        <button className="btn btn-sm" style={{ flex: 1 }} disabled={making || (index > 0 && !masterApproved)} onClick={() => { setNoteFor(index); setNote(""); }}>Not right</button>
                       </div>
                     ) : !busy && (
                       <button className="btn btn-sm" disabled={redo.isPending || (index > 0 && !masterApproved)} onClick={() => redo.mutate({ index, text: "" })}><RefreshCw size={14} aria-hidden="true" />Try again</button>
@@ -125,10 +126,14 @@ export function ImagesStep({ productId, record, frames, run }: { productId: stri
             <h2>{record.brief.title}</h2>
             <p><strong>{`${approved} of ${shots.length}`}</strong> scenes approved</p>
             <div className="progress ok" role="progressbar" aria-valuenow={approved} aria-valuemin={0} aria-valuemax={shots.length} aria-label="Scenes approved"><div style={{ width: `${shots.length ? (approved / shots.length) * 100 : 0}%` }} /></div>
-            {masterApproved && frames.length < shots.length && (
+            {making ? (
+              <div className="row" role="status" aria-live="polite" style={{ gap: 10 }}><Spinner size={18} /><strong>Creating the other scenes…</strong></div>
+            ) : masterApproved && frames.length < shots.length && (
               <button className="btn btn-primary btn-lg btn-block" disabled={start.isPending} onClick={() => start.mutate({ until: "images" })}>{start.isPending ? "Starting…" : "Create the other scenes"}</button>
             )}
-            {all ? (
+            {making ? (
+              <span className="muted small">This takes about 8 minutes. You can leave this page. We tell you when it is done.</span>
+            ) : all ? (
               <button className="btn btn-primary btn-lg btn-block" disabled={start.isPending} onClick={() => start.mutate({ until: "video" })}>{start.isPending ? "Starting…" : "Make the video from these scenes"}</button>
             ) : (
               <button className="btn btn-lg btn-block" disabled>Approve every scene to continue</button>

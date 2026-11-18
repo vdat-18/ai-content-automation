@@ -40,11 +40,12 @@ export const usePipeline = (productId: string) =>
     refetchInterval: (query) => (query.state.data?.status === "running" ? 2000 : false),
   });
 
-export const useKeyframes = (productId: string, enabled = true) =>
+export const useKeyframes = (productId: string, enabled = true, live = false) =>
   useQuery({
     queryKey: ["keyframes", productId],
     queryFn: ({ signal }) => getJson<Keyframe[]>(`${API}/${productId}/keyframes`, signal),
     enabled,
+    refetchInterval: live ? 3000 : false,
   });
 
 export const useClips = (productId: string, enabled = true) =>

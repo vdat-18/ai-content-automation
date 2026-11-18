@@ -4,7 +4,7 @@ import { useEffect, useRef } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { Empty, ErrorNote, Skeleton } from "../components/ui";
 import { useBrief, useKeyframes, usePipeline, useProducts, useSelections, useVideoInfo } from "../hooks/useStudio";
-import { doneSteps, STEPS, suggestedStep, type StepId } from "../lib/studio";
+import { doneSteps, friendlyStep, STEPS, suggestedStep, type StepId } from "../lib/studio";
 import { FinishStep } from "./studio/FinishStep";
 import { IdeaStep } from "./studio/IdeaStep";
 import { ImagesStep } from "./studio/ImagesStep";
@@ -18,10 +18,9 @@ export function StudioPage() {
   const selections = useSelections();
   const pipeline = usePipeline(productId);
   const brief = useBrief(productId, pipeline.data?.status === "running");
-  const keyframes = useKeyframes(productId, !!brief.data);
-  const video = useVideoInfo(productId);
-
   const running = pipeline.data?.status === "running";
+  const keyframes = useKeyframes(productId, !!brief.data, running);
+  const video = useVideoInfo(productId);
   // When a run ends, pull in everything it made.
   const wasRunning = useRef(false);
   useEffect(() => {
@@ -48,6 +47,8 @@ export function StudioPage() {
   const step: StepId = asked && STEPS.some((item) => item.id === asked) ? asked : suggestedStep(record, frames, hasVideo);
   const reachable = (id: StepId) => id === "idea" || !!record;
   const productType = selections.data?.[productId] ?? null;
+  // The first image is already on screen: the other scenes appear on the same page as they are made
+  const makingScenes = running && !!record && frames.length > 0 && friendlyStep(pipeline.data!.step) === "Creating the other scenes";
 
   return (
     <div className="page">
@@ -65,7 +66,9 @@ export function StudioPage() {
         })}
       </ol>
 
-      {running ? (
+      {makingScenes ? (
+        <ImagesStep productId={productId} record={record!} frames={frames} run={pipeline.data} making />
+      ) : running ? (
         <Working productId={productId} run={pipeline.data!} record={record} frames={frames} />
       ) : step === "idea" ? (
         <IdeaStep productId={productId} product={product} productType={productType} record={record} run={pipeline.data} />
