@@ -805,7 +805,7 @@ class ProductCatalogService:
             raise BriefUnavailable("Select this product for content before writing a brief")
         if not person_photos:
             raise BriefUnavailable("Upload the photo of the person first: every video shows them")
-        shot_count = max(1, round(video_seconds / shot_seconds(CLIP_SECONDS)))
+        shot_count = video_seconds // CLIP_SECONDS  # one 15 second clip per 15 seconds chosen
         rules = await approved_rules(self._knowledge, KnowledgeStage.PREPARATION, "brief")
         brief = await self._briefer.write(
             detail,

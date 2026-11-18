@@ -357,13 +357,13 @@ async def _two_described_references(service: ProductCatalogService) -> dict[str,
 
 
 async def test_each_shot_gets_the_reference_that_fits_it(tmp_path, monkeypatch) -> None:
-    monkeypatch.setenv("AIC_CLIP_SPEED", "1.25")  # 30 seconds is 3 shots
+    monkeypatch.setenv("AIC_CLIP_SPEED", "1.25")  # 45 seconds is 3 shots
     service = await _service(tmp_path, _TwoShots())
     embedder, picker = _Embedder(), _Picker()
     service._text_embedder, service._reference_picker = embedder, picker
     await service._repository.select_product(PRODUCT_ID, "áo thun")
     ids = await _two_described_references(service)
-    await service.create_brief(PRODUCT_ID, video_seconds=30, person_photos=[b"face"])
+    await service.create_brief(PRODUCT_ID, video_seconds=45, person_photos=[b"face"])
     record = await service.match_references(PRODUCT_ID)
     brief = record["brief"]
     # the closest description comes first: the hand shot sees the hand picture first
@@ -430,7 +430,7 @@ async def test_references_fall_back_to_text_when_the_product_cannot_be_embedded(
 
 
 async def test_shots_get_different_references_while_the_pool_has_enough(tmp_path, monkeypatch) -> None:
-    monkeypatch.setenv("AIC_CLIP_SPEED", "1.25")  # 30 seconds is 3 shots
+    monkeypatch.setenv("AIC_CLIP_SPEED", "1.25")  # 45 seconds is 3 shots
     class _SameShots(_TwoShots):
         async def write(self, product, user_idea, shot_count=1, person_photos=None, rules=""):
             brief = await super().write(product, user_idea, shot_count, person_photos)
@@ -442,7 +442,7 @@ async def test_shots_get_different_references_while_the_pool_has_enough(tmp_path
     service._text_embedder, service._reference_picker = _Embedder(), _Picker()
     await service._repository.select_product(PRODUCT_ID, "áo thun")
     ids = await _two_described_references(service)
-    await service.create_brief(PRODUCT_ID, video_seconds=30, person_photos=[b"face"])
+    await service.create_brief(PRODUCT_ID, video_seconds=45, person_photos=[b"face"])
     record = await service.match_references(PRODUCT_ID)
     first, second, third = record["brief"]["shot_references"]
     assert first == ids["a hand holding a bottle"] and second == ids["a person in a bedroom"]
@@ -450,11 +450,11 @@ async def test_shots_get_different_references_while_the_pool_has_enough(tmp_path
 
 
 async def test_matching_stops_without_an_embedding_model(tmp_path, monkeypatch) -> None:
-    monkeypatch.setenv("AIC_CLIP_SPEED", "1.25")  # 30 seconds is 3 shots
+    monkeypatch.setenv("AIC_CLIP_SPEED", "1.25")  # 45 seconds is 3 shots
     service = await _service(tmp_path, _TwoShots())
     await service._repository.select_product(PRODUCT_ID, "áo thun")
     await _two_described_references(service)
-    await service.create_brief(PRODUCT_ID, video_seconds=30, person_photos=[b"face"])
+    await service.create_brief(PRODUCT_ID, video_seconds=45, person_photos=[b"face"])
     with pytest.raises(BriefUnavailable, match="No text embedding model"):
         await service.match_references(PRODUCT_ID)
     record = await service.get_brief(PRODUCT_ID)
@@ -503,10 +503,9 @@ def test_reference_note_prefers_the_description() -> None:
     assert reference_note({}) == ""
 
 
-async def test_video_length_sets_the_shot_count_from_the_finished_length(
+async def test_video_length_sets_one_shot_per_15_seconds_whatever_the_clip_speed(
     tmp_path, monkeypatch
 ) -> None:
-    # a 15 second clip is trimmed and sped up, so it plays for about 11.8 seconds
     monkeypatch.setenv("AIC_CLIP_SPEED", "1.25")
     seen: list[int] = []
 
@@ -521,7 +520,7 @@ async def test_video_length_sets_the_shot_count_from_the_finished_length(
     await service.create_brief(PRODUCT_ID, person_photos=[b"face"])
     await service.create_brief(PRODUCT_ID, video_seconds=60, person_photos=[b"face"])
     await service.create_brief(PRODUCT_ID, video_seconds=90, person_photos=[b"face"])
-    assert seen == [1, 5, 8]
+    assert seen == [1, 4, 6]
     with pytest.raises(BriefUnavailable, match="Video length"):
         await service.create_brief(PRODUCT_ID, video_seconds=20, person_photos=[b"face"])
 
@@ -529,7 +528,7 @@ async def test_video_length_sets_the_shot_count_from_the_finished_length(
 async def test_the_brief_is_the_one_answer_of_the_model_with_no_check_of_its_content(
     tmp_path, monkeypatch
 ) -> None:
-    monkeypatch.setenv("AIC_CLIP_SPEED", "1.25")  # 30 seconds is 3 shots
+    monkeypatch.setenv("AIC_CLIP_SPEED", "1.25")  # 30 seconds is still 2 shots
     calls = []
 
     class _Odd(_FakeWriter):
@@ -540,8 +539,8 @@ async def test_the_brief_is_the_one_answer_of_the_model_with_no_check_of_its_con
     service = await _service(tmp_path, _Odd())
     await service._repository.select_product(PRODUCT_ID, "áo thun")
     record = await service.create_brief(PRODUCT_ID, video_seconds=30, person_photos=[b"face"])
-    # asked once, kept as written: two shots instead of three and an absolute claim are not checked
-    assert calls == [3] and len(record["brief"]["shots"]) == 2
+    # asked once, kept as written: the answer is not checked for its content
+    assert calls == [2] and len(record["brief"]["shots"]) == 2
     assert "warnings" not in record["brief"]
 
 
